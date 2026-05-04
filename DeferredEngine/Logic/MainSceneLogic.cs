@@ -248,16 +248,16 @@ namespace DeferredEngine.Logic
             //        }
 
 
-            //AddDirectionalLight(direction: new Vector3(0.2f, 0.2f, -1),
-            //    intensity: 100,
-            //    color: Color.White,
-            //    position: Vector3.UnitZ * 2,
-            //    drawShadows: true,
-            //    shadowWorldSize: 450,
-            //    shadowDepth: 180,
-            //    shadowResolution: 1024,
-            //    shadowFilteringFiltering: DirectionalLightSource.ShadowFilteringTypes.SoftPCF3x,
-            //    screenspaceShadowBlur: false);
+            AddDirectionalLight(direction: new Vector3(0.2f, 0.2f, -1),
+                intensity: 100,
+                color: Color.White,
+                position: Vector3.UnitZ * 2,
+                drawShadows: true,
+                shadowWorldSize: 450,
+                shadowDepth: 180,
+                shadowResolution: 1024,
+                shadowFilteringFiltering: DirectionalLight.ShadowFilteringTypes.SoftPCF3x,
+                screenspaceShadowBlur: false);
         }
 
 

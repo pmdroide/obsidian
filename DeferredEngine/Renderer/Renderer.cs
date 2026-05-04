@@ -256,6 +256,16 @@ namespace DeferredEngine.Renderer
             GameSettings.ApplySettings();
 
             Shaders.ScreenSpaceReflectionParameter_NoiseMap.SetValue(_assets.NoiseMap);
+
+            // Prefer a cubemap sky, but allow 2D lat-long sky textures as fallback.
+            if (_assets.SkyCubemap != null)
+            {
+                _deferredEnvironmentMapRenderModule.SkyCubemap = _assets.SkyCubemap;
+            }
+            else if (_assets.SkyTexture != null)
+            {
+                _deferredEnvironmentMapRenderModule.SkyTexture = _assets.SkyTexture;
+            }
             SetUpRenderTargets(GameSettings.g_screenwidth, GameSettings.g_screenheight, false);
             
         }
@@ -360,12 +370,18 @@ namespace DeferredEngine.Renderer
             //Build froxel clusters for volumetric lighting
             if (GameSettings.g_FroxelsEnabled)
             {
-                _froxelRenderModule.UpdateMatrices(_view, _projection, _inverseViewProjection, _g_FarClip * -1, _g_FarClip);
-                _froxelRenderModule.BuildFroxels(pointLights, camera.Position, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+                _froxelRenderModule.UpdateMatrices(_view, _projection, _inverseView, _inverseViewProjection, _g_FarClip * -1, _g_FarClip);
+                _froxelRenderModule.BuildFroxels(pointLights, directionalLights, camera.Position, GameSettings.g_screenwidth, GameSettings.g_screenheight);
             }
 
             //Light the scene
             _lightAccumulationModule.DrawLights(pointLights, directionalLights, camera.Position, gameTime, _renderTargetLightBinding, _renderTargetDiffuse);
+
+            // Compose froxel volumetric lighting into the volume buffer
+            if (GameSettings.g_FroxelsEnabled)
+            {
+                _froxelRenderModule.ComposeFroxelLighting(_renderTargetAlbedo, _renderTargetNormal, _renderTargetDepth, _renderTargetVolume, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+            }
 
             //Draw the environment cube map as a fullscreen effect on all meshes
             DrawEnvironmentMap(envSample, camera, gameTime);

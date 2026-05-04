@@ -42,6 +42,29 @@ SamplerState ReflectionCubeMapSampler
     Mipfilter = LINEAR;
 };
 
+TextureCube SkyCubeMap;
+SamplerState SkyCubeMapSampler
+{
+    texture = <SkyCubeMap>;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = LINEAR;
+};
+
+Texture2D SkyMap2D;
+SamplerState SkyMap2DSampler
+{
+    texture = <SkyMap2D>;
+    AddressU = WRAP;
+    AddressV = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = LINEAR;
+};
+bool UseSkyMap2D;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +118,32 @@ VertexShaderOutput VertexShaderFunction(VertexShaderInput input, uint id:SV_VERT
 float GetLuma(float3 rgb)
 {
 	return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b)*10;
+}
+
+float3 SampleSky(float3 viewDir)
+{
+	float3 viewDirNorm = normalize(viewDir);
+	float3 skyColor;
+
+	if (UseSkyMap2D)
+	{
+		float phi = atan2(viewDirNorm.z, viewDirNorm.x);
+		float theta = acos(saturate(viewDirNorm.y));
+		const float PI_VALUE = 3.14159265f;
+		float2 uv = float2((phi + PI_VALUE) / (2.0f * PI_VALUE), theta / PI_VALUE);
+		skyColor = SkyMap2D.SampleLevel(SkyMap2DSampler, uv, 0).rgb;
+	}
+	else
+	{
+		skyColor = SkyCubeMap.SampleLevel(SkyCubeMapSampler, viewDirNorm, 0).rgb;
+	}
+
+	if (dot(skyColor, skyColor) < 0.001f)
+	{
+		skyColor = ReflectionCubeMap.SampleLevel(ReflectionCubeMapSampler, viewDirNorm, 0).rgb;
+	}
+
+	return skyColor;
 }
 
 float4 GetSSR(float2 TexCoord)
@@ -196,8 +245,9 @@ PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
 	//We use this to fake a sky color in the specular component
     if (normalData.x + normalData.y <= 0.001f)
     {
+			float3 skyColor = SampleSky(input.ViewDir);
             output.Diffuse = float4(0, 0, 0, 0);
-			output.Specular = output.Specular = float4(SkyColor, 0) * 0.5f;/*float4(0.4072f, 0.6392f, 0.9911f, 0)*/ ;//float4(0.6706f, 0.8078f, 0.9216f,0)*0.05f; //float4(0, 0.4431f, 0.78, 0) * 0.05f;
+			output.Specular = float4(skyColor, 0) * 0.5f;
             return output;
     }
 
@@ -282,13 +332,15 @@ PixelShaderOutput PixelShaderFunctionSky(VertexShaderOutput input)
 	float4 normalData = NormalMap.Load(texCoordInt);
 
 	//tranform normal back into [-1,1] range
-	float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
+	float3 normal = decode(normalData.xyz);
 
-											//We use this to fake a sky color in the specular component
+	//We use this to render the skybox when there are no geometry pixels
 	if (normalData.x + normalData.y <= 0.001f)
 	{
-		output.Diffuse = float4(0, 0, 0, 0);
-		output.Specular = float4(SkyColor, 0) * 0.5f;/*float4(0.4072f, 0.6392f, 0.9911f, 0)*///float4(0.6706f, 0.8078f, 0.9216f,0)*0.05f; //float4(0, 0.4431f, 0.78, 0) * 0.05f;
+		float3 skyColor = SampleSky(input.ViewDir);
+		
+		output.Diffuse = float4(skyColor * EnvironmentMapDiffuseStrength, 0);
+		output.Specular = float4(skyColor * EnvironmentMapSpecularStrength, 0);
 		return output;
 	}
 

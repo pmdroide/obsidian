@@ -56,6 +56,9 @@ namespace DeferredEngine.Recources
 
         public Texture2D NoiseMap;
 
+        public TextureCube SkyCubemap;
+        public Texture2D SkyTexture;
+
         public static Texture2D BaseTex;
 
         //Meshes and Materials
@@ -141,6 +144,26 @@ namespace DeferredEngine.Recources
             BaseTex.SetData(new Color[] { Color.White });
 
             NoiseMap = content.Load<Texture2D>("Shaders/noise_blur");
+
+            // Try loading sky as cubemap first, then as 2D lat-long texture.
+            try
+            {
+                SkyCubemap = content.Load<TextureCube>("Art/sky");
+                SkyTexture = null;
+            }
+            catch
+            {
+                SkyCubemap = null;
+
+                try
+                {
+                    SkyTexture = content.Load<Texture2D>("Art/sky");
+                }
+                catch
+                {
+                    SkyTexture = null;
+                }
+            }
             //Meshes and Materials
 
             //Trabant = content.Load<Model>("Art/test/source/trabant_realtime_v3");
@@ -488,6 +511,7 @@ namespace DeferredEngine.Recources
             AlphaBlendRim?.Dispose();
             MirrorMaterial?.Dispose();
             NoiseMap?.Dispose();
+            SkyTexture?.Dispose();
             sponza_fabric_metallic?.Dispose();
             sponza_fabric_spec?.Dispose();
             sponza_curtain_metallic?.Dispose();

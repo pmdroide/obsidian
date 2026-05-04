@@ -1455,3 +1455,14 @@
 /processorParam:TextureFormat=Color
 /build:Sponza/textures/vase_round_spec.jpg
 
+#begin Art/sky.dds
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=NoChange
+/build:Art/sky.dds

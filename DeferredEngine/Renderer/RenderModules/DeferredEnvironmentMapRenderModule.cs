@@ -18,6 +18,11 @@ namespace DeferredEngine.Renderer.RenderModules
         private EffectParameter _paramFrustumCorners;
         private EffectParameter _paramCameraPositionWS;
         private EffectParameter _paramReflectionCubeMap;
+        private EffectParameter _paramSkyCubeMap;
+        private EffectParameter _paramSkyMap2D;
+        private EffectParameter _paramUseSkyMap2D;
+        private TextureCube _skyCubeMapTexture;
+        private Texture2D _skyMapTexture;
         private EffectParameter _paramResolution;
         private EffectParameter _paramFireflyReduction;
         private EffectParameter _paramFireflyThreshold;
@@ -55,6 +60,26 @@ namespace DeferredEngine.Renderer.RenderModules
         public RenderTargetCube Cubemap
         {
             set { _paramReflectionCubeMap.SetValue(value); }
+        }
+
+        public TextureCube SkyCubemap
+        {
+            set
+            {
+                _skyCubeMapTexture = value;
+                if (_paramSkyCubeMap != null) _paramSkyCubeMap.SetValue(value);
+                if (_paramUseSkyMap2D != null) _paramUseSkyMap2D.SetValue(false);
+            }
+        }
+
+        public Texture2D SkyTexture
+        {
+            set
+            {
+                _skyMapTexture = value;
+                if (_paramSkyMap2D != null) _paramSkyMap2D.SetValue(value);
+                if (_paramUseSkyMap2D != null) _paramUseSkyMap2D.SetValue(value != null);
+            }
         }
 
         public Texture2D AlbedoMap
@@ -168,6 +193,9 @@ namespace DeferredEngine.Renderer.RenderModules
             _paramFrustumCorners = _deferredEnvironmentShader.Parameters["FrustumCorners"];
             _paramSSRMap = _deferredEnvironmentShader.Parameters["ReflectionMap"];
             _paramReflectionCubeMap = _deferredEnvironmentShader.Parameters["ReflectionCubeMap"];
+            _paramSkyCubeMap = _deferredEnvironmentShader.Parameters["SkyCubeMap"];
+            _paramSkyMap2D = _deferredEnvironmentShader.Parameters["SkyMap2D"];
+            _paramUseSkyMap2D = _deferredEnvironmentShader.Parameters["UseSkyMap2D"];
             _paramResolution = _deferredEnvironmentShader.Parameters["Resolution"];
             _paramFireflyReduction = _deferredEnvironmentShader.Parameters["FireflyReduction"];
             _paramFireflyThreshold = _deferredEnvironmentShader.Parameters["FireflyThreshold"];
@@ -191,6 +219,21 @@ namespace DeferredEngine.Renderer.RenderModules
 
             _passSky = _deferredEnvironmentShader.Techniques["Sky"].Passes[0];
             _passBasic = _deferredEnvironmentShader.Techniques["Basic"].Passes[0];
+
+            if (_skyCubeMapTexture != null)
+            {
+                _paramSkyCubeMap.SetValue(_skyCubeMapTexture);
+            }
+
+            if (_skyMapTexture != null)
+            {
+                _paramSkyMap2D.SetValue(_skyMapTexture);
+                _paramUseSkyMap2D.SetValue(true);
+            }
+            else
+            {
+                _paramUseSkyMap2D.SetValue(false);
+            }
         }
         
         public void Load(ContentManager content, string shaderPath)

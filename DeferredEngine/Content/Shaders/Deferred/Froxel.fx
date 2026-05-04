@@ -7,6 +7,7 @@
 // Grid dimensions
 float4x4 View;
 float4x4 InverseProjection;
+float4x4 InverseView;
 float NearClip;
 float FarClip;
 float3 GridDimensions; // X, Y, Z grid size
@@ -22,10 +23,24 @@ float3 LightDirection;
 float3 LightColor;
 float G = 0.75f; // anisotropy
 
+float FroxelDensity = 1.0f;
+float FroxelScatter = 1.0f;
+float FroxelAbsorption = 1.0f;
+
 int NumSteps = 64;        // e.g. 32–64
 float StepSize;      // in view space (or derive from near/far)
 
 float3 LightPositionVS;
+
+float3 DirectionalLightDirectionVS; // MUST be normalized, in view space
+float3 DirectionalLightColor;
+bool UseDirectionalLight;
+bool UseFroxelFog;
+
+Texture2D ShadowMap;
+SamplerState ShadowSampler;
+
+float4x4 LightViewProjection; // light VP matrix
 
 SamplerState PointSampler
 {
@@ -114,6 +129,33 @@ float HenyeyGreenstein(float cosTheta, float g)
     return (1.0 / (4.0 * 3.14159)) * ((1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5));
 }
 
+float SampleShadow(float3 worldPos)
+{
+    // Transform to light space
+    float4 lightSpacePos = mul(float4(worldPos, 1.0f), LightViewProjection);
+
+    // Perspective divide
+    lightSpacePos.xyz /= lightSpacePos.w;
+
+    // Convert to UV space
+    float2 uv = lightSpacePos.xy * 0.5f + 0.5f;
+
+    // Flip Y if needed
+    uv.y = 1.0f - uv.y;
+
+    // Outside shadow map
+    if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
+        return 1.0f;
+
+    float shadowDepth = ShadowMap.SampleLevel(ShadowSampler, uv, 0).r;
+    float currentDepth = lightSpacePos.z;
+
+    // Bias to avoid acne
+    float bias = 0.001f;
+
+    return (currentDepth - bias > shadowDepth) ? 0.0f : 1.0f;
+}
+
 // Pixel shader for building froxel clusters
 float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
 {
@@ -161,44 +203,63 @@ float4 PixelShaderComposeFroxels(VertexShaderOutput input) : COLOR0
 
     float3 accumulatedLight = float3(0, 0, 0);
     float transmittance = 1.0;
-
+    if (!UseFroxelFog)
+    {
+        return float4(0, 0, 0, 1);
+    }
     // Raymarch
     for (int i = 0; i < NumSteps; i++)
     {
         float t = (i + 0.5f) * stepSize;
         float3 samplePos = rayOrigin + rayDir * t;
+        float4 worldPos4 = mul(float4(samplePos, 1.0f), InverseView);
+        float3 worldPos = worldPos4.xyz / worldPos4.w;
 
         float z = -samplePos.z;
         if (z < NearClip || z > FarClip)
             continue;
 
         // Density (simple exponential fog)
-        float density = 0.0008f;
+        float density = 0.0008f * FroxelDensity;
 
-        float3 toLight = LightPositionVS - samplePos;
-        float distanceToLight = max(length(toLight), 0.001f);
-        float3 lightDir = toLight / distanceToLight;
+        float3 lightDir;
+        float attenuation;
+        float3 lightColor;
 
-        float attenuation = 1.0 / (1.0 + distanceToLight * distanceToLight * 0.01);
+        if (UseDirectionalLight)
+        {
+            // Directional light
+            lightDir = normalize(-DirectionalLightDirectionVS); // IMPORTANT: light comes FROM this direction
+            attenuation = 1.0; // no falloff
+            lightColor = DirectionalLightColor;
+        }
+        else
+        {
+            // Point light
+            float3 toLight = LightPositionVS - samplePos;
+            float distanceToLight = max(length(toLight), 0.001f);
+            lightDir = toLight / distanceToLight;
+
+            attenuation = 1.0 / (1.0 + distanceToLight * distanceToLight * 0.01);
+            lightColor = LightColor;
+        }
 
         // Phase function
         float cosTheta = dot(rayDir, lightDir);
         float phase = HenyeyGreenstein(cosTheta, G);
 
         // Light contribution
-        float scatteringStrength = 3.0f;
+        float scatteringStrength = 3.0f * FroxelScatter;
 
-        float3 scattering = LightColor * phase * attenuation * density * scatteringStrength;
+        float shadow = SampleShadow(worldPos);
+
+        float3 scattering = lightColor * phase * attenuation * density * scatteringStrength * shadow;
 
         // Accumulate using Beer-Lambert
         accumulatedLight += transmittance * scattering * stepSize;
 
         // Attenuate transmittance
-        transmittance *= exp(-density * stepSize);
-
-        // Early exit (performance)
-        if (transmittance < 0.01f)
-            break;
+        transmittance *= exp(-density * stepSize * FroxelAbsorption);
     }
 
     // Combine with scene

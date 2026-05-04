@@ -269,7 +269,8 @@ namespace DeferredEngine.Recources
         
         // Froxel (Clustered Volumetric Fog) settings
         public static bool g_FroxelsEnabled = true;
-        private static float _g_froxelDensity = 1.0f;
+        public static bool g_FroxelFogEnabled = true;
+        private static float _g_froxelDensity = 0.1f;
         public static float g_FroxelDensity
         {
             get { return _g_froxelDensity; }
@@ -279,7 +280,7 @@ namespace DeferredEngine.Recources
             }
         }
         
-        private static float _g_froxelScatter = 0.5f;
+        private static float _g_froxelScatter = 0.8f;
         public static float g_FroxelScatter
         {
             get { return _g_froxelScatter; }
@@ -289,7 +290,7 @@ namespace DeferredEngine.Recources
             }
         }
         
-        private static float _g_froxelAbsorption = 0.1f;
+        private static float _g_froxelAbsorption = 0.2f;
         public static float g_FroxelAbsorption
         {
             get { return _g_froxelAbsorption; }
