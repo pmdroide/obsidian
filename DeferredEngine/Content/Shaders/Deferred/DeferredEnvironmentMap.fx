@@ -127,11 +127,16 @@ float3 SampleSky(float3 viewDir)
 
 	if (UseSkyMap2D)
 	{
-		float phi = atan2(viewDirNorm.z, viewDirNorm.x);
-		float theta = acos(saturate(viewDirNorm.y));
+		// World space is Z-up (see Camera.cs). Typical equirectangular maps sweep azimuth around the
+		// vertical axis and use polar angle from that axis — i.e. treat +Z as the sky pole here.
+		// Using acos(dir.y) assumes Y-up and causes pole pinch / spiral at horizon.
+		float phi = atan2(viewDirNorm.y, viewDirNorm.x); // yaw around +Z from +X toward +Y
+		float theta = acos(clamp(viewDirNorm.z, -1.0f, 1.0f)); // zenith measured from world +Z
 		const float PI_VALUE = 3.14159265f;
-		float2 uv = float2((phi + PI_VALUE) / (2.0f * PI_VALUE), theta / PI_VALUE);
-		skyColor = SkyMap2D.SampleLevel(SkyMap2DSampler, uv, 0).rgb;
+		const float TWO_PI = 6.2831853f;
+		float u = phi / TWO_PI + 0.5f;
+		float v = theta / PI_VALUE;
+		skyColor = SkyMap2D.SampleLevel(SkyMap2DSampler, float2(u, v), 0).rgb;
 	}
 	else
 	{
