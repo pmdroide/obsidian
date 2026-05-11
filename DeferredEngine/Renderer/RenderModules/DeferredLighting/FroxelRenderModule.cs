@@ -7,48 +7,50 @@ using DeferredEngine.Recources;
 using DeferredEngine.Renderer.Helper;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using DirectionalLight = DeferredEngine.Entities.DirectionalLight;
 
 namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
 {
     /// <summary>
-    /// Clustered Volumetric Fog (Froxels) Render Module
-    /// Divides view frustum into a 3D grid and assigns lights to each voxel
+    /// Volumetric fog via frustum-aligned voxels packed in a 2D atlas
+    /// (width = Nx, height = Ny * Nz). Matches perspective near plane used in Renderer (1 world unit).
     /// </summary>
     public class FroxelRenderModule : IDisposable
     {
+        /// <summary>Must match <see cref="Renderer"/> projection near plane.</summary>
+        public const float CameraNearPlane = 1f;
+
+        public const int FROXEL_GRID_X = 160;
+        public const int FROXEL_GRID_Y = 90;
+        public const int FROXEL_GRID_Z = 128;
+
+        public static int AtlasWidth => FROXEL_GRID_X;
+        public static int AtlasHeight => FROXEL_GRID_Y * FROXEL_GRID_Z;
+
         private GraphicsDevice _graphicsDevice;
         private Effect _froxelShader;
         private FullScreenTriangle _fullScreenTriangle;
-        private ShaderManager _shaderManager;
         private int _shaderIndex = -1;
 
-        // Froxel grid dimensions
-        public const int FROXEL_GRID_X = 16;
-        public const int FROXEL_GRID_Y = 16;
-        public const int FROXEL_GRID_Z = 24;
-        public const int MAX_LIGHTS_PER_FROXEL = 32;
-
-        // Render targets and buffers
-        public Texture3D _froxelGridTexture; // Stores light indices and count per voxel
-        private RenderTarget2D _froxelLightAssignmentTarget; // Temp target for compute pass
+        private RenderTarget2D _froxelInjectionTexture;
+        private RenderTarget2D[] _froxelAccumulationTargets = new RenderTarget2D[2];
+        private int _currentAccumulationIndex;
+        private Texture2D _noiseMap;
         private Texture2D _dummyShadowMap;
-        
-        // Shader parameters
-        private EffectParameter _paramView;
+
         private EffectParameter _paramInverseProjection;
         private EffectParameter _paramInverseView;
         private EffectParameter _paramNearClip;
         private EffectParameter _paramFarClip;
         private EffectParameter _paramGridDimensions;
-        private EffectParameter _paramFroxelSize;
-        private EffectParameter _paramAlbedoMap;
-        private EffectParameter _paramNormalMap;
-        private EffectParameter _paramDepthMap;
         private EffectParameter _paramScreenResolution;
         private EffectParameter _paramDirectionalLightDirectionVS;
         private EffectParameter _paramDirectionalLightColor;
         private EffectParameter _paramUseDirectionalLight;
         private EffectParameter _paramShadowMap;
+        private EffectParameter _paramPreviousFroxelAccumulationTexture;
+        private EffectParameter _paramNoiseMap;
+        private EffectParameter _paramTime;
         private EffectParameter _paramLightViewProjection;
         private EffectParameter _paramUseFroxelFog;
         private EffectParameter _paramFroxelDensity;
@@ -56,21 +58,22 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramFroxelAbsorption;
 
         private EffectTechnique _techniqueBuildFroxels;
+        private EffectTechnique _techniqueAccumulateFroxels;
         private EffectTechnique _techniqueComposeFroxels;
+
         private EffectPass _passBuildFroxels;
+        private EffectPass _passAccumulateFroxels;
         private EffectPass _passComposeFroxels;
 
-        // View frustum data
-        private Vector3[] _frustumCorners = new Vector3[8];
         private Matrix _view;
-        private Matrix _projection;
         private Matrix _inverseView;
         private Matrix _inverseProjection;
-        private float _nearClip = 0.1f;
-        private float _farClip = 1000.0f;
+        private float _nearClip = CameraNearPlane;
+        private float _farClip = 1000f;
 
-        private bool _isInitialized = false;
-        private Stopwatch _debugTimer = new Stopwatch();
+        private bool _isInitialized;
+
+        public Texture2D FroxelAccumulation => _froxelAccumulationTargets[_currentAccumulationIndex];
 
         public FroxelRenderModule(ShaderManager shaderManager, string shaderPath)
         {
@@ -79,7 +82,6 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
 
         private void Load(ShaderManager shaderManager, string shaderPath)
         {
-            _shaderManager = shaderManager;
             _shaderIndex = shaderManager.AddShader(shaderPath);
             if (_shaderIndex >= 0)
             {
@@ -116,68 +118,84 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
         {
             if (_froxelShader == null)
             {
-                Debug.WriteLine("ERROR: Froxel shader is null! Shader failed to load.");
+                Debug.WriteLine("ERROR: Froxel shader is null.");
                 return;
             }
 
-            Debug.WriteLine($"Initializing froxel shader parameters. Shader has {_froxelShader.Parameters.Count} parameters and {_froxelShader.Techniques.Count} techniques.");
-
-            _paramView = GetEffectParameter("View");
             _paramInverseProjection = GetEffectParameter("InverseProjection");
+            _paramInverseView = GetEffectParameter("InverseView");
             _paramNearClip = GetEffectParameter("NearClip");
             _paramFarClip = GetEffectParameter("FarClip");
             _paramGridDimensions = GetEffectParameter("GridDimensions");
-            _paramFroxelSize = GetEffectParameter("FroxelSize");
-            _paramAlbedoMap = GetEffectParameter("AlbedoMap");
-            _paramNormalMap = GetEffectParameter("NormalMap");
-            _paramDepthMap = GetEffectParameter("DepthMap");
+            _paramScreenResolution = GetEffectParameter("ScreenResolution");
             _paramDirectionalLightDirectionVS = GetEffectParameter("DirectionalLightDirectionVS");
             _paramDirectionalLightColor = GetEffectParameter("DirectionalLightColor");
             _paramUseDirectionalLight = GetEffectParameter("UseDirectionalLight");
-            _paramScreenResolution = GetEffectParameter("ScreenResolution");
             _paramShadowMap = GetEffectParameter("ShadowMap");
+            _paramPreviousFroxelAccumulationTexture = GetEffectParameter("PreviousFroxelAccumulationTexture");
+            _paramNoiseMap = GetEffectParameter("NoiseMap");
+            _paramTime = GetEffectParameter("Time");
             _paramLightViewProjection = GetEffectParameter("LightViewProjection");
             _paramUseFroxelFog = GetEffectParameter("UseFroxelFog");
-            _paramInverseView = GetEffectParameter("InverseView");
             _paramFroxelDensity = GetEffectParameter("FroxelDensity");
             _paramFroxelScatter = GetEffectParameter("FroxelScatter");
             _paramFroxelAbsorption = GetEffectParameter("FroxelAbsorption");
 
             _techniqueBuildFroxels = GetEffectTechnique("BuildFroxels");
+            _techniqueAccumulateFroxels = GetEffectTechnique("AccumulateFroxels");
             _techniqueComposeFroxels = GetEffectTechnique("ComposeFroxels");
 
             _passBuildFroxels = _techniqueBuildFroxels?.Passes.FirstOrDefault();
+            _passAccumulateFroxels = _techniqueAccumulateFroxels?.Passes.FirstOrDefault();
             _passComposeFroxels = _techniqueComposeFroxels?.Passes.FirstOrDefault();
-
-            Debug.WriteLine($"BuildFroxels technique: {(_techniqueBuildFroxels != null ? "OK" : "NULL")}, pass: {(_passBuildFroxels != null ? "OK" : "NULL")}");
-            Debug.WriteLine($"ComposeFroxels technique: {(_techniqueComposeFroxels != null ? "OK" : "NULL")}, pass: {(_passComposeFroxels != null ? "OK" : "NULL")}");
         }
 
-        /// <summary>
-        /// Initialize froxel system with graphics device and render targets
-        /// </summary>
         public void Initialize(GraphicsDevice graphicsDevice, FullScreenTriangle fullScreenTriangle, int screenWidth, int screenHeight)
         {
             _graphicsDevice = graphicsDevice;
             _fullScreenTriangle = fullScreenTriangle;
 
-            // Create 3D texture to store light cluster data
-            // Format: RGBA8 where we can store light indices
-            // We'll use multiple slices if needed for more lights per voxel
             try
             {
-                // For now, we'll use a 2D texture array approach since MonoGame has limited 3D texture support
-                // We'll store froxel data in a tall 2D texture
-                _froxelLightAssignmentTarget = new RenderTarget2D(
-                    _graphicsDevice,
-                    FROXEL_GRID_X * FROXEL_GRID_Y,
-                    FROXEL_GRID_Z,
-                    false,
-                    SurfaceFormat.Color,
-                    DepthFormat.None
-                );
+                _froxelInjectionTexture?.Dispose();
+                for (int i = 0; i < _froxelAccumulationTargets.Length; ++i)
+                {
+                    _froxelAccumulationTargets[i]?.Dispose();
+                    _froxelAccumulationTargets[i] = null;
+                }
 
-                _dummyShadowMap = new Texture2D(_graphicsDevice, 1, 1, false, SurfaceFormat.Color);
+                _froxelInjectionTexture = new RenderTarget2D(
+                    _graphicsDevice,
+                    AtlasWidth,
+                    AtlasHeight,
+                    false,
+                    SurfaceFormat.HalfVector4,
+                    DepthFormat.None);
+
+                _froxelAccumulationTargets[0] = new RenderTarget2D(
+                    _graphicsDevice,
+                    AtlasWidth,
+                    AtlasHeight,
+                    false,
+                    SurfaceFormat.HalfVector4,
+                    DepthFormat.None);
+
+                _froxelAccumulationTargets[1] = new RenderTarget2D(
+                    _graphicsDevice,
+                    AtlasWidth,
+                    AtlasHeight,
+                    false,
+                    SurfaceFormat.HalfVector4,
+                    DepthFormat.None);
+
+                _currentAccumulationIndex = 0;
+                _graphicsDevice.SetRenderTarget(_froxelAccumulationTargets[0]);
+                _graphicsDevice.Clear(Color.Transparent);
+                _graphicsDevice.SetRenderTarget(_froxelAccumulationTargets[1]);
+                _graphicsDevice.Clear(Color.Transparent);
+                _graphicsDevice.SetRenderTarget(null);
+
+                _dummyShadowMap ??= new Texture2D(_graphicsDevice, 1, 1, false, SurfaceFormat.Color);
                 _dummyShadowMap.SetData(new[] { Color.White });
 
                 _isInitialized = true;
@@ -190,50 +208,44 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             }
         }
 
-        /// <summary>
-        /// Update view and projection matrices
-        /// </summary>
         public void UpdateMatrices(Matrix view, Matrix projection, Matrix inverseView, Matrix inverseProjection, float nearClip, float farClip)
         {
+            _ = projection;
             _view = view;
-            _projection = projection;
             _inverseView = inverseView;
             _inverseProjection = inverseProjection;
             _nearClip = nearClip;
             _farClip = farClip;
         }
 
-        /// <summary>
-        /// Build froxel light clusters for this frame
-        /// </summary>
-        public void BuildFroxels(List<PointLight> pointLights, List<DeferredEngine.Entities.DirectionalLight> directionalLights, Vector3 cameraPosition, int screenWidth, int screenHeight)
+        public void SetNoiseMap(Texture2D noiseMap)
         {
-            if (!_isInitialized || _froxelShader == null || _graphicsDevice == null || _fullScreenTriangle == null)
-                return;
-
-            // Check only critical parameters - others may be optimized out
-            if (_passBuildFroxels == null || _techniqueBuildFroxels == null)
+            _noiseMap = noiseMap;
+            if (_paramNoiseMap != null)
             {
-                Debug.WriteLine("FroxelRenderModule.BuildFroxels skipped: technique or pass is null.");
-                return;
+                _paramNoiseMap.SetValue(_noiseMap);
             }
+        }
 
-            _debugTimer.Restart();
-
-            // Set shader parameters only if they exist
-            if (_paramView != null) _paramView.SetValue(_view);
-            if (_paramInverseView != null) _paramInverseView.SetValue(_inverseView);
+        private void ApplyCommonParameters(int screenWidth, int screenHeight, float timeSeconds = 0)
+        {
             if (_paramInverseProjection != null) _paramInverseProjection.SetValue(_inverseProjection);
+            if (_paramInverseView != null) _paramInverseView.SetValue(_inverseView);
+            if (_paramTime != null) _paramTime.SetValue(timeSeconds);
             if (_paramNearClip != null) _paramNearClip.SetValue(_nearClip);
             if (_paramFarClip != null) _paramFarClip.SetValue(_farClip);
-            if (_paramGridDimensions != null) _paramGridDimensions.SetValue(new Vector3(FROXEL_GRID_X, FROXEL_GRID_Y, FROXEL_GRID_Z));
-            if (_paramFroxelSize != null) _paramFroxelSize.SetValue(new Vector2(2.0f / FROXEL_GRID_X, 2.0f / FROXEL_GRID_Y));
-            if (_paramScreenResolution != null) _paramScreenResolution.SetValue(new Vector2(screenWidth, screenHeight));
+            if (_paramGridDimensions != null)
+                _paramGridDimensions.SetValue(new Vector3(FROXEL_GRID_X, FROXEL_GRID_Y, FROXEL_GRID_Z));
+            if (_paramScreenResolution != null)
+                _paramScreenResolution.SetValue(new Vector2(screenWidth, screenHeight));
             if (_paramUseFroxelFog != null) _paramUseFroxelFog.SetValue(GameSettings.g_FroxelFogEnabled);
             if (_paramFroxelDensity != null) _paramFroxelDensity.SetValue(GameSettings.g_FroxelDensity);
             if (_paramFroxelScatter != null) _paramFroxelScatter.SetValue(GameSettings.g_FroxelScatter);
             if (_paramFroxelAbsorption != null) _paramFroxelAbsorption.SetValue(GameSettings.g_FroxelAbsorption);
+        }
 
+        private void ApplyDirectionalLight(List<DirectionalLight> directionalLights)
+        {
             if (directionalLights != null && directionalLights.Count > 0)
             {
                 var directionalLight = directionalLights[0];
@@ -242,7 +254,8 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
 
                 if (_paramUseDirectionalLight != null) _paramUseDirectionalLight.SetValue(true);
                 if (_paramDirectionalLightDirectionVS != null) _paramDirectionalLightDirectionVS.SetValue(dirVS);
-                if (_paramDirectionalLightColor != null) _paramDirectionalLightColor.SetValue(directionalLight.ColorV3 * directionalLight.Intensity);
+                if (_paramDirectionalLightColor != null)
+                    _paramDirectionalLightColor.SetValue(directionalLight.ColorV3 * directionalLight.Intensity);
                 if (_paramLightViewProjection != null) _paramLightViewProjection.SetValue(directionalLight.LightViewProjection);
                 if (_paramShadowMap != null) _paramShadowMap.SetValue(directionalLight.ShadowMap ?? _dummyShadowMap);
             }
@@ -254,131 +267,92 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
                 if (_paramLightViewProjection != null) _paramLightViewProjection.SetValue(Matrix.Identity);
                 if (_paramShadowMap != null) _paramShadowMap.SetValue(_dummyShadowMap);
             }
-
-            // For now, we'll store point light data in a structured way
-            // In a full implementation, this would be done via compute shader or structured buffer
-            // This is a simplified CPU-side implementation
-
-            // Create light cluster assignments (very simplified for now)
-            int froxelCount = FROXEL_GRID_X * FROXEL_GRID_Y * FROXEL_GRID_Z;
-
-            List<int>[] froxelLightLists = new List<int>[froxelCount];
-
-            for (int i = 0; i < froxelCount; i++)
-                froxelLightLists[i] = new List<int>();
-
-            // Assign lights to froxels BEFORE building the offset arrays
-            AssignLightsToFroxels(pointLights, froxelLightLists);
-
-            List<int> flatLightList = new List<int>();
-            int[] offsets = new int[froxelLightLists.Length];
-            int offset = 0;
-
-            for (int i = 0; i < froxelLightLists.Length; i++)
-            {
-                offsets[i] = offset;
-
-                flatLightList.AddRange(froxelLightLists[i]);
-
-                offset += froxelLightLists[i].Count;
-            }
-
-            Color[] meta = new Color[offsets.Length];
-
-            for (int i = 0; i < offsets.Length; i++)
-            {
-                meta[i] = new Color(offsets[i], froxelLightLists[i].Count, 0, 0);
-            }
-
-            Vector3[] lightPositions = new Vector3[128];
-            Vector3[] lightColors = new Vector3[128];
-
-            for (int i = 0; i < pointLights.Count; i++)
-            {
-                lightPositions[i] = Vector3.Transform(pointLights[i].Position, _view);
-                lightColors[i] = pointLights[i].ColorV3 * pointLights[i].Intensity;
-            }
-
-            // Note: Array parameters in MonoGame shaders cannot be set via Parameters dictionary
-            // This will be re-enabled when we implement structured buffers or use a different approach
-            // _froxelShader.Parameters["LightPositions"].SetValue(lightPositions);
-            // _froxelShader.Parameters["LightColors"].SetValue(lightColors);
-
-            Texture2D froxelMetaTex = new Texture2D(_graphicsDevice, meta.Length, 1);
-            froxelMetaTex.SetData(meta);
-
-            int lightListWidth = Math.Max(flatLightList.Count, 1);
-            Texture2D froxelListTex = new Texture2D(_graphicsDevice, lightListWidth, 1);
-
-            Color[] listData = new Color[lightListWidth];
-            for (int i = 0; i < flatLightList.Count; i++)
-                listData[i] = new Color(flatLightList[i], 0, 0, 0);
-
-            froxelListTex.SetData(listData);
-
-            // Note: Array parameters in MonoGame shaders cannot be set via Parameters dictionary
-            // This will be re-enabled when we implement structured buffers or use a different approach
-            // _froxelShader.Parameters["FroxelMeta"].SetValue(froxelMetaTex);
-            // _froxelShader.Parameters["FroxelLightList"].SetValue(froxelListTex);
-
-            // Update texture with cluster data
-            _graphicsDevice.SetRenderTarget(_froxelLightAssignmentTarget);
-            _graphicsDevice.Clear(Color.Black);
-
-            // Apply the shader and draw
-            _froxelShader.CurrentTechnique = _techniqueBuildFroxels;
-            _passBuildFroxels.Apply();
-            _fullScreenTriangle.Draw(_graphicsDevice);
-
-            _graphicsDevice.SetRenderTarget(null);
-            
-            _debugTimer.Stop();
-            GameStats.d_froxelBuildTime = _debugTimer.ElapsedMilliseconds;
         }
 
         /// <summary>
-        /// Simplified CPU-side light assignment to froxels
-        /// In a production system, this would be done on GPU with compute shaders
+        /// Injection pass then accumulation pass into internal atlases (after G-buffer / shadows).
         /// </summary>
-        private void AssignLightsToFroxels(List<PointLight> pointLights, List<int>[] froxelLightLists)
+        public void RenderFroxelFog(List<PointLight> pointLights, List<DirectionalLight> directionalLights, int screenWidth, int screenHeight, float timeSeconds)
         {
-            for (int lightIndex = 0; lightIndex < pointLights.Count; lightIndex++)
+            if (!_isInitialized || _froxelShader == null || _graphicsDevice == null || _fullScreenTriangle == null)
+                return;
+
+            if (_passBuildFroxels == null || _passAccumulateFroxels == null)
             {
-                var light = pointLights[lightIndex];
-
-                Vector3 lightVS = Vector3.Transform(light.Position, _view);
-
-                float z = -lightVS.Z;
-                if (z < _nearClip || z > _farClip)
-                    continue;
-
-                float slice = (float)(Math.Log(z / _nearClip) / Math.Log(_farClip / _nearClip));
-                int zIndex = (int)(slice * (FROXEL_GRID_Z - 1));
-
-                Vector4 clip = Vector4.Transform(new Vector4(lightVS, 1.0f), _projection);
-                clip /= clip.W;
-
-                float xNorm = clip.X * 0.5f + 0.5f;
-                float yNorm = -clip.Y * 0.5f + 0.5f;
-
-                int xIndex = (int)(xNorm * FROXEL_GRID_X);
-                int yIndex = (int)(yNorm * FROXEL_GRID_Y);
-
-                xIndex = Math.Clamp(xIndex, 0, FROXEL_GRID_X - 1);
-                yIndex = Math.Clamp(yIndex, 0, FROXEL_GRID_Y - 1);
-
-                int froxelIndex =
-                    xIndex +
-                    yIndex * FROXEL_GRID_X +
-                    zIndex * FROXEL_GRID_X * FROXEL_GRID_Y;
-
-                froxelLightLists[froxelIndex].Add(lightIndex);
+                Debug.WriteLine("FroxelRenderModule.RenderFroxelFog skipped: missing shader pass.");
+                return;
             }
+
+            ApplyCommonParameters(screenWidth, screenHeight, timeSeconds);
+            ApplyDirectionalLight(directionalLights);
+
+            if (_paramShadowMap != null)
+            {
+                Texture2D activeShadowMap = _dummyShadowMap;
+                if (directionalLights != null && directionalLights.Count > 0)
+                    activeShadowMap = directionalLights[0].ShadowMap ?? _dummyShadowMap;
+                _paramShadowMap.SetValue(activeShadowMap);
+            }
+
+            if (_paramNoiseMap != null && _noiseMap != null)
+            {
+                _paramNoiseMap.SetValue(_noiseMap);
+            }
+
+            var prevBlend = _graphicsDevice.BlendState;
+            var prevDepth = _graphicsDevice.DepthStencilState;
+
+            _graphicsDevice.BlendState = BlendState.Opaque;
+            _graphicsDevice.DepthStencilState = DepthStencilState.None;
+
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Froxel: Injection");
+            try
+            {
+                _graphicsDevice.SetRenderTarget(_froxelInjectionTexture);
+                _graphicsDevice.Clear(Color.Transparent);
+                _froxelShader.CurrentTechnique = _techniqueBuildFroxels;
+                _passBuildFroxels.Apply();
+                _fullScreenTriangle.Draw(_graphicsDevice);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
+
+            int nextAccumulationIndex = (_currentAccumulationIndex + 1) % _froxelAccumulationTargets.Length;
+            RenderTarget2D nextAccumulationTarget = _froxelAccumulationTargets[nextAccumulationIndex];
+            RenderTarget2D previousAccumulationTarget = _froxelAccumulationTargets[_currentAccumulationIndex];
+
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Froxel: Accumulation");
+            try
+            {
+                _graphicsDevice.SetRenderTarget(nextAccumulationTarget);
+                _graphicsDevice.Clear(Color.Transparent);
+                _froxelShader.Parameters["FroxelInjectionTexture"].SetValue(_froxelInjectionTexture);
+                if (_paramPreviousFroxelAccumulationTexture != null)
+                    _paramPreviousFroxelAccumulationTexture.SetValue(previousAccumulationTarget);
+                _froxelShader.CurrentTechnique = _techniqueAccumulateFroxels;
+                _passAccumulateFroxels.Apply();
+                _fullScreenTriangle.Draw(_graphicsDevice);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
+
+            _currentAccumulationIndex = nextAccumulationIndex;
+            _graphicsDevice.SetRenderTarget(null);
+            _graphicsDevice.BlendState = prevBlend;
+            _graphicsDevice.DepthStencilState = prevDepth;
         }
 
-        /// <summary>
-        /// Sample froxel data for volumetric lighting pass
-        /// </summary>
+        /// <summary>Legacy entry point — forwards to <see cref="RenderFroxelFog"/>.</summary>
+        public void BuildFroxels(List<PointLight> pointLights, List<DirectionalLight> directionalLights, Vector3 cameraPosition, int screenWidth, int screenHeight, float timeSeconds)
+        {
+            RenderFroxelFog(pointLights, directionalLights, screenWidth, screenHeight, timeSeconds);
+        }
+
+        /// <summary>Optional screen-space compose using Froxel.fx Compose technique (debug).</summary>
         public void ComposeFroxelLighting(
             RenderTarget2D renderTargetAlbedo,
             RenderTarget2D renderTargetNormal,
@@ -390,50 +364,51 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             if (!_isInitialized || _froxelShader == null || _graphicsDevice == null || _fullScreenTriangle == null)
                 return;
 
-            if (renderTargetOutput == null)
-            {
-                Debug.WriteLine("FroxelRenderModule.ComposeFroxelLighting skipped because renderTargetOutput is null.");
+            if (renderTargetOutput == null || _passComposeFroxels == null)
                 return;
-            }
 
-            if (_passComposeFroxels == null || _techniqueComposeFroxels == null)
+            ApplyCommonParameters(screenWidth, screenHeight);
+
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Froxel: Scene Integration");
+            try
             {
-                Debug.WriteLine("FroxelRenderModule.ComposeFroxelLighting skipped: technique or pass is null.");
-                return;
+                _graphicsDevice.SetRenderTarget(renderTargetOutput);
+                _graphicsDevice.Clear(Color.Transparent);
+                _graphicsDevice.BlendState = BlendState.Opaque;
+
+                var paramAlbedo = GetEffectParameter("AlbedoMap");
+                var paramNormal = GetEffectParameter("NormalMap");
+                var paramDepth = GetEffectParameter("DepthMap");
+                var paramAccum = GetEffectParameter("FroxelAccumulationTexture");
+
+                if (paramAlbedo != null) paramAlbedo.SetValue(renderTargetAlbedo);
+                if (paramNormal != null) paramNormal.SetValue(renderTargetNormal);
+                if (paramDepth != null) paramDepth.SetValue(renderTargetDepth);
+                if (paramAccum != null) paramAccum.SetValue(FroxelAccumulation);
+
+                _froxelShader.CurrentTechnique = _techniqueComposeFroxels;
+                _passComposeFroxels.Apply();
+                _fullScreenTriangle.Draw(_graphicsDevice);
             }
-
-            _graphicsDevice.SetRenderTarget(renderTargetOutput);
-            _graphicsDevice.Clear(Color.Transparent);
-            _graphicsDevice.BlendState = BlendState.Additive;
-
-            // Set parameters only if they exist in the shader
-            if (_paramAlbedoMap != null) _paramAlbedoMap.SetValue(renderTargetAlbedo);
-            if (_paramNormalMap != null) _paramNormalMap.SetValue(renderTargetNormal);
-            if (_paramDepthMap != null) _paramDepthMap.SetValue(renderTargetDepth);
-            if (_paramInverseView != null) _paramInverseView.SetValue(_inverseView);
-            if (_paramUseFroxelFog != null) _paramUseFroxelFog.SetValue(GameSettings.g_FroxelFogEnabled);
-            if (_paramFroxelDensity != null) _paramFroxelDensity.SetValue(GameSettings.g_FroxelDensity);
-            if (_paramFroxelScatter != null) _paramFroxelScatter.SetValue(GameSettings.g_FroxelScatter);
-            if (_paramFroxelAbsorption != null) _paramFroxelAbsorption.SetValue(GameSettings.g_FroxelAbsorption);
-
-            _froxelShader.CurrentTechnique = _techniqueComposeFroxels;
-            _passComposeFroxels.Apply();
-
-            _fullScreenTriangle.Draw(_graphicsDevice);
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
 
             _graphicsDevice.SetRenderTarget(null);
-            _graphicsDevice.BlendState = BlendState.Opaque;
-        }
-
-        public Texture2D GetFroxelData()
-        {
-            return _froxelLightAssignmentTarget;
         }
 
         public void Dispose()
         {
-            _froxelLightAssignmentTarget?.Dispose();
-            _froxelShader?.Dispose();
+            _froxelInjectionTexture?.Dispose();
+            _froxelInjectionTexture = null;
+            for (int i = 0; i < _froxelAccumulationTargets.Length; ++i)
+            {
+                _froxelAccumulationTargets[i]?.Dispose();
+                _froxelAccumulationTargets[i] = null;
+            }
+            _dummyShadowMap?.Dispose();
+            _dummyShadowMap = null;
         }
     }
 }

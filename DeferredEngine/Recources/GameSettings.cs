@@ -32,7 +32,7 @@ namespace DeferredEngine.Recources
         public static float m_defaultroughness = 0.5f;
         
         //Settings
-        public static float g_farplane = 500;
+        public static float g_farplane = 1000;
         public static bool g_cpusort = true;
         public static bool g_cpuculling = true;
         public static bool g_batchbymaterial = false; //Note this must be activated before the application is started.
@@ -46,7 +46,7 @@ namespace DeferredEngine.Recources
         public static int g_envmapresolution = 1024;
 
         //Shadow Settings
-        public static int g_shadowforcefiltering = 0; //1 = PCF, 2 3 better PCF  4 = Poisson, 5 = VSM;
+        public static int g_shadowforcefiltering = 2; //1 = PCF, 2 3 better PCF  4 = Poisson, 5 = VSM;
         public static bool g_shadowforcescreenspace = false;
 
         //Deferred Decals

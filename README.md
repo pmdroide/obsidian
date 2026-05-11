@@ -8,6 +8,7 @@ Original intent of the project was not to build a 3D game engine but to show how
 - .obj files are now imported with fbximporter to avoid content load error
 - .NET 10
 - Monogame version 3.8.4.1
+- DX11 (planning to switch to DX12)
 
 Original Code https://github.com/Kosmonaut3d/DeferredEngine
 
@@ -26,7 +27,7 @@ Original Code https://github.com/Kosmonaut3d/DeferredEngine
 - Screen space reflections
 - Linear HDR pipeline.
 - EXPERIMENTAL: screen space emissive materials (not updated to work right now)
-- Froxel Volumetric Lightning/Fog 
+- Froxel Volumetric Lightning/Fog (WIP)
 
 ## Controls:
 - " ^ " / the key above TAB : debug console with suggestions (tab to autocomplete)

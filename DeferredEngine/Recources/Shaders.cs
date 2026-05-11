@@ -155,6 +155,27 @@ namespace DeferredEngine.Recources
         public static readonly EffectParameter DeferredComposeEffectParameter_SSRMap = DeferredCompose.Parameters["SSRMap"];
         public static readonly EffectParameter DeferredComposeEffectParameter_UseSSAO = DeferredCompose.Parameters["useSSAO"];
 
+        public static readonly EffectParameter DeferredComposeEffectParameter_FroxelAccumulationTexture =
+            DeferredCompose.Parameters["FroxelAccumulationTexture"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_DepthMap =
+            DeferredCompose.Parameters["DepthMap"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_NearClip =
+            DeferredCompose.Parameters["NearClip"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_FarClip =
+            DeferredCompose.Parameters["FarClip"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_GridDimensions =
+            DeferredCompose.Parameters["GridDimensions"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_ScreenResolution =
+            DeferredCompose.Parameters["ScreenResolution"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_UseFroxelFog =
+            DeferredCompose.Parameters["UseFroxelFog"];
+
         public static readonly EffectTechnique DeferredComposeTechnique_NonLinear = DeferredCompose.Techniques["TechniqueNonLinear"];
         public static readonly EffectTechnique DeferredComposeTechnique_Linear = DeferredCompose.Techniques["TechniqueLinear"];
 
