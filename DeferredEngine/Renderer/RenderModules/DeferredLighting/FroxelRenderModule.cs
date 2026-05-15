@@ -24,6 +24,9 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
         public const int FROXEL_GRID_Y = 90;
         public const int FROXEL_GRID_Z = 128;
 
+        /// <summary>Maximum point lights injected per frame. Must match MAX_FROXEL_POINT_LIGHTS in Froxel.fx.</summary>
+        public const int MAX_FROXEL_POINT_LIGHTS = 8;
+
         public static int AtlasWidth => FROXEL_GRID_X;
         public static int AtlasHeight => FROXEL_GRID_Y * FROXEL_GRID_Z;
 
@@ -56,6 +59,14 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramFroxelDensity;
         private EffectParameter _paramFroxelScatter;
         private EffectParameter _paramFroxelAbsorption;
+        private EffectParameter _paramPointLightCount;
+        private EffectParameter _paramPointLightPositionsVS;
+        private EffectParameter _paramPointLightColors;
+        private EffectParameter _paramPointLightRadii;
+
+        private readonly Vector3[] _pointLightPositionsVS = new Vector3[MAX_FROXEL_POINT_LIGHTS];
+        private readonly Vector3[] _pointLightColors = new Vector3[MAX_FROXEL_POINT_LIGHTS];
+        private readonly float[] _pointLightRadii = new float[MAX_FROXEL_POINT_LIGHTS];
 
         private EffectTechnique _techniqueBuildFroxels;
         private EffectTechnique _techniqueAccumulateFroxels;
@@ -140,6 +151,10 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             _paramFroxelDensity = GetEffectParameter("FroxelDensity");
             _paramFroxelScatter = GetEffectParameter("FroxelScatter");
             _paramFroxelAbsorption = GetEffectParameter("FroxelAbsorption");
+            _paramPointLightCount = GetEffectParameter("PointLightCount");
+            _paramPointLightPositionsVS = GetEffectParameter("PointLightPositionsVS");
+            _paramPointLightColors = GetEffectParameter("PointLightColors");
+            _paramPointLightRadii = GetEffectParameter("PointLightRadii");
 
             _techniqueBuildFroxels = GetEffectTechnique("BuildFroxels");
             _techniqueAccumulateFroxels = GetEffectTechnique("AccumulateFroxels");
@@ -244,6 +259,39 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             if (_paramFroxelAbsorption != null) _paramFroxelAbsorption.SetValue(GameSettings.g_FroxelAbsorption);
         }
 
+        private void ApplyPointLights(List<PointLight> pointLights)
+        {
+            int count = 0;
+
+            if (pointLights != null && _paramPointLightCount != null)
+            {
+                int limit = Math.Min(pointLights.Count, MAX_FROXEL_POINT_LIGHTS);
+                for (int i = 0; i < limit; ++i)
+                {
+                    PointLight light = pointLights[i];
+                    if (light == null)
+                        continue;
+
+                    _pointLightPositionsVS[count] = Vector3.Transform(light.Position, _view);
+                    _pointLightColors[count] = light.ColorV3 * light.Intensity;
+                    _pointLightRadii[count] = light.Radius;
+                    count++;
+                }
+            }
+
+            for (int i = count; i < MAX_FROXEL_POINT_LIGHTS; ++i)
+            {
+                _pointLightPositionsVS[i] = Vector3.Zero;
+                _pointLightColors[i] = Vector3.Zero;
+                _pointLightRadii[i] = 0f;
+            }
+
+            _paramPointLightCount?.SetValue(count);
+            _paramPointLightPositionsVS?.SetValue(_pointLightPositionsVS);
+            _paramPointLightColors?.SetValue(_pointLightColors);
+            _paramPointLightRadii?.SetValue(_pointLightRadii);
+        }
+
         private void ApplyDirectionalLight(List<DirectionalLight> directionalLights)
         {
             if (directionalLights != null && directionalLights.Count > 0)
@@ -285,6 +333,7 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
 
             ApplyCommonParameters(screenWidth, screenHeight, timeSeconds);
             ApplyDirectionalLight(directionalLights);
+            ApplyPointLights(pointLights);
 
             if (_paramShadowMap != null)
             {

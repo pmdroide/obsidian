@@ -30,6 +30,13 @@ bool UseDirectionalLight;
 float3 DirectionalLightDirectionVS;
 float3 DirectionalLightColor;
 
+#define MAX_FROXEL_POINT_LIGHTS 8
+
+int PointLightCount = 0;
+float3 PointLightPositionsVS[MAX_FROXEL_POINT_LIGHTS];
+float3 PointLightColors[MAX_FROXEL_POINT_LIGHTS];
+float PointLightRadii[MAX_FROXEL_POINT_LIGHTS];
+
 Texture2D AlbedoMap;
 Texture2D NormalMap;
 Texture2D DepthMap;
@@ -39,7 +46,9 @@ Texture2D FroxelInjectionTexture;
 Texture2D PreviousFroxelAccumulationTexture;
 Texture2D FroxelAccumulationTexture;
 Texture2D NoiseMap;
-float TemporalBlend = 0.05f;
+// HistoryAlpha = weight of history. 0.9 means 10% new sample, 90% history (smooth but laggy).
+// 0 disables temporal blending entirely.
+float HistoryAlpha = 0.9f;
 
 SamplerState PointSampler
 {
@@ -170,14 +179,36 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
     float density = FroxelDensity;
     float3 scatter = 0;
 
+    float3 viewDir = normalize(-dirVS);
+
     if (UseDirectionalLight)
     {
         float3 lightDir = normalize(-DirectionalLightDirectionVS);
-        float3 viewDir = normalize(-dirVS);
         float cosTheta = dot(lightDir, viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
         float shadow = ComputeShadow(worldPos);
-        scatter = DirectionalLightColor * phase * density * FroxelScatter * shadow;
+        scatter += DirectionalLightColor * phase * density * FroxelScatter * shadow;
+    }
+
+    [loop]
+    for (int li = 0; li < PointLightCount; ++li)
+    {
+        float3 toLight = PointLightPositionsVS[li] - posVS;
+        float distToLight = length(toLight);
+        float radius = PointLightRadii[li];
+
+        if (distToLight >= radius)
+            continue;
+
+        float3 lightDirPt = toLight / max(distToLight, 1e-4);
+        float falloff = saturate(1.0 - distToLight / radius);
+        falloff *= falloff;
+        float attenuation = falloff / max(distToLight * distToLight, 0.01);
+
+        float cosTheta = dot(lightDirPt, viewDir);
+        float phase = HenyeyGreenstein(cosTheta, G);
+
+        scatter += PointLightColors[li] * phase * density * FroxelScatter * attenuation;
     }
 
     return float4(scatter, density);
@@ -198,27 +229,34 @@ float4 PixelShaderAccumulateFroxels(VertexShaderOutput input) : COLOR0
     float3 accumScatter = 0;
     float accumTransmit = 1.0;
 
+    float logFarOverNear = log(FarClip / NearClip);
+
     [loop]
-    for (int k = 0; k < 128; k++)
+    for (int k = 0; k <= fz; k++)
     {
-        if (k <= fz)
-        {
-            float2 uv = FroxelIndicesToAtlasUV(fx, fy, k);
-            float4 slice = FroxelInjectionTexture.SampleLevel(PointSampler, uv, 0);
+        float2 uv = FroxelIndicesToAtlasUV(fx, fy, k);
+        float4 slice = FroxelInjectionTexture.SampleLevel(PointSampler, uv, 0);
 
-            float3 sc = slice.rgb;
-            float dens = slice.a;
-            float sliceTransmit = exp(-dens * FroxelAbsorption);
+        float3 sc = slice.rgb;
+        float dens = slice.a;
 
-            accumScatter += sc * accumTransmit;
-            accumTransmit *= sliceTransmit;
-        }
+        // Exponential slice boundaries: d(t) = NearClip * (FarClip/NearClip)^t, t = k/nz.
+        float tNear = (float)k / (float)nz;
+        float tFar = (float)(k + 1) / (float)nz;
+        float distNear = NearClip * exp(tNear * logFarOverNear);
+        float distFar = NearClip * exp(tFar * logFarOverNear);
+        float sliceThickness = distFar - distNear;
+
+        float sliceTransmit = exp(-dens * FroxelAbsorption * sliceThickness);
+
+        accumScatter += sc * accumTransmit * sliceThickness;
+        accumTransmit *= sliceTransmit;
     }
 
     float2 currentAtlasUV = FroxelIndicesToAtlasUV(fx, fy, fz);
     float4 prevAccum = PreviousFroxelAccumulationTexture.SampleLevel(LinearSampler, currentAtlasUV, 0);
-    accumScatter = lerp(accumScatter, prevAccum.rgb, TemporalBlend);
-    accumTransmit = lerp(accumTransmit, prevAccum.a, TemporalBlend);
+    accumScatter = lerp(accumScatter, prevAccum.rgb, HistoryAlpha);
+    accumTransmit = lerp(accumTransmit, prevAccum.a, HistoryAlpha);
 
     return float4(accumScatter, accumTransmit);
 }

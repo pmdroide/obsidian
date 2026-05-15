@@ -275,13 +275,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
             fog.rgb;
 
         transmittance =
-            fog.a;
-
-        transmittance =
-            saturate(transmittance);
-
-        transmittance =
-            max(transmittance, 0.15f);
+            saturate(fog.a);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
