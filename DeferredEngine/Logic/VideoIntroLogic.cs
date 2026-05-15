@@ -31,13 +31,14 @@ namespace DeferredEngine.Logic
                 // Add these arguments to stabilize the manual rendering mode
                 string[] options = new string[] 
                 { 
-                    "--no-hw-dec",          // Disable hardware decoding to fix converter errors
+                    "--avcodec-hw=none",// Disable hardware decoding to fix converter errors
                     "--no-video-title-show", // Hide filename at start
                     "--aout=directx", // Use DirectX audio instead of Windows MMDevice
-                    "--vout=drawable-nsobject" // Prevents LibVLC from trying to create its own window
+                    "--vout=drawable-nsobject", // Prevents LibVLC from trying to create its own window
+                    "--quiet" // Suppress VLC logs
                 };
                 
-                _libVLC = new LibVLC();
+                _libVLC = new LibVLC(options);
                 _mediaPlayer = new MediaPlayer(_libVLC);
 
                 string path = Path.Combine(AppContext.BaseDirectory, content.RootDirectory, "intro.mp4");
