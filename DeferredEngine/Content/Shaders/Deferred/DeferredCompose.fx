@@ -71,31 +71,36 @@ struct VertexShaderOutput
     float2 TexCoord : TEXCOORD0;
 };
 
-float2 FroxelScreenUVToAtlasUV(int fx, int fy, int fz)
+// Continuous-coord atlas UV. Within slice fz the V coord stays in [fz/nz, (fz+1)/nz] as long
+// as fyF is in [0, ny-1], so the hardware LINEAR sampler does bilinear XY interpolation
+// without bleeding across Z slices.
+float2 FroxelContinuousToAtlasUV(float fxF, float fyF, int fz)
 {
     float nx = GridDimensions.x;
     float ny = GridDimensions.y;
     float nz = GridDimensions.z;
-    return float2((fx + 0.5) / nx, (fz * ny + fy + 0.5) / (ny * nz));
+    return float2((fxF + 0.5) / nx, ((float)fz * ny + fyF + 0.5) / (ny * nz));
 }
 
 float4 SampleFroxelAccumulationTexture(float2 screenUV, float depth)
 {
-    int nx = (int)GridDimensions.x;
-    int ny = (int)GridDimensions.y;
-    int nz = (int)GridDimensions.z;
+    float nx = GridDimensions.x;
+    float ny = GridDimensions.y;
+    int nzI = (int)GridDimensions.z;
 
-    int fx = clamp((int)(screenUV.x * nx), 0, nx - 1);
-    int fy = clamp((int)(screenUV.y * ny), 0, ny - 1);
+    // Snap to texel centers (-0.5) then clamp - this is what feeds the LINEAR sampler so the
+    // ~8 screen-px per froxel get bilinearly smoothed instead of point-sampled (pixelated).
+    float fxF = clamp(screenUV.x * nx - 0.5, 0.0, nx - 1.0);
+    float fyF = clamp(screenUV.y * ny - 0.5, 0.0, ny - 1.0);
 
     float normalizedDepth = max(depth, NearClip);
-    float slicePos = saturate(log(normalizedDepth / NearClip) / log(FarClip / NearClip)) * nz;
-    int fz0 = clamp((int)floor(slicePos), 0, nz - 1);
-    int fz1 = min(fz0 + 1, nz - 1);
+    float slicePos = saturate(log(normalizedDepth / NearClip) / log(FarClip / NearClip)) * GridDimensions.z;
+    int fz0 = clamp((int)floor(slicePos), 0, nzI - 1);
+    int fz1 = min(fz0 + 1, nzI - 1);
     float zFrac = frac(slicePos);
 
-    float2 uv0 = FroxelScreenUVToAtlasUV(fx, fy, fz0);
-    float2 uv1 = FroxelScreenUVToAtlasUV(fx, fy, fz1);
+    float2 uv0 = FroxelContinuousToAtlasUV(fxF, fyF, fz0);
+    float2 uv1 = FroxelContinuousToAtlasUV(fxF, fyF, fz1);
 
     float4 sample0 = FroxelAccumulationTexture.Sample(linearSampler, uv0);
     float4 sample1 = FroxelAccumulationTexture.Sample(linearSampler, uv1);
@@ -178,8 +183,11 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
     float4 normalInfo =
         normalMap.Load(texCoordInt);
 
-    float3 centerNormal =
-        decode(normalInfo.xyz);
+    // GBuffer normal channels are zero for empty (sky) pixels. The sphere-map decode
+    // produces NaN there (sqrt of negative), which would poison the bilateral fog filter.
+    bool isSky = (normalInfo.x + normalInfo.y) <= 0.001f;
+
+    float3 centerNormal = isSky ? float3(0, 0, 1) : decode(normalInfo.xyz);
 
     // Gamma -> Linear
     diffuseColor.rgb =
@@ -264,12 +272,10 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
         dist =
             max(dist, NearClip);
 
-        float tDepth =
-            saturate(
-                log(dist / NearClip) /
-                log(FarClip / NearClip));
-
-        float4 fog = SampleFroxelBilateral(input.TexCoord, centerNormal, dist);
+        // Skip bilateral filtering for sky pixels - their cleared normal data breaks the normal weighting.
+        float4 fog = isSky
+            ? SampleFroxelAccumulationTexture(input.TexCoord, dist)
+            : SampleFroxelBilateral(input.TexCoord, centerNormal, dist);
 
         volumetrics =
             fog.rgb;

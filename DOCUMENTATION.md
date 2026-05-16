@@ -52,3 +52,5 @@ How to manipulate the scene
 - Update to Monogame 3.9 (Vulkan/DirectX 12)
 - Vulkan support
 - DirectX 12 support
+- Hotload
+- Lens Flare

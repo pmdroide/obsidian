@@ -55,18 +55,27 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramNoiseMap;
         private EffectParameter _paramTime;
         private EffectParameter _paramLightViewProjection;
+        private EffectParameter _paramLightView;
+        private EffectParameter _paramLightFarClip;
         private EffectParameter _paramUseFroxelFog;
         private EffectParameter _paramFroxelDensity;
         private EffectParameter _paramFroxelScatter;
         private EffectParameter _paramFroxelAbsorption;
         private EffectParameter _paramPointLightCount;
         private EffectParameter _paramPointLightPositionsVS;
+        private EffectParameter _paramPointLightPositionsWS;
         private EffectParameter _paramPointLightColors;
         private EffectParameter _paramPointLightRadii;
+        private EffectParameter _paramPointLightCastShadows;
+        private EffectParameter _paramPointLightShadowMapSize;
+        private readonly EffectParameter[] _paramPointLightShadowMaps = new EffectParameter[MAX_FROXEL_POINT_LIGHTS];
 
         private readonly Vector3[] _pointLightPositionsVS = new Vector3[MAX_FROXEL_POINT_LIGHTS];
+        private readonly Vector3[] _pointLightPositionsWS = new Vector3[MAX_FROXEL_POINT_LIGHTS];
         private readonly Vector3[] _pointLightColors = new Vector3[MAX_FROXEL_POINT_LIGHTS];
         private readonly float[] _pointLightRadii = new float[MAX_FROXEL_POINT_LIGHTS];
+        private readonly float[] _pointLightCastShadows = new float[MAX_FROXEL_POINT_LIGHTS];
+        private readonly float[] _pointLightShadowMapSizes = new float[MAX_FROXEL_POINT_LIGHTS];
 
         private EffectTechnique _techniqueBuildFroxels;
         private EffectTechnique _techniqueAccumulateFroxels;
@@ -147,14 +156,21 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             _paramNoiseMap = GetEffectParameter("NoiseMap");
             _paramTime = GetEffectParameter("Time");
             _paramLightViewProjection = GetEffectParameter("LightViewProjection");
+            _paramLightView = GetEffectParameter("LightView");
+            _paramLightFarClip = GetEffectParameter("LightFarClip");
             _paramUseFroxelFog = GetEffectParameter("UseFroxelFog");
             _paramFroxelDensity = GetEffectParameter("FroxelDensity");
             _paramFroxelScatter = GetEffectParameter("FroxelScatter");
             _paramFroxelAbsorption = GetEffectParameter("FroxelAbsorption");
             _paramPointLightCount = GetEffectParameter("PointLightCount");
             _paramPointLightPositionsVS = GetEffectParameter("PointLightPositionsVS");
+            _paramPointLightPositionsWS = GetEffectParameter("PointLightPositionsWS");
             _paramPointLightColors = GetEffectParameter("PointLightColors");
             _paramPointLightRadii = GetEffectParameter("PointLightRadii");
+            _paramPointLightCastShadows = GetEffectParameter("PointLightCastShadows");
+            _paramPointLightShadowMapSize = GetEffectParameter("PointLightShadowMapSize");
+            for (int i = 0; i < MAX_FROXEL_POINT_LIGHTS; ++i)
+                _paramPointLightShadowMaps[i] = GetEffectParameter("PointLightShadowMap" + i);
 
             _techniqueBuildFroxels = GetEffectTechnique("BuildFroxels");
             _techniqueAccumulateFroxels = GetEffectTechnique("AccumulateFroxels");
@@ -273,8 +289,15 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
                         continue;
 
                     _pointLightPositionsVS[count] = Vector3.Transform(light.Position, _view);
+                    _pointLightPositionsWS[count] = light.Position;
                     _pointLightColors[count] = light.ColorV3 * light.Intensity;
                     _pointLightRadii[count] = light.Radius;
+
+                    bool hasShadow = light.CastShadows && light.ShadowMap != null;
+                    _pointLightCastShadows[count] = hasShadow ? 1f : 0f;
+                    _pointLightShadowMapSizes[count] = hasShadow ? light.ShadowResolution : 0f;
+                    _paramPointLightShadowMaps[count]?.SetValue(hasShadow ? light.ShadowMap : (Texture2D)_dummyShadowMap);
+
                     count++;
                 }
             }
@@ -282,14 +305,21 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             for (int i = count; i < MAX_FROXEL_POINT_LIGHTS; ++i)
             {
                 _pointLightPositionsVS[i] = Vector3.Zero;
+                _pointLightPositionsWS[i] = Vector3.Zero;
                 _pointLightColors[i] = Vector3.Zero;
                 _pointLightRadii[i] = 0f;
+                _pointLightCastShadows[i] = 0f;
+                _pointLightShadowMapSizes[i] = 0f;
+                _paramPointLightShadowMaps[i]?.SetValue((Texture2D)_dummyShadowMap);
             }
 
             _paramPointLightCount?.SetValue(count);
             _paramPointLightPositionsVS?.SetValue(_pointLightPositionsVS);
+            _paramPointLightPositionsWS?.SetValue(_pointLightPositionsWS);
             _paramPointLightColors?.SetValue(_pointLightColors);
             _paramPointLightRadii?.SetValue(_pointLightRadii);
+            _paramPointLightCastShadows?.SetValue(_pointLightCastShadows);
+            _paramPointLightShadowMapSize?.SetValue(_pointLightShadowMapSizes);
         }
 
         private void ApplyDirectionalLight(List<DirectionalLight> directionalLights)
@@ -305,6 +335,8 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
                 if (_paramDirectionalLightColor != null)
                     _paramDirectionalLightColor.SetValue(directionalLight.ColorV3 * directionalLight.Intensity);
                 if (_paramLightViewProjection != null) _paramLightViewProjection.SetValue(directionalLight.LightViewProjection);
+                if (_paramLightView != null) _paramLightView.SetValue(directionalLight.LightView);
+                if (_paramLightFarClip != null) _paramLightFarClip.SetValue(directionalLight.ShadowDepth);
                 if (_paramShadowMap != null) _paramShadowMap.SetValue(directionalLight.ShadowMap ?? _dummyShadowMap);
             }
             else
@@ -313,6 +345,8 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
                 if (_paramDirectionalLightDirectionVS != null) _paramDirectionalLightDirectionVS.SetValue(Vector3.Zero);
                 if (_paramDirectionalLightColor != null) _paramDirectionalLightColor.SetValue(Vector3.Zero);
                 if (_paramLightViewProjection != null) _paramLightViewProjection.SetValue(Matrix.Identity);
+                if (_paramLightView != null) _paramLightView.SetValue(Matrix.Identity);
+                if (_paramLightFarClip != null) _paramLightFarClip.SetValue(1f);
                 if (_paramShadowMap != null) _paramShadowMap.SetValue(_dummyShadowMap);
             }
         }
