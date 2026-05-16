@@ -30,7 +30,7 @@ Before creating bug reports, please check the existing issues to see if the prob
 * **Describe the behavior you observed** after following the steps and explain why this is a bug.
 * **Explain which behavior you expected to see** instead and why.
 
-### Suggesting Enhancements
+### Suggesting Features
 
 If you have an idea for a new feature or an improvement, feel free to open an issue! Please:
 
@@ -40,9 +40,9 @@ If you have an idea for a new feature or an improvement, feel free to open an is
 
 ### Pull Requests
 
-1.  **Fork the repository** and create your branch from `main`.
+1.  **Clone the repository** and select branch `3d-engine`.
 2.  **Ensure any install or build dependencies are removed** before the end of the layer when doing a build.
-3.  **Update the README.md** (or other documentation) with details of changes to the interface, this includes new environment variables, exposed ports, file locations, and container parameters.
+3.  **Update the DOCUMENTATION.md** with details of changes to the interface, this includes new environment variables, exposed ports, file locations, and container parameters.
 4.  **Increase the version numbers** in any examples files and the README.md to the new version that this Pull Request would represent.
 5.  **Submit the PR** and wait for a maintainer to review it.
 

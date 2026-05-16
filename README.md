@@ -1,6 +1,12 @@
-![Project Icon](DeferredEngine/Icon.ico)
+<div align="center">
+  <img src="DeferredEngine/Icon.ico" width="80px" alt="Project Icon">
 
-[Documentation](DOCUMENTATION.md) | [Contributing](CONTRIBUTING.md)
+  [Getting Started] | [Documentation] | [Contributing]
+</div>
+
+[Getting Started]: #building
+[Documentation]: DOCUMENTATION.md
+[Contributing]: CONTRIBUTING.md
 
 # Obsidian
 
@@ -10,10 +16,10 @@ Obisidian is a game engine royalty free with objective to make development easy 
 
 ### Prerequisites
 
-- Git
-- VSCode
-- .NET 10 SDK 
-- DirectX 11
+- [Git](https://git-scm.com/)
+- [Visual Studio Code](https://code.visualstudio.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+- [DirectX 11](https://www.microsoft.com/en-us/download/details.aspx?id=17431)
 
 ### Building
 
@@ -21,22 +27,15 @@ Obisidian is a game engine royalty free with objective to make development easy 
 # Clone repo
 git clone https://github.com/pmdroide/obsidian.git
 
-# Restore packages
-dotnet restore
-
-# Change directory to main project
-cd DeferredEngine
-
-# Build and run
-dotnet run
-
 ```
 
+Once you've cloned the repo, run `bootstrap.bat` which will download the dependencies and build the engine.
+
 ## Contributing 
-If you want to contribute to the engine, please check the [contributig guide](CONTRIBUTING.md).
+If you want to contribute to the engine, please check the [contributing guide](CONTRIBUTING.md).
 
 ## Documentation
 See the documention [here](DOCUMENTATION.md).
 
 ## Credits
-https://github.com/Kosmonaut3d/DeferredEngine
+Kosmonaut: https://github.com/Kosmonaut3d/DeferredEngine

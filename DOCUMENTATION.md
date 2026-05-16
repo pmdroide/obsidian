@@ -1,3 +1,5 @@
+# Project version: 1.0
+
 ## Features
 - Easy to use viewer, with lots of GUI options
 - G-buffer creation with support for physically based materials (albedo, normal, roughness, metallic, mask)
@@ -47,3 +49,6 @@ How to manipulate the scene
 - HTML/CSS styling for UI
 - 2D Engine
 - Documentation Dev Website
+- Update to Monogame 3.9 (Vulkan/DirectX 12)
+- Vulkan support
+- DirectX 12 support
