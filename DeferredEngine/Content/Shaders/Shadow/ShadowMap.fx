@@ -9,7 +9,7 @@ matrix World;
 
 float3 LightPositionWS = float3(0,0,0);
 
-float FarClip = 200;
+float FarClip = 1000;
 float SizeBias = 0.005f; //0.005f * 2048 / ShadowMapSize
 
 Texture2D MaskTexture;

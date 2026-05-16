@@ -32,7 +32,7 @@ namespace DeferredEngine.Recources
         public static float m_defaultroughness = 0.5f;
         
         //Settings
-        public static float g_farplane = 500;
+        public static float g_farplane = 1000;
         public static bool g_cpusort = true;
         public static bool g_cpuculling = true;
         public static bool g_batchbymaterial = false; //Note this must be activated before the application is started.
@@ -46,7 +46,7 @@ namespace DeferredEngine.Recources
         public static int g_envmapresolution = 1024;
 
         //Shadow Settings
-        public static int g_shadowforcefiltering = 0; //1 = PCF, 2 3 better PCF  4 = Poisson, 5 = VSM;
+        public static int g_shadowforcefiltering = 2; //1 = PCF, 2 3 better PCF  4 = Poisson, 5 = VSM;
         public static bool g_shadowforcescreenspace = false;
 
         //Deferred Decals
@@ -270,17 +270,17 @@ namespace DeferredEngine.Recources
         // Froxel (Clustered Volumetric Fog) settings
         public static bool g_FroxelsEnabled = true;
         public static bool g_FroxelFogEnabled = true;
-        private static float _g_froxelDensity = 0.1f;
+        private static float _g_froxelDensity = 0.001f;
         public static float g_FroxelDensity
         {
             get { return _g_froxelDensity; }
             set
             {
-                _g_froxelDensity = Math.Clamp(value, 0.1f, 5.0f);
+                _g_froxelDensity = Math.Clamp(value, 0.001f, 5.0f);
             }
         }
-        
-        private static float _g_froxelScatter = 0.8f;
+
+        private static float _g_froxelScatter = 0.1f;
         public static float g_FroxelScatter
         {
             get { return _g_froxelScatter; }
@@ -289,8 +289,8 @@ namespace DeferredEngine.Recources
                 _g_froxelScatter = Math.Clamp(value, 0.0f, 1.0f);
             }
         }
-        
-        private static float _g_froxelAbsorption = 0.2f;
+
+        private static float _g_froxelAbsorption = 0.1f;
         public static float g_FroxelAbsorption
         {
             get { return _g_froxelAbsorption; }

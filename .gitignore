@@ -63,3 +63,9 @@ monodroid*.msi
 *.VC.opendb
 
 artifacts/
+
+# AI Related files
+.claude
+
+# Generated files
+scripts/

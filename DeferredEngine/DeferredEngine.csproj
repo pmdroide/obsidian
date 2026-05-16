@@ -7,11 +7,14 @@
     <TieredCompilation>false</TieredCompilation>
     <RootNamespace>DeferredEngine</RootNamespace>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks> <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="LibVLCSharp" Version="3.8.5" />
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.4.1" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4.1" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.18" />
   </ItemGroup>
 
   <ItemGroup>

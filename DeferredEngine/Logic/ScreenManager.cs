@@ -13,6 +13,13 @@ namespace DeferredEngine.Logic
     /// </summary>
     public class ScreenManager : IDisposable
     {
+        public enum GameState
+        {
+            VideoIntro,
+            MainGame
+        }
+
+        private GameState _currentState = GameState.VideoIntro;
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  VARIABLES
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -25,6 +32,9 @@ namespace DeferredEngine.Logic
         private Assets _assets;
         private ShaderManager _shaderManager;
         private DebugScreen _debug;
+        private VideoIntroLogic _videoIntro;
+        private SpriteBatch _spriteBatch;
+        private GraphicsDevice _graphicsDevice;
 
         private EditorLogic.EditorReceivedData _editorReceivedDataBuffer;
 
@@ -34,6 +44,9 @@ namespace DeferredEngine.Logic
 
         public void Initialize(GraphicsDevice graphicsDevice, Space space)
         {
+            _graphicsDevice = graphicsDevice;
+            _spriteBatch = new SpriteBatch(graphicsDevice);
+            _videoIntro.Initialize();
             _renderer.Initialize(graphicsDevice, _assets);
             _sceneLogic.Initialize(_assets, space, graphicsDevice);
             _guiLogic.Initialize(_assets, _sceneLogic.Camera);
@@ -45,6 +58,16 @@ namespace DeferredEngine.Logic
         //Update per frame
         public void Update(GameTime gameTime, bool isActive)
         {
+            if (_currentState == GameState.VideoIntro)
+            {
+                _videoIntro.Update();
+                if (_videoIntro.HasFinished)
+                {
+                    _currentState = GameState.MainGame;
+                }
+                return;
+            }
+
 #if DEBUG
             _shaderManager.CheckForChanges();
 #endif
@@ -66,6 +89,7 @@ namespace DeferredEngine.Logic
             _assets = new Assets();
             _debug = new DebugScreen();
             _guiRenderer = new GUIRenderer();
+            _videoIntro = new VideoIntroLogic();
 
             Globals.content = content;
             Shaders.Load(content);
@@ -75,15 +99,27 @@ namespace DeferredEngine.Logic
             _sceneLogic.Load(content);
             _debug.LoadContent(content);
             _guiRenderer.Load(content);
+            _videoIntro.Load(content, graphicsDevice);
         }
 
         public void Unload(ContentManager content)
         {
+            _videoIntro.Unload();
             content.Dispose();
         }
         
         public void Draw(GameTime gameTime)
         {
+            if (_currentState == GameState.VideoIntro)
+            {
+                _graphicsDevice.Clear(Color.Black); // Clear the screen first
+        
+                _spriteBatch.Begin(); // Start the batch here
+                _videoIntro.Draw(_spriteBatch);
+                _spriteBatch.End(); // End it here
+                return;
+            }
+
             //Our renderer gives us information on what id is currently hovered over so we can update / manipulate objects in the logic functions
             _editorReceivedDataBuffer = _renderer.Draw(_sceneLogic.Camera, 
                 _sceneLogic.MeshMaterialLibrary, 
@@ -109,6 +145,7 @@ namespace DeferredEngine.Logic
 
         public void Dispose()
         {
+            _spriteBatch?.Dispose();
             _guiRenderer?.Dispose();
         }
     }

@@ -1,45 +1,71 @@
-// Clustered Volumetric Fog (Froxels) Shader - MINIMAL VERSION
-// Divides view frustum into 3D grid for efficient light clustering
-// Copyright (c) 2026 Pedro Mano. Licensed under MIT.
+// ===================================================================================
+// Froxel.fx — Frustum-aligned voxel fog (2D atlas: width = Nx, height = Ny * Nz)
+// MonoGame / HLSL SM4
+// Atlas texel (fx, fy, fz): px = fx, py = fz * Ny + fy
+// ===================================================================================
 
 #include "../Common/helper.fx"
 
-// Grid dimensions
-float4x4 View;
+#define PI 3.14159265
+
 float4x4 InverseProjection;
 float4x4 InverseView;
+float4x4 LightViewProjection;
+float4x4 LightView;
+float LightFarClip;
+
 float NearClip;
 float FarClip;
-float3 GridDimensions; // X, Y, Z grid size
-float2 FroxelSize; // Size of each froxel in view space
+
+float3 GridDimensions;
+
 float2 ScreenResolution;
 
-// Textures
+float FroxelDensity = 0.02f;
+float FroxelScatter = 1.0f;
+float FroxelAbsorption = 0.02f;
+
+float G = 0.45f;
+
+bool UseDirectionalLight;
+
+float3 DirectionalLightDirectionVS;
+float3 DirectionalLightColor;
+
+#define MAX_FROXEL_POINT_LIGHTS 8
+
+int PointLightCount = 0;
+float3 PointLightPositionsVS[MAX_FROXEL_POINT_LIGHTS];
+float3 PointLightPositionsWS[MAX_FROXEL_POINT_LIGHTS];
+float3 PointLightColors[MAX_FROXEL_POINT_LIGHTS];
+float PointLightRadii[MAX_FROXEL_POINT_LIGHTS];
+float PointLightCastShadows[MAX_FROXEL_POINT_LIGHTS];
+float PointLightShadowMapSize[MAX_FROXEL_POINT_LIGHTS];
+
 Texture2D AlbedoMap;
 Texture2D NormalMap;
 Texture2D DepthMap;
-
-float FroxelDensity = 1.0f;
-float FroxelScatter = 1.0f;
-float FroxelAbsorption = 1.0f;
-
-float3 DirectionalLightDirectionVS; // MUST be normalized, in view space
-float3 DirectionalLightColor;
-bool UseDirectionalLight;
-bool UseFroxelFog;
-
 Texture2D ShadowMap;
-Texture2D FroxelMeta;
-Texture2D FroxelLightList;
 
-float3 LightPositions[128];
-float3 LightColors[128];
+Texture2D PointLightShadowMap0;
+Texture2D PointLightShadowMap1;
+Texture2D PointLightShadowMap2;
+Texture2D PointLightShadowMap3;
+Texture2D PointLightShadowMap4;
+Texture2D PointLightShadowMap5;
+Texture2D PointLightShadowMap6;
+Texture2D PointLightShadowMap7;
 
-float4x4 LightViewProjection;
+Texture2D FroxelInjectionTexture;
+Texture2D PreviousFroxelAccumulationTexture;
+Texture2D FroxelAccumulationTexture;
+Texture2D NoiseMap;
+// HistoryAlpha = weight of history. 0.9 means 10% new sample, 90% history (smooth but laggy).
+// 0 disables temporal blending entirely.
+float HistoryAlpha = 0.9f;
 
 SamplerState PointSampler
 {
-    Texture = (AlbedoMap);
     AddressU = CLAMP;
     AddressV = CLAMP;
     MagFilter = POINT;
@@ -47,61 +73,351 @@ SamplerState PointSampler
     Mipfilter = POINT;
 };
 
+SamplerState LinearSampler
+{
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = LINEAR;
+};
+
 struct VertexShaderInput
 {
-    float4 Position : POSITION0;
+    float2 Position : POSITION0;
 };
 
 struct VertexShaderOutput
 {
-    float4 Position : POSITION0;
-    float4 ScreenPosition : TEXCOORD0;
+    float4 Position : SV_POSITION;
 };
 
-// Vertex shader for full screen pass
-VertexShaderOutput VertexShaderBuildFroxels(VertexShaderInput input)
+float HenyeyGreenstein(float cosTheta, float g)
+{
+    float g2 = g * g;
+    float denom = 1.0 + g2 - 2.0 * g * cosTheta;
+    // Floor the denominator to soften the forward peak and keep it from going singular when
+    // cosTheta -> 1, which otherwise produces a blown-out spike at the sun position that the
+    // froxel grid resolves as visible 8x8 blocks (one froxel = ~8 screen px).
+    denom = max(denom, 0.05);
+    float phase = (1.0 / (4.0 * PI)) * ((1.0 - g2) / pow(denom, 1.5));
+    return min(phase, 4.0);
+}
+
+float2 FroxelIndicesToAtlasUV(int fx, int fy, int fz)
+{
+    float nx = GridDimensions.x;
+    float ny = GridDimensions.y;
+    float nz = GridDimensions.z;
+    float u = (fx + 0.5) / nx;
+    float v = (fz * ny + fy + 0.5) / (ny * nz);
+    return float2(u, v);
+}
+
+// Continuous-coord variant: fx/fy can be fractional. The atlas packs Z slices vertically, so
+// within slice fz the V coord stays inside [fz/nz, (fz+1)/nz] as long as fy is in [0, ny-1] —
+// the LINEAR sampler then gives us proper bilinear XY interpolation without crossing into the
+// neighbouring slice. Without this the per-froxel ~8 screen px shows as visible blocks.
+float2 FroxelContinuousToAtlasUV(float fxF, float fyF, int fz)
+{
+    float nx = GridDimensions.x;
+    float ny = GridDimensions.y;
+    float nz = GridDimensions.z;
+    float u = (fxF + 0.5) / nx;
+    float v = ((float)fz * ny + fyF + 0.5) / (ny * nz);
+    return float2(u, v);
+}
+
+float4 SampleFroxelAccumulationTexture(float2 screenUV, float depth)
+{
+    float nx = GridDimensions.x;
+    float ny = GridDimensions.y;
+    int nzI = (int)GridDimensions.z;
+
+    float fxF = clamp(screenUV.x * nx - 0.5, 0.0, nx - 1.0);
+    float fyF = clamp(screenUV.y * ny - 0.5, 0.0, ny - 1.0);
+
+    float normalizedDepth = max(depth, NearClip);
+    float slicePos = saturate(log(normalizedDepth / NearClip) / log(FarClip / NearClip)) * GridDimensions.z;
+    int fz0 = clamp((int)floor(slicePos), 0, nzI - 1);
+    int fz1 = min(fz0 + 1, nzI - 1);
+    float zFrac = frac(slicePos);
+
+    float2 uv0 = FroxelContinuousToAtlasUV(fxF, fyF, fz0);
+    float2 uv1 = FroxelContinuousToAtlasUV(fxF, fyF, fz1);
+
+    float4 sample0 = FroxelAccumulationTexture.Sample(LinearSampler, uv0);
+    float4 sample1 = FroxelAccumulationTexture.Sample(LinearSampler, uv1);
+
+    return lerp(sample0, sample1, zFrac);
+}
+
+// Matches ShadowMap.fx: the directional shadow map stores light-view-space Z / -LightFarClip
+// (plus a small bias). Compare against the same linearised value, NOT the NDC z that ortho
+// projection yields, otherwise the comparison is in mismatched spaces and everything is in shadow
+// (or nothing is) depending on light orientation - which is why godrays vanish.
+float ComputeShadow(float3 worldPos)
+{
+    float4 posLVP = mul(float4(worldPos, 1.0), LightViewProjection);
+    float4 posLV = mul(float4(worldPos, 1.0), LightView);
+
+    float2 shadowUV = posLVP.xy / posLVP.w * 0.5 + 0.5;
+    shadowUV.y = 1.0 - shadowUV.y;
+
+    if (shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1)
+        return 1.0;
+
+    float linearDepthLV = posLV.z / -LightFarClip;
+    float shadowDepth = ShadowMap.SampleLevel(PointSampler, shadowUV, 0).r;
+    float bias = 0.0015;
+    return (linearDepthLV - bias < shadowDepth) ? 1.0 : 0.0;
+}
+
+// Pulled from helper.fx GetSampleCoordinate but inlined so we don't drag the whole file in.
+// Maps a world-space direction (from light to froxel) to the (u,v) in the 6-face vertical strip.
+float2 PointShadowSampleCoord(float3 dir)
+{
+    float2 coord;
+    float slice;
+    dir.z = -dir.z;
+
+    if (abs(dir.x) >= abs(dir.y) && abs(dir.x) >= abs(dir.z))
+    {
+        dir.y = -dir.y;
+        if (dir.x > 0) { slice = 0; dir /= dir.x; coord = dir.yz; }
+        else { dir.z = -dir.z; slice = 1; dir /= dir.x; coord = dir.yz; }
+    }
+    else if (abs(dir.y) >= abs(dir.x) && abs(dir.y) >= abs(dir.z))
+    {
+        if (dir.y > 0) { slice = 2; dir /= dir.y; coord = dir.xz; }
+        else { dir.z = -dir.z; slice = 3; dir /= dir.y; coord = dir.xz; }
+    }
+    else
+    {
+        dir.y = -dir.y;
+        if (dir.z < 0) { slice = 4; dir /= dir.z; coord = dir.yx; }
+        else { dir.x = -dir.x; slice = 5; dir /= dir.z; coord = dir.yx; }
+    }
+
+    const float sixth = 1.0f / 6.0f;
+    coord = (coord + float2(1, 1)) * 0.5f;
+    coord.y = coord.y * sixth + slice * sixth;
+    return coord;
+}
+
+float SamplePointLightShadow(int lightIndex, float2 uv)
+{
+    // MonoGame HLSL can't index Texture2D arrays in SM4 - branch by hand.
+    if (lightIndex == 0) return PointLightShadowMap0.SampleLevel(PointSampler, uv, 0).r;
+    if (lightIndex == 1) return PointLightShadowMap1.SampleLevel(PointSampler, uv, 0).r;
+    if (lightIndex == 2) return PointLightShadowMap2.SampleLevel(PointSampler, uv, 0).r;
+    if (lightIndex == 3) return PointLightShadowMap3.SampleLevel(PointSampler, uv, 0).r;
+    if (lightIndex == 4) return PointLightShadowMap4.SampleLevel(PointSampler, uv, 0).r;
+    if (lightIndex == 5) return PointLightShadowMap5.SampleLevel(PointSampler, uv, 0).r;
+    if (lightIndex == 6) return PointLightShadowMap6.SampleLevel(PointSampler, uv, 0).r;
+    return PointLightShadowMap7.SampleLevel(PointSampler, uv, 0).r;
+}
+
+// Sample point-light cube shadow map. Shadow map stores `1 - distFromLightToOccluder/radius`,
+// so the in-light test mirrors DeferredPointLight.fx CalcShadowTermPCF.
+float ComputePointLightShadow(int lightIndex, float3 worldPos, float3 lightPosWS, float radius)
+{
+    float3 dirLightToPoint = worldPos - lightPosWS;
+    float distance = length(dirLightToPoint);
+    if (distance >= radius)
+        return 0.0;
+
+    float2 uv = PointShadowSampleCoord(dirLightToPoint);
+    float shadowSample = SamplePointLightShadow(lightIndex, uv);
+    float occluderDist = 1.0 - shadowSample;
+    float testDepth = distance / radius;
+    float bias = 0.002;
+    return (testDepth - bias < occluderDist) ? 1.0 : 0.0;
+}
+
+float2 GetBlueNoiseJitter(float2 atlasUV)
+{
+    float2 noiseUV = frac(atlasUV * float2(32.0, 32.0) + float2(Time * 0.1312, Time * 0.7134));
+    float4 noise = NoiseMap.SampleLevel(PointSampler, noiseUV, 0);
+    return (noise.rg * 2.0 - 1.0) * 0.5;
+}
+
+VertexShaderOutput FullscreenVS(VertexShaderInput input)
 {
     VertexShaderOutput output;
-    output.Position = input.Position;
-    output.ScreenPosition = input.Position;
+    output.Position = float4(input.Position, 0, 1);
     return output;
 }
 
-VertexShaderOutput VertexShaderComposeFroxels(VertexShaderInput input)
-{
-    VertexShaderOutput output;
-    output.Position = input.Position;
-    output.ScreenPosition = input.Position;
-    return output;
-}
-
-// Pixel shader for building froxel clusters - MINIMAL VERSION
+// PASS 1 — one atlas texel = froxel (fx, fy, fz); exponential depth per slice
 float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
 {
-    return float4(1, 0, 1, 1); // bright purple
+    int nx = (int)GridDimensions.x;
+    int ny = (int)GridDimensions.y;
+    int nz = (int)GridDimensions.z;
+
+    int fx = clamp((int)input.Position.x, 0, nx - 1);
+    int py = clamp((int)input.Position.y, 0, ny * nz - 1);
+    int fz = py / ny;
+    int fy = py - fz * ny;
+
+    float t = (fz + 0.5) / (float)nz;
+    float dist = NearClip * pow(FarClip / NearClip, t);
+
+    float2 screenUV = float2((fx + 0.5) / (float)nx, (fy + 0.5) / (float)ny);
+    float2 jitter = GetBlueNoiseJitter(screenUV);
+    float ndcX = screenUV.x * 2.0 - 1.0 + jitter.x / (float)nx;
+    float ndcY = 1.0 - screenUV.y * 2.0 + jitter.y / (float)ny;
+
+    float4 viewH = mul(float4(ndcX, ndcY, 1.0, 1.0), InverseProjection);
+    float3 dirVS = normalize(viewH.xyz / viewH.w);
+    float3 posVS = dirVS * dist;
+
+    float4 worldH = mul(float4(posVS, 1.0), InverseView);
+    float3 worldPos = worldH.xyz / worldH.w;
+
+    float density = FroxelDensity;
+    float3 scatter = 0;
+
+    float3 viewDir = normalize(-dirVS);
+
+    if (UseDirectionalLight)
+    {
+        float3 lightDir = normalize(-DirectionalLightDirectionVS);
+        float cosTheta = dot(lightDir, viewDir);
+        float phase = HenyeyGreenstein(cosTheta, G);
+        float shadow = ComputeShadow(worldPos);
+        scatter += DirectionalLightColor * phase * density * FroxelScatter * shadow;
+    }
+
+    [loop]
+    for (int li = 0; li < PointLightCount; ++li)
+    {
+        float3 toLight = PointLightPositionsVS[li] - posVS;
+        float distToLight = length(toLight);
+        float radius = PointLightRadii[li];
+
+        if (distToLight >= radius)
+            continue;
+
+        float3 lightDirPt = toLight / max(distToLight, 1e-4);
+        float falloff = saturate(1.0 - distToLight / radius);
+        falloff *= falloff;
+        float attenuation = falloff / max(distToLight * distToLight, 0.01);
+
+        float cosTheta = dot(lightDirPt, viewDir);
+        float phase = HenyeyGreenstein(cosTheta, G);
+
+        float ptShadow = 1.0;
+        if (PointLightCastShadows[li] > 0.5)
+            ptShadow = ComputePointLightShadow(li, worldPos, PointLightPositionsWS[li], radius);
+
+        scatter += PointLightColors[li] * phase * density * FroxelScatter * attenuation * ptShadow;
+    }
+
+    return float4(scatter, density);
 }
 
-// Pixel shader for compositing froxel lighting - MINIMAL VERSION
+// PASS 2 — for texel (fx,fy,fz), accumulate slices k = 0 .. fz (Beer–Lambert)
+float4 PixelShaderAccumulateFroxels(VertexShaderOutput input) : COLOR0
+{
+    int nx = (int)GridDimensions.x;
+    int ny = (int)GridDimensions.y;
+    int nz = (int)GridDimensions.z;
+
+    int fx = clamp((int)input.Position.x, 0, nx - 1);
+    int py = clamp((int)input.Position.y, 0, ny * nz - 1);
+    int fz = py / ny;
+    int fy = py - fz * ny;
+
+    float3 accumScatter = 0;
+    float accumTransmit = 1.0;
+
+    float logFarOverNear = log(FarClip / NearClip);
+
+    [loop]
+    for (int k = 0; k <= fz; k++)
+    {
+        float2 uv = FroxelIndicesToAtlasUV(fx, fy, k);
+        float4 slice = FroxelInjectionTexture.SampleLevel(PointSampler, uv, 0);
+
+        float3 sc = slice.rgb;
+        float dens = slice.a;
+
+        // Exponential slice boundaries: d(t) = NearClip * (FarClip/NearClip)^t, t = k/nz.
+        float tNear = (float)k / (float)nz;
+        float tFar = (float)(k + 1) / (float)nz;
+        float distNear = NearClip * exp(tNear * logFarOverNear);
+        float distFar = NearClip * exp(tFar * logFarOverNear);
+        float sliceThickness = distFar - distNear;
+
+        float sliceTransmit = exp(-dens * FroxelAbsorption * sliceThickness);
+
+        accumScatter += sc * accumTransmit * sliceThickness;
+        accumTransmit *= sliceTransmit;
+    }
+
+    float2 currentAtlasUV = FroxelIndicesToAtlasUV(fx, fy, fz);
+    float4 prevAccum = PreviousFroxelAccumulationTexture.SampleLevel(LinearSampler, currentAtlasUV, 0);
+    accumScatter = lerp(accumScatter, prevAccum.rgb, HistoryAlpha);
+    accumTransmit = lerp(accumTransmit, prevAccum.a, HistoryAlpha);
+
+    return float4(accumScatter, accumTransmit);
+}
+
+// PASS 3 — optional debug / legacy fullscreen compose (not used when DeferredCompose samples atlas)
 float4 PixelShaderComposeFroxels(VertexShaderOutput input) : COLOR0
 {
-    return float4(1, 0, 1, 1); // bright purple for debugging
+    int3 texCoordInt = int3(input.Position.xy, 0);
+
+    float4 albedo = AlbedoMap.Load(texCoordInt);
+    float depth = DepthMap.Load(texCoordInt).r;
+
+    float dist = saturate(depth) * FarClip;
+    dist = max(dist, NearClip);
+
+    float tDepth = saturate(log(dist / NearClip) / log(FarClip / NearClip));
+
+    int nx = (int)GridDimensions.x;
+    int ny = (int)GridDimensions.y;
+    int nz = (int)GridDimensions.z;
+
+    float2 screenUV = float2(
+        (input.Position.x + 0.5) / ScreenResolution.x,
+        (input.Position.y + 0.5) / ScreenResolution.y);
+
+    int fx = clamp((int)(screenUV.x * (float)nx), 0, nx - 1);
+    int fy = clamp((int)(screenUV.y * (float)ny), 0, ny - 1);
+
+    float4 fog = SampleFroxelAccumulationTexture(screenUV, dist);
+
+    float3 finalColor = albedo.rgb * fog.a + fog.rgb;
+    return float4(finalColor, 1.0);
 }
 
-// Techniques
 technique BuildFroxels
 {
     pass Pass1
     {
-        VertexShader = compile vs_4_0 VertexShaderBuildFroxels();
+        VertexShader = compile vs_4_0 FullscreenVS();
         PixelShader = compile ps_4_0 PixelShaderBuildFroxels();
     }
-};
+}
+
+technique AccumulateFroxels
+{
+    pass Pass1
+    {
+        VertexShader = compile vs_4_0 FullscreenVS();
+        PixelShader = compile ps_4_0 PixelShaderAccumulateFroxels();
+    }
+}
 
 technique ComposeFroxels
 {
     pass Pass1
     {
-        VertexShader = compile vs_4_0 VertexShaderComposeFroxels();
+        VertexShader = compile vs_4_0 FullscreenVS();
         PixelShader = compile ps_4_0 PixelShaderComposeFroxels();
     }
-};
+}

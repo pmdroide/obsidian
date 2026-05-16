@@ -1,48 +1,41 @@
-# Custom Monogame Engine
+<div align="center">
+  <img src="DeferredEngine/Icon.ico" width="80px" alt="Project Icon">
 
-## Description
-Original intent of the project was not to build a 3D game engine but to show how graphics work. Current Objective is to build a game engine on top of this project.
+  [Getting Started] | [Documentation] | [Contributing]
+</div>
 
-## Changes
-- Main.cs is now Engine.cs
-- .obj files are now imported with fbximporter to avoid content load error
-- .NET 10
-- Monogame version 3.8.4.1
+[Getting Started]: #building
+[Documentation]: DOCUMENTATION.md
+[Contributing]: CONTRIBUTING.md
 
-Original Code https://github.com/Kosmonaut3d/DeferredEngine
+# Obsidian
 
-## Features
-- Easy to use viewer, with lots of GUI options
-- G-buffer creation with support for physically based materials (albedo, normal, roughness, metallic, mask)
-- Cook-Torrance specular shading and Oren-Nayar diffuse shading for point lights
-- Light and mesh frustum culling
-- Deferred point lights, directional lights and environment mapping
-- Forward rendering to render transparency
-- Soft shadows
-- Dynamically updating point light shadows depending on scene changes
-- Temporal anti-aliasing
-- HDR Bloom
-- Screen space ambient occlusion (HBAO)
-- Screen space reflections
-- Linear HDR pipeline.
-- EXPERIMENTAL: screen space emissive materials (not updated to work right now)
-- Froxel Volumetric Lightning/Fog 
+Obisidian is a game engine royalty free with objective to make development easy and simple to understand.
 
-## Controls:
-- " ^ " / the key above TAB : debug console with suggestions (tab to autocomplete)
-- Space: Go into editor mode 
-  - R / T: Change transformation gizmos between translation and rotation
-  - Del : Delete object
-  - Insert : Copy object
-- WASD : move the camera
-- right mouse drag : rotate the camera
-- F1 : Cycle through render targets (albedo, normals, depth etc.)
+## Getting started
 
-## How to modify the scene
-How to manipulate the scene
-- See the Main / MainLogic.cs for details. Manipulate and add scene objects in Initialize() and Update();
+### Prerequisites
 
-## IMPORTANT NOTES
-Current target for WindowDX
+- [Git](https://git-scm.com/)
+- [Visual Studio Code](https://code.visualstudio.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+- [DirectX 11](https://www.microsoft.com/en-us/download/details.aspx?id=17431)
 
-For cross-platform you need to switch to desktopGL and you must change all shaders to vs_3_0 and ps_3_0, and also change SV_VERTEXID to a standard vertex input, because OpenGL's MojoShader translator doesn't support the ID semantic in that specific way for version 3.0.
+### Building
+
+```
+# Clone repo
+git clone https://github.com/pmdroide/obsidian.git
+
+```
+
+Once you've cloned the repo, run `bootstrap.bat` which will download the dependencies and build the engine.
+
+## Contributing 
+If you want to contribute to the engine, please check the [contributing guide](CONTRIBUTING.md).
+
+## Documentation
+See the documention [here](DOCUMENTATION.md).
+
+## Credits
+Kosmonaut: https://github.com/Kosmonaut3d/DeferredEngine

@@ -76,6 +76,7 @@ namespace DeferredEngine.Renderer
         private Matrix _viewProjection;
         private Matrix _staticViewProjection;
         private Matrix _inverseViewProjection;
+        private Matrix _inverseProjection;
         private Matrix _previousViewProjection;
         private Matrix _currentViewToPreviousViewProjection;
 
@@ -250,6 +251,7 @@ namespace DeferredEngine.Renderer
             _helperGeometryRenderModule.Initialize();
             
             _froxelRenderModule.Initialize(graphicsDevice, _fullScreenTriangle, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+            _froxelRenderModule.SetNoiseMap(assets.NoiseMap);
             
             _assets = assets;
             //Apply some base settings to overwrite shader defaults with game settings defaults
@@ -349,59 +351,100 @@ namespace DeferredEngine.Renderer
             //Update our view projection matrices if the camera moved
             UpdateViewProjection(camera, meshMaterialLibrary, entities);
             
-            //Draw our meshes to the G Buffer
-            DrawGBuffer(meshMaterialLibrary);
-
-            //Deferred Decals
-            DrawDecals(decals);
-            
-            //Draw Screen Space reflections to a different render target
-            DrawScreenSpaceReflections(gameTime);
-
-            //SSAO
-            DrawScreenSpaceAmbientOcclusion(camera);
-
-            //Screen space shadows for directional lights to an offscreen render target
-            DrawScreenSpaceDirectionalShadow(directionalLights);
-
-            //Upsample/blur our SSAO / screen space shadows
-            DrawBilateralBlur();
-
-            //Build froxel clusters for volumetric lighting
-            if (GameSettings.g_FroxelsEnabled)
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "G-Buffer Pass");
+            try
             {
-                _froxelRenderModule.UpdateMatrices(_view, _projection, _inverseView, _inverseViewProjection, _g_FarClip * -1, _g_FarClip);
-                _froxelRenderModule.BuildFroxels(pointLights, directionalLights, camera.Position, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+                //Draw our meshes to the G Buffer
+                DrawGBuffer(meshMaterialLibrary);
+
+                //Deferred Decals
+                DrawDecals(decals);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
             }
 
-            //Light the scene
-            _lightAccumulationModule.DrawLights(pointLights, directionalLights, camera.Position, gameTime, _renderTargetLightBinding, _renderTargetDiffuse);
-
-            // Compose froxel volumetric lighting into the volume buffer
-            if (GameSettings.g_FroxelsEnabled)
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Lighting Pass");
+            try
             {
-                _froxelRenderModule.ComposeFroxelLighting(_renderTargetAlbedo, _renderTargetNormal, _renderTargetDepth, _renderTargetVolume, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+                //Draw Screen Space reflections to a different render target
+                DrawScreenSpaceReflections(gameTime);
+
+                //SSAO
+                DrawScreenSpaceAmbientOcclusion(camera);
+
+                //Screen space shadows for directional lights to an offscreen render target
+                DrawScreenSpaceDirectionalShadow(directionalLights);
+
+                //Upsample/blur our SSAO / screen space shadows
+                DrawBilateralBlur();
+
+                // Froxel fog: injection + accumulation atlases (composed in DeferredCompose using per-pixel atlas UVs)
+                if (GameSettings.g_FroxelsEnabled)
+                {
+                    _froxelRenderModule.UpdateMatrices(
+                        _view,
+                        _projection,
+                        _inverseView,
+                        _inverseProjection,
+                        FroxelRenderModule.CameraNearPlane,
+                        _g_FarClip);
+                    _froxelRenderModule.BuildFroxels(
+                        pointLights,
+                        directionalLights,
+                        camera.Position,
+                        GameSettings.g_screenwidth,
+                        GameSettings.g_screenheight,
+                        (float)gameTime.TotalGameTime.TotalSeconds);
+                }
+
+                //Light the scene
+                _lightAccumulationModule.DrawLights(pointLights, directionalLights, camera.Position, gameTime, _renderTargetLightBinding, _renderTargetDiffuse);
+
+                //Draw the environment cube map as a fullscreen effect on all meshes
+                DrawEnvironmentMap(envSample, camera, gameTime);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
             }
 
-            //Draw the environment cube map as a fullscreen effect on all meshes
-            DrawEnvironmentMap(envSample, camera, gameTime);
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Post-Processing");
+            try
+            {
+                //Draw emissive materials on an offscreen render target
+                //DrawEmissiveEffect(camera, meshMaterialLibrary, gameTime);
 
-            //Draw emissive materials on an offscreen render target
-            //DrawEmissiveEffect(camera, meshMaterialLibrary, gameTime);
+                //Compose the scene by combining our lighting data with the gbuffer data
+                _currentOutput = Compose(); //-> output _renderTargetComposed
 
-            //Compose the scene by combining our lighting data with the gbuffer data
-            _currentOutput = Compose(); //-> output _renderTargetComposed
+                ///*_currentOutput =*/ DrawSubsurfaceScattering(_renderTargetSSS, meshMaterialLibrary);
 
-            ///*_currentOutput =*/ DrawSubsurfaceScattering(_renderTargetSSS, meshMaterialLibrary);
+                //Forward
+                _currentOutput = DrawForward(_currentOutput, meshMaterialLibrary, camera, pointLights);
+                
+                //Compose the image and add information from previous frames to apply temporal super sampling
+                _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
 
-            //Forward
-            _currentOutput = DrawForward(_currentOutput, meshMaterialLibrary, camera, pointLights);
-            
-            //Compose the image and add information from previous frames to apply temporal super sampling
-            _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
+                //Do Bloom
+                _currentOutput = DrawBloom(_currentOutput); // -> output: _renderTargetBloom
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
 
-            //Do Bloom
-            _currentOutput = DrawBloom(_currentOutput); // -> output: _renderTargetBloom
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Final Compose");
+            try
+            {
+                //Draw the final rendered image, change the output based on user input to show individual buffers/rendertargets
+                RenderMode(_currentOutput);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
             
             //Draw the elements that we are hovering over with outlines
             if(GameSettings.e_enableeditor && GameStats.e_EnableSelection)
@@ -862,6 +905,7 @@ namespace DeferredEngine.Renderer
 
                 _previousViewProjection = _viewProjection;
                 _inverseViewProjection = Matrix.Invert(_viewProjection);
+                _inverseProjection = Matrix.Invert(_projection);
 
                 if (_boundingFrustum == null) _boundingFrustum = new BoundingFrustum(_staticViewProjection);
                 else _boundingFrustum.Matrix = _staticViewProjection;
@@ -1240,6 +1284,31 @@ namespace DeferredEngine.Renderer
             //}
         }
 
+        private void ApplyDeferredComposeFroxelParameters()
+        {
+            Texture2D froxelAtlas = _froxelRenderModule?.FroxelAccumulation;
+            bool fogActive =
+                GameSettings.g_FroxelsEnabled &&
+                GameSettings.g_FroxelFogEnabled &&
+                froxelAtlas != null;
+
+            Shaders.DeferredComposeEffectParameter_FroxelAccumulationTexture?.SetValue(
+                fogActive ? froxelAtlas : _renderTargetAlbedo);
+
+            Shaders.DeferredComposeEffectParameter_DepthMap?.SetValue(_renderTargetDepth);
+            Shaders.DeferredComposeEffectParameter_NearClip?.SetValue(FroxelRenderModule.CameraNearPlane);
+            Shaders.DeferredComposeEffectParameter_FarClip?.SetValue(_g_FarClip);
+            Shaders.DeferredComposeEffectParameter_GridDimensions?.SetValue(
+                new Vector3(
+                    FroxelRenderModule.FROXEL_GRID_X,
+                    FroxelRenderModule.FROXEL_GRID_Y,
+                    FroxelRenderModule.FROXEL_GRID_Z));
+            Shaders.DeferredComposeEffectParameter_ScreenResolution?.SetValue(
+                new Vector2(GameSettings.g_screenwidth, GameSettings.g_screenheight));
+
+            Shaders.DeferredComposeEffectParameter_UseFroxelFog?.SetValue(fogActive);
+        }
+
         /// <summary>
         /// Compose the render by combining the albedo channel with the light channels
         /// </summary>
@@ -1249,6 +1318,8 @@ namespace DeferredEngine.Renderer
 
             _graphicsDevice.SetRenderTarget(_renderTargetComposed);
             _graphicsDevice.BlendState = BlendState.Opaque;
+
+            ApplyDeferredComposeFroxelParameters();
 
             //combine!
             Shaders.DeferredCompose.CurrentTechnique.Passes[0].Apply();
@@ -1397,7 +1468,7 @@ namespace DeferredEngine.Renderer
                     DrawMapToScreenToFullScreen(_renderTargetSpecular);
                     break;
                 case RenderModes.Volumetric:
-                    DrawMapToScreenToFullScreen(_renderTargetVolume);
+                    DrawMapToScreenToFullScreen(_froxelRenderModule.FroxelAccumulation ?? (Texture2D)_renderTargetVolume);
                     break;
                 case RenderModes.SSAO:
                     DrawMapToScreenToFullScreen(_renderTargetSSAOEffect);
@@ -1652,7 +1723,8 @@ namespace DeferredEngine.Renderer
             Shaders.DeferredComposeEffectParameter_NormalMap.SetValue(_renderTargetNormal);
             Shaders.DeferredComposeEffectParameter_diffuseLightMap.SetValue(_renderTargetDiffuse);
             Shaders.DeferredComposeEffectParameter_specularLightMap.SetValue(_renderTargetSpecular);
-            Shaders.DeferredComposeEffectParameter_volumeLightMap.SetValue(_renderTargetVolume);
+            // volumeLightMap is omitted from compiled DeferredCompose when unused in HLSL (parameter becomes null).
+            Shaders.DeferredComposeEffectParameter_volumeLightMap?.SetValue(_renderTargetVolume);
             Shaders.DeferredComposeEffectParameter_SSAOMap.SetValue(_renderTargetScreenSpaceEffectBlurFinal);
             //Shaders.DeferredComposeEffectParameter_HologramMap.SetValue(_renderTargetHologram);
             // Shaders.DeferredComposeEffectParameter_SSRMap.SetValue(_renderTargetScreenSpaceEffectReflection);
