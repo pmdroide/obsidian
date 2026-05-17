@@ -176,6 +176,9 @@ namespace DeferredEngine.Recources
         public static readonly EffectParameter DeferredComposeEffectParameter_UseFroxelFog =
             DeferredCompose.Parameters["UseFroxelFog"];
 
+        public static readonly EffectParameter DeferredComposeEffectParameter_SkyFogStrength =
+            DeferredCompose.Parameters["SkyFogStrength"];
+
         public static readonly EffectTechnique DeferredComposeTechnique_NonLinear = DeferredCompose.Techniques["TechniqueNonLinear"];
         public static readonly EffectTechnique DeferredComposeTechnique_Linear = DeferredCompose.Techniques["TechniqueLinear"];
 

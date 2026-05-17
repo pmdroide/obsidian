@@ -1307,6 +1307,7 @@ namespace DeferredEngine.Renderer
                 new Vector2(GameSettings.g_screenwidth, GameSettings.g_screenheight));
 
             Shaders.DeferredComposeEffectParameter_UseFroxelFog?.SetValue(fogActive);
+            Shaders.DeferredComposeEffectParameter_SkyFogStrength?.SetValue(GameSettings.g_FroxelSkyFogStrength);
         }
 
         /// <summary>

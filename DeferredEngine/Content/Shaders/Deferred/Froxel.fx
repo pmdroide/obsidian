@@ -22,8 +22,17 @@ float3 GridDimensions;
 float2 ScreenResolution;
 
 float FroxelDensity = 0.02f;
-float FroxelScatter = 1.0f;
 float FroxelAbsorption = 0.02f;
+
+// Per-light-type scatter so directional sun and point lights don't fight over the same knob
+// (a value strong enough for point-light glow blows out the sun's HG forward peak).
+float DirectionalScatter = 0.15f;
+float PointScatter = 1.5f;
+
+// Distance-based density ramp. Density linearly goes 0 -> FroxelDensity between
+// FogDistanceStart and FogDistanceFull (so near geometry stays crisp, distant fades).
+float FogDistanceStart = 30.0f;
+float FogDistanceFull = 400.0f;
 
 float G = 0.45f;
 
@@ -61,8 +70,8 @@ Texture2D PreviousFroxelAccumulationTexture;
 Texture2D FroxelAccumulationTexture;
 Texture2D NoiseMap;
 // HistoryAlpha = weight of history. 0.9 means 10% new sample, 90% history (smooth but laggy).
-// 0 disables temporal blending entirely.
-float HistoryAlpha = 0.9f;
+// 0 disables temporal blending entirely. Driven from GameSettings so it's live-tunable.
+float HistoryAlpha = 0.85f;
 
 SamplerState PointSampler
 {
@@ -276,7 +285,9 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
     float4 worldH = mul(float4(posVS, 1.0), InverseView);
     float3 worldPos = worldH.xyz / worldH.w;
 
-    float density = FroxelDensity;
+    // Distance ramp: keep nearby fog thin so foreground objects stay readable, swell toward the distance.
+    float distanceRamp = saturate((dist - FogDistanceStart) / max(FogDistanceFull - FogDistanceStart, 1e-3));
+    float density = FroxelDensity * distanceRamp;
     float3 scatter = 0;
 
     float3 viewDir = normalize(-dirVS);
@@ -287,7 +298,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         float cosTheta = dot(lightDir, viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
         float shadow = ComputeShadow(worldPos);
-        scatter += DirectionalLightColor * phase * density * FroxelScatter * shadow;
+        scatter += DirectionalLightColor * phase * density * DirectionalScatter * shadow;
     }
 
     [loop]
@@ -312,7 +323,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         if (PointLightCastShadows[li] > 0.5)
             ptShadow = ComputePointLightShadow(li, worldPos, PointLightPositionsWS[li], radius);
 
-        scatter += PointLightColors[li] * phase * density * FroxelScatter * attenuation * ptShadow;
+        scatter += PointLightColors[li] * phase * density * PointScatter * attenuation * ptShadow;
     }
 
     return float4(scatter, density);
