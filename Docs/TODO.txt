@@ -1,33 +1,6 @@
 Issues:
 
-[FIXED] Skybox barely visible due to Froxel Volumetric Fog (too bright)
-  -> GameSettings.g_FroxelSkyFogStrength (0..1, default 0.25). DeferredCompose.fx
-     attenuates fog impact on sky pixels by this factor (volumetrics *= strength,
-     transmittance = lerp(1, transmittance, strength)).
 
-[FIXED] Directional and point light scatter shared the same knob, so tuning one disturbed the other
-  -> Split into g_FroxelDirectionalScatter (default 0.15) and g_FroxelPointScatter
-     (default 1.5). Froxel.fx now uses DirectionalScatter / PointScatter independently.
-     g_FroxelScatter kept as a legacy setter that updates both at once.
-
-[FIXED] Blocky godrays when standing still
-  -> Compose bilateral kernel widened from 3x3 to 5x5 with stride 2 (spans ~one full
-     froxel ~8 screen px), softer weights so wide taps still contribute.
-  -> HistoryAlpha exposed as g_FroxelHistoryBlend (default 0.85, was 0.9 hard-coded).
-     Lower = more responsive, less static-aliasing-burn-in.
 
 Features:
 
-[ADDED] Distance fog ramp
-  -> g_FroxelFogDistanceStart (default 30) and g_FroxelFogDistanceFull (default 400).
-     Density linearly ramps from 0 -> g_FroxelDensity between these. Near geometry stays
-     crisp; distant objects fade into the haze.
-
-Tuning notes:
-  - Sky too washy after long stares? Lower g_FroxelSkyFogStrength.
-  - Want stronger godrays from the sun only? Raise g_FroxelDirectionalScatter, leave point.
-  - Want stronger point-light volumetrics only? Raise g_FroxelPointScatter, leave directional.
-  - Want fog only after a certain distance? Raise g_FroxelFogDistanceStart.
-  - Want everything to disappear past some range? Lower g_FroxelFogDistanceFull and/or
-    raise g_FroxelDensity.
-  - Stills still slightly blocky? Lower g_FroxelHistoryBlend (e.g. 0.7).

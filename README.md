@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="DeferredEngine/Icon.ico" width="80px" alt="Project Icon">
+  <img src="Engine/Icon.ico" width="80px" alt="Project Icon">
 
   [Getting Started] | [Documentation] | [Contributing]
 </div>
