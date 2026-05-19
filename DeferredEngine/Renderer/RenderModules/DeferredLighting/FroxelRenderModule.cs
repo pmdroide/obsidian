@@ -59,8 +59,12 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramLightFarClip;
         private EffectParameter _paramUseFroxelFog;
         private EffectParameter _paramFroxelDensity;
-        private EffectParameter _paramFroxelScatter;
         private EffectParameter _paramFroxelAbsorption;
+        private EffectParameter _paramDirectionalScatter;
+        private EffectParameter _paramPointScatter;
+        private EffectParameter _paramFogDistanceStart;
+        private EffectParameter _paramFogDistanceFull;
+        private EffectParameter _paramHistoryAlpha;
         private EffectParameter _paramPointLightCount;
         private EffectParameter _paramPointLightPositionsVS;
         private EffectParameter _paramPointLightPositionsWS;
@@ -160,8 +164,12 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
             _paramLightFarClip = GetEffectParameter("LightFarClip");
             _paramUseFroxelFog = GetEffectParameter("UseFroxelFog");
             _paramFroxelDensity = GetEffectParameter("FroxelDensity");
-            _paramFroxelScatter = GetEffectParameter("FroxelScatter");
             _paramFroxelAbsorption = GetEffectParameter("FroxelAbsorption");
+            _paramDirectionalScatter = GetEffectParameter("DirectionalScatter");
+            _paramPointScatter = GetEffectParameter("PointScatter");
+            _paramFogDistanceStart = GetEffectParameter("FogDistanceStart");
+            _paramFogDistanceFull = GetEffectParameter("FogDistanceFull");
+            _paramHistoryAlpha = GetEffectParameter("HistoryAlpha");
             _paramPointLightCount = GetEffectParameter("PointLightCount");
             _paramPointLightPositionsVS = GetEffectParameter("PointLightPositionsVS");
             _paramPointLightPositionsWS = GetEffectParameter("PointLightPositionsWS");
@@ -271,8 +279,12 @@ namespace DeferredEngine.Renderer.RenderModules.DeferredLighting
                 _paramScreenResolution.SetValue(new Vector2(screenWidth, screenHeight));
             if (_paramUseFroxelFog != null) _paramUseFroxelFog.SetValue(GameSettings.g_FroxelFogEnabled);
             if (_paramFroxelDensity != null) _paramFroxelDensity.SetValue(GameSettings.g_FroxelDensity);
-            if (_paramFroxelScatter != null) _paramFroxelScatter.SetValue(GameSettings.g_FroxelScatter);
             if (_paramFroxelAbsorption != null) _paramFroxelAbsorption.SetValue(GameSettings.g_FroxelAbsorption);
+            if (_paramDirectionalScatter != null) _paramDirectionalScatter.SetValue(GameSettings.g_FroxelDirectionalScatter);
+            if (_paramPointScatter != null) _paramPointScatter.SetValue(GameSettings.g_FroxelPointScatter);
+            if (_paramFogDistanceStart != null) _paramFogDistanceStart.SetValue(GameSettings.g_FroxelFogDistanceStart);
+            if (_paramFogDistanceFull != null) _paramFogDistanceFull.SetValue(GameSettings.g_FroxelFogDistanceFull);
+            if (_paramHistoryAlpha != null) _paramHistoryAlpha.SetValue(GameSettings.g_FroxelHistoryBlend);
         }
 
         private void ApplyPointLights(List<PointLight> pointLights)

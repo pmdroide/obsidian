@@ -33,6 +33,10 @@ float2 ScreenResolution;
 bool useSSAO = true;
 bool UseFroxelFog = true;
 
+// 0..1 — how much fog impacts sky pixels. Defaults are tuned so the skybox shows through; raise
+// for moodier atmospheric distance haze. Independent from the per-light scatter values.
+float SkyFogStrength = 0.25f;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SAMPLERS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,21 +112,25 @@ float4 SampleFroxelAccumulationTexture(float2 screenUV, float depth)
     return lerp(sample0, sample1, zFrac);
 }
 
+// 5x5 bilateral, sampled at 2px stride so it spans ~10 screen px - roughly one full froxel
+// across (the atlas is 160x90 over a 1280x720 viewport, so ~8 px per froxel). Without this
+// stride a 3x3 kernel stays inside a single froxel block and the grid stays visible when still.
 float4 SampleFroxelBilateral(float2 screenUV, float3 centerNormal, float centerDepth)
 {
-    const float kernel3[3] = { 0.27901, 0.44198, 0.27901 };
+    const float kernel5[5] = { 0.07, 0.24, 0.38, 0.24, 0.07 };
     float2 texel = 1.0 / ScreenResolution;
+    const float stride = 2.0;
 
     float4 result = 0;
     float weightSum = 0;
 
     [unroll]
-    for (int y = -1; y <= 1; ++y)
+    for (int y = -2; y <= 2; ++y)
     {
         [unroll]
-        for (int x = -1; x <= 1; ++x)
+        for (int x = -2; x <= 2; ++x)
         {
-            float2 sampleUV = clamp(screenUV + float2(x, y) * texel, 0.0, 1.0);
+            float2 sampleUV = clamp(screenUV + float2(x, y) * texel * stride, 0.0, 1.0);
             float4 depthSample = DepthMap.SampleLevel(pointSampler, sampleUV, 0);
             float sampleDepth = saturate(depthSample.r) * FarClip;
             sampleDepth = max(sampleDepth, NearClip);
@@ -130,13 +138,15 @@ float4 SampleFroxelBilateral(float2 screenUV, float3 centerNormal, float centerD
             float4 normalSample = normalMap.SampleLevel(pointSampler, sampleUV, 0);
             float3 sampleNormal = decode(normalSample.xyz);
 
-            float depthWeight = exp(-abs(sampleDepth - centerDepth) * 0.075);
-            float normalWeight = pow(saturate(dot(centerNormal, sampleNormal)), 32.0);
-            float spatialWeight = kernel3[x + 1] * kernel3[y + 1];
+            // Slightly relax weights so wider taps still contribute - we'd rather have soft fog
+            // than sharp 8x8 froxel blocks bleeding through.
+            float depthWeight = exp(-abs(sampleDepth - centerDepth) * 0.04);
+            float normalWeight = pow(saturate(dot(centerNormal, sampleNormal)), 8.0);
+            float spatialWeight = kernel5[x + 2] * kernel5[y + 2];
 
             float4 fogSample = SampleFroxelAccumulationTexture(sampleUV, sampleDepth);
 
-            float weight = spatialWeight * depthWeight * normalWeight + 1e-4;
+            float weight = spatialWeight * depthWeight * normalWeight + 5e-3;
             result += fogSample * weight;
             weightSum += weight;
         }
@@ -282,6 +292,14 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
 
         transmittance =
             saturate(fog.a);
+
+        // For sky pixels, dial fog impact down so the skybox doesn't get washed out by accumulated
+        // scatter from the entire view-frustum depth. SkyFogStrength = 0 -> sky untouched.
+        if (isSky)
+        {
+            volumetrics *= SkyFogStrength;
+            transmittance = lerp(1.0, transmittance, SkyFogStrength);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////

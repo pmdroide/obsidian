@@ -54,3 +54,4 @@ How to manipulate the scene
 - DirectX 12 support
 - Hotload
 - Lens Flare
+- Spotlights with CookieMap

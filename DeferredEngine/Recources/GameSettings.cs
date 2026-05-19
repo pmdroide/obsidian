@@ -270,7 +270,7 @@ namespace DeferredEngine.Recources
         // Froxel (Clustered Volumetric Fog) settings
         public static bool g_FroxelsEnabled = true;
         public static bool g_FroxelFogEnabled = true;
-        private static float _g_froxelDensity = 0.001f;
+        private static float _g_froxelDensity = 0.03f; // 0.001f is good for directional light only, 0.03f is good for multiple lights, 0.1f is very dense and expensive
         public static float g_FroxelDensity
         {
             get { return _g_froxelDensity; }
@@ -280,13 +280,31 @@ namespace DeferredEngine.Recources
             }
         }
 
-        private static float _g_froxelScatter = 0.1f;
+        // Split scatter: directional sun rays often want a much lower value than point-light volumetrics
+        // (a bright directional with HG forward peak quickly blows out, while point lights need
+        // higher scatter to be visible at all due to 1/r^2 attenuation).
+        private static float _g_froxelDirectionalScatter = 0.1f;
+        public static float g_FroxelDirectionalScatter
+        {
+            get { return _g_froxelDirectionalScatter; }
+            set { _g_froxelDirectionalScatter = Math.Clamp(value, 0.0f, 4.0f); }
+        }
+
+        private static float _g_froxelPointScatter = 1.5f;
+        public static float g_FroxelPointScatter
+        {
+            get { return _g_froxelPointScatter; }
+            set { _g_froxelPointScatter = Math.Clamp(value, 0.0f, 16.0f); }
+        }
+
+        // Legacy convenience: sets BOTH scatter values together. Use the split props for fine control.
         public static float g_FroxelScatter
         {
-            get { return _g_froxelScatter; }
+            get { return _g_froxelDirectionalScatter; }
             set
             {
-                _g_froxelScatter = Math.Clamp(value, 0.0f, 1.0f);
+                _g_froxelDirectionalScatter = Math.Clamp(value, 0.0f, 4.0f);
+                _g_froxelPointScatter = Math.Clamp(value, 0.0f, 16.0f);
             }
         }
 
@@ -298,6 +316,40 @@ namespace DeferredEngine.Recources
             {
                 _g_froxelAbsorption = Math.Clamp(value, 0.0f, 1.0f);
             }
+        }
+
+        // 0 = sky completely unaffected by fog (skybox stays crisp). 1 = sky fully attenuated.
+        // The defaults above are tuned so the sky reads through; raise this for moodier distance haze.
+        private static float _g_froxelSkyFogStrength = 0.1f;
+        public static float g_FroxelSkyFogStrength
+        {
+            get { return _g_froxelSkyFogStrength; }
+            set { _g_froxelSkyFogStrength = Math.Clamp(value, 0.0f, 1.0f); }
+        }
+
+        // Distance ramp: fog density scales from 0 at FogDistanceStart to full at FogDistanceFull.
+        // Lets near geometry stay crisp while distant objects fade into the haze.
+        private static float _g_froxelFogDistanceStart = 30f;
+        public static float g_FroxelFogDistanceStart
+        {
+            get { return _g_froxelFogDistanceStart; }
+            set { _g_froxelFogDistanceStart = Math.Max(0f, value); }
+        }
+
+        private static float _g_froxelFogDistanceFull = 400f;
+        public static float g_FroxelFogDistanceFull
+        {
+            get { return _g_froxelFogDistanceFull; }
+            set { _g_froxelFogDistanceFull = Math.Max(_g_froxelFogDistanceStart + 1f, value); }
+        }
+
+        // Temporal history weight. Higher = smoother but laggier (and blocks visible when still).
+        // Lower = more responsive but noisier. 0 disables temporal blending.
+        private static float _g_froxelHistoryBlend = 0.7f;
+        public static float g_FroxelHistoryBlend
+        {
+            get { return _g_froxelHistoryBlend; }
+            set { _g_froxelHistoryBlend = Math.Clamp(value, 0.0f, 0.98f); }
         }
         
         public static bool e_CPURayMarch = false;
