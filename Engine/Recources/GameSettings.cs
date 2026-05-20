@@ -21,6 +21,7 @@ namespace Engine.Recources
 
         //UI
         public static bool ui_enabled = true;
+        public static bool ui_vista_enabled = true;
 
         //Renderer
 

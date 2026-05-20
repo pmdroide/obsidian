@@ -1,0 +1,8 @@
+<div id="root">
+    <div id="perf-panel">
+        <div id="perf-fps" class="line">FPS: 0</div>
+        <div id="perf-frame" class="line">Frame: 0.0 ms</div>
+        <div id="perf-res" class="line">Res: 0 x 0</div>
+        <div id="perf-mem" class="line">Mem: 0 KB</div>
+    </div>
+</div>

@@ -17,6 +17,7 @@
 - EXPERIMENTAL: screen space emissive materials (not updated to work right now)
 - Froxel Volumetric Lightning/Fog (WIP)
 - .obj files are imported with fbximporter to avoid content load error
+- Vista, a custom UI that uses XML for structure and CSS for styling
 
 ## Structure
 
@@ -46,7 +47,6 @@ How to manipulate the scene
 
 ## Planned
 - World Editor (WPF based)
-- HTML/CSS styling for UI
 - 2D Engine
 - Documentation Dev Website
 - Update to Monogame 3.9 (Vulkan/DirectX 12)

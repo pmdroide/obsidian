@@ -19,10 +19,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HelperSuite\HelperSuite.csproj" />
+    <ProjectReference Include="..\Vista\Vista.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <MonoGameContentReference Include="Content\Content.mgcb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Content\UI\debug.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\UI\debug.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

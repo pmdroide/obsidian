@@ -1,10 +1,13 @@
 using System;
+using System.Globalization;
+using System.IO;
 using BEPUphysics;
 using Engine.Recources;
 using HelperSuite.GUIRenderer;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Vista;
 
 namespace Engine.Logic
 {
@@ -35,6 +38,11 @@ namespace Engine.Logic
         private VideoIntroLogic _videoIntro;
         private SpriteBatch _spriteBatch;
         private GraphicsDevice _graphicsDevice;
+
+        private UIManager _vistaUI;
+        private double _vistaSmoothFps = 60;
+        private double _vistaFpsRefresh;
+        private long _vistaMaxGcMemory;
 
         private EditorLogic.EditorReceivedData _editorReceivedDataBuffer;
 
@@ -77,6 +85,37 @@ namespace Engine.Logic
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
             
             _debug.Update(gameTime);
+
+            UpdateVistaUI(gameTime);
+        }
+        
+        // Update the Vista UI with performance metrics and other dynamic information.
+        private void UpdateVistaUI(GameTime gameTime)
+        {
+            if (_vistaUI == null || !GameSettings.ui_vista_enabled) return;
+
+            double frameMs = gameTime.ElapsedGameTime.TotalMilliseconds;
+            if (frameMs > 0.0)
+            {
+                double instantaneous = 1000.0 / frameMs;
+                _vistaSmoothFps = 0.95 * _vistaSmoothFps + 0.05 * instantaneous;
+            }
+
+            // Throttle text updates to twice/sec — AngleSharp DOM writes aren't free.
+            double nowMs = gameTime.TotalGameTime.TotalMilliseconds;
+            if (nowMs - _vistaFpsRefresh < 500.0) { _vistaUI.Update(gameTime); return; }
+            _vistaFpsRefresh = nowMs;
+
+            long mem = GC.GetTotalMemory(false);
+            if (mem > _vistaMaxGcMemory) _vistaMaxGcMemory = mem;
+
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            _vistaUI.SetText("#perf-fps",   "FPS: "   + Math.Round(_vistaSmoothFps).ToString(inv));
+            _vistaUI.SetText("#perf-frame", "Frame: " + frameMs.ToString("0.00", inv) + " ms");
+            _vistaUI.SetText("#perf-res",   "Res: "   + GameSettings.g_screenwidth + " x " + GameSettings.g_screenheight);
+            _vistaUI.SetText("#perf-mem",   "Mem: "   + (mem / 1024).ToString(inv) + " / " + (_vistaMaxGcMemory / 1024).ToString(inv) + " KB");
+
+            _vistaUI.Update(gameTime);
         }
 
         //Load content
@@ -100,6 +139,29 @@ namespace Engine.Logic
             _debug.LoadContent(content);
             _guiRenderer.Load(content);
             _videoIntro.Load(content, graphicsDevice);
+
+            LoadVistaUI(content, graphicsDevice);
+        }
+        
+        // Load Vista UI helper functions
+        private void LoadVistaUI(ContentManager content, GraphicsDevice graphicsDevice)
+        {
+            _vistaUI = new UIManager(graphicsDevice);
+
+            // Register fonts the CSS can reference by font-family.
+            var defaultFont = content.Load<SpriteFont>("Fonts/defaultFont");
+            var monospaceFont = content.Load<SpriteFont>("Fonts/monospace");
+            _vistaUI.Fonts.Register("default", defaultFont, isDefault: true);
+            _vistaUI.Fonts.Register("monospace", monospaceFont);
+
+            string baseDir = AppContext.BaseDirectory;
+            string xmlPath = Path.Combine(baseDir, "Content", "UI", "debug.xml");
+            string cssPath = Path.Combine(baseDir, "Content", "UI", "debug.css");
+
+            if (File.Exists(xmlPath) && File.Exists(cssPath))
+            {
+                _vistaUI.LoadUI(xmlPath, cssPath);
+            }
         }
 
         public void Unload(ContentManager content)
@@ -135,6 +197,14 @@ namespace Engine.Logic
                 _guiRenderer.Draw(_guiLogic.GuiCanvas);
 
             _debug.Draw(gameTime);
+            
+            // Vista UI on top of everything
+            if (_vistaUI != null && GameSettings.ui_vista_enabled)
+            {
+                _spriteBatch.Begin();
+                _vistaUI.Draw(_spriteBatch);
+                _spriteBatch.End();
+            }
         }
 
         public void UpdateResolution()

@@ -1,0 +1,31 @@
+#root {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+}
+
+#perf-panel {
+    top: 10px;
+    left: 10px;
+    width: 320px;
+    height: 90px;
+    background-color: rgba(0, 0, 0, 0.55);
+    font-family: monospace;
+    color: #FFCC66FF;
+    padding-left: 8px;
+    padding-top: 6px;
+}
+
+.line {
+    left: 0px;
+    width: 100%;
+    height: 18px;
+    color: #FFCC66FF;
+    font-family: monospace;
+    background-color: transparent;
+}
+
+#perf-fps   { top: 4px;  }
+#perf-frame { top: 22px; }
+#perf-res   { top: 40px; }
+#perf-mem   { top: 58px; }
