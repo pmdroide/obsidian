@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="DeferredEngine/Icon.ico" width="80px" alt="Project Icon">
+  <img src="Docs/logo.png" width="80px" alt="Project Icon">
 
   [Getting Started] | [Documentation] | [Contributing]
 </div>
@@ -37,5 +37,5 @@ If you want to contribute to the engine, please check the [contributing guide](C
 ## Documentation
 See the documention [here](DOCUMENTATION.md).
 
-## Credits
-Kosmonaut: https://github.com/Kosmonaut3d/DeferredEngine
+## License
+The obsidian engine source code is licensed under the [MIT License](LICENSE)

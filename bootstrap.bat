@@ -14,7 +14,7 @@ if errorlevel 1 (
 necho Restoring complete.
 echo Building solution...
 
-ndotnet build DeferredEngine.sln /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
+ndotnet build Engine.sln /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
 if errorlevel 1 (
     echo.
     echo ERROR: dotnet build failed.
@@ -24,6 +24,6 @@ if errorlevel 1 (
 necho.
 echo Bootstrap complete.
 echo You can now open the repo in VS Code or run the project with:
-echo   dotnet run --project DeferredEngine
+echo   dotnet run --project Engine
 endlocal
 exit /b 0

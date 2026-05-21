@@ -9,9 +9,9 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DeferredEngine/bin/Debug/net10.0-windows/DeferredEngine.dll",
+            "program": "${workspaceFolder}/Engine/bin/Debug/net10.0-windows/Engine.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/DeferredEngine",
+            "cwd": "${workspaceFolder}/Engine",
             "console": "internalConsole",
             "stopAtEntry": false
         },
