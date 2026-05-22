@@ -1,22 +1,697 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Anvil.ViewModels"
+        xmlns:m="using:Anvil.Models"
         xmlns:controls="using:Anvil.Controls"
+        xmlns:conv="using:Anvil.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
+        mc:Ignorable="d" d:DesignWidth="1600" d:DesignHeight="900"
         x:Class="Anvil.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Width="1280" Height="720"
+        Width="1600" Height="900"
+        MinWidth="1100" MinHeight="700"
+        Background="#15161e"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="34"
         Title="Anvil">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <controls:MonoGameHost />
+    <Window.Resources>
+        <conv:DepthToMarginConverter x:Key="DepthToMargin" Step="14" />
+        <conv:EnumEqualsConverter x:Key="EnumEquals" />
+        <conv:ColorToBrushConverter x:Key="ColorToBrush" />
 
+        <SolidColorBrush x:Key="ChromeBg" Color="#15161e" />
+        <SolidColorBrush x:Key="WindowBg" Color="#1b1d27" />
+        <SolidColorBrush x:Key="PanelBg" Color="#232532" />
+        <SolidColorBrush x:Key="PanelHeaderBg" Color="#1f2230" />
+        <SolidColorBrush x:Key="PanelDividerBrush" Color="#15161e" />
+        <SolidColorBrush x:Key="SubtleBorder" Color="#2a2c39" />
+        <SolidColorBrush x:Key="HoverBg" Color="#2c2f3d" />
+        <SolidColorBrush x:Key="SelectedBg" Color="#3e4467" />
+        <SolidColorBrush x:Key="ToolbarBg" Color="#1a1c26" />
+        <SolidColorBrush x:Key="ViewportBg" Color="#2b2d3a" />
+
+        <SolidColorBrush x:Key="TextBrush" Color="#d8dae8" />
+        <SolidColorBrush x:Key="TextMuted" Color="#8a8d9d" />
+        <SolidColorBrush x:Key="TextDim" Color="#5a5d6b" />
+
+        <SolidColorBrush x:Key="AccentBrush" Color="#5a6bff" />
+        <SolidColorBrush x:Key="InfoBrush" Color="#4a90e2" />
+        <SolidColorBrush x:Key="WarningBrush" Color="#e0c34e" />
+        <SolidColorBrush x:Key="ErrorBrush" Color="#d54e4e" />
+        <SolidColorBrush x:Key="OkBrush" Color="#4ed18a" />
+        <SolidColorBrush x:Key="CameraBrush" Color="#4ed18a" />
+        <SolidColorBrush x:Key="LightBrush" Color="#e0c34e" />
+        <SolidColorBrush x:Key="MeshBrush" Color="#a4abff" />
+        <SolidColorBrush x:Key="FolderBrush" Color="#c9a86b" />
+    </Window.Resources>
+
+    <Window.Styles>
+
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontFamily" Value="Inter, Segoe UI, sans-serif" />
+        </Style>
+
+        <Style Selector="Menu">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="20" />
+        </Style>
+        <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource HoverBg}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource HoverBg}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <!-- TreeView: default-expand and use our selection colors -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="IsExpanded" Value="True" />
+            <Setter Property="Padding" Value="0,1" />
+            <Setter Property="MinHeight" Value="22" />
+        </Style>
+        <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource SelectedBg}" />
+        </Style>
+        <Style Selector="TreeViewItem:selected:focus /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource SelectedBg}" />
+        </Style>
+        <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource HoverBg}" />
+        </Style>
+
+        <Style Selector="Button.tool">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.tool:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource HoverBg}" />
+        </Style>
+        <Style Selector="Button.tool.active">
+            <Setter Property="Background" Value="{StaticResource SelectedBg}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style Selector="Button.tool.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SelectedBg}" />
+        </Style>
+
+        <Style Selector="Button.tab">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+        <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource HoverBg}" />
+        </Style>
+        <Style Selector="Button.tab.active">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style Selector="Button.tab.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SelectedBg}" />
+        </Style>
+
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="#181a23" />
+            <Setter Property="BorderBrush" Value="{StaticResource SubtleBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="ComboBox.field">
+            <Setter Property="Background" Value="#181a23" />
+            <Setter Property="BorderBrush" Value="{StaticResource SubtleBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="Border.panelHeader">
+            <Setter Property="Background" Value="{StaticResource PanelHeaderBg}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelDividerBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="10,6" />
+        </Style>
+
+        <Style Selector="TextBlock.panelTitle">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+
+        <Style Selector="TextBlock.row">
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="34,28,*">
+
+        <!-- ============ TITLE STRIP (in extended client area) ============ -->
+        <Border Grid.Row="0" Background="{StaticResource ChromeBg}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="10,0,0,0" VerticalAlignment="Center">
+                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource AccentBrush}">
+                        <Border Width="9" Height="9" CornerRadius="4.5" Background="{StaticResource ChromeBg}" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                    <TextBlock Text="{Binding ProjectName}" FontSize="12" Foreground="{StaticResource TextBrush}" />
+                    <TextBlock Text="—" FontSize="12" Foreground="{StaticResource TextDim}" />
+                    <TextBlock Text="{Binding SceneName}" FontSize="12" Foreground="{StaticResource TextBrush}" />
+                    <TextBlock Text="—" FontSize="12" Foreground="{StaticResource TextDim}" />
+                    <TextBlock Text="{Binding Platform}" FontSize="12" Foreground="{StaticResource TextMuted}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,160,0">
+                    <Border Background="#11141d" BorderBrush="{StaticResource SubtleBorder}" BorderThickness="1"
+                            CornerRadius="10" Padding="8,2">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="{StaticResource OkBrush}" />
+                            <TextBlock Text="{Binding GraphicsApi}" FontSize="10.5" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#11141d" BorderBrush="{StaticResource SubtleBorder}" BorderThickness="1"
+                            CornerRadius="10" Padding="8,2">
+                        <TextBlock FontSize="10.5" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center">
+                            <Run Text="{Binding Fps}" />
+                            <Run Text="fps" />
+                        </TextBlock>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============ MENU BAR ============ -->
+        <Border Grid.Row="1" Background="{StaticResource WindowBg}" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="0,0,0,1">
+            <Menu Margin="6,0,0,0" VerticalAlignment="Center">
+                <MenuItem Header="File">
+                    <MenuItem Header="New Scene" />
+                    <MenuItem Header="Open Scene..." />
+                    <Separator />
+                    <MenuItem Header="Save" />
+                    <MenuItem Header="Save As..." />
+                    <Separator />
+                    <MenuItem Header="Exit" />
+                </MenuItem>
+                <MenuItem Header="Edit">
+                    <MenuItem Header="Undo" />
+                    <MenuItem Header="Redo" />
+                </MenuItem>
+                <MenuItem Header="Assets">
+                    <MenuItem Header="Import Asset..." />
+                    <MenuItem Header="Refresh" />
+                </MenuItem>
+                <MenuItem Header="GameObject">
+                    <MenuItem Header="Create Empty" />
+                    <MenuItem Header="3D Object">
+                        <MenuItem Header="Cube" />
+                        <MenuItem Header="Sphere" />
+                        <MenuItem Header="Capsule" />
+                    </MenuItem>
+                    <MenuItem Header="Light">
+                        <MenuItem Header="Directional Light" />
+                        <MenuItem Header="Point Light" />
+                    </MenuItem>
+                </MenuItem>
+                <MenuItem Header="Component">
+                    <MenuItem Header="Mesh" />
+                    <MenuItem Header="Physics" />
+                </MenuItem>
+                <MenuItem Header="Window">
+                    <MenuItem Header="Hierarchy" />
+                    <MenuItem Header="Inspector" />
+                    <MenuItem Header="Console" />
+                </MenuItem>
+                <MenuItem Header="Help">
+                    <MenuItem Header="About Anvil" />
+                </MenuItem>
+            </Menu>
+        </Border>
+
+        <!-- ============ MAIN CONTENT ============ -->
+        <Grid Grid.Row="2" ColumnDefinitions="46,*,320" Background="{StaticResource WindowBg}">
+
+            <!-- ====== LEFT TOOLBAR ====== -->
+            <Border Grid.Column="0" Background="{StaticResource ToolbarBg}" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <!-- Bottom-aligned controls -->
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" Spacing="2" Margin="0,0,0,8" HorizontalAlignment="Center">
+                        <Button Classes="tool" ToolTip.Tip="Grid">
+                            <Path Data="M1,1 H4 V4 H1 Z M6,1 H9 V4 H6 Z M11,1 H14 V4 H11 Z M1,6 H4 V9 H1 Z M6,6 H9 V9 H6 Z M11,6 H14 V9 H11 Z M1,11 H4 V14 H1 Z M6,11 H9 V14 H6 Z M11,11 H14 V14 H11 Z"
+                                  Stretch="Uniform" Width="14" Height="14"
+                                  Fill="{StaticResource TextMuted}" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Play">
+                            <Path Data="M3,2 L13,8 L3,14 Z" Stretch="Uniform" Width="12" Height="12"
+                                  Fill="{StaticResource TextMuted}" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Step">
+                            <Path Data="M2,3 L9,8 L2,13 Z M11,3 H13 V13 H11 Z" Stretch="Uniform" Width="13" Height="12"
+                                  Fill="{StaticResource TextMuted}" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Top tools -->
+                    <StackPanel Orientation="Vertical" Spacing="2" Margin="0,8,0,0" HorizontalAlignment="Center">
+                        <Button Classes="tool" ToolTip.Tip="Select">
+                            <Path Data="M3,2 L13,9 L8.5,9.5 L11,14 L9,15 L6.5,10.5 L3,13 Z"
+                                  Stretch="Uniform" Width="14" Height="14"
+                                  Fill="{StaticResource TextBrush}" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Move">
+                            <Path Data="M8,0 L11,3 L9,3 L9,7 L13,7 L13,5 L16,8 L13,11 L13,9 L9,9 L9,13 L11,13 L8,16 L5,13 L7,13 L7,9 L3,9 L3,11 L0,8 L3,5 L3,7 L7,7 L7,3 L5,3 Z"
+                                  Stretch="Uniform" Width="16" Height="16"
+                                  Fill="{StaticResource TextMuted}" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Rotate">
+                            <Path Data="M12,8 A6,6 0 1 1 8,2 M8,2 L8,5 M8,2 L11,3"
+                                  Stretch="Uniform" Width="14" Height="14"
+                                  Stroke="{StaticResource TextMuted}" StrokeThickness="1.4" Fill="Transparent"
+                                  StrokeLineCap="Round" StrokeJoin="Round" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Scale">
+                            <Path Data="M1,15 L15,1 M1,1 L1,5 M1,1 L5,1 M15,15 L15,11 M15,15 L11,15"
+                                  Stretch="Uniform" Width="14" Height="14"
+                                  Stroke="{StaticResource TextMuted}" StrokeThickness="1.4" Fill="Transparent"
+                                  StrokeLineCap="Round" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Pan">
+                            <Path Data="M6,8 L6,3 A1.2,1.2 0 0 1 8.4,3 L8.4,7 L8.4,2 A1.2,1.2 0 0 1 10.8,2 L10.8,7 L10.8,3 A1.2,1.2 0 0 1 13.2,3 L13.2,8 L13.2,5 A1.2,1.2 0 0 1 15.6,5 L15.6,11 A5,5 0 0 1 6.4,12.5 L3,8.5 A1.4,1.4 0 0 1 5,6.5 Z"
+                                  Stretch="Uniform" Width="14" Height="14"
+                                  Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent"
+                                  StrokeLineCap="Round" StrokeJoin="Round" />
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="History">
+                            <Path Data="M8,2 A6,6 0 1 0 14,8 M8,2 L5,2 M8,2 L8,5 M8,5 L8,8 L11,9.5"
+                                  Stretch="Uniform" Width="14" Height="14"
+                                  Stroke="{StaticResource TextMuted}" StrokeThickness="1.4" Fill="Transparent"
+                                  StrokeLineCap="Round" StrokeJoin="Round" />
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- ====== CENTER COLUMN (viewport + bottom panels) ====== -->
+            <Grid Grid.Column="1" RowDefinitions="32,*,260">
+
+                <!-- viewport toolbar -->
+                <Border Grid.Row="0" Background="{StaticResource WindowBg}" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <Button Classes="tab" Content="View" />
+                            <Button Classes="tab active" Content="Perspective" />
+                            <Button Classes="tab" Content="Top" />
+                            <Button Classes="tab" Content="Front" />
+                            <Button Classes="tab" Content="Side" />
+                        </StackPanel>
+
+                        <Rectangle Grid.Column="1" Width="1" Margin="10,8" Fill="{StaticResource SubtleBorder}" />
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Shading" Classes="muted" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <Button Classes="tab active" Content="Solid" />
+                            <Button Classes="tab" Content="Wireframe" />
+                            <Button Classes="tab" Content="Unlit" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <Button Classes="tool" Width="26" Height="22" ToolTip.Tip="Gizmos">
+                                <Path Data="M2,8 A6,6 0 1 1 14,8 A6,6 0 1 1 2,8 Z M8,5 A3,3 0 1 1 8,11 A3,3 0 1 1 8,5 Z"
+                                      Stretch="Uniform" Width="13" Height="13"
+                                      Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent" />
+                            </Button>
+                            <Button Classes="tool" Width="26" Height="22" ToolTip.Tip="Lighting">
+                                <Path Data="M8,1 V3 M8,13 V15 M1,8 H3 M13,8 H15 M3,3 L4.5,4.5 M11.5,11.5 L13,13 M3,13 L4.5,11.5 M11.5,4.5 L13,3 M8,5 A3,3 0 1 1 8,11 A3,3 0 1 1 8,5 Z"
+                                      Stretch="Uniform" Width="13" Height="13"
+                                      Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent"
+                                      StrokeLineCap="Round" />
+                            </Button>
+                            <Button Classes="tool" Width="26" Height="22" ToolTip.Tip="Audio">
+                                <Path Data="M1,6 L4,6 L8,2 L8,14 L4,10 L1,10 Z M10,5 A4,4 0 0 1 10,11 M11.5,3.5 A6.5,6.5 0 0 1 11.5,12.5"
+                                      Stretch="Uniform" Width="13" Height="13"
+                                      Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent"
+                                      StrokeLineCap="Round" StrokeJoin="Round" />
+                            </Button>
+                            <Button Classes="tool" Width="26" Height="22" ToolTip.Tip="Stats">
+                                <Path Data="M1,14 H14 M3,12 V9 M6,12 V5 M9,12 V7 M12,12 V3"
+                                      Stretch="Uniform" Width="13" Height="13"
+                                      Stroke="{StaticResource TextMuted}" StrokeThickness="1.4"
+                                      StrokeLineCap="Round" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- viewport: MonoGameHost lives here (untouched) with overlays -->
+                <Grid Grid.Row="1" Background="{StaticResource ViewportBg}">
+                    <controls:MonoGameHost />
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="14,0,0,14" Spacing="2">
+                        <TextBlock Text="PERSPECTIVE" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextDim}" LetterSpacing="2" />
+                        <TextBlock Text="{Binding PlayStateLabel}" FontSize="10"
+                                   Foreground="{StaticResource TextDim}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- bottom panels: console + assets -->
+                <Grid Grid.Row="2" ColumnDefinitions="*,*" Background="{StaticResource PanelBg}">
+
+                    <!-- Console -->
+                    <Border Grid.Column="0" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="0,1,1,0">
+                        <Grid RowDefinitions="Auto,*">
+                            <Border Grid.Row="0" Classes="panelHeader">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Path Data="M2,7 A5,5 0 1 1 12,7 A5,5 0 1 1 2,7 Z M6,3 H8 V5 H6 Z M6,6 H8 V11 H6 Z"
+                                              Stretch="Uniform" Width="12" Height="12" Fill="{StaticResource TextMuted}" />
+                                        <TextBlock Text="Console" Classes="panelTitle" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <Button Classes="tab active" Content="All" />
+                                        <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                            <Ellipse Width="8" Height="8" Fill="{StaticResource InfoBrush}" />
+                                            <TextBlock Text="{Binding ConsoleInfoCount}" FontSize="11" Foreground="{StaticResource TextMuted}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                            <Path Data="M7,1 L13,12 L1,12 Z" Stretch="Uniform" Width="9" Height="9" Fill="{StaticResource WarningBrush}" />
+                                            <TextBlock Text="{Binding ConsoleWarningCount}" FontSize="11" Foreground="{StaticResource TextMuted}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                            <Path Data="M2,7 A5,5 0 1 1 12,7 A5,5 0 1 1 2,7 Z M4,4 L10,10 M10,4 L4,10"
+                                                  Stretch="Uniform" Width="9" Height="9" Stroke="{StaticResource ErrorBrush}" StrokeThickness="1.5" Fill="{StaticResource ErrorBrush}" />
+                                            <TextBlock Text="{Binding ConsoleErrorCount}" FontSize="11" Foreground="{StaticResource TextMuted}" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Border Grid.Column="3" Background="#181a23" BorderBrush="{StaticResource SubtleBorder}" BorderThickness="1"
+                                            CornerRadius="3" Padding="6,2" Margin="0,0,4,0" Width="160">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Data="M2,7 A5,5 0 1 1 12,7 A5,5 0 1 1 2,7 Z M11,11 L14,14"
+                                                  Stretch="Uniform" Width="11" Height="11"
+                                                  Stroke="{StaticResource TextDim}" StrokeThickness="1.4" Fill="Transparent"
+                                                  VerticalAlignment="Center" />
+                                            <TextBox Text="{Binding ConsoleFilterText}" PlaceholderText="Filter..." Background="Transparent" BorderThickness="0"
+                                                     MinHeight="18" Padding="0" FontSize="11" Foreground="{StaticResource TextBrush}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button Grid.Column="3" Classes="tool" Width="26" Height="22" HorizontalAlignment="Right" ToolTip.Tip="Clear">
+                                        <Path Data="M3,4 H13 L12,14 H4 Z M5,4 V2 H11 V4"
+                                              Stretch="Uniform" Width="11" Height="11"
+                                              Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding ConsoleEntries}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="m:ConsoleEntry">
+                                            <Border Padding="10,6" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="0,0,0,1">
+                                                <Grid ColumnDefinitions="16,*,Auto">
+                                                    <Grid Grid.Column="0" Width="14" Height="14" VerticalAlignment="Center">
+                                                        <Path Data="M2,7 A5,5 0 1 1 12,7 A5,5 0 1 1 2,7 Z M6,3 H8 V5 H6 Z M6,6 H8 V11 H6 Z"
+                                                              Stretch="Uniform" Fill="{StaticResource InfoBrush}"
+                                                              IsVisible="{Binding Level, Converter={StaticResource EnumEquals}, ConverterParameter=Info}" />
+                                                        <Path Data="M7,1 L13,12 L1,12 Z M7,5 V8 M7,9 V10"
+                                                              Stretch="Uniform" Fill="{StaticResource WarningBrush}" Stroke="{StaticResource ChromeBg}" StrokeThickness="0.6"
+                                                              IsVisible="{Binding Level, Converter={StaticResource EnumEquals}, ConverterParameter=Warning}" />
+                                                        <Path Data="M2,7 A5,5 0 1 1 12,7 A5,5 0 1 1 2,7 Z M4,4 L10,10 M10,4 L4,10"
+                                                              Stretch="Uniform" Stroke="{StaticResource ChromeBg}" Fill="{StaticResource ErrorBrush}" StrokeThickness="1"
+                                                              IsVisible="{Binding Level, Converter={StaticResource EnumEquals}, ConverterParameter=Error}" />
+                                                    </Grid>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Message}" Margin="8,0,0,0"
+                                                               FontSize="11.5" Foreground="{StaticResource TextBrush}"
+                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Timestamp}"
+                                                               FontSize="10.5" Foreground="{StaticResource TextDim}" VerticalAlignment="Center"
+                                                               IsVisible="{Binding Source, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Source}"
+                                                               FontSize="10.5" Foreground="{StaticResource TextDim}" VerticalAlignment="Center"
+                                                               IsVisible="{Binding Source, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <!-- Assets -->
+                    <Border Grid.Column="1" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="0,1,0,0">
+                        <Grid RowDefinitions="Auto,*">
+                            <Border Grid.Row="0" Classes="panelHeader">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Path Data="M0,3 L4,3 L6,5 L14,5 L14,13 L0,13 Z"
+                                              Stretch="Uniform" Width="13" Height="13" Fill="{StaticResource FolderBrush}" />
+                                        <TextBlock Text="Assets" Classes="panelTitle" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="#181a23" BorderBrush="{StaticResource SubtleBorder}" BorderThickness="1"
+                                            CornerRadius="3" Padding="6,2" Margin="0,0,4,0" Width="160">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Data="M2,7 A5,5 0 1 1 12,7 A5,5 0 1 1 2,7 Z M11,11 L14,14"
+                                                  Stretch="Uniform" Width="11" Height="11"
+                                                  Stroke="{StaticResource TextDim}" StrokeThickness="1.4" Fill="Transparent"
+                                                  VerticalAlignment="Center" />
+                                            <TextBox Text="{Binding AssetSearchText}" PlaceholderText="Search..." Background="Transparent" BorderThickness="0"
+                                                     MinHeight="18" Padding="0" FontSize="11" Foreground="{StaticResource TextBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Button Grid.Column="3" Classes="tool" Width="26" Height="22" ToolTip.Tip="Filter">
+                                        <Path Data="M0,1 H14 L9,7 V13 L5,11 V7 Z"
+                                              Stretch="Uniform" Width="11" Height="11"
+                                              Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                                <TreeView ItemsSource="{Binding Assets}" Background="Transparent" BorderThickness="0">
+                                    <TreeView.ItemTemplate>
+                                        <TreeDataTemplate DataType="m:AssetNode" ItemsSource="{Binding Children}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                                                <Grid Width="14" Height="14" VerticalAlignment="Center">
+                                                    <Path Data="M0,3 L4,3 L6,5 L14,5 L14,13 L0,13 Z" Stretch="Uniform" Fill="{StaticResource FolderBrush}"
+                                                          IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Folder}" />
+                                                    <Path Data="M2,1 H10 L13,4 V14 H2 Z M10,1 V4 H13"
+                                                          Stretch="Uniform" Fill="{StaticResource AccentBrush}"
+                                                          IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Scene}" />
+                                                    <Path Data="M7,1 L13,4 V11 L7,14 L1,11 V4 Z M7,1 V14 M1,4 L13,4 M1,11 L13,11"
+                                                          Stretch="Uniform" Stroke="{StaticResource MeshBrush}" StrokeThickness="1.2" Fill="Transparent"
+                                                          IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Mesh}" />
+                                                </Grid>
+                                                <TextBlock Text="{Binding Name}" FontSize="11.5"
+                                                           Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </TreeDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ====== RIGHT COLUMN (hierarchy + inspector) ====== -->
+            <Grid Grid.Column="2" RowDefinitions="*,*" Background="{StaticResource PanelBg}">
+
+                <!-- Hierarchy -->
+                <Border Grid.Row="0" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="1,0,0,1">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Classes="panelHeader">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <Path Data="M2,3 L3,3 L3,4 L2,4 Z M5,3 L13,3 M5,3.5 L13,3.5 M2,7 L3,7 L3,8 L2,8 Z M5,7 L13,7 M5,7.5 L13,7.5 M2,11 L3,11 L3,12 L2,12 Z M5,11 L13,11 M5,11.5 L13,11.5"
+                                          Stretch="Uniform" Width="13" Height="13"
+                                          Stroke="{StaticResource TextMuted}" StrokeThickness="1.2"
+                                          StrokeLineCap="Round" Fill="{StaticResource TextMuted}" />
+                                    <TextBlock Text="Hierarchy" Classes="panelTitle" />
+                                </StackPanel>
+                                <Button Grid.Column="2" Classes="tool" Width="24" Height="22" ToolTip.Tip="Add">
+                                    <Path Data="M7,2 V12 M2,7 H12" Stretch="Uniform" Width="11" Height="11"
+                                          Stroke="{StaticResource TextMuted}" StrokeThickness="1.4" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                            <TreeView ItemsSource="{Binding Hierarchy}" Background="Transparent" BorderThickness="0">
+                                <TreeView.ItemTemplate>
+                                    <TreeDataTemplate DataType="m:HierarchyNode" ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                                            <Grid Width="14" Height="14" VerticalAlignment="Center">
+                                                <Path Data="M0,3 L4,3 L6,5 L14,5 L14,13 L0,13 Z" Stretch="Uniform" Fill="{StaticResource FolderBrush}"
+                                                      IsVisible="{Binding Icon, Converter={StaticResource EnumEquals}, ConverterParameter=Folder}" />
+                                                <Path Data="M0,4 L9,4 L9,10 L0,10 Z M9,5 L13,3 L13,11 L9,9 Z"
+                                                      Stretch="Uniform" Fill="{StaticResource CameraBrush}"
+                                                      IsVisible="{Binding Icon, Converter={StaticResource EnumEquals}, ConverterParameter=Camera}" />
+                                                <Path Data="M7,1 A4,4 0 0 1 11,5 C11,7 9,8 9,10 H5 C5,8 3,7 3,5 A4,4 0 0 1 7,1 Z M5,11 H9 V12 H5 Z M6,13 H8 V14 H6 Z"
+                                                      Stretch="Uniform" Fill="{StaticResource LightBrush}"
+                                                      IsVisible="{Binding Icon, Converter={StaticResource EnumEquals}, ConverterParameter=Light}" />
+                                                <Path Data="M7,1 L13,4 V11 L7,14 L1,11 V4 Z M7,1 V14 M1,4 L13,4 M1,11 L13,11"
+                                                      Stretch="Uniform" Stroke="{StaticResource MeshBrush}" StrokeThickness="1.2" Fill="Transparent"
+                                                      IsVisible="{Binding Icon, Converter={StaticResource EnumEquals}, ConverterParameter=Mesh}" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Name}" FontSize="11.5"
+                                                       Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </TreeDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- Inspector -->
+                <Border Grid.Row="1" BorderBrush="{StaticResource PanelDividerBrush}" BorderThickness="1,0,0,0">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Classes="panelHeader">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <Path Data="M8,1 L8,4 M8,12 L8,15 M1,8 L4,8 M12,8 L15,8 M3,3 L5,5 M11,11 L13,13 M3,13 L5,11 M11,5 L13,3 M8,5 A3,3 0 1 1 8,11 A3,3 0 1 1 8,5 Z"
+                                          Stretch="Uniform" Width="13" Height="13"
+                                          Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent" StrokeLineCap="Round" />
+                                    <TextBlock Text="Inspector" Classes="panelTitle" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" IsChecked="True" />
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" Padding="10,8">
+                            <StackPanel Spacing="10">
+
+                                <!-- Name -->
+                                <TextBox Classes="field" Text="{Binding Inspector.Name}" />
+
+                                <!-- Tag / Layer -->
+                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="3">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Tag" Classes="muted" FontSize="11" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Layer" Classes="muted" FontSize="11" />
+                                    <ComboBox Grid.Row="1" Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
+                                              SelectedItem="{Binding Inspector.Tag}">
+                                        <ComboBoxItem>Untagged</ComboBoxItem>
+                                        <ComboBoxItem>Player</ComboBoxItem>
+                                        <ComboBoxItem>Enemy</ComboBoxItem>
+                                    </ComboBox>
+                                    <ComboBox Grid.Row="1" Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                              SelectedItem="{Binding Inspector.Layer}">
+                                        <ComboBoxItem>Default</ComboBoxItem>
+                                        <ComboBoxItem>UI</ComboBoxItem>
+                                        <ComboBoxItem>IgnoreRaycast</ComboBoxItem>
+                                    </ComboBox>
+                                </Grid>
+
+                                <!-- Transform -->
+                                <StackPanel Spacing="6">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Path Data="M8,1 L14,4 L14,11 L8,14 L2,11 L2,4 Z M8,1 L8,8 M8,8 L2,4 M8,8 L14,4 M8,8 L8,14"
+                                              Stretch="Uniform" Width="12" Height="12"
+                                              Stroke="{StaticResource TextMuted}" StrokeThickness="1.2" Fill="Transparent"
+                                              StrokeLineCap="Round" StrokeJoin="Round" />
+                                        <TextBlock Text="Transform" FontSize="11.5" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextBrush}" />
+                                    </StackPanel>
+
+                                    <Grid ColumnDefinitions="60,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Inspector.PositionX}" ShowButtonSpinner="False" FormatString="0.#" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Inspector.PositionY}" ShowButtonSpinner="False" FormatString="0.#" />
+                                            <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding Inspector.PositionZ}" ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Inspector.RotationX}" ShowButtonSpinner="False" FormatString="0.#" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Inspector.RotationY}" ShowButtonSpinner="False" FormatString="0.#" />
+                                            <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding Inspector.RotationZ}" ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Inspector.ScaleX}" ShowButtonSpinner="False" FormatString="0.#" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Inspector.ScaleY}" ShowButtonSpinner="False" FormatString="0.#" />
+                                            <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding Inspector.ScaleZ}" ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Material -->
+                                <StackPanel Spacing="6">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Path Data="M8,1 A7,7 0 1 1 8,15 A7,7 0 1 1 8,1 Z M2.5,5.5 A6,3 0 0 0 13.5,5.5 M2.5,10.5 A6,3 0 0 1 13.5,10.5"
+                                              Stretch="Uniform" Width="12" Height="12"
+                                              Stroke="{StaticResource TextMuted}" StrokeThickness="1.1" Fill="Transparent" />
+                                        <TextBlock Text="Material" FontSize="11.5" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextBrush}" />
+                                    </StackPanel>
+
+                                    <Grid ColumnDefinitions="60,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                            <Border Width="28" Height="20" CornerRadius="3"
+                                                    Background="{Binding Inspector.MaterialColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource SubtleBorder}" BorderThickness="1" />
+                                            <TextBlock Text="{Binding Inspector.MaterialColorHex}" FontSize="11.5"
+                                                       Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Roughness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1"
+                                                Value="{Binding Inspector.Roughness}"
+                                                MinHeight="18" />
+                                    </Grid>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
 </Window>
