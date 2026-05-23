@@ -69,3 +69,6 @@ artifacts/
 
 # Generated files
 scripts/
+
+# IDE specific files
+.vscode/

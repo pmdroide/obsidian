@@ -1,16 +1,19 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Anvil.Models;
 
 public enum ConsoleLevel
 {
-    Info,
-    Warning,
+    Log,
+    Warn,
     Error,
 }
 
-public class ConsoleEntry
+public partial class ConsoleEntry : ObservableObject
 {
-    public ConsoleLevel Level { get; init; }
-    public string Message { get; init; } = string.Empty;
-    public string Timestamp { get; init; } = string.Empty;
-    public string? Source { get; init; }
+    [ObservableProperty] private int _id;
+    [ObservableProperty] private ConsoleLevel _level = ConsoleLevel.Log;
+    [ObservableProperty] private string _message = string.Empty;
+    [ObservableProperty] private string _source = string.Empty;
+    [ObservableProperty] private string _time = string.Empty;
 }

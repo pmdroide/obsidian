@@ -9,14 +9,20 @@ public enum AssetKind
     Scene,
     Mesh,
     Texture,
+    Script,
+    Audio,
+    Material,
 }
 
 public partial class AssetNode : ObservableObject
 {
+    [ObservableProperty] private string _id = string.Empty;
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private AssetKind _kind = AssetKind.Folder;
     [ObservableProperty] private bool _isExpanded = true;
-    [ObservableProperty] private int _depth;
+    [ObservableProperty] private bool _isSelected;
 
     public ObservableCollection<AssetNode> Children { get; } = new();
+
+    public bool HasChildren => Children.Count > 0;
 }
