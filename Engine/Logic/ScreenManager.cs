@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using BEPUphysics;
+using Engine.Editor;
 using Engine.Recources;
 using HelperSuite.GUIRenderer;
 using Microsoft.Xna.Framework;
@@ -46,9 +47,18 @@ namespace Engine.Logic
 
         private EditorLogic.EditorReceivedData _editorReceivedDataBuffer;
 
+        private readonly EditorBridge _bridge;
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  FUNCTIONS
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        public ScreenManager() { }
+
+        public ScreenManager(EditorBridge bridge)
+        {
+            _bridge = bridge;
+        }
 
         public void Initialize(GraphicsDevice graphicsDevice, Space space)
         {
@@ -61,6 +71,8 @@ namespace Engine.Logic
             _editorLogic.Initialize(graphicsDevice);
             _debug.Initialize(graphicsDevice);
             _guiRenderer.Initialize(graphicsDevice, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+
+            _bridge?.Bind(_sceneLogic, _editorLogic, _assets);
         }
 
         //Update per frame
@@ -83,10 +95,14 @@ namespace Engine.Logic
             _editorLogic.Update(gameTime, _sceneLogic.BasicEntities, _sceneLogic.Decals, _sceneLogic.PointLights, _sceneLogic.DirectionalLights, _sceneLogic.EnvironmentSample, _sceneLogic.DebugEntities, _editorReceivedDataBuffer, _sceneLogic.MeshMaterialLibrary);
             _sceneLogic.Update(gameTime, isActive);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
-            
+
             _debug.Update(gameTime);
 
             UpdateVistaUI(gameTime);
+
+            // Drain queued editor ops + publish snapshot. Runs on the game thread,
+            // strictly after all logic mutations but before the next Draw.
+            _bridge?.DrainAndPublish();
         }
         
         // Update the Vista UI with performance metrics and other dynamic information.

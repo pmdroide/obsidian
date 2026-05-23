@@ -456,14 +456,67 @@ namespace Engine.Logic
             BEPUutilities.Vector3[] vertices;
             int[] indices;
             ModelDataExtractor.GetVerticesAndIndicesFromModel(entity.Model, out vertices, out indices);
-            var mesh = new StaticMesh(vertices, indices, 
+            var mesh = new StaticMesh(vertices, indices,
                 new AffineTransform(
-                    new BEPUutilities.Vector3(entity.Scale.X, entity.Scale.Y, entity.Scale.Z), 
-                Quaternion.CreateFromRotationMatrix(MathConverter.Convert(entity.RotationMatrix)), 
+                    new BEPUutilities.Vector3(entity.Scale.X, entity.Scale.Y, entity.Scale.Z),
+                Quaternion.CreateFromRotationMatrix(MathConverter.Convert(entity.RotationMatrix)),
                 MathConverter.Convert(entity.Position)));
 
             entity.StaticPhysicsObject = mesh;
             _physicsSpace.Add(mesh);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //  EDITOR BRIDGE HELPERS — invoked from EditorBridge on the game thread
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        internal PointLight EditorAddPointLight(Vector3 position, float radius, Color color, float intensity)
+        {
+            return AddPointLight(position, radius, color, intensity, castShadows: false);
+        }
+
+        internal DirectionalLight EditorAddDirectionalLight(Vector3 direction, Color color, float intensity)
+        {
+            return AddDirectionalLight(direction: direction, intensity: (int)intensity, color: color);
+        }
+
+        internal BasicEntity EditorAddBasicEntity(ModelDefinition model, MaterialEffect material, Vector3 position)
+        {
+            if (model == null) return null;
+            if (material != null)
+                return AddEntity(model, material, position, 0, 0, 0, 1f);
+            return AddEntity(model, position, 0, 0, 0, 1f);
+        }
+
+        internal bool EditorDelete(int id)
+        {
+            for (int i = 0; i < BasicEntities.Count; i++)
+            {
+                if (BasicEntities[i].Id != id) continue;
+                BasicEntity entity = BasicEntities[i];
+                MeshMaterialLibrary?.DeleteFromRegistry(entity);
+                BasicEntities.RemoveAt(i);
+                return true;
+            }
+            for (int i = 0; i < PointLights.Count; i++)
+            {
+                if (PointLights[i].Id != id) continue;
+                PointLights.RemoveAt(i);
+                return true;
+            }
+            for (int i = 0; i < DirectionalLights.Count; i++)
+            {
+                if (DirectionalLights[i].Id != id) continue;
+                DirectionalLights.RemoveAt(i);
+                return true;
+            }
+            for (int i = 0; i < Decals.Count; i++)
+            {
+                if (Decals[i].Id != id) continue;
+                Decals.RemoveAt(i);
+                return true;
+            }
+            return false;
         }
 
     }

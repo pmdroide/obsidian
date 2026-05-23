@@ -6,6 +6,7 @@ using System;
 using System.Threading;
 using BEPUphysics;
 using BEPUutilities;
+using Engine.Editor;
 using Engine.Logic;
 using Engine.Recources;
 using HelperSuite.GUIHelper;
@@ -23,6 +24,10 @@ namespace Engine
 
         private readonly ScreenManager _screenManager;
 
+        private readonly EditorBridge _bridge;
+
+        public IEditorBridge Bridge => _bridge;
+
         private readonly Space _physicsSpace;
 
         //Do not change, these are overwritten (Check GameSettings.cs in Resources
@@ -36,8 +41,12 @@ namespace Engine
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
+            //Bridge between the engine and an external editor (Anvil). The engine
+            //works fine without an attached editor — the bridge just sits idle.
+            _bridge = new EditorBridge();
+
             //Initialize screen manager, which controls draw / logic for our screens
-            _screenManager = new ScreenManager();
+            _screenManager = new ScreenManager(_bridge);
 
             //Initialize our physics and give it gravity
             _physicsSpace = new Space

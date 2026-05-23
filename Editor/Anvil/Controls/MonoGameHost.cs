@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Engine.Editor;
 using Microsoft.Xna.Framework;
 using System;
 using System.IO;
@@ -29,6 +30,14 @@ public class MonoGameHost : NativeControlHost
     private Size _pendingSize;
     private Size _appliedSize;
     private bool _initialResizeDone;
+
+    /// <summary>
+    /// Fires on the UI thread once the embedded engine has constructed its
+    /// editor bridge. Subscribe to wire engine ↔ Anvil view-model traffic.
+    /// </summary>
+    public event Action<IEditorBridge>? BridgeReady;
+
+    public IEditorBridge? Bridge => _game?.Bridge;
 
     private const int GWL_STYLE = -16;
     private const int GWL_EXSTYLE = -20;
@@ -206,6 +215,19 @@ public class MonoGameHost : NativeControlHost
             _gameHwnd = _game.Window?.Handle ?? IntPtr.Zero;
             _handleReady.Set();
 
+            // Notify subscribers (on the UI thread) that the editor bridge is alive.
+            // Bridge has been constructed by Engine but Bind() hasn't been called yet
+            // — that happens during the first Initialize. Subscribers should be
+            // tolerant of pre-Bind state; AvailableModelKeys will be empty until then.
+            IEditorBridge? bridge = _game.Bridge;
+            if (bridge != null)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try { BridgeReady?.Invoke(bridge); } catch { /* swallow UI errors */ }
+                });
+            }
+
             // Manual game loop: Game.Run() pumps a blocking WinForms message loop on
             // this thread which deadlocks against Avalonia's UI thread. RunOneFrame
             // ticks Update/Draw without owning the message pump, so we drive it
@@ -226,9 +248,18 @@ public class MonoGameHost : NativeControlHost
                 {
                     _game.RunOneFrame();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Swallow per-frame errors
+                    // Swallow per-frame errors, but log so the user can diagnose
+                    // an "Add Object crashes" sort of regression. Path mirrors
+                    // EditorBridge.LogPath for convenience.
+                    try
+                    {
+                        File.AppendAllText(
+                            Path.Combine(Path.GetTempPath(), "anvil-bridge.log"),
+                            $"[{DateTime.Now:HH:mm:ss.fff}] RunOneFrame threw: {ex}{Environment.NewLine}");
+                    }
+                    catch { }
                 }
                 
                 Thread.Sleep(1);

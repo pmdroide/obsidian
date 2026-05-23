@@ -1,9 +1,14 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Anvil.Models;
-using Avalonia.Media;
+using Anvil.Services;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Engine.Editor;
+using XnaColor = Microsoft.Xna.Framework.Color;
+using XnaVector3 = Microsoft.Xna.Framework.Vector3;
 
 namespace Anvil.ViewModels;
 
@@ -42,16 +47,41 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<SceneObjectViewModel> SceneObjects { get; } = new();
     public ObservableCollection<AssetNode> AssetTree { get; } = new();
     public ObservableCollection<ConsoleEntry> ConsoleEntries { get; } = new();
+    public ObservableCollection<string> AvailableModels { get; } = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedObject), nameof(SelectedObjectName),
-        nameof(HasSelectedObject), nameof(HasNoSelectedObject))]
-    private string? _selectedObjectId = "cube-1";
+        nameof(HasSelectedObject), nameof(HasNoSelectedObject),
+        nameof(SelectedSceneObject))]
+    private string? _selectedObjectId;
+
+    private IEditorBridge? _bridge;
+    private bool _selectionRoundTripGuard;
+    private SceneObjectViewModel? _lastNotifiedSelected;
 
     public SceneObjectViewModel? SelectedObject => FindObject(SceneObjects, SelectedObjectId);
     public string? SelectedObjectName => SelectedObject?.Name;
     public bool HasSelectedObject => SelectedObject != null;
     public bool HasNoSelectedObject => SelectedObject == null;
+
+    /// <summary>
+    /// Two-way alias used by the Hierarchy TreeView so its selection highlight
+    /// tracks the engine-side selection. Setting it from a TreeView click
+    /// routes through SelectSceneObjectCommand, which also notifies the engine.
+    /// </summary>
+    public SceneObjectViewModel? SelectedSceneObject
+    {
+        get => SelectedObject;
+        set
+        {
+            // TreeView fires this with null during ItemsSource reconciliation
+            // (when an item is replaced or removed). Ignore those — we don't
+            // want a transient deselect to clobber the engine-side selection.
+            if (value == null) return;
+            if (value.Id == SelectedObjectId) return;
+            SelectSceneObject(value.Id);
+        }
+    }
 
     public string PlayStateLabel => IsPlaying ? "Playing" : "Paused";
 
@@ -90,10 +120,74 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        BuildScene();
         BuildAssets();
         BuildConsole();
     }
+
+    // -------- Engine bridge wiring --------
+
+    public void AttachBridge(IEditorBridge bridge)
+    {
+        if (_bridge != null) return;
+        _bridge = bridge;
+        bridge.SnapshotUpdated += OnBridgeSnapshot;
+        bridge.SelectionChanged += OnBridgeSelectionChanged;
+
+        // Refresh model picker now (may already be populated after first frame).
+        RefreshAvailableModels();
+    }
+
+    private void OnBridgeSnapshot(IReadOnlyList<EditorObjectSnapshot> snapshot)
+    {
+        // Marshal: bridge fires on the game thread; ObservableCollection only likes
+        // mutations from the UI thread.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_bridge == null) return;
+            try
+            {
+                BridgeReconciler.Apply(snapshot, SceneObjects, _bridge);
+            }
+            catch
+            {
+                // Don't let a reconciler error tear down the snapshot pipeline.
+            }
+            if (AvailableModels.Count == 0) RefreshAvailableModels();
+
+            // Only fire SelectedObject change when its identity actually flipped.
+            // Re-firing every 3 frames re-evaluates the inspector's DataContext,
+            // which loses focus on whichever NumericUpDown / ColorPicker is being edited.
+            var nowSelected = SelectedObject;
+            if (!ReferenceEquals(nowSelected, _lastNotifiedSelected))
+            {
+                _lastNotifiedSelected = nowSelected;
+                OnPropertyChanged(nameof(SelectedObject));
+                OnPropertyChanged(nameof(SelectedObjectName));
+                OnPropertyChanged(nameof(HasSelectedObject));
+                OnPropertyChanged(nameof(HasNoSelectedObject));
+                OnPropertyChanged(nameof(SelectedSceneObject));
+            }
+        });
+    }
+
+    private void OnBridgeSelectionChanged(int? id)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _selectionRoundTripGuard = true;
+            try { SelectedObjectId = id == null ? null : ("engine-" + id.Value); }
+            finally { _selectionRoundTripGuard = false; }
+        });
+    }
+
+    private void RefreshAvailableModels()
+    {
+        if (_bridge == null) return;
+        AvailableModels.Clear();
+        foreach (var k in _bridge.AvailableModelKeys) AvailableModels.Add(k);
+    }
+
+    // -------- Commands --------
 
     [RelayCommand]
     private void SetActiveTool(string tool) => ActiveTool = tool;
@@ -102,16 +196,39 @@ public partial class MainWindowViewModel : ViewModelBase
     private void TogglePlay() => IsPlaying = !IsPlaying;
 
     [RelayCommand]
-    private void SelectSceneObject(string id) => SelectedObjectId = id;
+    private void SelectSceneObject(string id)
+    {
+        SelectedObjectId = id;
+        if (_selectionRoundTripGuard) return;
+        if (_bridge == null) return;
+        // string id is "engine-{N}"; reverse to int for the bridge.
+        if (id != null && id.StartsWith("engine-") && int.TryParse(id.Substring(7), out int parsed))
+            _bridge.RequestSelect(parsed);
+    }
 
     [RelayCommand]
-    private void ToggleSceneObjectVisible(SceneObjectViewModel obj) => obj.Visible = !obj.Visible;
+    private void ToggleSceneObjectVisible(SceneObjectViewModel obj)
+    {
+        if (obj == null) return;
+        obj.Visible = !obj.Visible;
+        if (_bridge != null && obj.EngineId is int id)
+        {
+            bool v = obj.Visible;
+            _bridge.EnqueueMutate(id, target => target.IsEnabled = v);
+        }
+    }
 
     [RelayCommand]
-    private void ToggleSceneObjectLocked(SceneObjectViewModel obj) => obj.Locked = !obj.Locked;
+    private void ToggleSceneObjectLocked(SceneObjectViewModel obj)
+    {
+        if (obj != null) obj.Locked = !obj.Locked;
+    }
 
     [RelayCommand]
-    private void ToggleSceneObjectExpanded(SceneObjectViewModel obj) => obj.IsExpanded = !obj.IsExpanded;
+    private void ToggleSceneObjectExpanded(SceneObjectViewModel obj)
+    {
+        if (obj != null) obj.IsExpanded = !obj.IsExpanded;
+    }
 
     [RelayCommand]
     private void SetViewMode(string mode) => ViewMode = mode;
@@ -138,7 +255,41 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ConsoleErrorCount));
     }
 
-    private static SceneObjectViewModel? FindObject(System.Collections.Generic.IEnumerable<SceneObjectViewModel> list, string? id)
+    [RelayCommand]
+    private void AddPointLight()
+    {
+        if (_bridge == null) return;
+        XnaVector3 pos = _bridge.SpawnPoint;
+        _bridge.EnqueueAddPointLight(pos, radius: 25f, color: XnaColor.White, intensity: 20f);
+    }
+
+    [RelayCommand]
+    private void AddDirectionalLight()
+    {
+        if (_bridge == null) return;
+        // Default sun-ish direction pointing into the ground (engine convention: -Z is down)
+        var dir = new XnaVector3(0.3f, 0.2f, -1f);
+        _bridge.EnqueueAddDirectionalLight(dir, XnaColor.White, intensity: 1f);
+    }
+
+    [RelayCommand]
+    private void AddEntity(string? modelKey)
+    {
+        if (_bridge == null) return;
+        if (string.IsNullOrEmpty(modelKey)) modelKey = "Cube";
+        _bridge.EnqueueAddBasicEntity(modelKey, _bridge.SpawnPoint);
+    }
+
+    [RelayCommand]
+    private void DeleteSelected()
+    {
+        if (_bridge == null || SelectedObject is null || SelectedObject.EngineId is not int id) return;
+        _bridge.EnqueueDelete(id);
+    }
+
+    // -------- Helpers --------
+
+    private static SceneObjectViewModel? FindObject(IEnumerable<SceneObjectViewModel> list, string? id)
     {
         if (id == null) return null;
         foreach (var item in list)
@@ -148,87 +299,6 @@ public partial class MainWindowViewModel : ViewModelBase
             if (nested != null) return nested;
         }
         return null;
-    }
-
-    private void BuildScene()
-    {
-        var camera = new SceneObjectViewModel
-        {
-            Id = "camera-1",
-            Name = "Main Camera",
-            Type = SceneObjectType.Camera,
-            PositionY = 1.5,
-            PositionZ = -6,
-            RotationX = 15,
-            Camera = new CameraInfo { Fov = 60, Near = 0.1, Far = 1000 },
-        };
-
-        var light = new SceneObjectViewModel
-        {
-            Id = "light-1",
-            Name = "Directional Light",
-            Type = SceneObjectType.Light,
-            PositionY = 5,
-            RotationX = 50,
-            RotationY = -30,
-            Light = new LightInfo { Type = LightType.Directional, Color = Color.Parse("#FFF7D6"), Intensity = 1.0 },
-        };
-
-        var sceneGroup = new SceneObjectViewModel
-        {
-            Id = "group-scene",
-            Name = "Scene Objects",
-            Type = SceneObjectType.Group,
-        };
-
-        var cube = new SceneObjectViewModel
-        {
-            Id = "cube-1",
-            Name = "Cube",
-            Type = SceneObjectType.Mesh,
-            PositionY = 0.5,
-            Material = new MaterialInfo { Color = Color.Parse("#3D5AFA"), Roughness = 0.4, Metallic = 0.1, Opacity = 1.0 },
-        };
-        var sphere = new SceneObjectViewModel
-        {
-            Id = "sphere-1",
-            Name = "Sphere",
-            Type = SceneObjectType.Mesh,
-            PositionX = 2,
-            PositionY = 0.5,
-            Material = new MaterialInfo { Color = Color.Parse("#FA5A6E"), Roughness = 0.7, Metallic = 0.0, Opacity = 1.0 },
-        };
-        sceneGroup.Children.Add(cube);
-        sceneGroup.Children.Add(sphere);
-
-        var props = new SceneObjectViewModel
-        {
-            Id = "group-props",
-            Name = "Props",
-            Type = SceneObjectType.Group,
-            IsExpanded = false,
-        };
-        props.Children.Add(new SceneObjectViewModel
-        {
-            Id = "pillar-a",
-            Name = "Pillar A",
-            Type = SceneObjectType.Mesh,
-            PositionX = -3,
-            Material = new MaterialInfo { Color = Color.Parse("#BFC4D6") },
-        });
-        props.Children.Add(new SceneObjectViewModel
-        {
-            Id = "box-b",
-            Name = "Box B",
-            Type = SceneObjectType.Mesh,
-            PositionX = 4,
-            Material = new MaterialInfo { Color = Color.Parse("#7F5AFA") },
-        });
-
-        SceneObjects.Add(camera);
-        SceneObjects.Add(light);
-        SceneObjects.Add(sceneGroup);
-        SceneObjects.Add(props);
     }
 
     private void BuildAssets()
@@ -261,10 +331,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void BuildConsole()
     {
-        ConsoleEntries.Add(new ConsoleEntry { Id = 1, Level = ConsoleLevel.Log, Message = "Scene loaded successfully", Source = "SceneManager.cs:42", Time = "00:00:01" });
-        ConsoleEntries.Add(new ConsoleEntry { Id = 2, Level = ConsoleLevel.Log, Message = "Shader compiled: PBR/Standard", Source = "ShaderCache.cs:128", Time = "00:00:01" });
-        ConsoleEntries.Add(new ConsoleEntry { Id = 3, Level = ConsoleLevel.Warn, Message = "Mesh 'Pillar A' has no collider component", Source = "Physics.cs:88", Time = "00:00:02" });
-        ConsoleEntries.Add(new ConsoleEntry { Id = 4, Level = ConsoleLevel.Warn, Message = "Directional Light intensity clamped to [0, 8]", Source = "Lighting.cs:204", Time = "00:00:02" });
-        ConsoleEntries.Add(new ConsoleEntry { Id = 5, Level = ConsoleLevel.Error, Message = "NullReferenceException: Object reference not set", Source = "PlayerController.cs:201", Time = "00:00:03" });
+        ConsoleEntries.Add(new ConsoleEntry { Id = 1, Level = ConsoleLevel.Log, Message = "Anvil ready — waiting for engine bridge", Source = "Anvil:Boot", Time = "00:00:01" });
     }
 }
