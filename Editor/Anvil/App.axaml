@@ -1,0 +1,56 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anvil.App"
+             xmlns:local="using:Anvil"
+             RequestedThemeVariant="Dark">
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <FontFamily x:Key="AnvilFontFamily">avares://Avalonia.Fonts.Inter/Assets#Inter, Segoe UI, system-ui, sans-serif</FontFamily>
+
+            <SolidColorBrush x:Key="AnvilWindowBackgroundBrush"   Color="#13131A" />
+            <SolidColorBrush x:Key="AnvilTitleBarBackgroundBrush" Color="#0F0F17" />
+            <SolidColorBrush x:Key="AnvilPanelBackgroundBrush"    Color="#1A1A24" />
+            <SolidColorBrush x:Key="AnvilToolRailBackgroundBrush" Color="#1A1A1F" />
+            <SolidColorBrush x:Key="AnvilViewportBackgroundBrush" Color="#16161E" />
+            <SolidColorBrush x:Key="AnvilViewportGridBrush"       Color="#222230" />
+            <SolidColorBrush x:Key="AnvilBorderBrush"             Color="#2A2A35" />
+            <SolidColorBrush x:Key="AnvilBorderStrongBrush"       Color="#2A2A3F" />
+            <SolidColorBrush x:Key="AnvilInputBackgroundBrush"    Color="#0F0F17" />
+            <SolidColorBrush x:Key="AnvilSubtleBandBrush"         Color="#16161E" />
+            <SolidColorBrush x:Key="AnvilHoverBackgroundBrush"    Color="#22222F" />
+            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#4F6EF7" />
+            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#4F6EF7" />
+            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#5D9CF7" />
+            <SolidColorBrush x:Key="AnvilPlayBrush"               Color="#E06C5A" />
+            <SolidColorBrush x:Key="AnvilTextPrimaryBrush"        Color="#EEEEFF" />
+            <SolidColorBrush x:Key="AnvilTextSecondaryBrush"      Color="#CCCCEE" />
+            <SolidColorBrush x:Key="AnvilTextMutedBrush"          Color="#8888AA" />
+            <SolidColorBrush x:Key="AnvilTextSubtleBrush"         Color="#666688" />
+            <SolidColorBrush x:Key="AnvilTextDisabledBrush"       Color="#44445A" />
+
+            <SolidColorBrush x:Key="AnvilLogBrush"     Color="#5D9CF7" />
+            <SolidColorBrush x:Key="AnvilWarnBrush"    Color="#E0C34E" />
+            <SolidColorBrush x:Key="AnvilErrorBrush"   Color="#E0524E" />
+            <SolidColorBrush x:Key="AnvilMeshBrush"    Color="#A4ABFF" />
+            <SolidColorBrush x:Key="AnvilCameraBrush"  Color="#4ED18A" />
+            <SolidColorBrush x:Key="AnvilLightBrush"   Color="#E0C34E" />
+            <SolidColorBrush x:Key="AnvilFolderBrush"  Color="#C9A86B" />
+            <SolidColorBrush x:Key="AnvilScriptBrush"  Color="#7FB6FA" />
+            <SolidColorBrush x:Key="AnvilTextureBrush" Color="#FA9E5A" />
+            <SolidColorBrush x:Key="AnvilAudioBrush"   Color="#B98EFA" />
+
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://LucideAvalonia/Lucide/ResourcesIcons.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+</Application>
