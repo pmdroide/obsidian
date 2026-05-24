@@ -8,6 +8,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1440" d:DesignHeight="900"
         x:Class="Anvil.Views.MainWindow"
+        x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/Icon.ico"
         Width="1440" Height="900"
@@ -17,8 +18,8 @@
         FontFamily="{StaticResource AnvilFontFamily}"
         Foreground="{StaticResource AnvilTextPrimaryBrush}"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="36"
-        Title="Anvil Editor">
+        ExtendClientAreaTitleBarHeightHint="36"   
+        Title="">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -309,11 +310,14 @@
                 <!-- menu bar -->
                 <Menu Grid.Column="1" Classes="titleMenu" VerticalAlignment="Center">
                     <MenuItem Header="File">
-                        <MenuItem Header="New Scene" />
-                        <MenuItem Header="Open Scene..." />
+                        <MenuItem Header="New Scene" Command="{Binding NewSceneCommand}" />
+                        <MenuItem Header="Open Scene..." Command="{Binding OpenSceneCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
                         <Separator />
-                        <MenuItem Header="Save" />
-                        <MenuItem Header="Save As..." />
+                        <MenuItem Header="Save" Command="{Binding SaveSceneCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
+                        <MenuItem Header="Save As..." Command="{Binding SaveSceneAsCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
                         <Separator />
                         <MenuItem Header="Exit" />
                     </MenuItem>
@@ -580,22 +584,27 @@
                                 <Button Grid.Column="2" Classes="iconButton" ToolTip.Tip="Add">
                                     <controls:LucideIcon Icon="Plus" />
                                     <Button.Flyout>
+                                        <!-- MenuFlyout items don't inherit DataContext
+                                             from the placement target reliably, so bindings
+                                             that look like {Binding XCommand} silently
+                                             resolve to nothing. Reach back through the
+                                             Window's DataContext explicitly. -->
                                         <MenuFlyout>
                                             <MenuItem Header="Point Light"
-                                                      Command="{Binding AddPointLightCommand}" />
+                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddPointLightCommand}" />
                                             <MenuItem Header="Directional Light"
-                                                      Command="{Binding AddDirectionalLightCommand}" />
+                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddDirectionalLightCommand}" />
                                             <MenuItem Header="Basic Mesh (Cube)"
-                                                      Command="{Binding AddEntityCommand}"
+                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}"
                                                       CommandParameter="Cube" />
                                             <Separator />
                                             <MenuItem Header="Basic Mesh from Asset…"
-                                                      ItemsSource="{Binding AvailableModels}">
+                                                      ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AvailableModels}">
                                                 <MenuItem.Styles>
                                                     <Style Selector="MenuItem">
                                                         <Setter Property="Header" Value="{Binding}" />
                                                         <Setter Property="Command"
-                                                                Value="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddEntityCommand}" />
+                                                                Value="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}" />
                                                         <Setter Property="CommandParameter" Value="{Binding}" />
                                                     </Style>
                                                 </MenuItem.Styles>
@@ -714,7 +723,8 @@
                                    Text="Nothing selected" />
 
                         <!-- populated -->
-                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Grid.Row="1" x:Name="InspectorScroll"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       IsVisible="{Binding HasSelectedObject}">
                             <StackPanel Spacing="0" DataContext="{Binding SelectedObject}"
                                         x:DataType="m:SceneObjectViewModel">
@@ -845,8 +855,11 @@
                                                                VerticalAlignment="Center" />
                                                 </StackPanel>
                                                 <Button.Flyout>
+                                                    <!-- ColorPicker lives in a Flyout — DataContext
+                                                         doesn't flow through it reliably, so reach
+                                                         back through the Window to the live VM. -->
                                                     <Flyout>
-                                                        <ColorPicker Color="{Binding Color, Mode=TwoWay}" />
+                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Material.Color, Mode=TwoWay}" />
                                                     </Flyout>
                                                 </Button.Flyout>
                                             </Button>
@@ -966,7 +979,7 @@
                                                         BorderThickness="1" />
                                                 <Button.Flyout>
                                                     <Flyout>
-                                                        <ColorPicker Color="{Binding Color, Mode=TwoWay}" />
+                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Light.Color, Mode=TwoWay}" />
                                                     </Flyout>
                                                 </Button.Flyout>
                                             </Button>

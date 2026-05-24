@@ -17,6 +17,22 @@ namespace Anvil.Services;
 /// </summary>
 public static class BridgeReconciler
 {
+    /// <summary>
+    /// True while the user is editing a control inside the inspector
+    /// (NumericUpDown / Slider / ColorPicker, or anything inside the inspector
+    /// ScrollViewer). The reconciler skips snapshot writes to the currently
+    /// selected object while this is true so that focus is not stolen mid-edit
+    /// and sliders/color-pickers don't snap back to engine-side values.
+    /// </summary>
+    public static bool IsInspectorFocused;
+
+    /// <summary>
+    /// The currently selected engine id, supplied by MainWindowViewModel before
+    /// each <see cref="Apply"/> call. Combined with <see cref="IsInspectorFocused"/>
+    /// to identify which VM should have its fields frozen.
+    /// </summary>
+    public static int? SelectedEngineId;
+
     public static void Apply(
         IReadOnlyList<EditorObjectSnapshot> snapshot,
         ObservableCollection<SceneObjectViewModel> target,
@@ -67,6 +83,14 @@ public static class BridgeReconciler
 
     private static void CopySnapshotInto(SceneObjectViewModel vm, EditorObjectSnapshot snap, IEditorBridge bridge)
     {
+        // Freeze numeric writes for the selected object while the inspector has
+        // focus — otherwise engine-side jitter (physics, gizmo, camera follow)
+        // overwrites whatever the user is mid-typing/dragging.
+        bool freezeFields = IsInspectorFocused
+            && vm.EngineId is int eid
+            && SelectedEngineId is int sel
+            && eid == sel;
+
         vm.BeginSuppressPush();
         try
         {
@@ -75,36 +99,44 @@ public static class BridgeReconciler
             if (vm.Type != newObjectType) vm.Type = newObjectType;
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
 
-            SetIfChanged(v => vm.PositionX = v, vm.PositionX, snap.Position.X);
-            SetIfChanged(v => vm.PositionY = v, vm.PositionY, snap.Position.Y);
-            SetIfChanged(v => vm.PositionZ = v, vm.PositionZ, snap.Position.Z);
+            if (!freezeFields)
+            {
+                SetIfChanged(v => vm.PositionX = v, vm.PositionX, snap.Position.X);
+                SetIfChanged(v => vm.PositionY = v, vm.PositionY, snap.Position.Y);
+                SetIfChanged(v => vm.PositionZ = v, vm.PositionZ, snap.Position.Z);
 
-            var (rx, ry, rz) = RotationConversion.MatrixToEuler(snap.Rotation);
-            SetIfChanged(v => vm.RotationX = v, vm.RotationX, rx);
-            SetIfChanged(v => vm.RotationY = v, vm.RotationY, ry);
-            SetIfChanged(v => vm.RotationZ = v, vm.RotationZ, rz);
+                var (rx, ry, rz) = RotationConversion.MatrixToEuler(snap.Rotation);
+                SetIfChanged(v => vm.RotationX = v, vm.RotationX, rx);
+                SetIfChanged(v => vm.RotationY = v, vm.RotationY, ry);
+                SetIfChanged(v => vm.RotationZ = v, vm.RotationZ, rz);
 
-            SetIfChanged(v => vm.ScaleX = v, vm.ScaleX, snap.Scale.X);
-            SetIfChanged(v => vm.ScaleY = v, vm.ScaleY, snap.Scale.Y);
-            SetIfChanged(v => vm.ScaleZ = v, vm.ScaleZ, snap.Scale.Z);
+                SetIfChanged(v => vm.ScaleX = v, vm.ScaleX, snap.Scale.X);
+                SetIfChanged(v => vm.ScaleY = v, vm.ScaleY, snap.Scale.Y);
+                SetIfChanged(v => vm.ScaleZ = v, vm.ScaleZ, snap.Scale.Z);
+            }
 
-            // Material
+            // Material — never replace an existing MaterialInfo instance for the
+            // currently selected object. Doing so collapses the bound Expander
+            // and closes any open ColorPicker flyout mid-edit.
             if (snap.Material.HasValue)
             {
                 var m = snap.Material.Value;
                 vm.Material ??= new MaterialInfo();
                 vm.Material.AttachToParent(vm);
-                var newColor = FromVector3(m.DiffuseColor);
-                if (vm.Material.Color != newColor) vm.Material.Color = newColor;
-                SetIfChanged(v => vm.Material.Roughness = v, vm.Material.Roughness, m.Roughness);
-                SetIfChanged(v => vm.Material.Metallic = v, vm.Material.Metallic, m.Metallic);
-                SetIfChanged(v => vm.Material.EmissiveStrength = v, vm.Material.EmissiveStrength, m.EmissiveStrength);
-                if (vm.Material.IsTransparent != m.IsTransparent) vm.Material.IsTransparent = m.IsTransparent;
-                if (vm.Material.MaterialType != m.MaterialType) vm.Material.MaterialType = m.MaterialType;
-                double newOpacity = m.IsTransparent ? 0.5 : 1.0;
-                SetIfChanged(v => vm.Material.Opacity = v, vm.Material.Opacity, newOpacity);
+                if (!freezeFields)
+                {
+                    var newColor = FromVector3(m.DiffuseColor);
+                    if (vm.Material.Color != newColor) vm.Material.Color = newColor;
+                    SetIfChanged(v => vm.Material.Roughness = v, vm.Material.Roughness, m.Roughness);
+                    SetIfChanged(v => vm.Material.Metallic = v, vm.Material.Metallic, m.Metallic);
+                    SetIfChanged(v => vm.Material.EmissiveStrength = v, vm.Material.EmissiveStrength, m.EmissiveStrength);
+                    if (vm.Material.IsTransparent != m.IsTransparent) vm.Material.IsTransparent = m.IsTransparent;
+                    if (vm.Material.MaterialType != m.MaterialType) vm.Material.MaterialType = m.MaterialType;
+                    double newOpacity = m.IsTransparent ? 0.5 : 1.0;
+                    SetIfChanged(v => vm.Material.Opacity = v, vm.Material.Opacity, newOpacity);
+                }
             }
-            else if (snap.Kind != EditorObjectKind.BasicEntity)
+            else if (snap.Kind != EditorObjectKind.BasicEntity && !freezeFields)
             {
                 vm.Material = null;
             }
@@ -115,15 +147,18 @@ public static class BridgeReconciler
                 var l = snap.Light.Value;
                 vm.Light ??= new LightInfo();
                 vm.Light.AttachToParent(vm);
-                var newType = l.IsDirectional ? LightType.Directional : LightType.Point;
-                if (vm.Light.Type != newType) vm.Light.Type = newType;
-                var newColor = FromXnaColor(l.Color);
-                if (vm.Light.Color != newColor) vm.Light.Color = newColor;
-                SetIfChanged(v => vm.Light.Intensity = v, vm.Light.Intensity, l.Intensity);
-                SetIfChanged(v => vm.Light.Radius = v, vm.Light.Radius, l.Radius);
-                if (vm.Light.CastShadows != l.CastShadows) vm.Light.CastShadows = l.CastShadows;
+                if (!freezeFields)
+                {
+                    var newType = l.IsDirectional ? LightType.Directional : LightType.Point;
+                    if (vm.Light.Type != newType) vm.Light.Type = newType;
+                    var newColor = FromXnaColor(l.Color);
+                    if (vm.Light.Color != newColor) vm.Light.Color = newColor;
+                    SetIfChanged(v => vm.Light.Intensity = v, vm.Light.Intensity, l.Intensity);
+                    SetIfChanged(v => vm.Light.Radius = v, vm.Light.Radius, l.Radius);
+                    if (vm.Light.CastShadows != l.CastShadows) vm.Light.CastShadows = l.CastShadows;
+                }
             }
-            else
+            else if (!freezeFields)
             {
                 vm.Light = null;
             }
@@ -133,7 +168,7 @@ public static class BridgeReconciler
             {
                 vm.Camera ??= new CameraInfo();
             }
-            else
+            else if (!freezeFields)
             {
                 vm.Camera = null;
             }
@@ -150,6 +185,7 @@ public static class BridgeReconciler
         EditorObjectKind.PointLight => SceneObjectType.Light,
         EditorObjectKind.DirectionalLight => SceneObjectType.Light,
         EditorObjectKind.Camera => SceneObjectType.Camera,
+        EditorObjectKind.Decal => SceneObjectType.Mesh,
         _ => SceneObjectType.Empty,
     };
 

@@ -12,6 +12,7 @@ namespace Engine.Editor
         PointLight,
         DirectionalLight,
         Camera,
+        Decal,
     }
 
     public readonly struct LightSnapshot
@@ -99,6 +100,27 @@ namespace Engine.Editor
         void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity);
         void EnqueueAddBasicEntity(string modelKey, Vector3 position);
         void EnqueueDelete(int id);
+
+        // Gizmo mode (Translate/Rotate/Scale). Set to null to suppress all gizmo
+        // interaction (e.g. "Select" tool — selection still works, drag does not).
+        void RequestGizmoMode(Logic.EditorLogic.GizmoModes? mode);
+
+        // Play/Stop. Calling Play() while already playing or Stop() while stopped
+        // is a no-op. ModeChanged fires on the game thread.
+        Logic.GameMode Mode { get; }
+        void RequestPlay();
+        void RequestStop();
+        event Action<Logic.GameMode> ModeChanged;
+
+        // Scene file ops — queued. SceneChanged fires (on the game thread) after a
+        // load/new completes; UI consumers must marshal to the UI thread.
+        void EnqueueNewScene();
+        void EnqueueLoadScene(string path);
+        void EnqueueSaveScene(string path);
+        string CurrentScenePath { get; }
+        string CurrentSceneName { get; }
+        bool IsSceneDirty { get; }
+        event Action SceneChanged;
 
         // Model picker support — names of available ModelDefinitions in the Assets registry.
         IReadOnlyList<string> AvailableModelKeys { get; }

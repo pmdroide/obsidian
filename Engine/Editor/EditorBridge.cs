@@ -28,27 +28,61 @@ namespace Engine.Editor
         private Dictionary<string, ModelDefinition> _modelKeys = new Dictionary<string, ModelDefinition>();
         private List<string> _modelKeyList = new List<string>();
 
-        // Throttle snapshot publication: 60fps engine / 3 = ~20Hz.
+        // Throttle snapshot publication: 60fps engine / 6 = ~10Hz. Lower than
+        // 20Hz because each publish re-evaluates every NumericUpDown / ColorPicker
+        // value in the inspector — too frequent and the user loses input focus.
         private int _framesSinceLastPublish;
-        private const int PublishEveryNFrames = 3;
+        private const int PublishEveryNFrames = 6;
 
         public IReadOnlyList<EditorObjectSnapshot> Snapshot => _snapshot;
         public int? SelectedId => _selectedId;
         public Vector3 SpawnPoint => _spawnPoint;
         public IReadOnlyList<string> AvailableModelKeys => _modelKeyList;
 
-        // Diagnostic log path: %TEMP%\anvil-bridge.log. Cheap text append; rolled by hand.
-        private static readonly string LogPath =
-            Path.Combine(Path.GetTempPath(), "anvil-bridge.log");
+        // Diagnostic log paths. Desktop is the primary (easy to find for the user);
+        // %LOCALAPPDATA%\Anvil is the fallback when Desktop writes fail (locked-down
+        // user profiles, redirected folders, OneDrive sync conflicts).
+        public static readonly string LogPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            "anvil-bridge.log");
 
-        private static void Log(string msg)
+        public static readonly string FallbackLogPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Anvil",
+            "anvil-bridge.log");
+
+        // Static ctor: emit a bootstrap line before any other engine code runs.
+        // If logging itself is broken (both paths fail), nothing else this class
+        // does can be diagnosed — so this is the canary.
+        static EditorBridge()
         {
-            try { File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}{Environment.NewLine}"); }
+            Log($"--- EditorBridge static init pid={Environment.ProcessId} ---");
+        }
+
+        public static void Log(string msg)
+        {
+            string line = $"[{DateTime.Now:HH:mm:ss.fff}] {msg}{Environment.NewLine}";
+            try { File.AppendAllText(LogPath, line); return; }
+            catch { /* fall through to fallback */ }
+            try
+            {
+                string dir = Path.GetDirectoryName(FallbackLogPath);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                File.AppendAllText(FallbackLogPath, line);
+            }
             catch { /* logging never throws */ }
         }
 
         public event Action<IReadOnlyList<EditorObjectSnapshot>> SnapshotUpdated;
         public event Action<int?> SelectionChanged;
+        public event Action SceneChanged;
+        public event Action<Logic.GameMode> ModeChanged;
+
+        public string CurrentScenePath => _scene?.ActiveScene?.FilePath;
+        public string CurrentSceneName => _scene?.ActiveScene?.Name;
+        public bool IsSceneDirty => _scene?.ActiveScene?.IsDirty ?? false;
+
+        public Logic.GameMode Mode => _scene?.PlayMode?.Mode ?? Logic.GameMode.Edit;
 
         internal void Bind(MainSceneLogic scene, EditorLogic editor, Assets assets)
         {
@@ -56,6 +90,26 @@ namespace Engine.Editor
             _editor = editor;
             _assets = assets;
             BuildModelKeys(assets);
+
+            // Forward Scene swap events to UI consumers.
+            if (scene != null)
+            {
+                scene.SceneManager.SceneChanged += OnSceneSwap;
+                if (scene.PlayMode != null) scene.PlayMode.ModeChanged += OnModeChanged;
+            }
+
+            // Confirms logging works AND that the bridge has been wired. If
+            // the file does not appear at LogPath after a run, the bridge
+            // never got bound (engine likely failed to boot).
+            Log($"Bridge bound — scene={(scene != null)}, editor={(editor != null)}, assets={(assets != null)}, models={_modelKeyList.Count}");
+        }
+
+        private void OnSceneSwap(Logic.Scene oldScene, Logic.Scene newScene)
+        {
+            // Clear selection — the old SelectedObject reference is dead.
+            if (_editor != null) _editor.SelectedObject = null;
+            try { SceneChanged?.Invoke(); }
+            catch (Exception ex) { Log("SceneChanged handler threw: " + ex); }
         }
 
         private void BuildModelKeys(Assets assets)
@@ -114,31 +168,53 @@ namespace Engine.Editor
 
         public void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity)
         {
+            Log($"EnqueueAddPointLight pos={position} radius={radius} intensity={intensity}");
             _pendingOps.Enqueue(() =>
             {
-                if (_scene == null) return;
-                _scene.EditorAddPointLight(position, radius, color, intensity);
+                if (_scene == null) { Log("AddPointLight: scene is null"); return; }
+                try
+                {
+                    PointLight light = _scene.EditorAddPointLight(position, radius, color, intensity);
+                    Log($"AddPointLight ok: id={light?.Id}");
+                }
+                catch (Exception ex) { Log("AddPointLight threw: " + ex); }
             });
         }
 
         public void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity)
         {
+            Log($"EnqueueAddDirectionalLight dir={direction} intensity={intensity}");
             _pendingOps.Enqueue(() =>
             {
-                if (_scene == null) return;
-                _scene.EditorAddDirectionalLight(direction, color, intensity);
+                if (_scene == null) { Log("AddDirectionalLight: scene is null"); return; }
+                try
+                {
+                    DirectionalLight light = _scene.EditorAddDirectionalLight(direction, color, intensity);
+                    Log($"AddDirectionalLight ok: id={light?.Id}");
+                }
+                catch (Exception ex) { Log("AddDirectionalLight threw: " + ex); }
             });
         }
 
         public void EnqueueAddBasicEntity(string modelKey, Vector3 position)
         {
+            Log($"EnqueueAddBasicEntity modelKey={modelKey} pos={position}");
             _pendingOps.Enqueue(() =>
             {
-                if (_scene == null || _assets == null) return;
-                if (string.IsNullOrEmpty(modelKey)) return;
-                if (!_modelKeys.TryGetValue(modelKey, out ModelDefinition md) || md == null) return;
-                MaterialEffect material = _assets.BaseMaterial?.Clone();
-                _scene.EditorAddBasicEntity(md, material, position);
+                if (_scene == null || _assets == null) { Log("AddBasicEntity: scene/assets null"); return; }
+                if (string.IsNullOrEmpty(modelKey)) { Log("AddBasicEntity: empty modelKey"); return; }
+                if (!_modelKeys.TryGetValue(modelKey, out ModelDefinition md) || md == null)
+                {
+                    Log($"AddBasicEntity: model '{modelKey}' not in registry");
+                    return;
+                }
+                try
+                {
+                    MaterialEffect material = _assets.BaseMaterial?.Clone();
+                    BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
+                    Log($"AddBasicEntity ok: id={entity?.Id}");
+                }
+                catch (Exception ex) { Log("AddBasicEntity threw: " + ex); }
             });
         }
 
@@ -149,6 +225,91 @@ namespace Engine.Editor
                 if (_scene == null) return;
                 _scene.EditorDelete(id);
             });
+        }
+
+        public void EnqueueNewScene()
+        {
+            Log("EnqueueNewScene");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene == null) { Log("NewScene: scene-logic null"); return; }
+                try { _scene.SceneManager.NewScene(); }
+                catch (Exception ex) { Log("NewScene threw: " + ex); }
+            });
+        }
+
+        public void EnqueueLoadScene(string path)
+        {
+            Log($"EnqueueLoadScene path='{path}'");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene == null) { Log("LoadScene: scene-logic null"); return; }
+                try
+                {
+                    Logic.Scene loaded = _scene.SceneManager.LoadScene(path);
+                    if (loaded == null) Log("LoadScene returned null");
+                }
+                catch (Exception ex) { Log("LoadScene threw: " + ex); }
+            });
+        }
+
+        public void EnqueueSaveScene(string path)
+        {
+            Log($"EnqueueSaveScene path='{path}'");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene == null) { Log("SaveScene: scene-logic null"); return; }
+                try
+                {
+                    bool ok = _scene.SceneManager.SaveScene(path);
+                    if (!ok) Log("SaveScene returned false");
+                }
+                catch (Exception ex) { Log("SaveScene threw: " + ex); }
+            });
+        }
+
+        public void RequestGizmoMode(EditorLogic.GizmoModes? mode)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (_editor == null) return;
+                if (mode is EditorLogic.GizmoModes m)
+                {
+                    GameStats.e_gizmoMode = m;
+                    _editor.IsGizmoSuppressed = false;
+                }
+                else
+                {
+                    // null → Select tool: gizmo hidden, only picking active.
+                    _editor.IsGizmoSuppressed = true;
+                }
+            });
+        }
+
+        public void RequestPlay()
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene?.PlayMode == null) { Log("RequestPlay: PlayMode null"); return; }
+                try { _scene.PlayMode.Play(); }
+                catch (Exception ex) { Log("Play threw: " + ex); }
+            });
+        }
+
+        public void RequestStop()
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene?.PlayMode == null) { Log("RequestStop: PlayMode null"); return; }
+                try { _scene.PlayMode.Stop(); }
+                catch (Exception ex) { Log("Stop threw: " + ex); }
+            });
+        }
+
+        private void OnModeChanged(Logic.GameMode mode)
+        {
+            try { ModeChanged?.Invoke(mode); }
+            catch (Exception ex) { Log("ModeChanged handler threw: " + ex); }
         }
 
         // ---------- engine-side drain ----------
@@ -203,6 +364,7 @@ namespace Engine.Editor
             int capacity = (_scene.BasicEntities?.Count ?? 0)
                          + (_scene.PointLights?.Count ?? 0)
                          + (_scene.DirectionalLights?.Count ?? 0)
+                         + (_scene.Decals?.Count ?? 0)
                          + 1;
             List<EditorObjectSnapshot> list = new List<EditorObjectSnapshot>(capacity);
 
@@ -291,6 +453,21 @@ namespace Engine.Editor
                     material: null));
             }
 
+            for (int i = 0; i < _scene.Decals.Count; i++)
+            {
+                Decal dc = _scene.Decals[i];
+                list.Add(new EditorObjectSnapshot(
+                    id: dc.Id,
+                    name: dc.Name ?? ("Decal " + dc.Id),
+                    kind: EditorObjectKind.Decal,
+                    position: dc.Position,
+                    rotation: dc.RotationMatrix,
+                    scale: dc.Scale,
+                    isEnabled: dc.IsEnabled,
+                    light: null,
+                    material: null));
+            }
+
             return list;
         }
 
@@ -302,6 +479,8 @@ namespace Engine.Editor
                 if (_scene.PointLights[i].Id == id) return _scene.PointLights[i];
             for (int i = 0; i < _scene.DirectionalLights.Count; i++)
                 if (_scene.DirectionalLights[i].Id == id) return _scene.DirectionalLights[i];
+            for (int i = 0; i < _scene.Decals.Count; i++)
+                if (_scene.Decals[i].Id == id) return _scene.Decals[i];
             return null;
         }
 

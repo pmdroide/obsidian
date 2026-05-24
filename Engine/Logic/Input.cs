@@ -19,8 +19,15 @@ namespace Engine.Logic
             mouseState = Mouse.GetState();
             keyboardState = Keyboard.GetState();
 
-            KeyboardEvents(gameTime, camera);
-            MouseEvents(camera);
+            // Editor camera gets the full DCC-style control set (RMB orbit, MMB pan,
+            // scroll zoom, WASD only while RMB is held). The legacy free-flight code
+            // path stays for the game camera so Play mode keeps working unchanged.
+            if (camera is EditorCamera ec) EditorCameraEvents(gameTime, ec);
+            else
+            {
+                KeyboardEvents(gameTime, camera);
+                MouseEvents(camera);
+            }
         }
 
         private static void MouseEvents(Camera camera)
@@ -46,6 +53,58 @@ namespace Engine.Logic
                 camera.Forward.Normalize();
             }
 
+        }
+
+        private static void EditorCameraEvents(GameTime gameTime, EditorCamera camera)
+        {
+            float deltaX = mouseState.X - mouseLastState.X;
+            float deltaY = mouseState.Y - mouseLastState.Y;
+            float scrollDelta = mouseState.ScrollWheelValue - mouseLastState.ScrollWheelValue;
+            float delta = (float)gameTime.ElapsedGameTime.TotalMilliseconds * 60f / 1000f;
+
+            bool rmb = mouseState.RightButton == ButtonState.Pressed;
+            bool mmb = mouseState.MiddleButton == ButtonState.Pressed;
+
+            const float lookSpeed = 0.005f;   // radians/pixel
+            const float panSpeed = 0.05f;     // world units/pixel
+            const float zoomStep = 0.01f;     // world units per scroll notch (delta is signed ticks * 120)
+            const float flyForward = 0.8f;
+            const float flyStrafe = 0.4f;
+
+            // RMB drag → yaw + pitch (orbit-look). Pitch clamps inside ApplyYawPitch.
+            if (rmb && (deltaX != 0 || deltaY != 0))
+            {
+                camera.Yaw   -= deltaX * lookSpeed;
+                camera.Pitch -= deltaY * lookSpeed;
+                camera.ApplyYawPitch();
+            }
+
+            // MMB drag → pan along the camera's right + up axes.
+            if (mmb && (deltaX != 0 || deltaY != 0))
+            {
+                Vector3 right = camera.Right;
+                Vector3 up = camera.Up;
+                camera.Position += -deltaX * panSpeed * right + deltaY * panSpeed * up;
+            }
+
+            // Scroll wheel → translate along forward.
+            if (Math.Abs(scrollDelta) > 0.01f)
+            {
+                camera.Position += camera.Forward * scrollDelta * zoomStep;
+            }
+
+            // WASD only while RMB held — otherwise typing into the UI moves the camera.
+            if (rmb && !DebugScreen.ConsoleOpen)
+            {
+                Vector3 forward = camera.Forward;
+                Vector3 right = camera.Right;
+                if (keyboardState.IsKeyDown(Keys.W)) camera.Position += forward * flyForward * delta;
+                if (keyboardState.IsKeyDown(Keys.S)) camera.Position -= forward * flyForward * delta;
+                if (keyboardState.IsKeyDown(Keys.D)) camera.Position += right * flyStrafe * delta;
+                if (keyboardState.IsKeyDown(Keys.A)) camera.Position -= right * flyStrafe * delta;
+                if (keyboardState.IsKeyDown(Keys.E)) camera.Position += camera.Up * flyStrafe * delta;
+                if (keyboardState.IsKeyDown(Keys.Q)) camera.Position -= camera.Up * flyStrafe * delta;
+            }
         }
 
         public static Point GetMousePosition()

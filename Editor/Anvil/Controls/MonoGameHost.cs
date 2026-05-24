@@ -203,7 +203,9 @@ public class MonoGameHost : NativeControlHost
     {
         try
         {
+            EditorBridge.Log("MonoGameHost: constructing Engine.Engine");
             _game = new Engine.Engine();
+            EditorBridge.Log("MonoGameHost: Engine.Engine constructed");
 
             // GraphicsDeviceManager registers itself as IGraphicsDeviceManager in
             // Game.Services during its constructor, so this resolves without forcing
@@ -224,8 +226,13 @@ public class MonoGameHost : NativeControlHost
             {
                 Dispatcher.UIThread.Post(() =>
                 {
-                    try { BridgeReady?.Invoke(bridge); } catch { /* swallow UI errors */ }
+                    try { BridgeReady?.Invoke(bridge); }
+                    catch (Exception ex) { EditorBridge.Log("BridgeReady handler threw: " + ex); }
                 });
+            }
+            else
+            {
+                EditorBridge.Log("MonoGameHost: _game.Bridge is null after construction");
             }
 
             // Manual game loop: Game.Run() pumps a blocking WinForms message loop on
@@ -251,24 +258,18 @@ public class MonoGameHost : NativeControlHost
                 catch (Exception ex)
                 {
                     // Swallow per-frame errors, but log so the user can diagnose
-                    // an "Add Object crashes" sort of regression. Path mirrors
-                    // EditorBridge.LogPath for convenience.
-                    try
-                    {
-                        File.AppendAllText(
-                            Path.Combine(Path.GetTempPath(), "anvil-bridge.log"),
-                            $"[{DateTime.Now:HH:mm:ss.fff}] RunOneFrame threw: {ex}{Environment.NewLine}");
-                    }
-                    catch { }
+                    // an "Add Object crashes" sort of regression.
+                    EditorBridge.Log("RunOneFrame threw: " + ex);
                 }
                 
                 Thread.Sleep(1);
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Engine threw during construction — release the waiter so the UI
             // thread doesn't hang forever in CreateNativeControlCore.
+            EditorBridge.Log("GameThreadProc fatal: " + ex);
             _handleReady.Set();
         }
         finally

@@ -153,6 +153,18 @@ namespace Engine.Renderer.Helper
             }
         }
 
+        /// <summary>
+        /// Drop every registered material/mesh slot. Used by <see cref="SceneManager"/> on
+        /// scene swap. Preserves the underlying array capacity so shaders that may have
+        /// cached slot pointers don't see them rebound at unexpected addresses.
+        /// </summary>
+        public void Clear()
+        {
+            for (int i = 0; i < MaterialLib.Length; i++) MaterialLib[i] = null;
+            for (int i = 0; i < MaterialLibPointer.Length; i++) MaterialLibPointer[i] = 0;
+            Index = 0;
+        }
+
         public void DeleteFromRegistry(BasicEntity basicEntity)
         {
             if (basicEntity.Model == null) return; //nothing to delete

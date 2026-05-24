@@ -1,8 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Anvil.Models;
 using Anvil.Services;
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,13 +21,27 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _projectName = "MyGame";
     [ObservableProperty] private string _sceneName = "SampleScene";
     [ObservableProperty] private string _platform = "PC, Mac & Linux";
-    [ObservableProperty] private string _graphicsApi = "DX12";
+    [ObservableProperty] private string _graphicsApi = "DX11";
     [ObservableProperty] private int _fps = 60;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsToolSelect), nameof(IsToolMove), nameof(IsToolRotate),
         nameof(IsToolScale), nameof(IsToolPan), nameof(IsToolSnap))]
     private string _activeTool = "Select";
+
+    partial void OnActiveToolChanged(string value)
+    {
+        // Forward to the engine's gizmo state. Null = Select (no gizmo, just picking).
+        if (_bridge == null) return;
+        Engine.Logic.EditorLogic.GizmoModes? mode = value switch
+        {
+            "Move" => Engine.Logic.EditorLogic.GizmoModes.Translation,
+            "Rotate" => Engine.Logic.EditorLogic.GizmoModes.Rotation,
+            "Scale" => Engine.Logic.EditorLogic.GizmoModes.Scale,
+            _ => null,
+        };
+        _bridge.RequestGizmoMode(mode);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlayStateLabel))]
@@ -59,6 +77,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _selectionRoundTripGuard;
     private SceneObjectViewModel? _lastNotifiedSelected;
 
+    /// <summary>
+    /// True while the snapshot reconciler is touching <see cref="SceneObjects"/>.
+    /// Avalonia's TreeView reacts to collection changes by re-computing its
+    /// SelectedItem (sometimes resetting to null or the first child), which
+    /// would otherwise call our setter and clobber the engine-side selection.
+    /// Setter checks this flag and bails.
+    /// </summary>
+    public bool ReconcilerActive { get; set; }
+
     public SceneObjectViewModel? SelectedObject => FindObject(SceneObjects, SelectedObjectId);
     public string? SelectedObjectName => SelectedObject?.Name;
     public bool HasSelectedObject => SelectedObject != null;
@@ -74,6 +101,10 @@ public partial class MainWindowViewModel : ViewModelBase
         get => SelectedObject;
         set
         {
+            // Reject anything that came from the framework recomputing its
+            // selection during reconciliation — only the explicit user click
+            // should reach this setter while ReconcilerActive == false.
+            if (ReconcilerActive) return;
             // TreeView fires this with null during ItemsSource reconciliation
             // (when an item is replaced or removed). Ignore those — we don't
             // want a transient deselect to clobber the engine-side selection.
@@ -132,9 +163,38 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge = bridge;
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
+        bridge.SceneChanged += OnBridgeSceneChanged;
+        bridge.ModeChanged += OnBridgeModeChanged;
 
         // Refresh model picker now (may already be populated after first frame).
         RefreshAvailableModels();
+
+        // Push the current tool selection into the engine so the gizmo matches the UI
+        // from the first frame (otherwise the engine boots in Translation mode regardless).
+        OnActiveToolChanged(ActiveTool);
+    }
+
+    private void OnBridgeSceneChanged()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_bridge == null) return;
+            SceneName = _bridge.CurrentSceneName ?? "Untitled";
+            // Hierarchy will be repopulated by the next snapshot tick; nothing else
+            // to do here, since the reconciler removes stale VMs as their IDs leave
+            // the snapshot.
+        });
+    }
+
+    private void OnBridgeModeChanged(Engine.Logic.GameMode mode)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Keep the UI's Play indicator in sync if engine-side code (script, hotkey,
+            // future automation) changes the mode without going through TogglePlay.
+            bool nowPlaying = mode == Engine.Logic.GameMode.Play;
+            if (IsPlaying != nowPlaying) IsPlaying = nowPlaying;
+        });
     }
 
     private void OnBridgeSnapshot(IReadOnlyList<EditorObjectSnapshot> snapshot)
@@ -144,6 +204,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             if (_bridge == null) return;
+            ReconcilerActive = true;
+            BridgeReconciler.SelectedEngineId = SelectedObject?.EngineId;
             try
             {
                 BridgeReconciler.Apply(snapshot, SceneObjects, _bridge);
@@ -151,6 +213,10 @@ public partial class MainWindowViewModel : ViewModelBase
             catch
             {
                 // Don't let a reconciler error tear down the snapshot pipeline.
+            }
+            finally
+            {
+                ReconcilerActive = false;
             }
             if (AvailableModels.Count == 0) RefreshAvailableModels();
 
@@ -193,7 +259,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SetActiveTool(string tool) => ActiveTool = tool;
 
     [RelayCommand]
-    private void TogglePlay() => IsPlaying = !IsPlaying;
+    private void TogglePlay()
+    {
+        IsPlaying = !IsPlaying;
+        if (_bridge == null) return;
+        if (IsPlaying) _bridge.RequestPlay(); else _bridge.RequestStop();
+    }
 
     [RelayCommand]
     private void SelectSceneObject(string id)
@@ -285,6 +356,75 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge == null || SelectedObject is null || SelectedObject.EngineId is not int id) return;
         _bridge.EnqueueDelete(id);
+    }
+
+    // -------- Scene file commands --------
+
+    private const string SceneFileExtension = "obsc";
+    private string? _lastSceneFolder;
+
+    [RelayCommand]
+    private void NewScene()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueNewScene();
+    }
+
+    [RelayCommand]
+    private async Task OpenSceneAsync(Window? window)
+    {
+        if (_bridge == null || window?.StorageProvider is not { } sp) return;
+        var files = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open Scene",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Obsidian Scene") { Patterns = new[] { "*." + SceneFileExtension } }
+            },
+            SuggestedStartLocation = await GetLastFolderAsync(sp),
+        });
+        if (files.Count == 0) return;
+        string path = files[0].Path.LocalPath;
+        _lastSceneFolder = System.IO.Path.GetDirectoryName(path);
+        _bridge.EnqueueLoadScene(path);
+    }
+
+    [RelayCommand]
+    private async Task SaveSceneAsync(Window? window)
+    {
+        if (_bridge == null) return;
+        string? current = _bridge.CurrentScenePath;
+        if (string.IsNullOrEmpty(current)) { await SaveSceneAsAsync(window); return; }
+        _bridge.EnqueueSaveScene(current);
+    }
+
+    [RelayCommand]
+    private async Task SaveSceneAsAsync(Window? window)
+    {
+        if (_bridge == null || window?.StorageProvider is not { } sp) return;
+        var file = await sp.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Scene As",
+            DefaultExtension = SceneFileExtension,
+            SuggestedFileName = _bridge.CurrentSceneName ?? "Untitled",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("Obsidian Scene") { Patterns = new[] { "*." + SceneFileExtension } }
+            },
+            SuggestedStartLocation = await GetLastFolderAsync(sp),
+        });
+        if (file == null) return;
+        string path = file.Path.LocalPath;
+        _lastSceneFolder = System.IO.Path.GetDirectoryName(path);
+        _bridge.EnqueueSaveScene(path);
+    }
+
+    private async Task<IStorageFolder?> GetLastFolderAsync(IStorageProvider sp)
+    {
+        if (string.IsNullOrEmpty(_lastSceneFolder)) return null;
+        try { return await sp.TryGetFolderFromPathAsync(new Uri(_lastSceneFolder)); }
+        catch { return null; }
     }
 
     // -------- Helpers --------

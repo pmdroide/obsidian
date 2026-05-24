@@ -5,6 +5,7 @@ using BEPUphysics.BroadPhaseEntries;
 using BEPUphysics.Entities;
 using BEPUphysics.Entities.Prefabs;
 using BEPUutilities;
+using Engine.Editor;
 using Engine.Entities;
 using Engine.Recources;
 using Engine.Recources.Helper;
@@ -30,21 +31,55 @@ namespace Engine.Logic
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  VARIABLES
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
+
         private Assets _assets;
-        
-        public Camera Camera;
+
+        // SceneManager owns the active scene; everything content-related is reached
+        // through ActiveScene. MainSceneLogic keeps the runtime drivers (physics,
+        // mesh library, SDF, editor camera, debug entities).
+        public readonly SceneManager SceneManager = new SceneManager(new Scene());
+        public Scene ActiveScene => SceneManager.ActiveScene;
+
+        // Editor-only camera. Active in Edit mode; Play mode swaps in the scene's
+        // MainCamera (the actual gameplay camera).
+        public EditorCamera EditorCamera;
+
+        // Owns Play/Stop transitions. Constructed in Initialize() so its constructor
+        // can capture a reference back to this MainSceneLogic.
+        public PlayModeController PlayMode;
+
+        // Active rendering camera. The renderer reads this; setters (SetUpEditorScene)
+        // write through to the scene's MainCamera so saved files capture the game
+        // camera. In Play mode the scene's MainCamera takes over.
+        public Camera Camera
+        {
+            get
+            {
+                if (PlayMode != null && PlayMode.Mode == GameMode.Play && ActiveScene.MainCamera != null)
+                    return ActiveScene.MainCamera;
+                return (Camera)EditorCamera ?? ActiveScene.MainCamera;
+            }
+            set => ActiveScene.MainCamera = value;
+        }
 
 
         //mesh library, holds all the meshes and their materials
         public MeshMaterialLibrary MeshMaterialLibrary;
 
-        public readonly List<BasicEntity> BasicEntities = new List<BasicEntity>();
-        public readonly List<Decal> Decals = new List<Decal>();
-        public readonly List<PointLight> PointLights = new List<PointLight>();
-        public readonly List<DirectionalLight> DirectionalLights = new List<DirectionalLight>();
+        // Forward to the active scene so existing callers (ScreenManager, Renderer,
+        // EditorLogic) keep working unchanged. Lists themselves live on Scene.
+        public List<BasicEntity> BasicEntities => ActiveScene.BasicEntities;
+        public List<Decal> Decals => ActiveScene.Decals;
+        public List<PointLight> PointLights => ActiveScene.PointLights;
+        public List<DirectionalLight> DirectionalLights => ActiveScene.DirectionalLights;
+
         public readonly List<DebugEntity> DebugEntities = new List<DebugEntity>();
-        public EnvironmentSample EnvironmentSample;
+
+        public EnvironmentSample EnvironmentSample
+        {
+            get => ActiveScene.EnvironmentSample;
+            set => ActiveScene.EnvironmentSample = value;
+        }
 
         //Which render target are we currently displaying?
         private int _renderModeCycle;
@@ -73,7 +108,51 @@ namespace Engine.Logic
 
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
 
+            SceneManager.Assets = assets;
+            SceneManager.SceneChanged += OnSceneChanged;
+
+            PlayMode = new PlayModeController(this);
+
             SetUpEditorScene(graphicsDevice);
+        }
+
+        /// <summary>
+        /// Runtime swap when SceneManager flips ActiveScene. Detaches the old scene's
+        /// physics bodies, clears the mesh/material library, and re-registers the new
+        /// scene's content. Selection in EditorLogic must be cleared by callers
+        /// (the bridge handles this through its own selection sync).
+        /// </summary>
+        private void OnSceneChanged(Scene oldScene, Scene newScene)
+        {
+            EditorBridge.Log($"MainSceneLogic.OnSceneChanged: '{oldScene?.Name}' -> '{newScene?.Name}'");
+
+            // Detach old physics bodies (only the dynamic + static ones BEPU knows about).
+            if (oldScene != null && _physicsSpace != null)
+            {
+                for (int i = 0; i < oldScene.BasicEntities.Count; i++)
+                {
+                    BasicEntity e = oldScene.BasicEntities[i];
+                    try
+                    {
+                        if (e.StaticPhysicsObject != null) _physicsSpace.Remove(e.StaticPhysicsObject);
+                    }
+                    catch (Exception ex) { EditorBridge.Log("physics detach static threw: " + ex); }
+                }
+            }
+
+            // Reset the mesh/material library — new scene re-registers its entities below.
+            MeshMaterialLibrary?.Clear();
+
+            // Re-register the new scene's BasicEntities into the mesh library so the
+            // renderer can draw them. Their TransformMatrix carries the IDs already.
+            if (newScene != null && MeshMaterialLibrary != null)
+            {
+                for (int i = 0; i < newScene.BasicEntities.Count; i++)
+                {
+                    BasicEntity e = newScene.BasicEntities[i];
+                    e.RegisterInLibrary(MeshMaterialLibrary);
+                }
+            }
         }
 
         //Load our default setup!
@@ -87,7 +166,12 @@ namespace Engine.Logic
             // NOTE: Coordinate system depends on Camera.up,
             //       Right now z is going up, it's not depth!
 
-            Camera = new Camera(position: new Vector3(-88, -11f, 4), lookat: new Vector3(38, 8, 32));
+            // Scene's game camera (saved with the scene).
+            ActiveScene.MainCamera = new Camera(position: new Vector3(-88, -11f, 4), lookat: new Vector3(38, 8, 32));
+
+            // Editor camera — separate, never serialised. Phase 6 will pick between
+            // the editor camera and the scene's main camera based on Play/Edit mode.
+            EditorCamera = new EditorCamera(position: new Vector3(-88, -11f, 4), lookat: new Vector3(38, 8, 32));
 
             EnvironmentSample = new EnvironmentSample(new Vector3(-45, -5, 5));
             
@@ -273,6 +357,9 @@ namespace Engine.Logic
 
             //Upd
             Input.Update(gameTime, Camera);
+
+            // Scripts tick only in Play mode.
+            PlayMode?.UpdateScripts(gameTime);
 
             //VolumeTexture.RotationMatrix = testEntity.WorldTransform.InverseWorld;
             //VolumeTexture.Scale = testEntity.WorldTransform.Scale;
