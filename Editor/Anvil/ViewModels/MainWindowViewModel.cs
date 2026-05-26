@@ -67,6 +67,30 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ConsoleEntry> ConsoleEntries { get; } = new();
     public ObservableCollection<string> AvailableModels { get; } = new();
 
+    /// <summary>
+    /// View model for the global post-processing / render settings panel.
+    /// Shown inside the Inspector when <see cref="InspectorView"/> ==
+    /// "PostProcessing". Replaces the legacy HelperSuite right-side panel.
+    /// </summary>
+    public PostProcessingViewModel PostProcessing { get; } = new();
+
+    /// <summary>
+    /// Inspector content switch: "Selection" (default) shows the selected
+    /// object; "PostProcessing" shows <see cref="PostProcessing"/>. Driven by
+    /// the segmented control in the inspector header and by
+    /// Window &gt; Post Processing.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
+        nameof(IsInspectorPostProcessingView))]
+    private string _inspectorView = "Selection";
+
+    public bool IsInspectorSelectionView => InspectorView == "Selection";
+    public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
+
+    [RelayCommand]
+    private void SetInspectorView(string view) => InspectorView = view;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedObject), nameof(SelectedObjectName),
         nameof(HasSelectedObject), nameof(HasNoSelectedObject),
@@ -168,6 +192,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Refresh model picker now (may already be populated after first frame).
         RefreshAvailableModels();
+
+        // Hand the bridge to the post-processing VM so its setters can
+        // marshal shader-parameter writes onto the game thread.
+        PostProcessing.AttachBridge(bridge);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).

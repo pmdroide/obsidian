@@ -140,3 +140,37 @@ deferred until Vista/Anvil cover the in-engine GUI surface.
   `IsInspectorFocused` stale when focus exits the inspector. It defers to the
   next dispatcher tick and reads `FocusManager.GetFocusedElement`, clearing the
   flag once focus has settled outside the inspector ScrollViewer.
+
+### Phase 9 — HelperSuite removal + post-processing migration
+
+- **HelperSuite project deleted.** `HelperSuite/` removed from disk;
+  `ProjectReference` dropped from `Engine.csproj`; project + per-config
+  entries dropped from `Engine.sln`. `Engine/Logic/GUILogic.cs` deleted
+  (entirely depended on HelperSuite controls). All `using HelperSuite.*`
+  removed from `Engine.cs`, `ScreenManager.cs`, `EditorLogic.cs`,
+  `ShaderManager.cs`. `GUIControl.Initialize` call removed from
+  `Engine.Initialize`; the `!GUIControl.UIWasUsed` gate in `EditorLogic.Update`
+  is gone. `ScreenManager` no longer holds `_guiLogic` or `_guiRenderer` —
+  Load/Initialize/Update/Draw/Dispose simplified accordingly.
+- **`IEditorBridge.EnqueueGameThreadAction(Action)`** — generic queue for
+  arbitrary engine-thread work. The post-processing VM uses it so shader
+  parameter setters in `GameSettings`/`Shaders` are pushed from the UI
+  thread but actually executed between frames on the game thread.
+- **`PostProcessingViewModel`** (Anvil) — mirrors the toggles that used to
+  live in HelperSuite's right-side panel: TAA/Tonemap/WhitePoint/Exposure/
+  S-Curve/Chromatic Aberration/Color Grading, SSR (enable + stochastic +
+  temporal noise + firefly + thresholds + sample counts), SSAO (enable +
+  blur + samples + radius + strength), Bloom (enable + threshold + 5 MIP
+  radius/strength pairs), Viewport (highlight meshes + SDF distance/volume).
+  One-shot read from `GameSettings` on attach; setters marshal writes
+  through `EnqueueGameThreadAction`.
+- **Inspector view switch.** Added `InspectorView` to
+  `MainWindowViewModel` (`"Selection"` / `"PostProcessing"`) +
+  `SetInspectorViewCommand`. `IsInspectorSelectionView` /
+  `IsInspectorPostProcessingView` gate the two ScrollViewers in the
+  inspector pane. Header chips ("Selection" / "Post FX") flip between them.
+- **`Window > Post Processing` menu entry** replaces the redundant
+  `Window > Assets` item (Assets was already a top-level menu). Clicking it
+  invokes `SetInspectorViewCommand` with `"PostProcessing"`.
+- **Docs**: `CLAUDE.md` solution-projects list pruned. `Docs/TODO.md`
+  cleared — the previous items all landed in Phase 8 / Phase 9.

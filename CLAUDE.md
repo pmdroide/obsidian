@@ -9,7 +9,6 @@ Solution projects:
 - `Engine/Engine.csproj` - MonoGame WindowsDX executable and core engine.
 - `Editor/Anvil/Anvil.csproj` - Avalonia editor shell that embeds the engine viewport.
 - `Vista/Vista.csproj` - lightweight XML/CSS UI renderer built on AngleSharp + MonoGame.
-- `HelperSuite/HelperSuite.csproj` - older/shared GUI helpers, content helpers, and GUI renderer code.
 
 ## Quick Commands
 
@@ -137,7 +136,7 @@ Important types:
 - Coordinate comments indicate Z is up; gravity is set to negative Z.
 - Many shader parameters are cached statically in `Shaders.cs`; ensure `Globals.content` is set before shader static access.
 - Render targets are manually owned and disposed. When resolution changes, follow `Renderer.UpdateResolution()` / `SetUpRenderTargets(...)` patterns.
-- Existing code style is older C# in `Engine`, `Vista`, and `HelperSuite` with nullable mostly disabled; `Anvil` uses nullable + MVVM source generators.
+- Existing code style is older C# in `Engine` and `Vista` with nullable mostly disabled; `Anvil` uses nullable + MVVM source generators.
 
 ## Testing Status
 

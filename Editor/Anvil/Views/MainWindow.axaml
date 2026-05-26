@@ -352,7 +352,9 @@
                         <MenuItem Header="Hierarchy" />
                         <MenuItem Header="Inspector" />
                         <MenuItem Header="Console" />
-                        <MenuItem Header="Assets" />
+                        <MenuItem Header="Post Processing"
+                                  Command="{Binding SetInspectorViewCommand}"
+                                  CommandParameter="PostProcessing" />
                     </MenuItem>
                     <MenuItem Header="Help">
                         <MenuItem Header="About Anvil" />
@@ -706,27 +708,53 @@
                     <Grid RowDefinitions="33,*">
 
                         <Border Grid.Row="0" Classes="panelHeader">
-                            <Grid ColumnDefinitions="Auto,*">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal"
                                             Spacing="6" VerticalAlignment="Center">
                                     <controls:LucideIcon Icon="Settings" />
                                     <TextBlock Text="Inspector" Classes="panelTitle" />
                                 </StackPanel>
+
+                                <!-- Inspector view switch — Selection vs Post Processing.
+                                     Replaces the legacy HelperSuite right-side options panel;
+                                     the Window > Post Processing menu entry also flips this. -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                            Spacing="2" VerticalAlignment="Center">
+                                    <Button Content="Selection" Classes="toolbarChip"
+                                            Command="{Binding SetInspectorViewCommand}"
+                                            CommandParameter="Selection"
+                                            Classes.active="{Binding IsInspectorSelectionView}" />
+                                    <Button Content="Post FX" Classes="toolbarChip"
+                                            Command="{Binding SetInspectorViewCommand}"
+                                            CommandParameter="PostProcessing"
+                                            Classes.active="{Binding IsInspectorPostProcessingView}" />
+                                </StackPanel>
                             </Grid>
                         </Border>
 
-                        <!-- empty state -->
+                        <!-- empty state — only when in Selection view AND nothing selected. -->
                         <TextBlock Grid.Row="1"
-                                   IsVisible="{Binding HasNoSelectedObject}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    FontSize="11"
                                    Foreground="{StaticResource AnvilTextDisabledBrush}"
-                                   Text="Nothing selected" />
+                                   Text="Nothing selected">
+                            <TextBlock.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsInspectorSelectionView" />
+                                    <Binding Path="HasNoSelectedObject" />
+                                </MultiBinding>
+                            </TextBlock.IsVisible>
+                        </TextBlock>
 
-                        <!-- populated -->
+                        <!-- populated (Selection view) -->
                         <ScrollViewer Grid.Row="1" x:Name="InspectorScroll"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      IsVisible="{Binding HasSelectedObject}">
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ScrollViewer.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsInspectorSelectionView" />
+                                    <Binding Path="HasSelectedObject" />
+                                </MultiBinding>
+                            </ScrollViewer.IsVisible>
                             <StackPanel Spacing="0" DataContext="{Binding SelectedObject}"
                                         x:DataType="m:SceneObjectViewModel">
 
@@ -1046,6 +1074,260 @@
                                                            Value="{Binding Far, Mode=TwoWay}"
                                                            ShowButtonSpinner="False" FormatString="0.#" />
                                         </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Post Processing view: global render settings (formerly the
+                             HelperSuite right-side panel). Bound through PostProcessing
+                             VM, which marshals writes onto the engine's game thread. -->
+                        <ScrollViewer Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      IsVisible="{Binding IsInspectorPostProcessingView}">
+                            <StackPanel Spacing="0" DataContext="{Binding PostProcessing}"
+                                        x:DataType="m:PostProcessingViewModel">
+
+                                <!-- Tone mapping / colour -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Wand" />
+                                            <TextBlock Text="Post Processing" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Temporal AA"
+                                                  IsChecked="{Binding Taa, Mode=TwoWay}" />
+                                        <CheckBox Content="Tonemap TAA"
+                                                  IsChecked="{Binding TonemapTaa, Mode=TwoWay}" />
+                                        <CheckBox Content="Color Grading"
+                                                  IsChecked="{Binding ColorGrading, Mode=TwoWay}" />
+
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="White Point"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.05"
+                                                           Value="{Binding WhitePoint, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Exposure"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="-8" Maximum="8" Increment="0.05"
+                                                           Value="{Binding Exposure, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="S-Curve"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="-1" Maximum="1" Increment="0.01"
+                                                           Value="{Binding SCurveStrength, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Chr. Aberr."
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="1" Increment="0.005"
+                                                           Value="{Binding ChromaticAberration, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.000" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Bloom -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Sun" />
+                                            <TextBlock Text="Bloom" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable Bloom"
+                                                  IsChecked="{Binding BloomEnabled, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowSpacing="6">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Threshold"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.05"
+                                                           Value="{Binding BloomThreshold, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="MIP0 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius1, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="MIP0 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength1, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="MIP1 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius2, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="MIP1 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength2, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="MIP2 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius3, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="MIP2 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength3, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="MIP3 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius4, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="8" Grid.Column="0" Text="MIP3 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength4, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="9" Grid.Column="0" Text="MIP4 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="9" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius5, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="10" Grid.Column="0" Text="MIP4 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="10" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength5, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Screen-Space Reflections -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Sparkles" />
+                                            <TextBlock Text="Screen-Space Reflections" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable SSR"
+                                                  IsChecked="{Binding SsrEnabled, Mode=TwoWay}" />
+                                        <CheckBox Content="Stochastic Distribution"
+                                                  IsChecked="{Binding SsrStochastic, Mode=TwoWay}" />
+                                        <CheckBox Content="Temporal Noise"
+                                                  IsChecked="{Binding SsrTemporalNoise, Mode=TwoWay}" />
+                                        <CheckBox Content="Firefly Reduction"
+                                                  IsChecked="{Binding SsrFireflyReduction, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Firefly Thr."
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="5" Increment="0.05"
+                                                           Value="{Binding SsrFireflyThreshold, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Samples"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="100" Increment="1"
+                                                           Value="{Binding SsrSamples, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Search Samples"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="100" Increment="1"
+                                                           Value="{Binding SsrRefinementSamples, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Ambient Occlusion -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Aperture" />
+                                            <TextBlock Text="Ambient Occlusion" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable SSAO"
+                                                  IsChecked="{Binding SsaoEnabled, Mode=TwoWay}" />
+                                        <CheckBox Content="SSAO Blur"
+                                                  IsChecked="{Binding SsaoBlur, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Samples"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="32" Increment="1"
+                                                           Value="{Binding SsaoSamples, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Sample Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="100" Increment="0.5"
+                                                           Value="{Binding SsaoRadius, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.05"
+                                                           Value="{Binding SsaoStrength, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Viewport / SDF -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Eye" />
+                                            <TextBlock Text="Viewport" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Highlight Meshes"
+                                                  IsChecked="{Binding HighlightMeshes, Mode=TwoWay}" />
+                                        <CheckBox Content="Draw SDF distance"
+                                                  IsChecked="{Binding DrawSdf, Mode=TwoWay}" />
+                                        <CheckBox Content="Draw SDF volume"
+                                                  IsChecked="{Binding DrawSdfVolume, Mode=TwoWay}" />
                                     </StackPanel>
                                 </Expander>
 

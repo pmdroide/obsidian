@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Docs/logo.png" width="80px" alt="Project Icon">
+  <img src="Docs/Icon.png" width="80px" alt="Project Icon">
 
   [Getting Started] | [Documentation] | [Contributing]
 </div>

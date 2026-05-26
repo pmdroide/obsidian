@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Engine.Entities;
 using Engine.Recources;
 using Engine.Renderer.Helper;
-using HelperSuite.GUIHelper;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -102,7 +101,7 @@ namespace Engine.Logic
                 }
                 else _gizmoTransformationMode = false;
             }
-            else if (Input.WasLMBClicked() && !GUIControl.UIWasUsed)
+            else if (Input.WasLMBClicked())
             {
                 previousMouseX = Input.mouseState.X;
                 previousMouseY = Input.mouseState.Y;

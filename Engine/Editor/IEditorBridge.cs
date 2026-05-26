@@ -110,6 +110,15 @@ namespace Engine.Editor
         Vector3 SpawnPoint { get; }
 
         // Mutations (all queued — run on the game thread between frames)
+
+        /// <summary>
+        /// Queue a global engine-thread action — used for post-processing /
+        /// render-setting tweaks from the editor that touch shader parameters
+        /// (those must be set on the game thread). The lambda runs once,
+        /// between the next two frames.
+        /// </summary>
+        void EnqueueGameThreadAction(Action action);
+
         void EnqueueMutate(int id, Action<TransformableObject> mutate);
         void EnqueueMutateMaterial(int entityId, Action<MaterialEffect> mutate);
         void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity);

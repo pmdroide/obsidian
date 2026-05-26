@@ -198,6 +198,16 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueGameThreadAction(Action action)
+        {
+            if (action == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                try { action(); }
+                catch (Exception ex) { Log("EnqueueGameThreadAction threw: " + ex); }
+            });
+        }
+
         public void EnqueueMutate(int id, Action<TransformableObject> mutate)
         {
             if (mutate == null) return;

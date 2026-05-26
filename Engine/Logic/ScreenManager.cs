@@ -4,7 +4,6 @@ using System.IO;
 using BEPUphysics;
 using Engine.Editor;
 using Engine.Recources;
-using HelperSuite.GUIRenderer;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -29,9 +28,7 @@ namespace Engine.Logic
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Renderer.Renderer _renderer;
-        private GUIRenderer _guiRenderer;
         private MainSceneLogic _sceneLogic;
-        private GUILogic _guiLogic;
         private EditorLogic _editorLogic;
         private Assets _assets;
         private ShaderManager _shaderManager;
@@ -67,19 +64,15 @@ namespace Engine.Logic
             _videoIntro.Initialize();
             _renderer.Initialize(graphicsDevice, _assets);
             _sceneLogic.Initialize(_assets, space, graphicsDevice);
-            _guiLogic.Initialize(_assets, _sceneLogic.Camera);
             _editorLogic.Initialize(graphicsDevice);
             _debug.Initialize(graphicsDevice);
-            _guiRenderer.Initialize(graphicsDevice, GameSettings.g_screenwidth, GameSettings.g_screenheight);
 
             _bridge?.Bind(_sceneLogic, _editorLogic, _assets);
 
-            // Under Anvil, the in-engine "Editor Mode" toggle in the legacy GUI
-            // is hidden — so the selection/outline/gizmo render pass would
-            // never get turned on and viewport clicks would feel dead even
-            // though e_enableeditor is true. Force-enable the selection pass
-            // when hosted; standalone keeps the default-off behaviour (Space
-            // still works, the HelperSuite toggle still works).
+            // Under Anvil, the in-engine "Editor Mode" toggle (formerly in
+            // HelperSuite's right-side panel) no longer exists, so force the
+            // selection/outline/gizmo render pass on when hosted. Standalone
+            // keeps the default-off behaviour (Space still toggles).
             if (_bridge?.IsHostedByEditor == true)
                 GameStats.e_EnableSelection = true;
         }
@@ -100,12 +93,6 @@ namespace Engine.Logic
 #if DEBUG
             _shaderManager.CheckForChanges();
 #endif
-            // Skip the legacy in-engine GUI under Anvil — Anvil owns the editor UI.
-            // Leaving it on doubles up the inspector + duplicates mouse-input gating
-            // (GUIControl.UIWasUsed) which interferes with viewport picking.
-            bool hosted = _bridge?.IsHostedByEditor ?? false;
-            if (!hosted)
-                _guiLogic.Update(gameTime, isActive, _editorLogic.SelectedObject);
             _editorLogic.Update(gameTime, _sceneLogic.BasicEntities, _sceneLogic.Decals, _sceneLogic.PointLights, _sceneLogic.DirectionalLights, _sceneLogic.EnvironmentSample, _sceneLogic.DebugEntities, _editorReceivedDataBuffer, _sceneLogic.MeshMaterialLibrary);
             _sceneLogic.Update(gameTime, isActive);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
@@ -118,7 +105,7 @@ namespace Engine.Logic
             // strictly after all logic mutations but before the next Draw.
             _bridge?.DrainAndPublish();
         }
-        
+
         // Update the Vista UI with performance metrics and other dynamic information.
         private void UpdateVistaUI(GameTime gameTime)
         {
@@ -153,11 +140,9 @@ namespace Engine.Logic
         {
             _renderer = new Renderer.Renderer();
             _sceneLogic = new MainSceneLogic();
-            _guiLogic = new GUILogic();
             _editorLogic = new EditorLogic();
             _assets = new Assets();
             _debug = new DebugScreen();
-            _guiRenderer = new GUIRenderer();
             _videoIntro = new VideoIntroLogic();
 
             Globals.content = content;
@@ -167,12 +152,11 @@ namespace Engine.Logic
             _renderer.Load(content, _shaderManager);
             _sceneLogic.Load(content);
             _debug.LoadContent(content);
-            _guiRenderer.Load(content);
             _videoIntro.Load(content, graphicsDevice);
 
             LoadVistaUI(content, graphicsDevice);
         }
-        
+
         // Load Vista UI helper functions
         private void LoadVistaUI(ContentManager content, GraphicsDevice graphicsDevice)
         {
@@ -199,13 +183,13 @@ namespace Engine.Logic
             _videoIntro.Unload();
             content.Dispose();
         }
-        
+
         public void Draw(GameTime gameTime)
         {
             if (_currentState == GameState.VideoIntro)
             {
                 _graphicsDevice.Clear(Color.Black); // Clear the screen first
-        
+
                 _spriteBatch.Begin(); // Start the batch here
                 _videoIntro.Draw(_spriteBatch);
                 _spriteBatch.End(); // End it here
@@ -213,24 +197,18 @@ namespace Engine.Logic
             }
 
             //Our renderer gives us information on what id is currently hovered over so we can update / manipulate objects in the logic functions
-            _editorReceivedDataBuffer = _renderer.Draw(_sceneLogic.Camera, 
-                _sceneLogic.MeshMaterialLibrary, 
+            _editorReceivedDataBuffer = _renderer.Draw(_sceneLogic.Camera,
+                _sceneLogic.MeshMaterialLibrary,
                 _sceneLogic.BasicEntities, _sceneLogic.Decals,
                 pointLights: _sceneLogic.PointLights,
-                directionalLights: _sceneLogic.DirectionalLights, 
+                directionalLights: _sceneLogic.DirectionalLights,
                 envSample: _sceneLogic.EnvironmentSample,
-                debugEntities: _sceneLogic.DebugEntities, 
-                editorData: _editorLogic.GetEditorData(), 
+                debugEntities: _sceneLogic.DebugEntities,
+                editorData: _editorLogic.GetEditorData(),
                 gameTime: gameTime);
-            
-            // Legacy HelperSuite GUI overlay — drawn only in standalone Engine.exe.
-            // Anvil replaces it; see Update() above.
-            if (GameSettings.e_enableeditor && GameSettings.ui_enabled
-                && !(_bridge?.IsHostedByEditor ?? false))
-                _guiRenderer.Draw(_guiLogic.GuiCanvas);
 
             _debug.Draw(gameTime);
-            
+
             // Vista UI on top of everything
             if (_vistaUI != null && GameSettings.ui_vista_enabled)
             {
@@ -243,13 +221,11 @@ namespace Engine.Logic
         public void UpdateResolution()
         {
             _renderer.UpdateResolution();
-            _guiLogic.UpdateResolution();
         }
 
         public void Dispose()
         {
             _spriteBatch?.Dispose();
-            _guiRenderer?.Dispose();
         }
     }
 }

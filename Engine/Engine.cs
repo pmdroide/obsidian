@@ -9,7 +9,6 @@ using BEPUutilities;
 using Engine.Editor;
 using Engine.Logic;
 using Engine.Recources;
-using HelperSuite.GUIHelper;
 
 namespace Engine
 {
@@ -87,8 +86,6 @@ namespace Engine
         protected override void Initialize()
         {
             this.Window.Title = "Engine";
-
-            GUIControl.Initialize(GameSettings.g_screenwidth, GameSettings.g_screenheight);
 
             _screenManager.Load(Content, GraphicsDevice);
             // TODO: Add your initialization logic here
