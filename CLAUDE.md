@@ -25,6 +25,7 @@ dotnet run --project Editor\Anvil\Anvil.csproj
 Notes:
 
 - The engine targets `net10.0-windows` and `MonoGame.Framework.WindowsDX` 3.8.4.1.
+- The Avalonia desktop app uses version 12.0.3
 - VS Code's `build` task builds `Engine/Engine.csproj`; the launch config runs `Engine/bin/Debug/net10.0-windows/Engine.dll` with `cwd` set to `Engine`.
 - `Engine/dotnet-tools.json` pins `dotnet-mgcb` 3.8.4.1 for the MonoGame content pipeline.
 - `bootstrap.bat` is intended to restore/build, but this checkout appears to contain `necho`/`ndotnet` tokens. Prefer the explicit `dotnet` commands above unless that file is fixed.
@@ -137,15 +138,6 @@ Important types:
 - Many shader parameters are cached statically in `Shaders.cs`; ensure `Globals.content` is set before shader static access.
 - Render targets are manually owned and disposed. When resolution changes, follow `Renderer.UpdateResolution()` / `SetUpRenderTargets(...)` patterns.
 - Existing code style is older C# in `Engine`, `Vista`, and `HelperSuite` with nullable mostly disabled; `Anvil` uses nullable + MVVM source generators.
-
-## Current Known Issues
-
-From `Docs/TODO.md`:
-
-- Inspector still closes when interacting with input boxes, sliders, and color pickers.
-- Add Object crash logging was investigated, but the log file does not always show/create.
-
-Bridge diagnostics write to the user's Desktop as `anvil-bridge.log` via `EditorBridge.LogPath`.
 
 ## Testing Status
 

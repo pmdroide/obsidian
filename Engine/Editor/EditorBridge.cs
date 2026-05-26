@@ -39,6 +39,43 @@ namespace Engine.Editor
         public Vector3 SpawnPoint => _spawnPoint;
         public IReadOnlyList<string> AvailableModelKeys => _modelKeyList;
 
+        // Set by the host (Anvil's MonoGameHost) once before the first frame ticks.
+        // Volatile because it is written on the UI thread and read on the game thread.
+        private volatile bool _isHostedByEditor;
+        public bool IsHostedByEditor => _isHostedByEditor;
+
+        /// <summary>
+        /// Called by the embedder (e.g. <c>MonoGameHost</c>) before the engine begins
+        /// ticking. Idempotent. Standalone <c>Engine.exe</c> never invokes this and
+        /// the bridge reports <see cref="IsHostedByEditor"/> false.
+        /// </summary>
+        public void SetHostedByEditor(bool value)
+        {
+            _isHostedByEditor = value;
+            Log($"EditorBridge.IsHostedByEditor = {value}");
+        }
+
+        // Forwarded keyboard. Bridge writers are the host's UI thread (Avalonia
+        // key events); readers are the engine's game thread (Input.Update). The
+        // working set is tiny (a handful of keys at most), so a short-held lock
+        // is cheaper than a ConcurrentDictionary and avoids per-frame allocation.
+        private readonly HashSet<int> _hostKeysDown = new HashSet<int>();
+        private readonly object _hostKeysLock = new object();
+
+        public bool IsHostKeyDown(int xnaKeyCode)
+        {
+            lock (_hostKeysLock) return _hostKeysDown.Contains(xnaKeyCode);
+        }
+
+        public void SetHostKeyState(int xnaKeyCode, bool down)
+        {
+            lock (_hostKeysLock)
+            {
+                if (down) _hostKeysDown.Add(xnaKeyCode);
+                else _hostKeysDown.Remove(xnaKeyCode);
+            }
+        }
+
         // Diagnostic log paths. Desktop is the primary (easy to find for the user);
         // %LOCALAPPDATA%\Anvil is the fallback when Desktop writes fail (locked-down
         // user profiles, redirected folders, OneDrive sync conflicts).
@@ -91,6 +128,13 @@ namespace Engine.Editor
             _assets = assets;
             BuildModelKeys(assets);
 
+            // Plumb forwarded input through the static Input class — it cannot
+            // pass the bridge along its existing call sites without a wide
+            // signature change. Standalone Engine.exe sets this with a bridge
+            // whose IsHostedByEditor returns false, so the host-key checks
+            // short-circuit harmlessly.
+            Logic.Input.HostBridge = this;
+
             // Forward Scene swap events to UI consumers.
             if (scene != null)
             {
@@ -140,6 +184,16 @@ namespace Engine.Editor
                 if (_editor == null || _scene == null) return;
                 if (id == null) { _editor.SelectedObject = null; return; }
                 TransformableObject found = LookupById(id.Value);
+                // Don't clobber the current selection with null when the requested
+                // id can't be resolved — the entity may not have been published in
+                // the snapshot yet (newly added) or it was just deleted on the
+                // engine side. Clearing here causes the Inspector to "open then
+                // close immediately" from the UI's perspective.
+                if (found == null)
+                {
+                    Log($"RequestSelect: id={id.Value} not resolved; keeping current selection");
+                    return;
+                }
                 _editor.SelectedObject = found;
             });
         }

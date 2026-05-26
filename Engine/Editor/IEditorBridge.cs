@@ -83,6 +83,22 @@ namespace Engine.Editor
 
     public interface IEditorBridge
     {
+        /// <summary>
+        /// True when the engine is embedded in an external editor (Anvil). Used to
+        /// hide the legacy in-engine HelperSuite GUI and to switch input plumbing to
+        /// the editor-forwarded path. Standalone <c>Engine.exe</c> leaves this false.
+        /// </summary>
+        bool IsHostedByEditor { get; }
+
+        /// <summary>
+        /// Host-forwarded keyboard state. Avalonia owns keyboard focus when the
+        /// engine HWND is reparented, so <c>Keyboard.GetState()</c> returns no
+        /// keys. The host pushes key down/up via <see cref="SetHostKeyState"/>
+        /// and the engine reads via <see cref="IsHostKeyDown"/>.
+        /// </summary>
+        bool IsHostKeyDown(int xnaKeyCode);
+        void SetHostKeyState(int xnaKeyCode, bool down);
+
         IReadOnlyList<EditorObjectSnapshot> Snapshot { get; }
         event Action<IReadOnlyList<EditorObjectSnapshot>> SnapshotUpdated;
 

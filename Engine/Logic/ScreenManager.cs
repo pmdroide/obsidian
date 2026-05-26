@@ -73,6 +73,15 @@ namespace Engine.Logic
             _guiRenderer.Initialize(graphicsDevice, GameSettings.g_screenwidth, GameSettings.g_screenheight);
 
             _bridge?.Bind(_sceneLogic, _editorLogic, _assets);
+
+            // Under Anvil, the in-engine "Editor Mode" toggle in the legacy GUI
+            // is hidden — so the selection/outline/gizmo render pass would
+            // never get turned on and viewport clicks would feel dead even
+            // though e_enableeditor is true. Force-enable the selection pass
+            // when hosted; standalone keeps the default-off behaviour (Space
+            // still works, the HelperSuite toggle still works).
+            if (_bridge?.IsHostedByEditor == true)
+                GameStats.e_EnableSelection = true;
         }
 
         //Update per frame
@@ -91,7 +100,12 @@ namespace Engine.Logic
 #if DEBUG
             _shaderManager.CheckForChanges();
 #endif
-            _guiLogic.Update(gameTime, isActive, _editorLogic.SelectedObject);
+            // Skip the legacy in-engine GUI under Anvil — Anvil owns the editor UI.
+            // Leaving it on doubles up the inspector + duplicates mouse-input gating
+            // (GUIControl.UIWasUsed) which interferes with viewport picking.
+            bool hosted = _bridge?.IsHostedByEditor ?? false;
+            if (!hosted)
+                _guiLogic.Update(gameTime, isActive, _editorLogic.SelectedObject);
             _editorLogic.Update(gameTime, _sceneLogic.BasicEntities, _sceneLogic.Decals, _sceneLogic.PointLights, _sceneLogic.DirectionalLights, _sceneLogic.EnvironmentSample, _sceneLogic.DebugEntities, _editorReceivedDataBuffer, _sceneLogic.MeshMaterialLibrary);
             _sceneLogic.Update(gameTime, isActive);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
@@ -209,7 +223,10 @@ namespace Engine.Logic
                 editorData: _editorLogic.GetEditorData(), 
                 gameTime: gameTime);
             
-            if (GameSettings.e_enableeditor && GameSettings.ui_enabled)
+            // Legacy HelperSuite GUI overlay — drawn only in standalone Engine.exe.
+            // Anvil replaces it; see Update() above.
+            if (GameSettings.e_enableeditor && GameSettings.ui_enabled
+                && !(_bridge?.IsHostedByEditor ?? false))
                 _guiRenderer.Draw(_guiLogic.GuiCanvas);
 
             _debug.Draw(gameTime);

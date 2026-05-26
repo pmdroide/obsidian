@@ -1,4 +1,5 @@
 using System;
+using Engine.Editor;
 using Engine.Entities;
 using Engine.Recources;
 using Microsoft.Xna.Framework;
@@ -10,6 +11,25 @@ namespace Engine.Logic
     {
         public static KeyboardState keyboardState, keyboardLastState;
         public static MouseState mouseState, mouseLastState;
+
+        /// <summary>
+        /// Bridge for host-forwarded input. Set by <c>EditorBridge.Bind</c>.
+        /// When the engine is hosted by Anvil, Avalonia owns keyboard focus
+        /// so <see cref="Keyboard"/>'s state is empty — read host keys via
+        /// <see cref="IsKeyDown"/>/<see cref="WasKeyPressed"/> instead.
+        /// </summary>
+        public static IEditorBridge HostBridge;
+
+        /// <summary>
+        /// Returns true if the key is held — checks both MonoGame's native
+        /// keyboard state (standalone) and the host-forwarded set (Anvil).
+        /// </summary>
+        public static bool IsKeyDown(Keys key)
+        {
+            if (HostBridge != null && HostBridge.IsHostedByEditor && HostBridge.IsHostKeyDown((int)key))
+                return true;
+            return keyboardState.IsKeyDown(key);
+        }
 
 
         public static void Update(GameTime gameTime, Camera camera)
@@ -94,16 +114,18 @@ namespace Engine.Logic
             }
 
             // WASD only while RMB held — otherwise typing into the UI moves the camera.
+            // IsKeyDown merges MonoGame's native keyboard state with the host-forwarded
+            // set so WASD works whether running standalone or embedded in Anvil.
             if (rmb && !DebugScreen.ConsoleOpen)
             {
                 Vector3 forward = camera.Forward;
                 Vector3 right = camera.Right;
-                if (keyboardState.IsKeyDown(Keys.W)) camera.Position += forward * flyForward * delta;
-                if (keyboardState.IsKeyDown(Keys.S)) camera.Position -= forward * flyForward * delta;
-                if (keyboardState.IsKeyDown(Keys.D)) camera.Position += right * flyStrafe * delta;
-                if (keyboardState.IsKeyDown(Keys.A)) camera.Position -= right * flyStrafe * delta;
-                if (keyboardState.IsKeyDown(Keys.E)) camera.Position += camera.Up * flyStrafe * delta;
-                if (keyboardState.IsKeyDown(Keys.Q)) camera.Position -= camera.Up * flyStrafe * delta;
+                if (IsKeyDown(Keys.W)) camera.Position += forward * flyForward * delta;
+                if (IsKeyDown(Keys.S)) camera.Position -= forward * flyForward * delta;
+                if (IsKeyDown(Keys.D)) camera.Position += right * flyStrafe * delta;
+                if (IsKeyDown(Keys.A)) camera.Position -= right * flyStrafe * delta;
+                if (IsKeyDown(Keys.E)) camera.Position += camera.Up * flyStrafe * delta;
+                if (IsKeyDown(Keys.Q)) camera.Position -= camera.Up * flyStrafe * delta;
             }
         }
 

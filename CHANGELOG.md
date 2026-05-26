@@ -94,3 +94,49 @@ Implements the TODO in `Docs/TODO.md`. Phased plan in
   `BasicEntity.Scripts` (`List<IScript>`). Not serialized in `.obsc` v1.
 - `PlayModeController.UpdateScripts(gameTime)` ticks scripts every frame while
   in Play mode; called from `MainSceneLogic.Update`. Exceptions logged, not fatal.
+
+### Phase 8 — TODO bugfix pass
+
+Addresses the `Docs/TODO.md` issue list. HelperSuite removal is intentionally
+deferred until Vista/Anvil cover the in-engine GUI surface.
+
+- **`IEditorBridge.IsHostedByEditor`** — set by `MonoGameHost` before the first
+  frame ticks. Anvil now hides the legacy HelperSuite GUI (Update + Draw) so the
+  in-engine panel doesn't double up with Anvil's inspector. Standalone
+  `Engine.exe` is unchanged — the side panels still appear and Space still toggles.
+- **`GameStats.e_EnableSelection` defaults on under Anvil** — this flag gates the
+  ID-buffer / outline / gizmo render passes. In standalone it defaulted to `false`
+  and the legacy HelperSuite GUI's "Editor Mode" toggle flipped it. With that GUI
+  hidden under Anvil, viewport clicks resolved to no entity and felt dead.
+  `ScreenManager.Initialize` now forces it on when `IsHostedByEditor` is true;
+  standalone keeps the default-off behaviour.
+- **Add GameObject crash** — `EditorBridge.RequestSelect` no longer clobbers the
+  current selection with null when `LookupById` misses. A transient miss (entity
+  just added, not yet in snapshot; or just deleted) was causing the Inspector to
+  open then close immediately. Combined with the GUILogic gating above, the
+  legacy in-engine inspector no longer touches freshly added entities.
+- **NewScene break** — `MainSceneLogic.OnSceneChanged` now populates a default
+  `MainCamera` + `EnvironmentSample` on empty scenes (a fresh `Scene{}` has both
+  null and the renderer's environment probe NREs). Also calls `PlayMode.Stop()`
+  on scene swap so Play-mode state from the old scene can't bleed into the new
+  one. Matches the implicit reset that LoadScene already gets through deserialized
+  fields.
+- **Save/load drops textures** — `SceneSerialization.ResolveMaterial` now returns
+  `null` for entities saved without a custom material so `BasicEntity` keeps the
+  model-embedded materials (Sponza textures stay intact). For entities with a
+  custom material, `MaterialRecord` now persists `AlbedoKey`/`NormalKey`/
+  `RoughnessKey`/`MetallicKey`/`MaskKey` looked up via `Assets`' field names, and
+  the load path restores those textures.
+- **RMB + WASD camera** — `IEditorBridge.SetHostKeyState` / `IsHostKeyDown` plus
+  a thread-safe `HashSet<int>` on `EditorBridge`. `MonoGameHost` subscribes to
+  `KeyDown`/`KeyUp` at the `TopLevel` (so the engine sees WASD even when focus
+  is on the toolbar) and forwards mapped Avalonia keys. `Input.IsKeyDown(Keys)`
+  merges native + forwarded state; `EditorCameraEvents` uses it for WASD/QE.
+- **Select tool** — `EditorLogic.EditorSendData.GizmoSuppressed` propagated to
+  `EditorRender.DrawGizmo` and `IdAndOutlineRenderer.DrawGizmos`. Both now skip
+  the arrow draw when Anvil's Select tool is active, so the visible gizmo
+  doesn't intercept clicks and the ID buffer never returns gizmo IDs 1-3.
+- **Inspector focus** — `MainWindow.OnAnyLostFocus` no longer leaves
+  `IsInspectorFocused` stale when focus exits the inspector. It defers to the
+  next dispatcher tick and reads `FocusManager.GetFocusedElement`, clearing the
+  flag once focus has settled outside the inspector ScrollViewer.

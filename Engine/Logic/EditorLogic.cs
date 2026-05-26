@@ -54,6 +54,10 @@ namespace Engine.Logic
             public Vector3 SelectedObjectPosition;
             public bool GizmoTransformationMode;
             public GizmoModes GizmoMode;
+            // True when Anvil's "Select" tool is active. The renderer skips the
+            // gizmo arrows entirely so they don't intercept clicks or visually
+            // suggest a drag interaction that's been intentionally disabled.
+            public bool GizmoSuppressed;
         }
 
         public void Initialize(GraphicsDevice graphicsDevice)
@@ -434,7 +438,7 @@ namespace Engine.Logic
                 SelectedObjectPosition = SelectedObject.Position,
                 GizmoTransformationMode = _gizmoTransformationMode,
                 GizmoMode =  _gizmoMode,
-                
+                GizmoSuppressed = IsGizmoSuppressed,
             };
         }
 

@@ -143,6 +143,21 @@ namespace Engine.Logic
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
 
+            // A New Scene comes through as an empty Scene{} with MainCamera and
+            // EnvironmentSample = null. The renderer's environment probe + game
+            // camera fall-back both NRE on null, which silently breaks the
+            // render loop ("game stops moving" — every Draw throws and the
+            // back-buffer is never updated). Loaded scenes don't hit this
+            // because save/load restores MainCamera and EnvironmentSample.
+            // Populate runtime defaults here so a fresh scene is renderable.
+            if (newScene != null)
+            {
+                if (newScene.MainCamera == null)
+                    newScene.MainCamera = new Camera(position: new Vector3(-88, -11f, 4), lookat: new Vector3(38, 8, 32));
+                if (newScene.EnvironmentSample == null)
+                    newScene.EnvironmentSample = new EnvironmentSample(new Vector3(-45, -5, 5));
+            }
+
             // Re-register the new scene's BasicEntities into the mesh library so the
             // renderer can draw them. Their TransformMatrix carries the IDs already.
             if (newScene != null && MeshMaterialLibrary != null)
@@ -153,6 +168,13 @@ namespace Engine.Logic
                     e.RegisterInLibrary(MeshMaterialLibrary);
                 }
             }
+
+            // Anything left in Play state from the previous scene must be reverted —
+            // a fresh scene has no scripts, no MainCamera that's safe to drive
+            // gameplay, and physics gravity should not still be acting on the
+            // departed entities. Reset to Edit mode unconditionally.
+            try { PlayMode?.Stop(); }
+            catch (Exception ex) { EditorBridge.Log("PlayMode.Stop on scene change threw: " + ex); }
         }
 
         //Load our default setup!

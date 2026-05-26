@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Engine.Editor;
@@ -8,6 +10,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using XnaKeys = Microsoft.Xna.Framework.Input.Keys;
 
 namespace Anvil.Controls;
 
@@ -108,6 +111,65 @@ public class MonoGameHost : NativeControlHost
     private static extern IntPtr DispatchMessage(ref MSG lpMsg);
 
     private const uint PM_REMOVE = 1;
+
+    /// <summary>
+    /// Subscribes the parent Window to KeyDown/KeyUp events the first time the
+    /// engine HWND attaches. Listening at window level means the engine sees
+    /// WASD even when focus is on the toolbar or any other Avalonia control —
+    /// the reparented engine HWND never receives keyboard focus directly.
+    /// </summary>
+    private void EnsureKeyForwarding()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+        topLevel.AddHandler(InputElement.KeyDownEvent, OnTopLevelKeyDown, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+        topLevel.AddHandler(InputElement.KeyUpEvent, OnTopLevelKeyUp, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+    }
+
+    private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_game?.Bridge is not EditorBridge b) return;
+        XnaKeys xna = MapAvaloniaKey(e.Key);
+        if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, true);
+    }
+
+    private void OnTopLevelKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (_game?.Bridge is not EditorBridge b) return;
+        XnaKeys xna = MapAvaloniaKey(e.Key);
+        if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, false);
+    }
+
+    /// <summary>
+    /// Map the subset of Avalonia keys the engine cares about (WASD/QE camera
+    /// fly, Shift/Ctrl modifiers, F1 render-mode cycle, Space editor toggle).
+    /// Everything else returns <see cref="XnaKeys.None"/> and is ignored.
+    /// </summary>
+    private static XnaKeys MapAvaloniaKey(Key k) => k switch
+    {
+        Key.A => XnaKeys.A, Key.B => XnaKeys.B, Key.C => XnaKeys.C, Key.D => XnaKeys.D,
+        Key.E => XnaKeys.E, Key.F => XnaKeys.F, Key.G => XnaKeys.G, Key.H => XnaKeys.H,
+        Key.I => XnaKeys.I, Key.J => XnaKeys.J, Key.K => XnaKeys.K, Key.L => XnaKeys.L,
+        Key.M => XnaKeys.M, Key.N => XnaKeys.N, Key.O => XnaKeys.O, Key.P => XnaKeys.P,
+        Key.Q => XnaKeys.Q, Key.R => XnaKeys.R, Key.S => XnaKeys.S, Key.T => XnaKeys.T,
+        Key.U => XnaKeys.U, Key.V => XnaKeys.V, Key.W => XnaKeys.W, Key.X => XnaKeys.X,
+        Key.Y => XnaKeys.Y, Key.Z => XnaKeys.Z,
+        Key.Space => XnaKeys.Space,
+        Key.LeftShift => XnaKeys.LeftShift, Key.RightShift => XnaKeys.RightShift,
+        Key.LeftCtrl => XnaKeys.LeftControl, Key.RightCtrl => XnaKeys.RightControl,
+        Key.LeftAlt => XnaKeys.LeftAlt, Key.RightAlt => XnaKeys.RightAlt,
+        Key.F1 => XnaKeys.F1, Key.F2 => XnaKeys.F2, Key.F3 => XnaKeys.F3,
+        Key.Escape => XnaKeys.Escape,
+        _ => XnaKeys.None,
+    };
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // TopLevel is reliably non-null once attached; subscribing in
+        // CreateNativeControlCore is sometimes too early.
+        EnsureKeyForwarding();
+    }
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
@@ -224,6 +286,11 @@ public class MonoGameHost : NativeControlHost
             IEditorBridge? bridge = _game.Bridge;
             if (bridge != null)
             {
+                // Tell the engine it is hosted in Anvil — gates the legacy in-engine
+                // HelperSuite GUI off and lets ScreenManager pick the editor-friendly
+                // defaults. Set BEFORE the first RunOneFrame below.
+                (bridge as EditorBridge)?.SetHostedByEditor(true);
+
                 Dispatcher.UIThread.Post(() =>
                 {
                     try { BridgeReady?.Invoke(bridge); }

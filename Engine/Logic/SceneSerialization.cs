@@ -86,7 +86,7 @@ namespace Engine.Logic
                     EditorBridge.Log($"LoadScene: skipping entity '{rec.Name}' — unknown ModelKey '{rec.ModelKey}'");
                     continue;
                 }
-                MaterialEffect material = ResolveMaterial(rec.Material, materialLookup, assets);
+                MaterialEffect material = ResolveMaterial(rec.Material, materialLookup, textureLookup, assets);
                 Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
                 var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
                 be.Name = rec.Name ?? be.Name;
@@ -190,6 +190,15 @@ namespace Engine.Logic
                         EmissiveStrength = be.Material.EmissiveStrength,
                         IsTransparent = be.Material.IsTransparent,
                         MaterialType = (int)be.Material.Type,
+                        // Texture refs persisted by their Assets-field name. Reverse
+                        // lookup returns null for textures embedded in the model file
+                        // (those aren't tracked in the Assets registry) — that's the
+                        // signal to fall back to BaseMaterial on load.
+                        AlbedoKey = LookupKey(textureReverse, be.Material.AlbedoMap),
+                        NormalKey = LookupKey(textureReverse, be.Material.NormalMap),
+                        RoughnessKey = LookupKey(textureReverse, be.Material.RoughnessMap),
+                        MetallicKey = LookupKey(textureReverse, be.Material.MetallicMap),
+                        MaskKey = LookupKey(textureReverse, be.Material.Mask),
                     },
                 });
             }
@@ -261,10 +270,13 @@ namespace Engine.Logic
             return doc;
         }
 
-        private static MaterialEffect ResolveMaterial(MaterialRecord rec, Dictionary<string, MaterialEffect> materialLookup, Assets assets)
+        private static MaterialEffect ResolveMaterial(MaterialRecord rec, Dictionary<string, MaterialEffect> materialLookup, Dictionary<string, Texture2D> textureLookup, Assets assets)
         {
-            // No material data → fall back to the engine's default base material.
-            if (rec == null) return assets.BaseMaterial?.Clone();
+            // No material data → entity was created with the model's embedded
+            // materials (e.g. Sponza). Returning null tells BasicEntity to keep
+            // those embedded effects instead of overwriting them with a blank
+            // BaseMaterial clone that would drop every texture in the model.
+            if (rec == null) return null;
 
             MaterialEffect material = assets.BaseMaterial?.Clone();
             if (material == null) return null;
@@ -274,7 +286,28 @@ namespace Engine.Logic
             material.EmissiveStrength = rec.EmissiveStrength;
             material.IsTransparent = rec.IsTransparent;
             material.Type = (MaterialEffect.MaterialTypes)rec.MaterialType;
+
+            // Texture restore: each setter ignores null, so missing keys keep
+            // BaseMaterial's defaults. Unknown keys (e.g. asset renamed) are
+            // logged once per record so the user can fix the .obsc file.
+            if (rec.AlbedoKey != null && textureLookup.TryGetValue(rec.AlbedoKey, out var albedo)) material.AlbedoMap = albedo;
+            else if (rec.AlbedoKey != null) EditorBridge.Log($"LoadScene: AlbedoKey '{rec.AlbedoKey}' not in Assets");
+            if (rec.NormalKey != null && textureLookup.TryGetValue(rec.NormalKey, out var normal)) material.NormalMap = normal;
+            else if (rec.NormalKey != null) EditorBridge.Log($"LoadScene: NormalKey '{rec.NormalKey}' not in Assets");
+            if (rec.RoughnessKey != null && textureLookup.TryGetValue(rec.RoughnessKey, out var rough)) material.RoughnessMap = rough;
+            else if (rec.RoughnessKey != null) EditorBridge.Log($"LoadScene: RoughnessKey '{rec.RoughnessKey}' not in Assets");
+            if (rec.MetallicKey != null && textureLookup.TryGetValue(rec.MetallicKey, out var metal)) material.MetallicMap = metal;
+            else if (rec.MetallicKey != null) EditorBridge.Log($"LoadScene: MetallicKey '{rec.MetallicKey}' not in Assets");
+            if (rec.MaskKey != null && textureLookup.TryGetValue(rec.MaskKey, out var mask)) material.Mask = mask;
+            else if (rec.MaskKey != null) EditorBridge.Log($"LoadScene: MaskKey '{rec.MaskKey}' not in Assets");
+
             return material;
+        }
+
+        private static string LookupKey<T>(Dictionary<T, string> reverse, T value) where T : class
+        {
+            if (value == null) return null;
+            return reverse.TryGetValue(value, out string k) ? k : null;
         }
 
         private static Dictionary<string, T> BuildAssetLookup<T>(Assets assets) where T : class
@@ -338,6 +371,14 @@ namespace Engine.Logic
             public float EmissiveStrength { get; set; }
             public bool IsTransparent { get; set; }
             public int MaterialType { get; set; }
+
+            // Texture references by Assets-field name. null = field not customized
+            // or texture is embedded in the model (handled by the null-material path).
+            public string AlbedoKey { get; set; }
+            public string NormalKey { get; set; }
+            public string RoughnessKey { get; set; }
+            public string MetallicKey { get; set; }
+            public string MaskKey { get; set; }
         }
 
         public class PointLightRecord

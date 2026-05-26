@@ -1,33 +1,23 @@
-Context:
+# TODO
 
-There is already a bridge that connects the editor and the engine, but there are issues and so i want to reinvent the scene logic (if necessary), and also add the rest of the entities/gameobjects (like for example decals) and scripts for making things happen (usual components of a game editor). And then when there is a more structured scene logic fix the issues of adding objects to the scene.
-Current viewport doesnt have the logic for the side buttons on the editor (Select, Move, Rotate, etc) and still needs to turn on the editor on the HelperSuite to show the gizmo.
+## Context:
 
-Features I want to implement:
+See what was added and changed in the `CHANGELOG.md`
 
-- Scene data file with custom extension for easy identification
-- Create multiple scenes
-- Editor Camera system (separate from game cameras) that handles mouse and keyboard inputs to manipulate the view matrix.
-    - Right-click + Mouse Drag: Rotates/looks around (Pitch and Yaw, with clamping to prevent flipping).
-    - Middle-click + Mouse Drag: Pans the camera horizontally and vertically relative to its orientation.
-    - Scroll Wheel: Zooms in/out along the camera's forward vector.
-    - Calculate and update the View Matrix based on these transformations.
-- After having the editor camera system, implement the rest of the features for moving and rotating.
-- Play/Stop button logic
+## What to add/change/remove/debug
 
-Additional notes:
+- Safely remove HelperSuite (legacy UI)
+- Investigate deeper and fix the Add GameObject crashing issue
+- Investigate deeper and fix the Inspector focus issue
 
-THE SCREEN-TO-WORLD RAYCAST (Object Selection)
-Write a function that translates a 2D mouse click inside the viewport screen boundaries into a 3D ray.
-- Inputs: `(int mouseX, int mouseY)`, `int viewportWidth`, `int viewportHeight`, the `ProjectionMatrix`, and the `View Matrix`.
-- Convert screen pixels to Normalized Device Coordinates (NDC) ranging from -1 to 1.
-- Unproject the NDC into World Space using the inverse View-Projection matrix to calculate the Ray Origin and normalized Ray Direction.
-- Provide a basic Ray-vs-AABB (Axis-Aligned Bounding Box) intersection function so the editor can detect which object was clicked.
+## Issues
 
-THE RUNTIME EDIT/PLAY LOOP HOOK
-- Provide a structured loop or update function that shows how this viewport processes inputs, updates the camera, and renders the scene texture inside the UI framework window frame every frame.
+- Phase 1, new scene breaks the game (the game stops moving), also when saving a scene and then opening it, the textures were gone
+- Phase 1, part 2, Inspector focus still sometimes opens and closes immediately, when selecting a object in the hierarchy or trying to edit the values.
+- Phase 3, holding RMB and pressing WASD doesnt move the camera
+- Phase 4, Translate, Rotate, Scale are binded and working but the Select tool is not behaving as expected
 
-Current known Issues:
+## Additional notes
 
-- Inspector still closes when trying to interact with the input boxes for the values, sliders and color pickers
-- Tried diagnosing the Add Object crash issue but the log file doesnt show or create
+- HelperSuite shows in the GUI the option to turn on the Editor mode so for the select tool to work it should be like this, the editor mode should be on by default but only when the game is running on the editor.
+- In phase 1 after creating a new scene and then the game breaking, If I were to open a scene I saved It would bring back the game

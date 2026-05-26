@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace Anvil.Views;
@@ -47,17 +48,24 @@ public partial class MainWindow : Window
 
     private void OnAnyLostFocus(object? sender, RoutedEventArgs e)
     {
-        // LostFocus doesn't tell us where focus went; if focus stays within the
-        // inspector a GotFocus will follow and re-set the flag. If it leaves the
-        // window entirely we want the flag cleared so the reconciler resumes.
+        // LostFocus doesn't tell us where focus went, but the focused element on
+        // the window does. If focus has truly left the inspector (window-level
+        // focused element is no longer an inspector descendant), clear the flag
+        // so the reconciler resumes writing values for the selected object.
+        // Without this, leaving the inspector for the hierarchy or viewport
+        // would leave the selected VM permanently frozen.
         var inspector = this.FindControl<ScrollViewer>("InspectorScroll");
         if (inspector == null) { BridgeReconciler.IsInspectorFocused = false; return; }
-        if (e.Source is Visual v && IsDescendantOf(v, inspector))
+
+        // Defer to next dispatcher tick — the next GotFocus has not run yet when
+        // LostFocus fires; reading FocusManager too early would still see the
+        // outgoing element.
+        Dispatcher.UIThread.Post(() =>
         {
-            // The control losing focus was inside the inspector. We can't know yet
-            // whether focus is moving to another inspector control. Defer; the
-            // following GotFocus (if any) will re-evaluate.
-        }
+            var focused = FocusManager?.GetFocusedElement() as Visual;
+            BridgeReconciler.IsInspectorFocused =
+                focused != null && IsDescendantOf(focused, inspector);
+        });
     }
 
     private static bool IsDescendantOf(Visual node, Visual ancestor)
@@ -69,5 +77,28 @@ public partial class MainWindow : Window
             current = current.GetVisualParent();
         }
         return false;
+    }
+
+    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // 1. Only respond to standard left clicks
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            // 2. Walk up the visual tree from the clicked element (e.Source)
+            // to see if the user clicked inside the Menu structure
+            var visual = e.Source as Visual;
+            while (visual != null && visual != sender)
+            {
+                if (visual is Menu || visual is MenuItem)
+                {
+                    // Click is on the menu; abort dragging and let the menu work normally
+                    return; 
+                }
+                visual = visual.GetVisualParent();
+            }
+
+            // 3. If the click was on empty titlebar space, native dragging begins
+            this.BeginMoveDrag(e);
+        }
     }
 }
