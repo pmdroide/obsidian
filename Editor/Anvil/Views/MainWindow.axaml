@@ -1,0 +1,1552 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Anvil.ViewModels"
+        xmlns:m="using:Anvil.Models"
+        xmlns:controls="using:Anvil.Controls"
+        xmlns:conv="using:Anvil.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1440" d:DesignHeight="900"
+        x:Class="Anvil.Views.MainWindow"
+        x:Name="RootWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/Icon.ico"
+        Width="1440" Height="900"
+        WindowStartupLocation="CenterScreen"
+        MinWidth="1100" MinHeight="700"
+        Background="{StaticResource AnvilWindowBackgroundBrush}"
+        FontFamily="{StaticResource AnvilFontFamily}"
+        Foreground="{StaticResource AnvilTextPrimaryBrush}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="36"   
+        Title="Anvil Editor">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <conv:EnumEqualsConverter x:Key="EnumEquals" />
+        <conv:ColorToBrushConverter x:Key="ColorToBrush" />
+    </Window.Resources>
+
+    <Window.Styles>
+
+        <!-- ============================== Global ============================== -->
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource AnvilFontFamily}" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+        </Style>
+        <Style Selector="TextBlock.subtle">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="TextBlock.panelTitle">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Default LucideIcon style -->
+        <Style Selector="controls|LucideIcon">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+            <Setter Property="StrokeThickness" Value="1.6" />
+        </Style>
+
+        <!-- ============================== Menu (title bar) ============================== -->
+        <Style Selector="Menu.titleMenu">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Menu.titleMenu > MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+        <Style Selector="Menu.titleMenu > MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Menu.titleMenu > MenuItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- ============================== Tool rail buttons ============================== -->
+        <Style Selector="Button.tool">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.tool:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.tool.active">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.tool.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.tool.active controls|LucideIcon">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.tool.play.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilPlayBrush}" />
+        </Style>
+
+        <!-- Smaller tool button used in toolbars -->
+        <Style Selector="Button.iconButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+        </Style>
+        <Style Selector="Button.iconButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.iconButton controls|LucideIcon">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+        </Style>
+
+        <!-- Subtle row-level icon button (hierarchy lock/visible) -->
+        <Style Selector="Button.rowIcon">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="Button.rowIcon:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.rowIcon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+
+        <!-- ============================== Segmented ListBox ============================== -->
+        <Style Selector="ListBox.segmented">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ItemsPanel">
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="2" />
+                </ItemsPanelTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox.segmented ListBoxItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+        <Style Selector="ListBox.segmented ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.segmented ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="ListBox.segmented ListBoxItem:selected:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+
+        <!-- ============================== Inputs ============================== -->
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style Selector="ComboBox.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style Selector="NumericUpDown.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <!-- ============================== TreeView ============================== -->
+        <Style Selector="TreeView">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="TreeViewItem">
+            <Setter Property="Padding" Value="0,1" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+        <Style Selector="TreeViewItem:selected:focus /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+        <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+
+        <!-- ============================== ListBox (console list) ============================== -->
+        <Style Selector="ListBox.console">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ListBox.console ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="ListBox.console ListBoxItem:nth-child(odd) /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSubtleBandBrush}" />
+        </Style>
+        <Style Selector="ListBox.console ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.console ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.console ListBoxItem:selected:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+
+        <!-- ============================== Panel header ============================== -->
+        <Style Selector="Border.panelHeader">
+            <Setter Property="Background" Value="{StaticResource AnvilPanelBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Height" Value="33" />
+        </Style>
+
+        <!-- ============================== Filter pill button ============================== -->
+        <Style Selector="Button.pill">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="MinHeight" Value="20" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSecondaryBrush}" />
+        </Style>
+        <Style Selector="Button.pill:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.pill.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+
+        <!-- ============================== Expander ============================== -->
+        <Style Selector="Expander">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Expander /template/ ToggleButton">
+            <Setter Property="Background" Value="{StaticResource AnvilSubtleBandBrush}" />
+            <Setter Property="Padding" Value="8,6" />
+        </Style>
+
+        <!-- ============================== ScrollBar ============================== -->
+        <Style Selector="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </Window.Styles>
+
+    <!-- ============================ ROOT GRID ============================ -->
+    <Grid RowDefinitions="36,*,176">
+
+        <!-- ============================== TITLE BAR ============================== -->
+        <Border Grid.Row="0"
+                Background="{StaticResource AnvilTitleBarBackgroundBrush}"
+                BorderBrush="{StaticResource AnvilBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,0"
+                PointerPressed="TitleBar_PointerPressed">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+
+                <!-- brand mark -->
+                <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,16,0"
+                       VerticalAlignment="Center"
+                       Source="/Assets/Icon.ico" />
+
+                <!-- menu bar -->
+                <Menu Grid.Column="1" Classes="titleMenu" VerticalAlignment="Center">
+                    <MenuItem Header="File">
+                        <MenuItem Header="New Scene" Command="{Binding NewSceneCommand}" />
+                        <MenuItem Header="Open Scene..." Command="{Binding OpenSceneCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
+                        <Separator />
+                        <MenuItem Header="Save" Command="{Binding SaveSceneCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
+                        <MenuItem Header="Save As..." Command="{Binding SaveSceneAsCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
+                        <Separator />
+                        <MenuItem Header="Exit" />
+                    </MenuItem>
+                    <MenuItem Header="Edit">
+                        <MenuItem Header="Undo" />
+                        <MenuItem Header="Redo" />
+                        <Separator />
+                        <MenuItem Header="Preferences..." />
+                    </MenuItem>
+                    <MenuItem Header="Assets">
+                        <MenuItem Header="Import Asset..." />
+                        <MenuItem Header="Refresh" />
+                    </MenuItem>
+                    <MenuItem Header="GameObject">
+                        <MenuItem Header="Create Empty" />
+                        <MenuItem Header="3D Object">
+                            <MenuItem Header="Cube" />
+                            <MenuItem Header="Sphere" />
+                            <MenuItem Header="Capsule" />
+                        </MenuItem>
+                        <MenuItem Header="Light">
+                            <MenuItem Header="Directional Light" />
+                            <MenuItem Header="Point Light" />
+                        </MenuItem>
+                    </MenuItem>
+                    <MenuItem Header="Component">
+                        <MenuItem Header="Mesh" />
+                        <MenuItem Header="Physics" />
+                    </MenuItem>
+                    <MenuItem Header="Window">
+                        <MenuItem Header="Hierarchy" />
+                        <MenuItem Header="Inspector" />
+                        <MenuItem Header="Console" />
+                        <MenuItem Header="Post Processing"
+                                  Command="{Binding SetInspectorViewCommand}"
+                                  CommandParameter="PostProcessing" />
+                    </MenuItem>
+                    <MenuItem Header="Help">
+                        <MenuItem Header="About Anvil" />
+                    </MenuItem>
+                </Menu>
+
+                <!-- doc status -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" Spacing="6">
+                    <TextBlock Text="{Binding ProjectName}" FontSize="12"
+                               Foreground="{StaticResource AnvilTextDisabledBrush}" />
+                    <TextBlock Text="-" FontSize="12"
+                               Foreground="{StaticResource AnvilTextDisabledBrush}" />
+                    <TextBlock Text="{Binding SceneName}" FontSize="12"
+                               Foreground="{StaticResource AnvilTextDisabledBrush}" />
+                    <TextBlock Text="-" FontSize="12"
+                               Foreground="{StaticResource AnvilTextDisabledBrush}" />
+                    <TextBlock Text="{Binding Platform}" FontSize="12"
+                               Foreground="{StaticResource AnvilTextDisabledBrush}" />
+                </StackPanel>
+
+                <!-- render stats -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center" Margin="0,0,160,0">
+                    <Border CornerRadius="4" Padding="6,2"
+                            Background="{StaticResource AnvilInputBackgroundBrush}">
+                        <TextBlock Text="{Binding GraphicsApi}" FontSize="10"
+                                   Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                    </Border>
+                    <Border CornerRadius="4" Padding="6,2"
+                            Background="{StaticResource AnvilInputBackgroundBrush}">
+                        <TextBlock FontSize="10" Foreground="{StaticResource AnvilTextSecondaryBrush}">
+                            <Run Text="{Binding Fps}" /><Run Text="fps" />
+                        </TextBlock>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============================== MAIN ============================== -->
+        <Grid Grid.Row="1" ColumnDefinitions="48,*,260">
+
+            <!-- ====== TOOL RAIL ====== -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource AnvilToolRailBackgroundBrush}"
+                    BorderBrush="{StaticResource AnvilBorderBrush}"
+                    BorderThickness="0,0,1,0"
+                    Padding="0,12">
+                <DockPanel HorizontalAlignment="Center">
+
+                    <!-- bottom group -->
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" Spacing="6">
+                        <Border Height="1" Background="{StaticResource AnvilBorderBrush}" Margin="6,4" />
+                        <Button Classes="tool" ToolTip.Tip="Toggle Grid">
+                            <controls:LucideIcon Icon="Grid3x3" />
+                        </Button>
+                        <Button Classes="tool play"
+                                Classes.active="{Binding IsPlaying}"
+                                Command="{Binding TogglePlayCommand}"
+                                ToolTip.Tip="Play / Pause (Space)">
+                            <Grid>
+                                <controls:LucideIcon Icon="Play" IsVisible="{Binding !IsPlaying}" />
+                                <controls:LucideIcon Icon="Pause" IsVisible="{Binding IsPlaying}" />
+                            </Grid>
+                        </Button>
+                        <Button Classes="tool" ToolTip.Tip="Step">
+                            <controls:LucideIcon Icon="SkipForward" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- top tools -->
+                    <StackPanel Orientation="Vertical" Spacing="6">
+                        <Button Classes="tool" Classes.active="{Binding IsToolSelect}"
+                                Command="{Binding SetActiveToolCommand}" CommandParameter="Select"
+                                ToolTip.Tip="Select (Q)">
+                            <controls:LucideIcon Icon="MousePointer2" />
+                        </Button>
+                        <Button Classes="tool" Classes.active="{Binding IsToolMove}"
+                                Command="{Binding SetActiveToolCommand}" CommandParameter="Move"
+                                ToolTip.Tip="Move (W)">
+                            <controls:LucideIcon Icon="Move" />
+                        </Button>
+                        <Button Classes="tool" Classes.active="{Binding IsToolRotate}"
+                                Command="{Binding SetActiveToolCommand}" CommandParameter="Rotate"
+                                ToolTip.Tip="Rotate (E)">
+                            <controls:LucideIcon Icon="RotateCw" />
+                        </Button>
+                        <Button Classes="tool" Classes.active="{Binding IsToolScale}"
+                                Command="{Binding SetActiveToolCommand}" CommandParameter="Scale"
+                                ToolTip.Tip="Scale (R)">
+                            <controls:LucideIcon Icon="Maximize2" />
+                        </Button>
+                        <Button Classes="tool" Classes.active="{Binding IsToolPan}"
+                                Command="{Binding SetActiveToolCommand}" CommandParameter="Pan"
+                                ToolTip.Tip="Pan (Space)">
+                            <controls:LucideIcon Icon="Hand" />
+                        </Button>
+                        <Button Classes="tool" Classes.active="{Binding IsToolSnap}"
+                                Command="{Binding SetActiveToolCommand}" CommandParameter="Snap"
+                                ToolTip.Tip="Snap (S)">
+                            <controls:LucideIcon Icon="Magnet" />
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- ====== CENTER (viewport) ====== -->
+            <Grid Grid.Column="1" RowDefinitions="33,*"
+                  Background="{StaticResource AnvilViewportBackgroundBrush}">
+
+                <!-- viewport toolbar -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource AnvilPanelBackgroundBrush}"
+                        BorderBrush="{StaticResource AnvilBorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="12,6">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto">
+
+                        <TextBlock Grid.Column="0" Text="View" FontSize="11"
+                                   Foreground="{StaticResource AnvilTextMutedBrush}"
+                                   Margin="0,0,8,0" VerticalAlignment="Center" />
+
+                        <ListBox Grid.Column="1" Classes="segmented"
+                                 SelectedItem="{Binding ViewMode, Mode=TwoWay}">
+                            <ListBoxItem Content="Perspective" />
+                            <ListBoxItem Content="Top" />
+                            <ListBoxItem Content="Front" />
+                            <ListBoxItem Content="Side" />
+                        </ListBox>
+
+                        <Rectangle Grid.Column="2" Width="1" Margin="10,4"
+                                   Fill="{StaticResource AnvilBorderBrush}" />
+
+                        <TextBlock Grid.Column="3" Text="Shading" FontSize="11"
+                                   Foreground="{StaticResource AnvilTextMutedBrush}"
+                                   Margin="0,0,8,0" VerticalAlignment="Center" />
+
+                        <ListBox Grid.Column="4" Classes="segmented"
+                                 SelectedItem="{Binding ShadingMode, Mode=TwoWay}">
+                            <ListBoxItem Content="Solid" />
+                            <ListBoxItem Content="Wireframe" />
+                            <ListBoxItem Content="Unlit" />
+                        </ListBox>
+
+                        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="2"
+                                    VerticalAlignment="Center">
+                            <Button Classes="iconButton" ToolTip.Tip="Camera">
+                                <controls:LucideIcon Icon="Camera" />
+                            </Button>
+                            <Button Classes="iconButton" ToolTip.Tip="Lighting">
+                                <controls:LucideIcon Icon="Sun" />
+                            </Button>
+                            <Button Classes="iconButton" ToolTip.Tip="Layers">
+                                <controls:LucideIcon Icon="Layers" />
+                            </Button>
+                            <Button Classes="iconButton" ToolTip.Tip="Stats">
+                                <controls:LucideIcon Icon="Monitor" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- viewport scene -->
+                <Grid Grid.Row="1">
+                    <controls:MonoGameHost x:Name="ViewportHost" />
+
+                    <!-- bottom-left view label -->
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                Margin="14,0,0,14" Spacing="2">
+                        <TextBlock Text="{Binding ViewMode}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                   LetterSpacing="2" />
+                        <TextBlock Text="{Binding PlayStateLabel}" FontSize="10"
+                                   Foreground="{StaticResource AnvilTextSubtleBrush}" />
+                    </StackPanel>
+
+                    <!-- selection label bottom-right -->
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,14,14" Padding="8,4" CornerRadius="4"
+                            Background="#22000000"
+                            BorderBrush="{StaticResource AnvilBorderBrush}"
+                            BorderThickness="1"
+                            IsVisible="{Binding HasSelectedObject}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Selected:" FontSize="10"
+                                       Foreground="{StaticResource AnvilTextMutedBrush}" />
+                            <TextBlock Text="{Binding SelectedObjectName}" FontSize="10"
+                                       Foreground="{StaticResource AnvilTextPrimaryBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- PLAYING indicator -->
+                    <Border IsVisible="{Binding IsPlaying}"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,12,12,0" Padding="8,4" CornerRadius="4"
+                            Background="#22E06C5A"
+                            BorderBrush="#44E06C5A" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Width="6" Height="6" Fill="{StaticResource AnvilPlayBrush}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock Text="PLAYING" FontSize="11" FontWeight="SemiBold"
+                                       LetterSpacing="1"
+                                       Foreground="{StaticResource AnvilPlayBrush}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ====== RIGHT PANEL (Hierarchy + Inspector) ====== -->
+            <Grid Grid.Column="2" RowDefinitions="45*,4,55*"
+                  Background="{StaticResource AnvilPanelBackgroundBrush}">
+                <Grid.Styles>
+                    <Style Selector="Border.column">
+                        <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+                        <Setter Property="BorderThickness" Value="1,0,0,0" />
+                    </Style>
+                </Grid.Styles>
+
+                <!-- Hierarchy -->
+                <Border Grid.Row="0" Classes="column">
+                    <Grid RowDefinitions="33,22,*">
+
+                        <Border Grid.Row="0" Classes="panelHeader">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                            Spacing="6" VerticalAlignment="Center">
+                                    <controls:LucideIcon Icon="Layers" />
+                                    <TextBlock Text="Hierarchy" Classes="panelTitle" />
+                                </StackPanel>
+                                <Button Grid.Column="2" Classes="iconButton" ToolTip.Tip="Add">
+                                    <controls:LucideIcon Icon="Plus" />
+                                    <Button.Flyout>
+                                        <!-- MenuFlyout items don't inherit DataContext
+                                             from the placement target reliably, so bindings
+                                             that look like {Binding XCommand} silently
+                                             resolve to nothing. Reach back through the
+                                             Window's DataContext explicitly. -->
+                                        <MenuFlyout>
+                                            <MenuItem Header="Point Light"
+                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddPointLightCommand}" />
+                                            <MenuItem Header="Directional Light"
+                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddDirectionalLightCommand}" />
+                                            <MenuItem Header="Basic Mesh (Cube)"
+                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}"
+                                                      CommandParameter="Cube" />
+                                            <Separator />
+                                            <MenuItem Header="Basic Mesh from Asset…"
+                                                      ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AvailableModels}">
+                                                <MenuItem.Styles>
+                                                    <Style Selector="MenuItem">
+                                                        <Setter Property="Header" Value="{Binding}" />
+                                                        <Setter Property="Command"
+                                                                Value="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}" />
+                                                        <Setter Property="CommandParameter" Value="{Binding}" />
+                                                    </Style>
+                                                </MenuItem.Styles>
+                                            </MenuItem>
+                                        </MenuFlyout>
+                                    </Button.Flyout>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="1" Padding="12,2,12,0">
+                            <TextBlock Text="Scene" FontSize="10"
+                                       LetterSpacing="1.5"
+                                       Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                       VerticalAlignment="Center" />
+                        </Border>
+
+                        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+                            <TreeView ItemsSource="{Binding SceneObjects}"
+                                      SelectedItem="{Binding SelectedSceneObject, Mode=TwoWay}">
+                                <TreeView.ItemTemplate>
+                                    <TreeDataTemplate DataType="m:SceneObjectViewModel"
+                                                      ItemsSource="{Binding Children}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="22">
+
+                                            <!-- type icon -->
+                                            <Grid Grid.Column="0" Width="14" Height="14"
+                                                  VerticalAlignment="Center" Margin="0,0,6,0">
+                                                <controls:LucideIcon Icon="Box"
+                                                    Foreground="{StaticResource AnvilMeshBrush}"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Mesh}" />
+                                                <controls:LucideIcon Icon="Lightbulb"
+                                                    Foreground="{StaticResource AnvilLightBrush}"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Light}" />
+                                                <controls:LucideIcon Icon="Camera"
+                                                    Foreground="{StaticResource AnvilCameraBrush}"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Camera}" />
+                                                <controls:LucideIcon Icon="Circle"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Empty}" />
+                                                <controls:LucideIcon Icon="Folder"
+                                                    Foreground="{StaticResource AnvilFolderBrush}"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Group}" />
+                                            </Grid>
+
+                                            <!-- name -->
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                       FontSize="11.5"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource AnvilTextPrimaryBrush}" />
+
+                                            <!-- lock toggle -->
+                                            <Button Grid.Column="2" Classes="rowIcon"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSceneObjectLockedCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Lock">
+                                                <Grid>
+                                                    <controls:LucideIcon Icon="Lock"
+                                                          Width="12" Height="12"
+                                                          IsVisible="{Binding Locked}" />
+                                                    <controls:LucideIcon Icon="LockOpen"
+                                                          Width="12" Height="12"
+                                                          Foreground="{StaticResource AnvilTextDisabledBrush}"
+                                                          IsVisible="{Binding !Locked}" />
+                                                </Grid>
+                                            </Button>
+
+                                            <!-- visible toggle -->
+                                            <Button Grid.Column="3" Classes="rowIcon"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSceneObjectVisibleCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Visible">
+                                                <Grid>
+                                                    <controls:LucideIcon Icon="Eye"
+                                                          Width="12" Height="12"
+                                                          IsVisible="{Binding Visible}" />
+                                                    <controls:LucideIcon Icon="EyeOff"
+                                                          Width="12" Height="12"
+                                                          Foreground="{StaticResource AnvilTextDisabledBrush}"
+                                                          IsVisible="{Binding !Visible}" />
+                                                </Grid>
+                                            </Button>
+                                        </Grid>
+                                    </TreeDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- splitter -->
+                <GridSplitter Grid.Row="1" Height="4"
+                              HorizontalAlignment="Stretch"
+                              Background="{StaticResource AnvilBorderBrush}"
+                              ResizeDirection="Rows" />
+
+                <!-- Inspector -->
+                <Border Grid.Row="2" Classes="column">
+                    <Grid RowDefinitions="33,*">
+
+                        <Border Grid.Row="0" Classes="panelHeader">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                            Spacing="6" VerticalAlignment="Center">
+                                    <controls:LucideIcon Icon="Settings" />
+                                    <TextBlock Text="Inspector" Classes="panelTitle" />
+                                </StackPanel>
+
+                                <!-- Inspector view switch — Selection vs Post Processing.
+                                     Replaces the legacy HelperSuite right-side options panel;
+                                     the Window > Post Processing menu entry also flips this. -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                            Spacing="2" VerticalAlignment="Center">
+                                    <Button Content="Selection" Classes="toolbarChip"
+                                            Command="{Binding SetInspectorViewCommand}"
+                                            CommandParameter="Selection"
+                                            Classes.active="{Binding IsInspectorSelectionView}" />
+                                    <Button Content="Post FX" Classes="toolbarChip"
+                                            Command="{Binding SetInspectorViewCommand}"
+                                            CommandParameter="PostProcessing"
+                                            Classes.active="{Binding IsInspectorPostProcessingView}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- empty state — only when in Selection view AND nothing selected. -->
+                        <TextBlock Grid.Row="1"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontSize="11"
+                                   Foreground="{StaticResource AnvilTextDisabledBrush}"
+                                   Text="Nothing selected">
+                            <TextBlock.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsInspectorSelectionView" />
+                                    <Binding Path="HasNoSelectedObject" />
+                                </MultiBinding>
+                            </TextBlock.IsVisible>
+                        </TextBlock>
+
+                        <!-- populated (Selection view) -->
+                        <ScrollViewer Grid.Row="1" x:Name="InspectorScroll"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ScrollViewer.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsInspectorSelectionView" />
+                                    <Binding Path="HasSelectedObject" />
+                                </MultiBinding>
+                            </ScrollViewer.IsVisible>
+                            <StackPanel Spacing="0" DataContext="{Binding SelectedObject}"
+                                        x:DataType="m:SceneObjectViewModel">
+
+                                <!-- meta -->
+                                <Border Padding="12,10" Background="{StaticResource AnvilSubtleBandBrush}"
+                                        BorderBrush="{StaticResource AnvilBorderBrush}"
+                                        BorderThickness="0,0,0,1">
+                                    <StackPanel Spacing="8">
+                                        <TextBox Classes="field"
+                                                 Text="{Binding Name, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="6"
+                                              RowDefinitions="Auto,Auto" RowSpacing="3">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Tag"
+                                                       Classes="muted" FontSize="10" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Layer"
+                                                       Classes="muted" FontSize="10" />
+                                            <ComboBox Grid.Row="1" Grid.Column="0" Classes="field"
+                                                      HorizontalAlignment="Stretch"
+                                                      SelectedItem="{Binding Tag, Mode=TwoWay}">
+                                                <ComboBoxItem>Untagged</ComboBoxItem>
+                                                <ComboBoxItem>Player</ComboBoxItem>
+                                                <ComboBoxItem>Enemy</ComboBoxItem>
+                                                <ComboBoxItem>static</ComboBoxItem>
+                                                <ComboBoxItem>renderable</ComboBoxItem>
+                                            </ComboBox>
+                                            <ComboBox Grid.Row="1" Grid.Column="1" Classes="field"
+                                                      HorizontalAlignment="Stretch"
+                                                      SelectedItem="{Binding Layer, Mode=TwoWay}">
+                                                <ComboBoxItem>Default</ComboBoxItem>
+                                                <ComboBoxItem>UI</ComboBoxItem>
+                                                <ComboBoxItem>IgnoreRaycast</ComboBoxItem>
+                                            </ComboBox>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Transform -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Move3d" />
+                                            <TextBlock Text="Transform" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <Grid ColumnDefinitions="60,*" RowDefinitions="Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Grid Grid.Row="0" Grid.Column="1"
+                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                <NumericUpDown Grid.Column="0" Classes="field"
+                                                               Value="{Binding PositionX, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="1" Classes="field"
+                                                               Value="{Binding PositionY, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="2" Classes="field"
+                                                               Value="{Binding PositionZ, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                            </Grid>
+
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Grid Grid.Row="1" Grid.Column="1"
+                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                <NumericUpDown Grid.Column="0" Classes="field"
+                                                               Value="{Binding RotationX, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="1" Classes="field"
+                                                               Value="{Binding RotationY, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="2" Classes="field"
+                                                               Value="{Binding RotationZ, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                            </Grid>
+
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Scale"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Grid Grid.Row="2" Grid.Column="1"
+                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                <NumericUpDown Grid.Column="0" Classes="field"
+                                                               Value="{Binding ScaleX, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="1" Classes="field"
+                                                               Value="{Binding ScaleY, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="2" Classes="field"
+                                                               Value="{Binding ScaleZ, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                            </Grid>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Material -->
+                                <Expander IsExpanded="True"
+                                          IsVisible="{Binding Material, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Palette" />
+                                            <TextBlock Text="Material" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12"
+                                                DataContext="{Binding Material}"
+                                                x:DataType="m:MaterialInfo">
+                                        <Grid ColumnDefinitions="60,*" RowDefinitions="Auto"
+                                              ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Color"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Background="Transparent"
+                                                    BorderThickness="0" Padding="0"
+                                                    HorizontalAlignment="Left">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Border Width="28" Height="20" CornerRadius="3"
+                                                            Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                                            BorderBrush="{StaticResource AnvilBorderBrush}"
+                                                            BorderThickness="1" />
+                                                    <TextBlock Text="{Binding ColorHex}" FontSize="11"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Button.Flyout>
+                                                    <!-- ColorPicker lives in a Flyout — DataContext
+                                                         doesn't flow through it reliably, so reach
+                                                         back through the Window to the live VM. -->
+                                                    <Flyout>
+                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Material.Color, Mode=TwoWay}" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Roughness"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                    Value="{Binding Roughness, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Roughness, StringFormat={}{0:0.00}}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Metallic"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                    Value="{Binding Metallic, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Metallic, StringFormat={}{0:0.00}}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Emissive"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="5"
+                                                    Value="{Binding EmissiveStrength, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding EmissiveStrength, StringFormat={}{0:0.00}}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Opacity"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                    Value="{Binding Opacity, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Opacity, StringFormat={}{0:0.00}}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Type"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" Classes="field"
+                                                      HorizontalAlignment="Stretch"
+                                                      SelectedIndex="{Binding MaterialType, Mode=TwoWay}">
+                                                <ComboBoxItem>Basic</ComboBoxItem>
+                                                <ComboBoxItem>Hologram</ComboBoxItem>
+                                                <ComboBoxItem>ProjectHologram</ComboBoxItem>
+                                                <ComboBoxItem>Emissive</ComboBoxItem>
+                                                <ComboBoxItem>SubsurfaceScattering</ComboBoxItem>
+                                                <ComboBoxItem>ForwardShaded</ComboBoxItem>
+                                            </ComboBox>
+                                        </Grid>
+
+                                        <CheckBox Content="Transparent"
+                                                  IsChecked="{Binding IsTransparent, Mode=TwoWay}"
+                                                  FontSize="11" />
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Light -->
+                                <Expander IsExpanded="True"
+                                          IsVisible="{Binding Light, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Lightbulb"
+                                                  Foreground="{StaticResource AnvilLightBrush}" />
+                                            <TextBlock Text="Light" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12"
+                                                DataContext="{Binding Light}"
+                                                x:DataType="m:LightInfo">
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Type"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" Classes="field"
+                                                      HorizontalAlignment="Stretch"
+                                                      IsEnabled="False"
+                                                      SelectedItem="{Binding Type, Mode=TwoWay}">
+                                                <m:LightType>Directional</m:LightType>
+                                                <m:LightType>Point</m:LightType>
+                                                <m:LightType>Spot</m:LightType>
+                                            </ComboBox>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Color"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Background="Transparent"
+                                                    BorderThickness="0" Padding="0"
+                                                    HorizontalAlignment="Left">
+                                                <Border Width="28" Height="20" CornerRadius="3"
+                                                        Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                                        BorderBrush="{StaticResource AnvilBorderBrush}"
+                                                        BorderThickness="1" />
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Light.Color, Mode=TwoWay}" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Intensity"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Intensity, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.##" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
+                                              IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Point}">
+                                            <TextBlock Grid.Column="0" Text="Radius"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Radius, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+                                        <CheckBox Content="Cast Shadows"
+                                                  IsChecked="{Binding CastShadows, Mode=TwoWay}"
+                                                  FontSize="11" />
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Camera -->
+                                <Expander IsExpanded="True"
+                                          IsVisible="{Binding Camera, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Camera"
+                                                  Foreground="{StaticResource AnvilCameraBrush}" />
+                                            <TextBlock Text="Camera" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12"
+                                                DataContext="{Binding Camera}"
+                                                x:DataType="m:CameraInfo">
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="FOV"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Fov, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Near"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Near, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.##" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Far"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Far, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Post Processing view: global render settings (formerly the
+                             HelperSuite right-side panel). Bound through PostProcessing
+                             VM, which marshals writes onto the engine's game thread. -->
+                        <ScrollViewer Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      IsVisible="{Binding IsInspectorPostProcessingView}">
+                            <StackPanel Spacing="0" DataContext="{Binding PostProcessing}"
+                                        x:DataType="m:PostProcessingViewModel">
+
+                                <!-- Tone mapping / colour -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Wand" />
+                                            <TextBlock Text="Post Processing" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Temporal AA"
+                                                  IsChecked="{Binding Taa, Mode=TwoWay}" />
+                                        <CheckBox Content="Tonemap TAA"
+                                                  IsChecked="{Binding TonemapTaa, Mode=TwoWay}" />
+                                        <CheckBox Content="Color Grading"
+                                                  IsChecked="{Binding ColorGrading, Mode=TwoWay}" />
+
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="White Point"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.05"
+                                                           Value="{Binding WhitePoint, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Exposure"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="-8" Maximum="8" Increment="0.05"
+                                                           Value="{Binding Exposure, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="S-Curve"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="-1" Maximum="1" Increment="0.01"
+                                                           Value="{Binding SCurveStrength, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Chr. Aberr."
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="1" Increment="0.005"
+                                                           Value="{Binding ChromaticAberration, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.000" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Bloom -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Sun" />
+                                            <TextBlock Text="Bloom" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable Bloom"
+                                                  IsChecked="{Binding BloomEnabled, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowSpacing="6">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Threshold"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.05"
+                                                           Value="{Binding BloomThreshold, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="MIP0 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius1, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="MIP0 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength1, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="MIP1 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius2, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="MIP1 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength2, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="MIP2 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius3, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="MIP2 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength3, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="MIP3 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius4, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="8" Grid.Column="0" Text="MIP3 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength4, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="9" Grid.Column="0" Text="MIP4 Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="9" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomRadius5, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="10" Grid.Column="0" Text="MIP4 Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="10" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="8" Increment="0.1"
+                                                           Value="{Binding BloomStrength5, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Screen-Space Reflections -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Sparkles" />
+                                            <TextBlock Text="Screen-Space Reflections" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable SSR"
+                                                  IsChecked="{Binding SsrEnabled, Mode=TwoWay}" />
+                                        <CheckBox Content="Stochastic Distribution"
+                                                  IsChecked="{Binding SsrStochastic, Mode=TwoWay}" />
+                                        <CheckBox Content="Temporal Noise"
+                                                  IsChecked="{Binding SsrTemporalNoise, Mode=TwoWay}" />
+                                        <CheckBox Content="Firefly Reduction"
+                                                  IsChecked="{Binding SsrFireflyReduction, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Firefly Thr."
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="5" Increment="0.05"
+                                                           Value="{Binding SsrFireflyThreshold, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Samples"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="100" Increment="1"
+                                                           Value="{Binding SsrSamples, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Search Samples"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="100" Increment="1"
+                                                           Value="{Binding SsrRefinementSamples, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Ambient Occlusion -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Aperture" />
+                                            <TextBlock Text="Ambient Occlusion" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable SSAO"
+                                                  IsChecked="{Binding SsaoEnabled, Mode=TwoWay}" />
+                                        <CheckBox Content="SSAO Blur"
+                                                  IsChecked="{Binding SsaoBlur, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto"
+                                              RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Samples"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="32" Increment="1"
+                                                           Value="{Binding SsaoSamples, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Sample Radius"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="100" Increment="0.5"
+                                                           Value="{Binding SsaoRadius, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Strength"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.05"
+                                                           Value="{Binding SsaoStrength, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Viewport / SDF -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Eye" />
+                                            <TextBlock Text="Viewport" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Highlight Meshes"
+                                                  IsChecked="{Binding HighlightMeshes, Mode=TwoWay}" />
+                                        <CheckBox Content="Draw SDF distance"
+                                                  IsChecked="{Binding DrawSdf, Mode=TwoWay}" />
+                                        <CheckBox Content="Draw SDF volume"
+                                                  IsChecked="{Binding DrawSdfVolume, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Expander>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ============================== BOTTOM PANELS ============================== -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,*"
+              Background="{StaticResource AnvilPanelBackgroundBrush}">
+            <Grid.Styles>
+                <Style Selector="Border.bottomPanel">
+                    <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+                </Style>
+            </Grid.Styles>
+
+            <!-- Console -->
+            <Border Grid.Column="0" Classes="bottomPanel" BorderThickness="0,1,1,0">
+                <Grid RowDefinitions="33,*,29">
+
+                    <Border Grid.Row="0" Classes="panelHeader">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                        Spacing="6" VerticalAlignment="Center">
+                                <controls:LucideIcon Icon="Terminal" />
+                                <TextBlock Text="Console" Classes="panelTitle" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
+                                        VerticalAlignment="Center" Margin="0,0,8,0">
+                                <Button Classes="pill" Content="All"
+                                        Classes.active="{Binding ConsoleFilter, Converter={StaticResource EnumEquals}, ConverterParameter=All}"
+                                        Command="{Binding SetConsoleFilterCommand}" CommandParameter="All" />
+                                <Button Classes="pill"
+                                        Classes.active="{Binding ConsoleFilter, Converter={StaticResource EnumEquals}, ConverterParameter=Log}"
+                                        Command="{Binding SetConsoleFilterCommand}" CommandParameter="Log">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <controls:LucideIcon Icon="Info" Width="11" Height="11"
+                                              Foreground="{StaticResource AnvilLogBrush}" />
+                                        <TextBlock Text="{Binding ConsoleLogCount}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="pill"
+                                        Classes.active="{Binding ConsoleFilter, Converter={StaticResource EnumEquals}, ConverterParameter=Warn}"
+                                        Command="{Binding SetConsoleFilterCommand}" CommandParameter="Warn">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <controls:LucideIcon Icon="TriangleAlert" Width="11" Height="11"
+                                              Foreground="{StaticResource AnvilWarnBrush}" />
+                                        <TextBlock Text="{Binding ConsoleWarnCount}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="pill"
+                                        Classes.active="{Binding ConsoleFilter, Converter={StaticResource EnumEquals}, ConverterParameter=Error}"
+                                        Command="{Binding SetConsoleFilterCommand}" CommandParameter="Error">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <controls:LucideIcon Icon="CircleX" Width="11" Height="11"
+                                              Foreground="{StaticResource AnvilErrorBrush}" />
+                                        <TextBlock Text="{Binding ConsoleErrorCount}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <Border Grid.Column="3"
+                                    Background="{StaticResource AnvilInputBackgroundBrush}"
+                                    BorderBrush="{StaticResource AnvilBorderBrush}"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="6,2" Margin="0,0,4,0" Width="160">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <controls:LucideIcon Grid.Column="0" Icon="Search"
+                                          Width="11" Height="11"
+                                          Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,6,0" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding ConsoleSearch, Mode=TwoWay}"
+                                             PlaceholderText="Filter logs..."
+                                             Background="Transparent" BorderThickness="0"
+                                             MinHeight="18" Padding="0" FontSize="11" />
+                                </Grid>
+                            </Border>
+
+                            <Button Grid.Column="3" Classes="iconButton" HorizontalAlignment="Right"
+                                    ToolTip.Tip="Clear console"
+                                    Command="{Binding ClearConsoleCommand}">
+                                <controls:LucideIcon Icon="Trash2" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <ListBox Grid.Row="1" Classes="console"
+                             ItemsSource="{Binding FilteredConsole}"
+                             SelectedValueBinding="{Binding Id}"
+                             SelectedValue="{Binding SelectedLogId, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="m:ConsoleEntry">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,4">
+                                    <Grid Grid.Column="0" Width="14" Height="14"
+                                          VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <controls:LucideIcon Icon="Info"
+                                              Foreground="{StaticResource AnvilLogBrush}"
+                                              IsVisible="{Binding Level, Converter={StaticResource EnumEquals}, ConverterParameter=Log}" />
+                                        <controls:LucideIcon Icon="TriangleAlert"
+                                              Foreground="{StaticResource AnvilWarnBrush}"
+                                              IsVisible="{Binding Level, Converter={StaticResource EnumEquals}, ConverterParameter=Warn}" />
+                                        <controls:LucideIcon Icon="CircleX"
+                                              Foreground="{StaticResource AnvilErrorBrush}"
+                                              IsVisible="{Binding Level, Converter={StaticResource EnumEquals}, ConverterParameter=Error}" />
+                                    </Grid>
+                                    <TextBlock Grid.Column="1" Text="{Binding Message}"
+                                               FontSize="11.5" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Source}"
+                                               FontSize="10.5"
+                                               Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Row="2"
+                            Background="{StaticResource AnvilSubtleBandBrush}"
+                            BorderBrush="{StaticResource AnvilBorderBrush}"
+                            BorderThickness="0,1,0,0"
+                            Padding="10,4">
+                        <TextBlock FontSize="10" Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                   VerticalAlignment="Center">
+                            <Run Text="Filter:" /><Run Text=" " /><Run Text="{Binding ConsoleFilter}" />
+                            <Run Text="  •  " />
+                            <Run Text="{Binding ConsoleLogCount}" /><Run Text=" log" />
+                            <Run Text="  •  " />
+                            <Run Text="{Binding ConsoleWarnCount}" /><Run Text=" warn" />
+                            <Run Text="  •  " />
+                            <Run Text="{Binding ConsoleErrorCount}" /><Run Text=" error" />
+                        </TextBlock>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Assets -->
+            <Border Grid.Column="1" Classes="bottomPanel" BorderThickness="0,1,0,0">
+                <Grid RowDefinitions="33,*">
+
+                    <Border Grid.Row="0" Classes="panelHeader">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                        Spacing="6" VerticalAlignment="Center">
+                                <controls:LucideIcon Icon="Folder"
+                                      Foreground="{StaticResource AnvilFolderBrush}" />
+                                <TextBlock Text="Assets" Classes="panelTitle" />
+                            </StackPanel>
+
+                            <Border Grid.Column="2"
+                                    Background="{StaticResource AnvilInputBackgroundBrush}"
+                                    BorderBrush="{StaticResource AnvilBorderBrush}"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="6,2" Margin="0,0,4,0" Width="180">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <controls:LucideIcon Grid.Column="0" Icon="Search"
+                                          Width="11" Height="11"
+                                          Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                          VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding AssetsSearch, Mode=TwoWay}"
+                                             PlaceholderText="Search assets..."
+                                             Background="Transparent" BorderThickness="0"
+                                             MinHeight="18" Padding="0" FontSize="11" />
+                                </Grid>
+                            </Border>
+
+                            <Button Grid.Column="3" Classes="iconButton" ToolTip.Tip="Filter">
+                                <controls:LucideIcon Icon="Funnel" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                        <TreeView ItemsSource="{Binding AssetTree}">
+                            <TreeView.ItemTemplate>
+                                <TreeDataTemplate DataType="m:AssetNode"
+                                                  ItemsSource="{Binding Children}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                                        <Grid Width="14" Height="14" VerticalAlignment="Center">
+                                            <controls:LucideIcon Icon="Folder"
+                                                  Foreground="{StaticResource AnvilFolderBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Folder}" />
+                                            <controls:LucideIcon Icon="Box"
+                                                  Foreground="{StaticResource AnvilMeshBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Mesh}" />
+                                            <controls:LucideIcon Icon="FileImage"
+                                                  Foreground="{StaticResource AnvilTextureBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Texture}" />
+                                            <controls:LucideIcon Icon="FileCode"
+                                                  Foreground="{StaticResource AnvilScriptBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Script}" />
+                                            <controls:LucideIcon Icon="Music"
+                                                  Foreground="{StaticResource AnvilAudioBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Audio}" />
+                                            <controls:LucideIcon Icon="Box"
+                                                  Foreground="{StaticResource AnvilPrimaryAltBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Material}" />
+                                            <controls:LucideIcon Icon="FileImage"
+                                                  Foreground="{StaticResource AnvilPrimaryBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Scene}" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding Name}" FontSize="11.5"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </TreeDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
