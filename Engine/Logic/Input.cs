@@ -36,7 +36,23 @@ namespace Engine.Logic
         {
             mouseLastState = mouseState;
             keyboardLastState = keyboardState;
-            mouseState = Mouse.GetState();
+
+            // When hosted in Anvil and the pointer is over an Avalonia panel
+            // (Inspector / Hierarchy / Console) the global Win32 mouse state
+            // still reports those clicks. Synthesize an idle state so picking
+            // (WasLMBClicked) and camera drag don't react.
+            if (HostBridge != null && HostBridge.IsHostedByEditor && !HostBridge.IsHostPointerOverViewport)
+            {
+                mouseState = new MouseState(
+                    mouseLastState.X, mouseLastState.Y,
+                    mouseLastState.ScrollWheelValue,
+                    ButtonState.Released, ButtonState.Released, ButtonState.Released,
+                    ButtonState.Released, ButtonState.Released);
+            }
+            else
+            {
+                mouseState = Mouse.GetState();
+            }
             keyboardState = Keyboard.GetState();
 
             // Editor camera gets the full DCC-style control set (RMB orbit, MMB pan,

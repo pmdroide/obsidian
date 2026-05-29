@@ -189,9 +189,11 @@ public partial class MainWindowViewModel : ViewModelBase
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
         bridge.ModeChanged += OnBridgeModeChanged;
+        bridge.ModelRegistryChanged += OnBridgeModelRegistryChanged;
 
         // Refresh model picker now (may already be populated after first frame).
         RefreshAvailableModels();
+        RefreshMeshAssetsFolder();
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -247,6 +249,15 @@ public partial class MainWindowViewModel : ViewModelBase
                 ReconcilerActive = false;
             }
             if (AvailableModels.Count == 0) RefreshAvailableModels();
+            // The Meshes folder is normally repopulated via ModelRegistryChanged, but
+            // built-in models don't fire that event — if the folder was built before the
+            // bridge reported any models, refill it once models are available so they
+            // become visible and draggable.
+            if (_meshesFolder != null && _meshesFolder.Children.Count == 0 &&
+                _bridge.AvailableModelKeys.Count > 0)
+            {
+                RefreshMeshAssetsFolder();
+            }
 
             // Only fire SelectedObject change when its identity actually flipped.
             // Re-firing every 3 frames re-evaluates the inspector's DataContext,
@@ -469,32 +480,69 @@ public partial class MainWindowViewModel : ViewModelBase
         return null;
     }
 
+    private AssetNode? _meshesFolder;
+
     private void BuildAssets()
     {
-        var meshes = new AssetNode { Id = "f-meshes", Name = "Meshes", Kind = AssetKind.Folder, IsExpanded = true };
-        meshes.Children.Add(new AssetNode { Id = "a-cube", Name = "Cube.fbx", Kind = AssetKind.Mesh });
-        meshes.Children.Add(new AssetNode { Id = "a-sphere", Name = "Sphere.fbx", Kind = AssetKind.Mesh });
-        meshes.Children.Add(new AssetNode { Id = "a-pillar", Name = "Pillar.fbx", Kind = AssetKind.Mesh });
-
+        // Live "Meshes" folder — content is repopulated from AvailableModelKeys whenever
+        // the bridge fires ModelRegistryChanged. The other folders are stubs for the
+        // upcoming texture / script / audio / material flows; they stay empty for now.
+        _meshesFolder = new AssetNode { Id = "f-meshes", Name = "Meshes", Kind = AssetKind.Folder, IsExpanded = true };
         var textures = new AssetNode { Id = "f-textures", Name = "Textures", Kind = AssetKind.Folder };
-        textures.Children.Add(new AssetNode { Id = "a-tex-stone", Name = "Stone_Albedo.png", Kind = AssetKind.Texture });
-        textures.Children.Add(new AssetNode { Id = "a-tex-metal", Name = "Metal_Albedo.png", Kind = AssetKind.Texture });
-
         var scripts = new AssetNode { Id = "f-scripts", Name = "Scripts", Kind = AssetKind.Folder };
-        scripts.Children.Add(new AssetNode { Id = "a-script-player", Name = "PlayerController.cs", Kind = AssetKind.Script });
-        scripts.Children.Add(new AssetNode { Id = "a-script-scene", Name = "SceneManager.cs", Kind = AssetKind.Script });
-
         var audio = new AssetNode { Id = "f-audio", Name = "Audio", Kind = AssetKind.Folder, IsExpanded = false };
-        audio.Children.Add(new AssetNode { Id = "a-audio-step", Name = "footstep.wav", Kind = AssetKind.Audio });
-
         var materials = new AssetNode { Id = "f-materials", Name = "Materials", Kind = AssetKind.Folder, IsExpanded = false };
-        materials.Children.Add(new AssetNode { Id = "a-mat-default", Name = "Default.mat", Kind = AssetKind.Material });
 
-        AssetTree.Add(meshes);
+        AssetTree.Add(_meshesFolder);
         AssetTree.Add(textures);
         AssetTree.Add(scripts);
         AssetTree.Add(audio);
         AssetTree.Add(materials);
+    }
+
+    private void RefreshMeshAssetsFolder()
+    {
+        if (_bridge == null || _meshesFolder == null) return;
+        _meshesFolder.Children.Clear();
+        foreach (var key in _bridge.AvailableModelKeys)
+        {
+            _meshesFolder.Children.Add(new AssetNode
+            {
+                Id = "model:" + key,
+                Name = key + ".fbx",
+                Kind = AssetKind.Mesh,
+            });
+        }
+    }
+
+    private void OnBridgeModelRegistryChanged()
+    {
+        // Fires on the engine thread; ObservableCollection mutations require the UI thread.
+        Dispatcher.UIThread.Post(() =>
+        {
+            RefreshAvailableModels();
+            RefreshMeshAssetsFolder();
+        });
+    }
+
+    /// <summary>
+    /// Forward a disk-path .fbx (or .obj) to the engine importer. The registry-changed
+    /// event handler will refresh the Assets panel + model picker once import completes.
+    /// </summary>
+    public void ImportFbxFromDisk(string path)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(path)) return;
+        _bridge.EnqueueImportModel(path, _ => { /* refresh happens via ModelRegistryChanged */ });
+    }
+
+    /// <summary>
+    /// Spawn a BasicEntity in the scene from a registered model key (drag-drop target
+    /// for the Hierarchy panel).
+    /// </summary>
+    public void AddEntityFromAsset(string modelKey)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(modelKey)) return;
+        _bridge.EnqueueAddBasicEntity(modelKey, _bridge.SpawnPoint);
     }
 
     private void BuildConsole()

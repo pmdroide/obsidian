@@ -1,5 +1,113 @@
 # Changelog
 
+## Mesh → scene gestures + corrected error model
+
+Follow-up to the robust-import work: dragging a mesh from the Meshes folder into
+the scene didn't spawn anything, and the error model was replaced with a working
+FBX.
+
+- **`Editor/Anvil/Views/MainWindow.axaml.cs` / `MainWindow.axaml`**: the
+  `AssetsTree_PointerPressed` drag-start handler was attached via a XAML attribute,
+  which ignores handled events — but `TreeViewItem` marks `PointerPressed` as handled
+  for selection, so the handler never ran and no drag began. It's now registered in
+  code-behind on `AssetsTreeView` with `handledEventsToo: true` (bubble) so it fires
+  regardless. Added an `AssetsTree_DoubleTapped` handler (also `handledEventsToo`) as a
+  reliable drag-free way to add a mesh to the scene: double-click it. Shared model-key
+  resolution extracted into `ModelKeyFromVisual`. Removed the redundant XAML
+  `PointerPressed`/`PointerMoved` attributes.
+- **`Engine/Content/Content.mgcb`**: added `Art/Error/ERRORText.fbx` (the corrected
+  error mesh, supplied with its sibling textures). The earlier broken `Art/error.fbx`
+  is gone; `Art/error.png` remains the default error albedo for imported models.
+- **`Engine/Recources/Assets.cs`**: `ErrorModel` now loads `Art/Error/ERRORText`
+  (still falling back to the `Cube` primitive if it can't load).
+
+## Robust FBX import — no-crash, texture-optional, error fallbacks
+
+Addresses the issues in [Docs/TODO.md](Docs/TODO.md): imports failed and crashed
+when an FBX's textures lived in a subfolder, the broken `Content.mgcb` entry was
+left behind (breaking the next startup build), and imported models did not survive
+a restart. The import pipeline now never throws, never corrupts `Content.mgcb`,
+always yields a draggable model (real or placeholder), and rehydrates prior imports
+on launch.
+
+- **`Engine/Content/Content.mgcb`**: added a build entry for `Art/error.png`
+  (the fallback / "this asset is broken" texture). `Art/error.fbx` was intentionally
+  **not** added — the supplied file has a material with an empty texture slot that
+  crashes MonoGame's FBX importer at import time; re-export it without empty texture
+  slots to use a custom error mesh.
+- **`Engine/Recources/Assets.cs`**: added `ErrorModel` / `ErrorTexture` /
+  `ErrorMaterial`, loaded in `Load()` (wrapped so a missing error asset never blocks
+  boot). `ErrorModel` falls back to the `Cube` primitive since `error.fbx` is not
+  buildable; `ErrorMaterial` uses `error.png` as its albedo. New
+  `ReimportExistingModels()` scans the built `Content/Art/Models/{key}/{key}.xnb`
+  outputs at startup and re-registers each via `RegisterModel`, so models imported in
+  a previous session reappear in the Meshes folder and saved scenes can resolve them.
+- **`Engine/Recources/AssetImporter.cs`**: the sibling-texture scan is now
+  **recursive and preserves relative paths** (`SearchOption.AllDirectories` +
+  `Path.GetRelativePath`), so textures stored in subfolders resolve where the
+  ModelProcessor expects them. `AppendMgcbEntries` returns the appended text;
+  `RunMgcbBuild` is wrapped so a build failure **rolls back** the just-added
+  `Content.mgcb` block (new `RemoveMgcbBlock`), deletes the copied sources, and
+  registers the error model under the requested key instead of throwing. The final
+  `ContentManager.Load` is likewise guarded — `ImportFbx` always returns a registered
+  key (real model or error placeholder).
+- **`Engine/Editor/EditorBridge.cs`**: `EnqueueAddBasicEntity` now spawns
+  runtime-imported models with `ErrorMaterial` (so they render with the `error.png`
+  default texture instead of the base red material), keeps `BaseMaterial` for
+  built-ins, and substitutes `ErrorModel` if a model's geometry never loaded.
+- **`Editor/Anvil/ViewModels/MainWindowViewModel.cs`**: `OnBridgeSnapshot` now also
+  repopulates the Meshes folder when it is empty but the bridge reports models —
+  closing the race where built-in models existed (and were registered) but were not
+  visible/draggable because the folder was built before the bridge reported them.
+
+## Runtime asset import pipeline (drop FBX → drag into scene)
+
+Addresses [Docs/TODO.md](Docs/TODO.md): replace hard-coded scene creation with an
+editor-driven flow where the user drops a `.fbx` (plus sibling textures) on the
+Anvil Assets panel and drags from there into the Hierarchy to spawn a `BasicEntity`.
+
+- **`Engine/Recources/Assets.cs`**: added dynamic registry alongside the existing
+  hard-coded public-field model list. `RegisterModel(key, ModelDefinition)`
+  with auto-dedup (`_2`, `_3`, …) and a `ModelRegistered` event. `Load()` now
+  caches `Content`/`GraphicsDevice` so `AssetImporter` can reuse them.
+- **`Engine/Recources/AssetImporter.cs`** (new): runtime importer that copies the
+  source file into `Engine/Content/Art/Models/{key}/`, scans sibling images
+  (.png/.jpg/.tga/.dds/.bmp), appends matching `Content.mgcb` entries under a
+  cross-process mutex, invokes `mgcb` (via `dotnet mgcb`, falling back to
+  `MGCB_PATH` env var or the legacy MSBuild install) to compile, copies the
+  resulting `.xnb` next to the executable, then loads through the live
+  `ContentManager` and calls `Assets.RegisterModel`. Mirrors the
+  `ShaderManager.ShaderChanged` hot-reload pattern but without its hard-coded
+  mgcb path.
+- **`Engine/Editor/IEditorBridge.cs` / `EditorBridge.cs`**: new
+  `EnqueueImportModel(string sourcePath, Action<string> onCompleted)` op and
+  `ModelRegistryChanged` event. `BuildModelKeys` now unions
+  `Assets.DynamicModels` with the reflection-scanned hard-coded fields, so
+  imported models flow through the existing `EnqueueAddBasicEntity` path.
+- **`Engine/Logic/MainSceneLogic.cs`**: `SetUpEditorScene` →
+  `SetUpEmptyEditorScene`. Removed hard-coded Sponza spawn, 11×11 plane grid,
+  Stanford dragon, physics sphere + 10-sphere roughness sweep, decal, and two
+  foreground point lights. Boot scene is now just the editor + main cameras,
+  environment sample, SDF generator, and one sun-like directional light.
+  Removed the unused `testEntity` field.
+- **`Editor/Anvil/Views/MainWindow.axaml`**: Assets panel `Border` now
+  `AllowDrop`s file drags. Assets `TreeView` (`AssetsTreeView`) exposes
+  `PointerPressed`/`PointerMoved` for drag-start. Hierarchy `TreeView`
+  (`HierarchyTreeView`) accepts drops carrying the custom `obsidian/modelKey`
+  data format.
+- **`Editor/Anvil/Views/MainWindow.axaml.cs`**: handlers `AssetsPanel_DragOver`/
+  `AssetsPanel_Drop` (accept Windows-Explorer file drops, route .fbx/.obj into
+  `ImportFbxFromDisk`), `AssetsTree_PointerPressed`/`AssetsTree_PointerMoved`
+  (threshold-gated drag start of mesh nodes, carries the model key),
+  `Hierarchy_DragOver`/`Hierarchy_Drop` (accept model keys, call
+  `AddEntityFromAsset`).
+- **`Editor/Anvil/ViewModels/MainWindowViewModel.cs`**: subscribed to
+  `bridge.ModelRegistryChanged`; `BuildAssets()` reduced to empty folder stubs
+  + live `Meshes` folder repopulated from `AvailableModelKeys` whenever the
+  registry changes. New methods: `ImportFbxFromDisk(path)`,
+  `AddEntityFromAsset(modelKey)`, `RefreshMeshAssetsFolder()`,
+  `OnBridgeModelRegistryChanged()`.
+
 ## Editor overhaul (engine-3d branch)
 
 Implements the TODO in `Docs/TODO.md`. Phased plan in

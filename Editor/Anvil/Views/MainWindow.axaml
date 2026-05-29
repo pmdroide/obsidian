@@ -626,8 +626,12 @@
                         </Border>
 
                         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
-                            <TreeView ItemsSource="{Binding SceneObjects}"
-                                      SelectedItem="{Binding SelectedSceneObject, Mode=TwoWay}">
+                            <TreeView Name="HierarchyTreeView"
+                                      ItemsSource="{Binding SceneObjects}"
+                                      SelectedItem="{Binding SelectedSceneObject, Mode=TwoWay}"
+                                      DragDrop.AllowDrop="True"
+                                      DragDrop.DragOver="Hierarchy_DragOver"
+                                      DragDrop.Drop="Hierarchy_Drop">
                                 <TreeView.ItemTemplate>
                                     <TreeDataTemplate DataType="m:SceneObjectViewModel"
                                                       ItemsSource="{Binding Children}">
@@ -1472,7 +1476,10 @@
             </Border>
 
             <!-- Assets -->
-            <Border Grid.Column="1" Classes="bottomPanel" BorderThickness="0,1,0,0">
+            <Border Grid.Column="1" Classes="bottomPanel" BorderThickness="0,1,0,0"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="AssetsPanel_DragOver"
+                    DragDrop.Drop="AssetsPanel_Drop">
                 <Grid RowDefinitions="33,*">
 
                     <Border Grid.Row="0" Classes="panelHeader">
@@ -1510,7 +1517,13 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-                        <TreeView ItemsSource="{Binding AssetTree}">
+                        <!-- PointerPressed (drag-start) and DoubleTapped (add to scene) are
+                             registered in code-behind with handledEventsToo so they fire even
+                             though TreeViewItem marks those events handled. -->
+                        <TreeView Name="AssetsTreeView"
+                                  ItemsSource="{Binding AssetTree}"
+                                  ToolTip.Tip="Double-click a mesh to add it to the scene, or drag it into the Hierarchy.">
+
                             <TreeView.ItemTemplate>
                                 <TreeDataTemplate DataType="m:AssetNode"
                                                   ItemsSource="{Binding Children}">

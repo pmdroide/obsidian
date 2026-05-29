@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Engine.Editor;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -87,12 +88,40 @@ namespace Engine.Recources
         
         public MaterialEffect DragonLowPolyMaterial;
 
+        // -------- Error / fallback assets --------
+
+        // Shown when an imported model fails to build/load, and used as the default
+        // albedo for runtime-imported models (the deferred renderer draws each entity
+        // with a single MaterialEffect, not the FBX's embedded maps).
+        public ModelDefinition ErrorModel;
+        public Texture2D ErrorTexture;
+        public MaterialEffect ErrorMaterial;
+
+        // -------- Runtime-registered models (added via AssetImporter at editor runtime) --------
+
+        // Hot-loaded models live here keyed by their sanitised name. EditorBridge.BuildModelKeys
+        // unions this with the reflection-scanned public ModelDefinition fields, so the editor's
+        // model-picker treats hard-coded and imported models uniformly.
+        private readonly Dictionary<string, ModelDefinition> _dynamicModels =
+            new Dictionary<string, ModelDefinition>(StringComparer.OrdinalIgnoreCase);
+
+        public IReadOnlyDictionary<string, ModelDefinition> DynamicModels => _dynamicModels;
+
+        public event Action<string, ModelDefinition> ModelRegistered;
+
+        // Captured by Load() so AssetImporter can re-use the live ContentManager / GraphicsDevice
+        // for new XNBs instead of constructing a parallel content stack.
+        public ContentManager Content { get; private set; }
+        public GraphicsDevice GraphicsDevice { get; private set; }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  FUNCTIONS
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void Load(ContentManager content, GraphicsDevice graphicsDevice)
         {
+            Content = content;
+            GraphicsDevice = graphicsDevice;
             //Default Meshes + Editor
             EditorArrow = content.Load<Model>("Art/Editor/Arrow");
             EditorArrowRound = content.Load<Model>("Art/Editor/ArrowRound");
@@ -252,6 +281,102 @@ namespace Engine.Recources
             DefaultFont = content.Load<SpriteFont>("Fonts/defaultFont");
             MonospaceFont = content.Load<SpriteFont>("Fonts/monospace");
 
+            // Error / fallback assets. Wrapped so a missing error asset never blocks boot.
+            // ErrorModel is the "ERROR" text mesh shown when an import fails to build/load;
+            // ErrorTexture/ErrorMaterial (below) is the default albedo applied to imported
+            // models. Falls back to the Cube primitive if the error mesh can't load.
+            try
+            {
+                ErrorModel = new ModelDefinition(content, "Art/Error/ERRORText", graphicsDevice);
+            }
+            catch
+            {
+                ErrorModel = Cube; // already loaded above; guaranteed-valid fallback geometry.
+            }
+            try
+            {
+                ErrorTexture = content.Load<Texture2D>("Art/error");
+                ErrorMaterial = CreateMaterial(Color.White, 0.6f, 0, albedoMap: ErrorTexture);
+            }
+            catch (Exception ex)
+            {
+                ErrorTexture = null;
+                ErrorMaterial = CreateMaterial(Color.Magenta, 0.6f, 0);
+                EditorBridge.Log("Assets: failed to load Art/error texture: " + ex.Message);
+            }
+
+            // Re-register models imported in previous editor sessions so they reappear
+            // in the Meshes folder and saved scenes referencing them can load.
+            ReimportExistingModels(content, graphicsDevice);
+        }
+
+        /// <summary>
+        /// Scans the built content directory for previously imported models (written by
+        /// <see cref="AssetImporter"/> under Art/Models/{key}/{key}.xnb) and registers each
+        /// into the dynamic-model registry. Failures per-model are logged and skipped so a
+        /// single bad asset never blocks startup.
+        /// </summary>
+        private void ReimportExistingModels(ContentManager content, GraphicsDevice graphicsDevice)
+        {
+            try
+            {
+                string modelsDir = System.IO.Path.Combine(
+                    AppContext.BaseDirectory, content.RootDirectory, "Art", "Models");
+                if (!System.IO.Directory.Exists(modelsDir)) return;
+
+                foreach (string dir in System.IO.Directory.EnumerateDirectories(modelsDir))
+                {
+                    string key = System.IO.Path.GetFileName(dir);
+                    if (string.IsNullOrEmpty(key)) continue;
+                    if (_dynamicModels.ContainsKey(key) || IsKeyTaken(key)) continue;
+
+                    string xnb = System.IO.Path.Combine(dir, key + ".xnb");
+                    if (!System.IO.File.Exists(xnb)) continue;
+
+                    try
+                    {
+                        var md = new ModelDefinition(content, $"Art/Models/{key}/{key}", graphicsDevice);
+                        RegisterModel(key, md);
+                        EditorBridge.Log($"Assets: re-registered imported model '{key}'");
+                    }
+                    catch (Exception ex)
+                    {
+                        EditorBridge.Log($"Assets: failed to re-register model '{key}': " + ex.Message);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log("Assets: ReimportExistingModels failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Register a runtime-imported model under a unique key. If the requested key is
+        /// already taken (by a hard-coded field or another dynamic entry), the key is
+        /// suffixed with _2, _3, … until unique. Fires <see cref="ModelRegistered"/> so
+        /// the bridge can refresh its model-key index. Returns the actual key used.
+        /// </summary>
+        public string RegisterModel(string requestedKey, ModelDefinition model)
+        {
+            if (model == null) throw new ArgumentNullException(nameof(model));
+            string key = string.IsNullOrWhiteSpace(requestedKey) ? "model" : requestedKey;
+            string final = key;
+            int n = 2;
+            while (IsKeyTaken(final)) final = key + "_" + (n++);
+            _dynamicModels[final] = model;
+            ModelRegistered?.Invoke(final, model);
+            return final;
+        }
+
+        private bool IsKeyTaken(string key)
+        {
+            if (_dynamicModels.ContainsKey(key)) return true;
+            // Also check hard-coded public ModelDefinition fields, so dynamic imports
+            // never shadow a built-in (e.g. someone dropping a file literally named
+            // "SponzaModel.fbx" doesn't replace the hard-coded reference).
+            var f = typeof(Assets).GetField(key, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            return f != null && f.FieldType == typeof(ModelDefinition);
         }
 
         /// <summary>
@@ -516,6 +641,8 @@ namespace Engine.Recources
             sponza_fabric_spec?.Dispose();
             sponza_curtain_metallic?.Dispose();
             RockMaterial?.Dispose();
+            ErrorMaterial?.Dispose();
+            ErrorTexture?.Dispose();
         }
     }
 

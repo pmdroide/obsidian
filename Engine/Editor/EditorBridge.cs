@@ -76,6 +76,17 @@ namespace Engine.Editor
             }
         }
 
+        // Pointer-over-viewport gate. Defaults to true so standalone Engine.exe
+        // (where no host pushes pointer-enter/leave events) is unaffected. The
+        // host flips it false when the pointer leaves the viewport so the engine
+        // ignores Win32's globally-visible mouse state during that interval.
+        private volatile bool _hostPointerOverViewport = true;
+        public bool IsHostPointerOverViewport => _hostPointerOverViewport;
+        public void SetHostPointerOverViewport(bool inside)
+        {
+            _hostPointerOverViewport = inside;
+        }
+
         // Diagnostic log paths. Desktop is the primary (easy to find for the user);
         // %LOCALAPPDATA%\Anvil is the fallback when Desktop writes fail (locked-down
         // user profiles, redirected folders, OneDrive sync conflicts).
@@ -114,6 +125,11 @@ namespace Engine.Editor
         public event Action<int?> SelectionChanged;
         public event Action SceneChanged;
         public event Action<Logic.GameMode> ModeChanged;
+        public event Action ModelRegistryChanged;
+
+        // Lazy-constructed on first import — needs Assets.Content + Assets.GraphicsDevice
+        // populated, which only happens after ScreenManager.Load() runs.
+        private AssetImporter _importer;
 
         public string CurrentScenePath => _scene?.ActiveScene?.FilePath;
         public string CurrentSceneName => _scene?.ActiveScene?.Name;
@@ -140,6 +156,14 @@ namespace Engine.Editor
             {
                 scene.SceneManager.SceneChanged += OnSceneSwap;
                 if (scene.PlayMode != null) scene.PlayMode.ModeChanged += OnModeChanged;
+            }
+
+            // Refresh the model-key dictionary whenever Assets registers a new dynamic
+            // model (i.e. after AssetImporter completes). Forwarded to UI consumers via
+            // ModelRegistryChanged so the Anvil assets panel + model picker repaint.
+            if (assets != null)
+            {
+                assets.ModelRegistered += OnAssetModelRegistered;
             }
 
             // Confirms logging works AND that the bridge has been wired. If
@@ -173,6 +197,22 @@ namespace Engine.Editor
                     _modelKeyList.Add(f.Name);
                 }
             }
+
+            // Runtime-imported models live in a sibling dictionary on Assets; union them
+            // in so EnqueueAddBasicEntity can resolve them the same way as built-ins.
+            foreach (var kvp in assets.DynamicModels)
+            {
+                if (_modelKeys.ContainsKey(kvp.Key)) continue;
+                _modelKeys[kvp.Key] = kvp.Value;
+                _modelKeyList.Add(kvp.Key);
+            }
+        }
+
+        private void OnAssetModelRegistered(string key, ModelDefinition md)
+        {
+            BuildModelKeys(_assets);
+            try { ModelRegistryChanged?.Invoke(); }
+            catch (Exception ex) { Log("ModelRegistryChanged handler threw: " + ex); }
         }
 
         // ---------- enqueue API ----------
@@ -274,7 +314,19 @@ namespace Engine.Editor
                 }
                 try
                 {
-                    MaterialEffect material = _assets.BaseMaterial?.Clone();
+                    // Runtime-imported models render with the error texture (the deferred
+                    // renderer uses this single material, not the FBX's embedded maps);
+                    // built-ins keep the base material.
+                    bool isImported = _assets.DynamicModels.ContainsKey(modelKey);
+                    MaterialEffect material = (isImported
+                        ? (_assets.ErrorMaterial ?? _assets.BaseMaterial)
+                        : _assets.BaseMaterial)?.Clone();
+
+                    // Guard against a model whose geometry never loaded — show the error mesh
+                    // rather than crashing.
+                    if (md.Model == null && _assets.ErrorModel != null)
+                        md = _assets.ErrorModel;
+
                     BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
                     Log($"AddBasicEntity ok: id={entity?.Id}");
                 }
@@ -288,6 +340,34 @@ namespace Engine.Editor
             {
                 if (_scene == null) return;
                 _scene.EditorDelete(id);
+            });
+        }
+
+        public void EnqueueImportModel(string sourceFilePath, Action<string> onCompleted)
+        {
+            Log($"EnqueueImportModel path='{sourceFilePath}'");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_assets == null) { Log("ImportModel: assets null"); onCompleted?.Invoke(null); return; }
+                if (_assets.Content == null || _assets.GraphicsDevice == null)
+                {
+                    Log("ImportModel: Assets.Content / GraphicsDevice not initialised yet.");
+                    onCompleted?.Invoke(null);
+                    return;
+                }
+                try
+                {
+                    if (_importer == null)
+                        _importer = new AssetImporter(_assets.Content, _assets.GraphicsDevice, _assets);
+                    string requestedKey = System.IO.Path.GetFileNameWithoutExtension(sourceFilePath);
+                    string key = _importer.ImportFbx(sourceFilePath, requestedKey, out _);
+                    onCompleted?.Invoke(key);
+                }
+                catch (Exception ex)
+                {
+                    Log("ImportModel threw: " + ex);
+                    onCompleted?.Invoke(null);
+                }
             });
         }
 
