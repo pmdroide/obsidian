@@ -171,6 +171,33 @@ namespace Engine.Editor
         void EnqueueImportModel(string sourceFilePath, Action<string> onCompleted);
 
         /// <summary>
+        /// Queue a runtime import of texture files for an already-registered model. Copies
+        /// them into the model's <c>Art/Models/{key}/Textures/</c> folder, builds them, and
+        /// binds a material by filename convention (<c>*_BaseColor</c> → albedo, etc.).
+        /// Updates instances already in the scene. The callback fires on the game thread.
+        /// </summary>
+        void EnqueueImportTextures(string modelKey, string[] sourcePaths, Action onCompleted);
+
+        /// <summary>
+        /// Queue permanent deletion of a runtime-imported model: unregisters it and deletes
+        /// its content (files + Content.mgcb entries) from disk. Built-in models are ignored.
+        /// The callback fires on the game thread once done.
+        /// </summary>
+        void EnqueueDeleteModelAsset(string modelKey, Action onCompleted);
+
+        /// <summary>
+        /// Texture file names currently in a model's <c>Textures/</c> folder (for the
+        /// Assets panel). Safe to call from the UI thread.
+        /// </summary>
+        IReadOnlyList<string> GetModelTextureFiles(string modelKey);
+
+        /// <summary>
+        /// True if the model key refers to a runtime-imported model (deletable / a valid
+        /// texture-drop target). False for built-ins. Safe to call from the UI thread.
+        /// </summary>
+        bool IsDeletableModel(string modelKey);
+
+        /// <summary>
         /// Fires on the engine thread whenever a new model is registered in the Assets
         /// registry (today: only via <see cref="EnqueueImportModel"/>). UI consumers
         /// must marshal to the UI thread. <see cref="AvailableModelKeys"/> already

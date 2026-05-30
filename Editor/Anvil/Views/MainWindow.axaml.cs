@@ -46,6 +46,8 @@ public partial class MainWindow : Window
                 RoutingStrategies.Bubble, handledEventsToo: true);
             assetsTree.AddHandler(InputElement.DoubleTappedEvent, AssetsTree_DoubleTapped,
                 RoutingStrategies.Bubble, handledEventsToo: true);
+            assetsTree.AddHandler(InputElement.KeyDownEvent, AssetsTree_KeyDown,
+                RoutingStrategies.Bubble, handledEventsToo: true);
         }
 
         // Inspector focus tracking. When the user is typing in a NumericUpDown,
@@ -116,6 +118,9 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private static readonly string[] ImageExtensions =
+        { ".png", ".jpg", ".jpeg", ".tga", ".dds", ".bmp" };
+
     private void AssetsPanel_Drop(object? sender, DragEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -124,19 +129,94 @@ public partial class MainWindow : Window
         var files = e.DataTransfer.TryGetFiles();
         if (files == null) return;
 
+        var images = new System.Collections.Generic.List<string>();
         foreach (var item in files)
         {
             string? path = item.TryGetLocalPath();
             if (string.IsNullOrEmpty(path)) continue;
-            // Only attempt model imports for known mesh extensions. Textures and
-            // other asset types will land here too in the future; ignored for now.
             string ext = Path.GetExtension(path).ToLowerInvariant();
             if (ext == ".fbx" || ext == ".obj")
-            {
                 vm.ImportFbxFromDisk(path);
-            }
+            else if (Array.IndexOf(ImageExtensions, ext) >= 0)
+                images.Add(path);
+        }
+
+        // Route dropped textures to the imported model whose Textures folder (or mesh
+        // node) they were dropped on. Ignored if dropped on empty space / a built-in.
+        if (images.Count > 0)
+        {
+            var node = e.Source is Visual v ? FindDataContext<AssetNode>(v) : null;
+            string? modelKey = vm.DeletableModelKeyFor(node);
+            if (!string.IsNullOrEmpty(modelKey))
+                vm.ImportTexturesFromDisk(modelKey, images);
         }
         e.Handled = true;
+    }
+
+    // Delete an imported model from the Assets panel (context-menu "Delete"). Confirms
+    // first because this permanently removes the model's files from disk.
+    private async void AssetDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var node = (sender as Control)?.DataContext as AssetNode;
+        string? modelKey = vm.DeletableModelKeyFor(node);
+        if (string.IsNullOrEmpty(modelKey)) return; // only imported models are deletable
+
+        bool ok = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
+        if (ok) vm.DeleteModelAsset(modelKey);
+    }
+
+    private async void AssetsTree_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Delete) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        var assetsTree = this.FindControl<TreeView>("AssetsTreeView");
+        var node = assetsTree?.SelectedItem as AssetNode;
+        string? modelKey = vm.DeletableModelKeyFor(node);
+        if (string.IsNullOrEmpty(modelKey)) return;
+
+        e.Handled = true;
+        bool ok = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
+        if (ok) vm.DeleteModelAsset(modelKey);
+    }
+
+    // Minimal modal yes/no dialog (Avalonia has no built-in MessageBox).
+    private async System.Threading.Tasks.Task<bool> ConfirmAsync(string message)
+    {
+        var result = false;
+        var dialog = new Window
+        {
+            Title = "Confirm delete",
+            Width = 380,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        var cancel = new Button { Content = "Cancel", MinWidth = 80 };
+        cancel.Click += (_, _) => dialog.Close();
+        var delete = new Button { Content = "Delete", MinWidth = 80, IsDefault = true };
+        delete.Click += (_, _) => { result = true; dialog.Close(); };
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Thickness(18),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                    Spacing = 8,
+                    Children = { cancel, delete },
+                },
+            },
+        };
+
+        await dialog.ShowDialog(this);
+        return result;
     }
 
     private async void AssetsTree_PointerPressed(object? sender, PointerPressedEventArgs e)

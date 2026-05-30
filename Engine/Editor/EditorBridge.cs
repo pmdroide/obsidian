@@ -164,6 +164,7 @@ namespace Engine.Editor
             if (assets != null)
             {
                 assets.ModelRegistered += OnAssetModelRegistered;
+                assets.MaterialRegistered += OnAssetMaterialRegistered;
             }
 
             // Confirms logging works AND that the bridge has been wired. If
@@ -213,6 +214,14 @@ namespace Engine.Editor
             BuildModelKeys(_assets);
             try { ModelRegistryChanged?.Invoke(); }
             catch (Exception ex) { Log("ModelRegistryChanged handler threw: " + ex); }
+        }
+
+        private void OnAssetMaterialRegistered(string key)
+        {
+            // No key-list change, but the Assets panel's per-model texture listing may now
+            // differ — reuse ModelRegistryChanged to trigger a UI refresh.
+            try { ModelRegistryChanged?.Invoke(); }
+            catch (Exception ex) { Log("ModelRegistryChanged (material) handler threw: " + ex); }
         }
 
         // ---------- enqueue API ----------
@@ -314,18 +323,26 @@ namespace Engine.Editor
                 }
                 try
                 {
-                    // Runtime-imported models render with the error texture (the deferred
-                    // renderer uses this single material, not the FBX's embedded maps);
-                    // built-ins keep the base material.
-                    bool isImported = _assets.DynamicModels.ContainsKey(modelKey);
-                    MaterialEffect material = (isImported
-                        ? (_assets.ErrorMaterial ?? _assets.BaseMaterial)
-                        : _assets.BaseMaterial)?.Clone();
-
                     // Guard against a model whose geometry never loaded — show the error mesh
-                    // rather than crashing.
+                    // rather than crashing. Finalise geometry before choosing a material.
                     if (md.Model == null && _assets.ErrorModel != null)
                         md = _assets.ErrorModel;
+
+                    // Material selection:
+                    //  - The ERROR mesh renders with its own embedded textures (null material).
+                    //  - A convention-bound import uses its bound material.
+                    //  - An import without bound textures falls back to the visible error.png.
+                    //  - A built-in uses its embedded per-mesh-part materials (null material),
+                    //    so Sponza/Helmets etc. keep their textures.
+                    MaterialEffect material;
+                    if (md == _assets.ErrorModel)
+                        material = null;
+                    else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound))
+                        material = bound.Clone();
+                    else if (_assets.DynamicModels.ContainsKey(modelKey))
+                        material = (_assets.ErrorMaterial ?? _assets.BaseMaterial)?.Clone();
+                    else
+                        material = null;
 
                     BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
                     Log($"AddBasicEntity ok: id={entity?.Id}");
@@ -369,6 +386,105 @@ namespace Engine.Editor
                     onCompleted?.Invoke(null);
                 }
             });
+        }
+
+        public void EnqueueImportTextures(string modelKey, string[] sourcePaths, Action onCompleted)
+        {
+            Log($"EnqueueImportTextures modelKey={modelKey} count={(sourcePaths?.Length ?? 0)}");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_assets == null || _assets.Content == null || _assets.GraphicsDevice == null)
+                {
+                    Log("ImportTextures: assets/content not ready");
+                    onCompleted?.Invoke();
+                    return;
+                }
+                try
+                {
+                    if (_importer == null)
+                        _importer = new AssetImporter(_assets.Content, _assets.GraphicsDevice, _assets);
+
+                    if (_importer.BindTextures(modelKey, sourcePaths, out MaterialEffect material) && material != null)
+                        ApplyMaterialToExistingInstances(modelKey, material);
+                    // Assets.RegisterMaterial fired MaterialRegistered → ModelRegistryChanged,
+                    // which refreshes the Assets panel's texture listing.
+                }
+                catch (Exception ex) { Log("ImportTextures threw: " + ex); }
+                finally { onCompleted?.Invoke(); }
+            });
+        }
+
+        public void EnqueueDeleteModelAsset(string modelKey, Action onCompleted)
+        {
+            Log($"EnqueueDeleteModelAsset modelKey={modelKey}");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_assets == null) { onCompleted?.Invoke(); return; }
+                try
+                {
+                    if (!_assets.DynamicModels.ContainsKey(modelKey))
+                    {
+                        Log($"DeleteModelAsset: '{modelKey}' is not a deletable (imported) model");
+                        onCompleted?.Invoke();
+                        return;
+                    }
+                    _assets.UnregisterModel(modelKey); // fires ModelRegistered → rebuilds keys + ModelRegistryChanged
+
+                    if (_importer == null && _assets.Content != null && _assets.GraphicsDevice != null)
+                        _importer = new AssetImporter(_assets.Content, _assets.GraphicsDevice, _assets);
+                    _importer?.DeleteModelContent(modelKey);
+                }
+                catch (Exception ex) { Log("DeleteModelAsset threw: " + ex); }
+                finally { onCompleted?.Invoke(); }
+            });
+        }
+
+        public IReadOnlyList<string> GetModelTextureFiles(string modelKey) =>
+            AssetImporter.ListModelTextures(modelKey);
+
+        public bool IsDeletableModel(string modelKey) =>
+            _assets != null && _assets.DynamicModels.ContainsKey(modelKey);
+
+        // Copies texture slots + scalar material fields from a freshly bound material onto
+        // every already-placed entity using the same model, so dropping textures updates
+        // instances already in the scene. The draw path reads these fields live each frame,
+        // so no re-registration is needed.
+        private void ApplyMaterialToExistingInstances(string modelKey, MaterialEffect source)
+        {
+            if (_scene == null || source == null) return;
+            if (!_modelKeys.TryGetValue(modelKey, out ModelDefinition md) || md == null) return;
+
+            int count = 0;
+            foreach (BasicEntity be in _scene.BasicEntities)
+            {
+                if (be == null || be.ModelDefinition != md || be.Material == null) continue;
+                CopyMaterialSlots(source, be.Material);
+                count++;
+            }
+            Log($"ApplyMaterialToExistingInstances: '{modelKey}' updated {count} instance(s)");
+        }
+
+        private static void CopyMaterialSlots(MaterialEffect from, MaterialEffect to)
+        {
+            if (from == null || to == null) return;
+            to.DiffuseColor = from.DiffuseColor;
+            to.Roughness = from.Roughness;
+            to.Metallic = from.Metallic;
+            to.Type = from.Type;
+            // Set the flags explicitly first; the texture setters below only ever set a flag
+            // true (they ignore null), so a slot 'from' lacks must be cleared here.
+            to.HasDiffuse = from.HasDiffuse;
+            to.HasNormalMap = from.HasNormalMap;
+            to.HasRoughnessMap = from.HasRoughnessMap;
+            to.HasMetallic = from.HasMetallic;
+            to.HasMask = from.HasMask;
+            to.HasDisplacement = from.HasDisplacement;
+            to.AlbedoMap = from.AlbedoMap;
+            to.NormalMap = from.NormalMap;
+            to.RoughnessMap = from.RoughnessMap;
+            to.MetallicMap = from.MetallicMap;
+            to.Mask = from.Mask;
+            to.DisplacementMap = from.DisplacementMap;
         }
 
         public void EnqueueNewScene()

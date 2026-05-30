@@ -109,6 +109,19 @@ namespace Engine.Recources
 
         public event Action<string, ModelDefinition> ModelRegistered;
 
+        // -------- Per-model materials bound from convention-named textures --------
+
+        // Keyed by the same model key as _dynamicModels. Populated by AssetImporter when
+        // the user drops textures (e.g. {key}_BaseColor.png) into a model's Textures folder.
+        // EnqueueAddBasicEntity prefers this over BaseMaterial/ErrorMaterial so imported
+        // models render with their bound textures.
+        private readonly Dictionary<string, MaterialEffect> _dynamicMaterials =
+            new Dictionary<string, MaterialEffect>(StringComparer.OrdinalIgnoreCase);
+
+        public IReadOnlyDictionary<string, MaterialEffect> DynamicMaterials => _dynamicMaterials;
+
+        public event Action<string> MaterialRegistered;
+
         // Captured by Load() so AssetImporter can re-use the live ContentManager / GraphicsDevice
         // for new XNBs instead of constructing a parallel content stack.
         public ContentManager Content { get; private set; }
@@ -288,6 +301,9 @@ namespace Engine.Recources
             try
             {
                 ErrorModel = new ModelDefinition(content, "Art/Error/ERRORText", graphicsDevice);
+                // Bind the mesh's own embedded textures so the error model shows them when
+                // spawned with a null material (TODO: "Error model doesn't display textures").
+                BindEmbeddedTextures(ErrorModel.Model);
             }
             catch
             {
@@ -337,6 +353,9 @@ namespace Engine.Recources
                     {
                         var md = new ModelDefinition(content, $"Art/Models/{key}/{key}", graphicsDevice);
                         RegisterModel(key, md);
+                        // Re-bind textures dropped in a previous session so the model keeps
+                        // its appearance across restarts (matches the import-time binding).
+                        TryBindStoredTextures(content, key);
                         EditorBridge.Log($"Assets: re-registered imported model '{key}'");
                     }
                     catch (Exception ex)
@@ -348,6 +367,55 @@ namespace Engine.Recources
             catch (Exception ex)
             {
                 EditorBridge.Log("Assets: ReimportExistingModels failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Scans a model's built <c>Art/Models/{key}/Textures/</c> folder for convention-named
+        /// textures and re-binds a material, so textures dropped in a previous session survive
+        /// a restart. Mirrors <see cref="AssetImporter"/>'s convention binding. No-op when the
+        /// folder is empty or no albedo is present (the model keeps the error material).
+        /// </summary>
+        private void TryBindStoredTextures(ContentManager content, string key)
+        {
+            try
+            {
+                string texDir = System.IO.Path.Combine(
+                    AppContext.BaseDirectory, content.RootDirectory, "Art", "Models", key, "Textures");
+                if (!System.IO.Directory.Exists(texDir)) return;
+
+                Texture2D albedo = null, normal = null, rough = null, metallic = null, mask = null, disp = null;
+                foreach (string xnb in System.IO.Directory.EnumerateFiles(texDir, "*.xnb"))
+                {
+                    string stem = System.IO.Path.GetFileNameWithoutExtension(xnb);
+                    AssetImporter.MaterialUsage usage = AssetImporter.ClassifyTexture(stem);
+                    if (usage == AssetImporter.MaterialUsage.None) continue;
+
+                    Texture2D tex;
+                    try { tex = content.Load<Texture2D>($"Art/Models/{key}/Textures/{stem}"); }
+                    catch { continue; }
+
+                    switch (usage)
+                    {
+                        case AssetImporter.MaterialUsage.Albedo: albedo = tex; break;
+                        case AssetImporter.MaterialUsage.Normal: normal = tex; break;
+                        case AssetImporter.MaterialUsage.Roughness: rough = tex; break;
+                        case AssetImporter.MaterialUsage.Metallic: metallic = tex; break;
+                        case AssetImporter.MaterialUsage.Mask: mask = tex; break;
+                        case AssetImporter.MaterialUsage.Displacement: disp = tex; break;
+                    }
+                }
+
+                if (albedo == null) return;
+                MaterialEffect mat = CreateMaterial(Color.White, roughness: 1f, metallic: 0f,
+                    albedoMap: albedo, normalMap: normal, roughnessMap: rough, metallicMap: metallic,
+                    mask: mask, displacementMap: disp);
+                RegisterMaterial(key, mat);
+                EditorBridge.Log($"Assets: re-bound stored textures for '{key}'");
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"Assets: TryBindStoredTextures('{key}') failed: " + ex.Message);
             }
         }
 
@@ -377,6 +445,81 @@ namespace Engine.Recources
             // "SponzaModel.fbx" doesn't replace the hard-coded reference).
             var f = typeof(Assets).GetField(key, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
             return f != null && f.FieldType == typeof(ModelDefinition);
+        }
+
+        /// <summary>
+        /// Store (or replace) the material bound to a model key from convention-named
+        /// textures. Fires <see cref="MaterialRegistered"/> so the bridge can refresh
+        /// already-placed instances. Pass null to clear a previous binding.
+        /// </summary>
+        public void RegisterMaterial(string key, MaterialEffect material)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            if (material == null) _dynamicMaterials.Remove(key);
+            else _dynamicMaterials[key] = material;
+            MaterialRegistered?.Invoke(key);
+        }
+
+        public bool TryGetDynamicMaterial(string key, out MaterialEffect material)
+        {
+            material = null;
+            return !string.IsNullOrEmpty(key) && _dynamicMaterials.TryGetValue(key, out material) && material != null;
+        }
+
+        /// <summary>
+        /// Remove a runtime-imported model (and any material bound to it) from the
+        /// dynamic registries. Used when the user deletes a model from the Assets panel.
+        /// Built-in (hard-coded) models are never removable and are ignored here.
+        /// Returns true if a dynamic model was removed.
+        /// </summary>
+        public bool UnregisterModel(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+            _dynamicMaterials.Remove(key);
+            bool removed = _dynamicModels.Remove(key);
+            // Reuse ModelRegistered to trigger a model-key rebuild on the bridge side.
+            if (removed) ModelRegistered?.Invoke(key, null);
+            return removed;
+        }
+
+        /// <summary>
+        /// Public material factory for the runtime importer — routes through the same
+        /// <see cref="CreateMaterial"/> path the built-ins use (so the shared
+        /// <see cref="Shaders.DeferredClear"/> effect backs every material).
+        /// </summary>
+        public MaterialEffect MakeMaterial(Color color, float roughness, float metallic,
+            Texture2D albedoMap = null, Texture2D normalMap = null, Texture2D roughnessMap = null,
+            Texture2D metallicMap = null, Texture2D mask = null, Texture2D displacementMap = null,
+            MaterialEffect.MaterialTypes type = 0, float emissiveStrength = 0)
+        {
+            return CreateMaterial(color, roughness, metallic, albedoMap, normalMap, roughnessMap,
+                metallicMap, mask, displacementMap, type, emissiveStrength);
+        }
+
+        /// <summary>
+        /// Converts a model's embedded FBX materials (BasicEffect + its texture) into
+        /// engine <see cref="MaterialEffect"/>s per mesh-part, so a model dragged into the
+        /// scene with a null material renders with the textures the FBX shipped. Tolerant
+        /// variant of <see cref="ProcessModel"/>: mesh-parts that aren't BasicEffect (or
+        /// are already MaterialEffect) are left as-is instead of throwing.
+        /// </summary>
+        public void BindEmbeddedTextures(Model model)
+        {
+            if (model == null) return;
+            foreach (ModelMesh mesh in model.Meshes)
+            {
+                foreach (ModelMeshPart meshPart in mesh.MeshParts)
+                {
+                    if (meshPart.Effect is MaterialEffect) continue; // already processed
+                    if (!(meshPart.Effect is BasicEffect oEffect)) continue;
+
+                    MaterialEffect matEffect = new MaterialEffect(oEffect);
+                    if (oEffect.TextureEnabled && oEffect.Texture != null)
+                        matEffect.AlbedoMap = oEffect.Texture;
+                    matEffect.DiffuseColor = oEffect.DiffuseColor;
+                    meshPart.Effect = matEffect;
+                }
+            }
         }
 
         /// <summary>

@@ -1,5 +1,52 @@
 # Changelog
 
+## Texture binding pipeline + delete for meshes & entities
+
+Addresses [Docs/TODO.md](Docs/TODO.md): models spawned from the editor rendered
+untextured ("white"), `error.png` never appeared on texture-less models, the error
+mesh showed no textures, and there was no way to delete a scene entity or an imported
+model. Root cause: `EditorBridge.EnqueueAddBasicEntity` always overrode every model
+with one flat `MaterialEffect`, which `MeshMaterialLibrary` only bypasses (using the
+model's embedded per-mesh-part materials) when the passed material is `null`. There
+was also no texture naming-convention binding at all.
+
+- **`Engine/Recources/Assets.cs`**: added a per-model dynamic-material registry
+  (`DynamicMaterials`, `RegisterMaterial`, `TryGetDynamicMaterial`, event
+  `MaterialRegistered`) paralleling the dynamic-model registry. `UnregisterModel`
+  removes an imported model + its material. `MakeMaterial` exposes the existing
+  `CreateMaterial` path to the importer. New `BindEmbeddedTextures(Model)` (tolerant
+  generalisation of `ProcessModel`) converts an FBX's embedded `BasicEffect` textures
+  to engine materials; called on `ErrorModel` at load so the error mesh shows its own
+  textures. `ReimportExistingModels` now also calls `TryBindStoredTextures` so textures
+  dropped in a previous session are re-bound on launch (durable across restarts).
+- **`Engine/Recources/AssetImporter.cs`**: convention-based texture binding. New
+  `ClassifyTexture` maps a filename suffix (case-insensitive, after the last `_`) to a
+  slot — `_BaseColor`/`_Albedo`/`_Diffuse`→albedo, `_Normal`, `_Roughness`,
+  `_Metallic`, `_Mask`/`_Opacity`, `_Height`/`_Displacement`. `BindTextures` copies
+  dropped images into `Art/Models/{key}/Textures/`, builds them via mgcb, and binds a
+  material (no albedo ⇒ keeps the error material). `ComposeMaterial` builds from
+  already-built textures; `ImportFbx` creates the `Textures/` folder and binds any
+  convention-named siblings. `DeleteModelContent` removes a model's `Content.mgcb`
+  blocks (model + textures) and its source/built/executable folders.
+  `ListModelTextures` (static) lets the editor list a model's textures.
+- **`Engine/Editor/EditorBridge.cs` / `IEditorBridge.cs`**: `EnqueueAddBasicEntity`
+  material selection is now: ERROR mesh → `null` (own textures); convention-bound import
+  → its material; import w/o textures → `ErrorMaterial` (visible `error.png`); built-in
+  → `null` (embedded per-mesh-part materials, so Sponza/Helmets keep textures). New ops
+  `EnqueueImportTextures` (binds + updates already-placed instances in place via
+  `ApplyMaterialToExistingInstances`/`CopyMaterialSlots`) and `EnqueueDeleteModelAsset`
+  (unregister + delete from disk). New reads `GetModelTextureFiles`, `IsDeletableModel`.
+  Subscribes to `Assets.MaterialRegistered` → `ModelRegistryChanged` for UI refresh.
+- **`Editor/Anvil/ViewModels/MainWindowViewModel.cs`**: the Assets "Textures" folder
+  now holds one subfolder per imported model (id `tex:{key}`), listing dropped texture
+  files. New `ImportTexturesFromDisk`, `DeleteModelAsset`, `DeletableModelKeyFor`, and a
+  `DeleteSceneObject` command (the existing `DeleteSelected` command is now wired to UI).
+- **`Editor/Anvil/Views/MainWindow.axaml(.cs)`**: `AssetsPanel_Drop` routes image files
+  to the imported model whose Textures-folder/mesh node they were dropped on (`.fbx`/
+  `.obj` still import as models). Context-menu **Delete** on Hierarchy items
+  (`DeleteSceneObjectCommand`) and Assets items (with a confirmation dialog, since it
+  deletes files from disk); **Delete** key bound on both trees.
+
 ## Mesh → scene gestures + corrected error model
 
 Follow-up to the robust-import work: dragging a mesh from the Meshes folder into

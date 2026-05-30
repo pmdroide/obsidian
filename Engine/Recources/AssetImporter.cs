@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Engine.Editor;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -176,6 +177,21 @@ namespace Engine.Recources
                 ModelDefinition md = new ModelDefinition(_content, assetPath, _graphics, UseSDF: false);
                 string registeredKey = _assets.RegisterModel(key, md);
                 EditorBridge.Log($"AssetImporter: registered model key='{registeredKey}'");
+
+                // Give the user a folder to drop convention-named textures into later.
+                try
+                {
+                    Directory.CreateDirectory(Path.Combine(_contentSourceRoot,
+                        $"Art/Models/{registeredKey}/Textures".Replace('/', Path.DirectorySeparatorChar)));
+                }
+                catch (Exception ex) { EditorBridge.Log($"AssetImporter: could not create Textures dir for '{registeredKey}': {ex.Message}"); }
+
+                // If sibling textures already follow the naming convention, bind them now.
+                // Otherwise the model spawns with the error material until the user drops
+                // correctly-named textures onto its Textures folder.
+                if (importedTextures.Count > 0)
+                    ComposeMaterial(registeredKey, importedTextures);
+
                 return registeredKey;
             }
             catch (Exception ex)
@@ -447,6 +463,210 @@ namespace Engine.Recources
             int idx = existing.LastIndexOf(appendedBlock, StringComparison.Ordinal);
             if (idx < 0) return;
             File.WriteAllText(mgcbPath, existing.Remove(idx, appendedBlock.Length));
+        }
+
+        // -------- Convention-based texture binding --------
+
+        /// <summary>The material slot a texture file maps to, decided by its name suffix.</summary>
+        public enum MaterialUsage { None, Albedo, Normal, Roughness, Metallic, Mask, Displacement }
+
+        /// <summary>
+        /// Classify a texture by the suffix after the last underscore in its file stem
+        /// (case-insensitive). e.g. "Crate_BaseColor" → Albedo, "Crate_Normal" → Normal.
+        /// </summary>
+        public static MaterialUsage ClassifyTexture(string fileStem)
+        {
+            if (string.IsNullOrEmpty(fileStem)) return MaterialUsage.None;
+            int us = fileStem.LastIndexOf('_');
+            string suffix = (us >= 0 ? fileStem.Substring(us + 1) : fileStem).ToLowerInvariant();
+            switch (suffix)
+            {
+                case "basecolor":
+                case "albedo":
+                case "diffuse":
+                    return MaterialUsage.Albedo;
+                case "normal":
+                    return MaterialUsage.Normal;
+                case "roughness":
+                    return MaterialUsage.Roughness;
+                case "metallic":
+                    return MaterialUsage.Metallic;
+                case "mask":
+                case "opacity":
+                    return MaterialUsage.Mask;
+                case "height":
+                case "displacement":
+                    return MaterialUsage.Displacement;
+                default:
+                    return MaterialUsage.None;
+            }
+        }
+
+        /// <summary>
+        /// Loads already-built content textures (paths relative to the Content root, with
+        /// extension), classifies them by name, and — if an albedo is present — builds a
+        /// single <see cref="MaterialEffect"/> and registers it for <paramref name="modelKey"/>.
+        /// Returns the material, or null when no albedo matched (caller keeps the error
+        /// material so the model is still visibly textured).
+        /// </summary>
+        private MaterialEffect ComposeMaterial(string modelKey, IReadOnlyList<string> contentRelTexturePaths)
+        {
+            Texture2D albedo = null, normal = null, rough = null, metallic = null, mask = null, disp = null;
+            foreach (string rel in contentRelTexturePaths)
+            {
+                MaterialUsage usage = ClassifyTexture(Path.GetFileNameWithoutExtension(rel));
+                if (usage == MaterialUsage.None) continue;
+
+                Texture2D tex;
+                try { tex = _content.Load<Texture2D>(StripExtension(rel)); }
+                catch (Exception ex) { EditorBridge.Log($"AssetImporter: load texture '{rel}' failed: {ex.Message}"); continue; }
+
+                switch (usage)
+                {
+                    case MaterialUsage.Albedo: albedo = tex; break;
+                    case MaterialUsage.Normal: normal = tex; break;
+                    case MaterialUsage.Roughness: rough = tex; break;
+                    case MaterialUsage.Metallic: metallic = tex; break;
+                    case MaterialUsage.Mask: mask = tex; break;
+                    case MaterialUsage.Displacement: disp = tex; break;
+                }
+            }
+
+            if (albedo == null)
+            {
+                EditorBridge.Log($"AssetImporter: no albedo (_BaseColor) texture for '{modelKey}'; keeping error material.");
+                return null;
+            }
+
+            MaterialEffect material = _assets.MakeMaterial(Color.White, roughness: 1f, metallic: 0f,
+                albedoMap: albedo, normalMap: normal, roughnessMap: rough, metallicMap: metallic,
+                mask: mask, displacementMap: disp);
+            _assets.RegisterMaterial(modelKey, material);
+            EditorBridge.Log($"AssetImporter: bound material for '{modelKey}' " +
+                $"(albedo{(normal != null ? "+n" : "")}{(rough != null ? "+r" : "")}{(metallic != null ? "+m" : "")}{(mask != null ? "+mask" : "")}{(disp != null ? "+disp" : "")})");
+            return material;
+        }
+
+        /// <summary>
+        /// Copy dropped texture files into the model's <c>Art/Models/{key}/Textures/</c>
+        /// folder, build them via mgcb, and bind a convention-based material to the model.
+        /// Returns true when an albedo-bearing material was bound; false otherwise (caller
+        /// keeps the error material). Used by the "drop textures onto a model" editor flow.
+        /// </summary>
+        public bool BindTextures(string modelKey, IReadOnlyList<string> sourcePaths, out MaterialEffect material)
+        {
+            material = null;
+            if (string.IsNullOrEmpty(modelKey) || sourcePaths == null || sourcePaths.Count == 0) return false;
+
+            string texRelDir = $"Art/Models/{modelKey}/Textures";
+            string texDestDir = Path.Combine(_contentSourceRoot, texRelDir.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(texDestDir);
+
+            var copiedRel = new List<string>();
+            foreach (string src in sourcePaths)
+            {
+                if (string.IsNullOrEmpty(src) || !File.Exists(src)) continue;
+                string ext = Path.GetExtension(src).ToLowerInvariant();
+                if (Array.IndexOf(TextureExtensions, ext) < 0) continue;
+
+                string fileName = Path.GetFileName(src);
+                string texRel = $"{texRelDir}/{fileName}";
+                string dest = Path.Combine(_contentSourceRoot, texRel.Replace('/', Path.DirectorySeparatorChar));
+                try { File.Copy(src, dest, overwrite: true); }
+                catch (Exception ex) { EditorBridge.Log($"AssetImporter: copy texture '{src}' failed: {ex.Message}"); continue; }
+                copiedRel.Add(texRel);
+            }
+            if (copiedRel.Count == 0) return false;
+
+            string mgcbPath = Path.Combine(_contentSourceRoot, "Content.mgcb");
+            string appendedBlock;
+            MgcbEditMutex.WaitOne();
+            try { appendedBlock = AppendMgcbEntries(mgcbPath, modelRelPath: null, textureRelPaths: copiedRel, modelExt: null); }
+            finally { MgcbEditMutex.ReleaseMutex(); }
+
+            try { RunMgcbBuild(); }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"AssetImporter: texture build failed for '{modelKey}': {ex.Message}");
+                MgcbEditMutex.WaitOne();
+                try { RemoveMgcbBlock(mgcbPath, appendedBlock); }
+                finally { MgcbEditMutex.ReleaseMutex(); }
+                return false;
+            }
+
+            foreach (string rel in copiedRel) CopyXnbForAsset(rel);
+
+            material = ComposeMaterial(modelKey, copiedRel);
+            return material != null;
+        }
+
+        /// <summary>
+        /// Permanently remove a runtime-imported model's content: its Content.mgcb build
+        /// entries (model + Textures/* under Art/Models/{key}) and the copied source/built/
+        /// executable folders. Used by the Assets-panel "Delete" with disk removal.
+        /// </summary>
+        public void DeleteModelContent(string modelKey)
+        {
+            if (string.IsNullOrEmpty(modelKey)) return;
+            string modelRelDir = $"Art/Models/{modelKey}";
+            char sep = Path.DirectorySeparatorChar;
+
+            string mgcbPath = Path.Combine(_contentSourceRoot, "Content.mgcb");
+            MgcbEditMutex.WaitOne();
+            try { RemoveMgcbEntriesUnder(mgcbPath, modelRelDir); }
+            finally { MgcbEditMutex.ReleaseMutex(); }
+
+            TryDeleteDir(Path.Combine(_contentSourceRoot, modelRelDir.Replace('/', sep)));
+            TryDeleteDir(Path.Combine(_contentBuiltRoot, modelRelDir.Replace('/', sep)));
+            TryDeleteDir(Path.Combine(_contentExecutableRoot, modelRelDir.Replace('/', sep)));
+            EditorBridge.Log($"AssetImporter: deleted content for model '{modelKey}'");
+        }
+
+        /// <summary>
+        /// Removes every <c>#begin {relDirPrefix}/...</c> block from Content.mgcb (the model
+        /// file and all its textures). A block runs from its <c>#begin</c> line to the line
+        /// before the next <c>#begin</c>.
+        /// </summary>
+        private static void RemoveMgcbEntriesUnder(string mgcbPath, string relDirPrefix)
+        {
+            if (!File.Exists(mgcbPath)) return;
+            string prefix = "#begin " + relDirPrefix + "/";
+            string[] lines = File.ReadAllText(mgcbPath).Replace("\r\n", "\n").Split('\n');
+
+            var sb = new StringBuilder();
+            bool skipping = false;
+            foreach (string line in lines)
+            {
+                if (line.StartsWith("#begin ", StringComparison.Ordinal))
+                    skipping = line.StartsWith(prefix, StringComparison.Ordinal);
+                if (!skipping) sb.Append(line).Append("\r\n");
+            }
+            File.WriteAllText(mgcbPath, sb.ToString());
+        }
+
+        /// <summary>
+        /// Lists the texture file names currently sitting in a model's
+        /// <c>Art/Models/{key}/Textures/</c> source folder. Static + lightweight so the
+        /// editor UI can populate the Textures tree without constructing an importer or
+        /// touching the GPU. Returns an empty list when the folder doesn't exist.
+        /// </summary>
+        public static IReadOnlyList<string> ListModelTextures(string modelKey)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(modelKey)) return result;
+            try
+            {
+                string dir = Path.Combine(LocateEngineContentRoot(), "Art", "Models", modelKey, "Textures");
+                if (!Directory.Exists(dir)) return result;
+                foreach (string f in Directory.EnumerateFiles(dir))
+                {
+                    string e = Path.GetExtension(f).ToLowerInvariant();
+                    if (Array.IndexOf(TextureExtensions, e) >= 0)
+                        result.Add(Path.GetFileName(f));
+                }
+            }
+            catch (Exception ex) { EditorBridge.Log($"AssetImporter.ListModelTextures('{modelKey}') failed: {ex.Message}"); }
+            return result;
         }
     }
 }

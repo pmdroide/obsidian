@@ -632,10 +632,21 @@
                                       DragDrop.AllowDrop="True"
                                       DragDrop.DragOver="Hierarchy_DragOver"
                                       DragDrop.Drop="Hierarchy_Drop">
+                                <TreeView.KeyBindings>
+                                    <KeyBinding Gesture="Delete"
+                                                Command="{Binding DeleteSelectedCommand}" />
+                                </TreeView.KeyBindings>
                                 <TreeView.ItemTemplate>
                                     <TreeDataTemplate DataType="m:SceneObjectViewModel"
                                                       ItemsSource="{Binding Children}">
                                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="22">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Delete"
+                                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteSceneObjectCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
 
                                             <!-- type icon -->
                                             <Grid Grid.Column="0" Width="14" Height="14"
@@ -1528,6 +1539,11 @@
                                 <TreeDataTemplate DataType="m:AssetNode"
                                                   ItemsSource="{Binding Children}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                                        <StackPanel.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Delete" Click="AssetDelete_Click" />
+                                            </ContextMenu>
+                                        </StackPanel.ContextMenu>
                                         <Grid Width="14" Height="14" VerticalAlignment="Center">
                                             <controls:LucideIcon Icon="Folder"
                                                   Foreground="{StaticResource AnvilFolderBrush}"
