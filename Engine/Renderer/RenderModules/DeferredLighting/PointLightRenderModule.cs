@@ -59,6 +59,38 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private DepthStencilState _stencilCullPass1;
         private DepthStencilState _stencilCullPass2;
 
+        // One-time diagnostics. The render path is not wrapped in try/catch by the engine, so a
+        // missing shader resource (e.g. a parameter that was commented out of the .fx) used to
+        // hard-crash the whole process the first frame a point light existed. These helpers log a
+        // single line to anvil-bridge.log instead of throwing/spamming, so the cause is always
+        // recoverable at runtime while the editor keeps running.
+        private readonly HashSet<string> _warned = new HashSet<string>();
+        private void WarnOnce(string message)
+        {
+            if (_warned.Add(message)) global::Engine.Editor.EditorBridge.Log(message);
+        }
+
+        private bool _drawErrorLogged;
+        private void LogOnce(string message)
+        {
+            if (_drawErrorLogged) return;
+            _drawErrorLogged = true;
+            global::Engine.Editor.EditorBridge.Log(message);
+        }
+
+        // Apply a technique's first pass, tolerating a null technique (missing from the compiled
+        // shader). Returns false when the technique is absent so the caller can skip the draw.
+        private bool ApplyTechnique(EffectTechnique technique, string name)
+        {
+            if (technique == null)
+            {
+                WarnOnce("DeferredPointLight: technique '" + name + "' missing — light not drawn.");
+                return false;
+            }
+            technique.Passes[0].Apply();
+            return true;
+        }
+
         public PointLightRenderModule(ShaderManager shaderManager, string shaderPath)
         {
             Load(shaderManager, shaderPath);
@@ -166,20 +198,39 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
 
             if (pointLights.Count < 1) return;
 
-            ModelMeshPart meshpart = assets.SphereMeshPart;
+            ModelMeshPart meshpart = assets?.SphereMeshPart;
+            if (meshpart == null)
+            {
+                WarnOnce("DeferredPointLight: sphere proxy mesh (Assets.SphereMeshPart) is null — point lights not drawn.");
+                return;
+            }
             _graphicsDevice.SetVertexBuffer(meshpart.VertexBuffer);
             _graphicsDevice.Indices = (meshpart.IndexBuffer);
             int primitiveCount = meshpart.PrimitiveCount;
             int vertexOffset = meshpart.VertexOffset;
             int startIndex = meshpart.StartIndex;
 
-            if (GameSettings.g_VolumetricLights)
+            // The 'Time' uniform is commented out of DeferredPointLight.fx, so this parameter is
+            // null; guard it (an unconditional SetValue here is what hard-crashed the engine on the
+            // first added point light).
+            if (GameSettings.g_VolumetricLights && deferredPointLightParameter_Time != null)
                 deferredPointLightParameter_Time.SetValue((float)gameTime.TotalGameTime.TotalSeconds % 1000);
+            else if (GameSettings.g_VolumetricLights)
+                WarnOnce("DeferredPointLight: 'Time' shader parameter missing — skipping volumetric time.");
 
-            for (int index = 0; index < pointLights.Count; index++)
+            // Never let a point light hard-crash the engine; log the first failure with its stack
+            // trace and keep rendering.
+            try
             {
-                PointLight light = pointLights[index];
-                DrawPointLight(light, cameraOrigin, vertexOffset, startIndex, primitiveCount, _boundingFrustum, _viewProjectionHasChanged, _view, _viewProjection, _inverseView, _graphicsDevice);
+                for (int index = 0; index < pointLights.Count; index++)
+                {
+                    PointLight light = pointLights[index];
+                    DrawPointLight(light, cameraOrigin, vertexOffset, startIndex, primitiveCount, _boundingFrustum, _viewProjectionHasChanged, _view, _viewProjection, _inverseView, _graphicsDevice);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("PointLightRenderModule.Draw threw: " + ex);
             }
         }
 
@@ -225,9 +276,8 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 //draw front faces
                 _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
 
-                deferredPointLightWriteStencil.Passes[0].Apply();
-
-                _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex, primitiveCount);
+                if (ApplyTechnique(deferredPointLightWriteStencil, "WriteStencilMask"))
+                    _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex, primitiveCount);
 
                 ////////////
 
@@ -235,31 +285,33 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 //draw backfaces
                 _graphicsDevice.RasterizerState = RasterizerState.CullClockwise;
 
-                ApplyShader(light);
-
-                _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex, primitiveCount);
+                if (ApplyShader(light))
+                    _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex, primitiveCount);
             }
             else
             {
                 //If we are inside compute the backfaces, otherwise frontfaces of the sphere
                 _graphicsDevice.RasterizerState = inside > 0 ? RasterizerState.CullClockwise : RasterizerState.CullCounterClockwise;
 
-                ApplyShader(light);
+                bool drew = ApplyShader(light);
 
                 _graphicsDevice.DepthStencilState = GameSettings.g_UseDepthStencilLightCulling > 0 && !light.IsVolumetric && inside < 0 ? DepthStencilState.DepthRead : DepthStencilState.None;
 
-                _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex, primitiveCount);
+                if (drew)
+                    _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex, primitiveCount);
             }
 
             //Draw the sphere
         }
 
-        private void ApplyShader(PointLight light)
+        // Returns true when a technique was applied and the sphere should be drawn; false when the
+        // selected technique is missing from the compiled shader (logged once, draw skipped).
+        private bool ApplyShader(PointLight light)
         {
             // Experimental
             if (light.CastSDFShadows)
             {
-                deferredPointLightShadowedSDF.Passes[0].Apply();
+                return ApplyTechnique(deferredPointLightShadowedSDF, "ShadowedSDF");
             }
             else if (light.ShadowMap != null && light.CastShadows)
             {
@@ -270,11 +322,11 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 if (light.IsVolumetric && GameSettings.g_VolumetricLights)
                 {
                     deferredPointLightParameter_LightVolumeDensity.SetValue(light.LightVolumeDensity);
-                    deferredPointLightShadowedVolumetric.Passes[0].Apply();
+                    return ApplyTechnique(deferredPointLightShadowedVolumetric, "ShadowedVolume");
                 }
                 else
                 {
-                    deferredPointLightShadowed.Passes[0].Apply();
+                    return ApplyTechnique(deferredPointLightShadowed, "Shadowed");
                 }
             }
             else
@@ -286,11 +338,11 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 if (light.IsVolumetric && GameSettings.g_VolumetricLights)
                 {
                     deferredPointLightParameter_LightVolumeDensity.SetValue(light.LightVolumeDensity);
-                    deferredPointLightUnshadowedVolumetric.Passes[0].Apply();
+                    return ApplyTechnique(deferredPointLightUnshadowedVolumetric, "UnshadowedVolume");
                 }
                 else
                 {
-                    deferredPointLightUnshadowed.Passes[0].Apply();
+                    return ApplyTechnique(deferredPointLightUnshadowed, "Unshadowed");
                 }
             }
         }

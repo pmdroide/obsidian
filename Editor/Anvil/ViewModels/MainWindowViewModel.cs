@@ -67,6 +67,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ConsoleEntry> ConsoleEntries { get; } = new();
     public ObservableCollection<string> AvailableModels { get; } = new();
 
+    // Data-driven catalog for the "+" add-object menu. Point Light only for now (per Docs/TODO.md);
+    // re-enabling another type is a single AddableObjects.Add(...) line in AttachBridge — no XAML.
+    public ObservableCollection<AddableObjectType> AddableObjects { get; } = new();
+
     /// <summary>
     /// View model for the global post-processing / render settings panel.
     /// Shown inside the Inspector when <see cref="InspectorView"/> ==
@@ -194,6 +198,17 @@ public partial class MainWindowViewModel : ViewModelBase
         // Refresh model picker now (may already be populated after first frame).
         RefreshAvailableModels();
         RefreshMeshAssetsFolder();
+
+        // Build the "+" add-object catalog. Point Light only for now; the bridge already exposes
+        // EnqueueAddDirectionalLight / EnqueueAddBasicEntity, so re-enabling a type is one line here.
+        AddableObjects.Add(new AddableObjectType(
+            "Point Light",
+            b => b.EnqueueAddPointLight(b.SpawnPoint, radius: 25f, color: XnaColor.White, intensity: 20f),
+            _bridge));
+        // AddableObjects.Add(new AddableObjectType("Directional Light",
+        //     b => b.EnqueueAddDirectionalLight(new XnaVector3(0.3f, 0.2f, -1f), XnaColor.White, intensity: 1f), _bridge));
+        // AddableObjects.Add(new AddableObjectType("Basic Mesh (Cube)",
+        //     b => b.EnqueueAddBasicEntity("Cube", b.SpawnPoint), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.

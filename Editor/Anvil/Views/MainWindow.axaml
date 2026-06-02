@@ -587,31 +587,20 @@
                                 <Button Grid.Column="2" Classes="iconButton" ToolTip.Tip="Add">
                                     <controls:LucideIcon Icon="Plus" />
                                     <Button.Flyout>
-                                        <!-- MenuFlyout items don't inherit DataContext
-                                             from the placement target reliably, so bindings
-                                             that look like {Binding XCommand} silently
-                                             resolve to nothing. Reach back through the
-                                             Window's DataContext explicitly. -->
-                                        <MenuFlyout>
-                                            <MenuItem Header="Point Light"
-                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddPointLightCommand}" />
-                                            <MenuItem Header="Directional Light"
-                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddDirectionalLightCommand}" />
-                                            <MenuItem Header="Basic Mesh (Cube)"
-                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}"
-                                                      CommandParameter="Cube" />
-                                            <Separator />
-                                            <MenuItem Header="Basic Mesh from Asset…"
-                                                      ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AvailableModels}">
-                                                <MenuItem.Styles>
-                                                    <Style Selector="MenuItem">
-                                                        <Setter Property="Header" Value="{Binding}" />
-                                                        <Setter Property="Command"
-                                                                Value="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}" />
-                                                        <Setter Property="CommandParameter" Value="{Binding}" />
-                                                    </Style>
-                                                </MenuItem.Styles>
-                                            </MenuItem>
+                                        <!-- Data-driven add-object menu. MenuFlyout items don't inherit
+                                             DataContext from the placement target reliably, so the
+                                             ItemsSource reaches back through the Window's DataContext
+                                             explicitly; each generated MenuItem's DataContext is an
+                                             AddableObjectType, bound via the ItemContainerTheme. Adding a
+                                             new object type is one line in MainWindowViewModel.AttachBridge. -->
+                                        <MenuFlyout ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddableObjects}">
+                                            <MenuFlyout.ItemContainerTheme>
+                                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"
+                                                              x:DataType="m:AddableObjectType">
+                                                    <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                    <Setter Property="Command" Value="{Binding AddCommand}" />
+                                                </ControlTheme>
+                                            </MenuFlyout.ItemContainerTheme>
                                         </MenuFlyout>
                                     </Button.Flyout>
                                 </Button>

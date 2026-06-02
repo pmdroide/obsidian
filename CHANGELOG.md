@@ -1,5 +1,47 @@
 # Changelog
 
+## Fix "+" add-button crash on Point Light + data-driven add-object catalog
+
+Addresses [Docs/TODO.md](Docs/TODO.md): clicking the editor's **"+"** button (→ Point Light)
+hard-crashed the engine and added nothing. The add path itself was already wired and fully
+exception-protected (`EditorBridge.EnqueueAddPointLight` → `MainSceneLogic.AddPointLight` logs
+`AddPointLight ok`), so the add *succeeded* — the crash was in the **render** path, which is not
+wrapped in try/catch. The empty editor scene starts with zero point lights, so
+`PointLightRenderModule.Draw` first executes its body the frame *after* a light is added. Its very
+first line, `deferredPointLightParameter_Time.SetValue(...)` (gated only on
+`GameSettings.g_VolumetricLights`, which defaults true), dereferenced a **null** `EffectParameter`:
+the `Time` uniform is commented out of `DeferredPointLight.fx`, and MonoGame returns `null` (it does
+not throw) for a missing parameter — so the `.SetValue` NRE'd in the unguarded render loop and took
+down the process. No message surfaced because the froxel module logs via `Debug.WriteLine`
+(compiled out of Release) and there is no global unhandled-exception handler.
+
+- **`Engine/Renderer/RenderModules/DeferredLighting/PointLightRenderModule.cs`**: defense in depth
+  so a point light can never hard-crash the engine again. Added one-time-log helpers (`WarnOnce`/
+  `LogOnce`) that write to `anvil-bridge.log` via the existing `EditorBridge.Log` sink. Guarded the
+  actual crash line — the `Time` parameter is only `SetValue`d when non-null (else logged once) —
+  and the `SphereMeshPart` proxy mesh. Routed all six technique `Passes[0].Apply()` calls through a
+  null-tolerant `ApplyTechnique` (`ApplyShader` now returns a bool so the matching
+  `DrawIndexedPrimitives` is skipped when a technique is missing). Wrapped the per-light draw loop in
+  try/catch → `LogOnce` so the first exception's full stack trace is always captured without
+  per-frame spam.
+- **`Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs`**: defensive null-check
+  on the one direct `Parameters["FroxelInjectionTexture"].SetValue(...)` access (now `?.`), matching
+  the `?.`-guarded sibling parameters in the same module.
+- **`Editor/Anvil/Models/AddableObjectType.cs`** (new): a small catalog entry
+  `{ string DisplayName; IRelayCommand AddCommand; }` whose command runs an
+  `Action<IEditorBridge>` against the live bridge. The data-driven catalog makes adding a future
+  object type a single line — no XAML.
+- **`Editor/Anvil/ViewModels/MainWindowViewModel.cs`**: added an `AddableObjects`
+  `ObservableCollection<AddableObjectType>`, populated in `AttachBridge` with the single **Point
+  Light** entry (per the TODO's "Pointlights only for now"), with commented-out Directional Light /
+  Cube one-liners as the documented extension point. The existing `EnqueueAddDirectionalLight` /
+  `EnqueueAddBasicEntity` bridge methods are kept (still used by Assets-panel drag-to-scene and as
+  the re-enable hooks).
+- **`Editor/Anvil/Views/MainWindow.axaml`**: the "+" `MenuFlyout` is now data-bound to
+  `AddableObjects` (via the `#RootWindow` DataContext reach-back), with an `ItemContainerTheme`
+  binding each generated `MenuItem`'s `Header`/`Command` to the `AddableObjectType`. The menu shows
+  exactly one item, "Point Light", today.
+
 ## Texture binding pipeline + delete for meshes & entities
 
 Addresses [Docs/TODO.md](Docs/TODO.md): models spawned from the editor rendered
