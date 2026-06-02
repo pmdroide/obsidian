@@ -23,9 +23,9 @@
             <SolidColorBrush x:Key="AnvilInputBackgroundBrush"    Color="#0F0F17" />
             <SolidColorBrush x:Key="AnvilSubtleBandBrush"         Color="#16161E" />
             <SolidColorBrush x:Key="AnvilHoverBackgroundBrush"    Color="#22222F" />
-            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#4F6EF7" />
-            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#4F6EF7" />
-            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#5D9CF7" />
+            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#4101CA" />
+            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#4300D4" />
+            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#4000C9" />
             <SolidColorBrush x:Key="AnvilPlayBrush"               Color="#E06C5A" />
             <SolidColorBrush x:Key="AnvilTextPrimaryBrush"        Color="#EEEEFF" />
             <SolidColorBrush x:Key="AnvilTextSecondaryBrush"      Color="#CCCCEE" />
