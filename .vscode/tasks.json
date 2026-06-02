@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/Engine.sln",
+                "${workspaceFolder}/Engine.slnx",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/Engine.sln"
+                "${workspaceFolder}/Engine.slnx"
             ],
             "problemMatcher": "$msCompile"
         }

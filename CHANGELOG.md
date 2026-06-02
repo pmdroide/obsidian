@@ -1,5 +1,20 @@
 # Changelog
 
+## Migrate solution to XML `.slnx` format
+
+Replaced the legacy MSBuild `Engine.sln` with the XML-based `Engine.slnx` (supported natively by
+the .NET 10 SDK, here 10.0.203). The new solution is functionally equivalent: it carries the same
+`Any CPU`/`x86` platforms, builds the `Engine` (pinned to `x86`) and `Vista` projects, and keeps
+`Anvil` excluded from the solution build (`<Build Project="false" />`) — matching the old `.sln`,
+which had no build-config entries for Anvil. Verified `dotnet build Engine.slnx` and the
+argument-less `dotnet build` both succeed (0 errors) after the swap.
+
+- **`Engine.slnx`** (new): XML solution replacing `Engine.sln`.
+- **`Engine.sln`** (removed): legacy solution file.
+- **`.vscode/tasks.json`**: `publish` and `watch` tasks now point at `Engine.slnx`.
+- **`bootstrap.bat`**, **`CLAUDE.md`**: build commands updated to reference `Engine.slnx`.
+  (The historical `Engine.sln` mention in this changelog is left as-is.)
+
 ## Fix "+" add-button crash on Point Light + data-driven add-object catalog
 
 Addresses [Docs/TODO.md](Docs/TODO.md): clicking the editor's **"+"** button (→ Point Light)

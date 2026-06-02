@@ -16,7 +16,7 @@ Use PowerShell from the repo root unless noted.
 
 ```powershell
 dotnet restore
-dotnet build Engine.sln /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
+dotnet build Engine.slnx /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
 dotnet run --project Engine\Engine.csproj
 dotnet run --project Editor\Anvil\Anvil.csproj
 ```
@@ -143,7 +143,7 @@ Important types:
 No test project is present. For code changes, use targeted builds/runs:
 
 ```powershell
-dotnet build Engine.sln /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
+dotnet build Engine.slnx /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
 dotnet run --project Engine\Engine.csproj
 dotnet run --project Editor\Anvil\Anvil.csproj
 ```

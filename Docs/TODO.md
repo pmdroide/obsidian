@@ -2,17 +2,10 @@
 
 ## Context:
 
-See the following sections in ```CHANGELOG.md```:
+Check the ```CHANGELOG.md``` for what was changed
 
-When clicking the "+" button in the editor, it crashes the games and doesnt add any object
-
-See the anvil-bridge.log for more information about the crash
+Anvil Editor has a problem where the engine window occupies the entire editor's screen, also the engine window itself has resizing issues that will be shown in the screenshot.
 
 ## What to add/change/remove/debug/fix:
 
-- Fix the "+" add button, make it spawn Pointlights only for now, create a logic that can be implemented in the future for other objects
-
-## Current Issues
-
-- Textures are all white
-- Lighting is incorrect (need to implement lightmapping)
+- Fix Editor's game engine window
