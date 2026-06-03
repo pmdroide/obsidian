@@ -15,9 +15,10 @@
 - Screen space reflections
 - Linear HDR pipeline.
 - EXPERIMENTAL: screen space emissive materials (not updated to work right now)
-- Froxel Volumetric Lightning/Fog (WIP)
+- Froxel Volumetric Lightning/Fog
 - .obj files are imported with fbximporter to avoid content load error
 - Vista, a custom UI that uses XML for structure and CSS for styling
+- Anvil Game Editor (AvaloniaUI)
 
 ## Structure
 
@@ -44,16 +45,3 @@ How to manipulate the scene
 ## Current target
 - WindowsDX
 - Monogame 3.8.4.1
-
-## Planned
-- World Editor (WPF based)
-- 2D Engine
-- Documentation Dev Website
-- Update to Monogame 3.9 (Vulkan/DirectX 12)
-- Vulkan support
-- DirectX 12 support
-- Hotload
-- Lens Flare
-- Spotlights with CookieMap
-- Physics Engine (Jolt Physics)
-- Audio Engine 

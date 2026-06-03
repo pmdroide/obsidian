@@ -1,10 +1,15 @@
+using System;
+using System.IO;
+using System.Linq;
 using Anvil.Controls;
+using Anvil.Models;
 using Anvil.Services;
 using Anvil.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 
@@ -27,6 +32,22 @@ public partial class MainWindow : Window
                 if (DataContext is MainWindowViewModel vm)
                     vm.AttachBridge(bridge);
             };
+        }
+
+        // Asset → scene gestures. The TreeViewItem marks PointerPressed/DoubleTapped as
+        // handled (for selection/expand), so an XAML-attribute handler — which ignores
+        // handled events — never fires and the drag never starts. Register here with
+        // handledEventsToo:true so our handlers run regardless. DoubleTapped is the
+        // reliable "add to scene" path; drag-into-Hierarchy is the richer one.
+        var assetsTree = this.FindControl<TreeView>("AssetsTreeView");
+        if (assetsTree != null)
+        {
+            assetsTree.AddHandler(InputElement.PointerPressedEvent, AssetsTree_PointerPressed,
+                RoutingStrategies.Bubble, handledEventsToo: true);
+            assetsTree.AddHandler(InputElement.DoubleTappedEvent, AssetsTree_DoubleTapped,
+                RoutingStrategies.Bubble, handledEventsToo: true);
+            assetsTree.AddHandler(InputElement.KeyDownEvent, AssetsTree_KeyDown,
+                RoutingStrategies.Bubble, handledEventsToo: true);
         }
 
         // Inspector focus tracking. When the user is typing in a NumericUpDown,
@@ -77,6 +98,197 @@ public partial class MainWindow : Window
             current = current.GetVisualParent();
         }
         return false;
+    }
+
+    // ---- Asset import drag/drop ----
+
+    // Avalonia 12 uses DataTransfer/DataFormat (the old DataObject/DataFormats are
+    // deprecated). An "in-process" format carries arbitrary CLR values inside the
+    // same Avalonia process — exactly what we need to ship a model key from the
+    // Assets panel to the Hierarchy TreeView.
+    private static readonly DataFormat<string> ModelKeyFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/modelKey");
+
+    private void AssetsPanel_DragOver(object? sender, DragEventArgs e)
+    {
+        // Accept OS file drops (Windows Explorer etc.) and reject anything else.
+        e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private static readonly string[] ImageExtensions =
+        { ".png", ".jpg", ".jpeg", ".tga", ".dds", ".bmp" };
+
+    private void AssetsPanel_Drop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (!e.DataTransfer.Contains(DataFormat.File)) return;
+
+        var files = e.DataTransfer.TryGetFiles();
+        if (files == null) return;
+
+        var images = new System.Collections.Generic.List<string>();
+        foreach (var item in files)
+        {
+            string? path = item.TryGetLocalPath();
+            if (string.IsNullOrEmpty(path)) continue;
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            if (ext == ".fbx" || ext == ".obj")
+                vm.ImportFbxFromDisk(path);
+            else if (Array.IndexOf(ImageExtensions, ext) >= 0)
+                images.Add(path);
+        }
+
+        // Route dropped textures to the imported model whose Textures folder (or mesh
+        // node) they were dropped on. Ignored if dropped on empty space / a built-in.
+        if (images.Count > 0)
+        {
+            var node = e.Source is Visual v ? FindDataContext<AssetNode>(v) : null;
+            string? modelKey = vm.DeletableModelKeyFor(node);
+            if (!string.IsNullOrEmpty(modelKey))
+                vm.ImportTexturesFromDisk(modelKey, images);
+        }
+        e.Handled = true;
+    }
+
+    // Delete an imported model from the Assets panel (context-menu "Delete"). Confirms
+    // first because this permanently removes the model's files from disk.
+    private async void AssetDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var node = (sender as Control)?.DataContext as AssetNode;
+        string? modelKey = vm.DeletableModelKeyFor(node);
+        if (string.IsNullOrEmpty(modelKey)) return; // only imported models are deletable
+
+        bool ok = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
+        if (ok) vm.DeleteModelAsset(modelKey);
+    }
+
+    private async void AssetsTree_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Delete) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        var assetsTree = this.FindControl<TreeView>("AssetsTreeView");
+        var node = assetsTree?.SelectedItem as AssetNode;
+        string? modelKey = vm.DeletableModelKeyFor(node);
+        if (string.IsNullOrEmpty(modelKey)) return;
+
+        e.Handled = true;
+        bool ok = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
+        if (ok) vm.DeleteModelAsset(modelKey);
+    }
+
+    // Minimal modal yes/no dialog (Avalonia has no built-in MessageBox).
+    private async System.Threading.Tasks.Task<bool> ConfirmAsync(string message)
+    {
+        var result = false;
+        var dialog = new Window
+        {
+            Title = "Confirm delete",
+            Width = 380,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        var cancel = new Button { Content = "Cancel", MinWidth = 80 };
+        cancel.Click += (_, _) => dialog.Close();
+        var delete = new Button { Content = "Delete", MinWidth = 80, IsDefault = true };
+        delete.Click += (_, _) => { result = true; dialog.Close(); };
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Thickness(18),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                    Spacing = 8,
+                    Children = { cancel, delete },
+                },
+            },
+        };
+
+        await dialog.ShowDialog(this);
+        return result;
+    }
+
+    private async void AssetsTree_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Avalonia 12's DragDrop.DoDragDropAsync requires the original
+        // PointerPressedEventArgs (the new API dropped the pre-12 move-threshold
+        // helper), so we kick off the drag immediately on a left-click that
+        // lands on a Mesh AssetNode. Other clicks fall through to the TreeView's
+        // normal selection behaviour.
+        var props = e.GetCurrentPoint(this).Properties;
+        if (!props.IsLeftButtonPressed) return;
+
+        if (e.Source is not Visual v) return;
+        string? modelKey = ModelKeyFromVisual(v);
+        if (string.IsNullOrEmpty(modelKey)) return;
+
+        var dt = new DataTransfer();
+        dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
+        await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+    }
+
+    private void AssetsTree_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        // Reliable, drag-free path to add a mesh to the scene: double-click it.
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (e.Source is not Visual v) return;
+        string? modelKey = ModelKeyFromVisual(v);
+        if (string.IsNullOrEmpty(modelKey)) return;
+        vm.AddEntityFromAsset(modelKey);
+        e.Handled = true;
+    }
+
+    // Resolves the model key from a mesh AssetNode under the given visual. AssetNode.Id
+    // for mesh entries is "model:{key}" (see MainWindowViewModel.RefreshMeshAssetsFolder).
+    private static string? ModelKeyFromVisual(Visual v)
+    {
+        var node = FindDataContext<AssetNode>(v);
+        if (node is null || node.Kind != AssetKind.Mesh) return null;
+        string id = node.Id ?? string.Empty;
+        if (!id.StartsWith("model:", StringComparison.Ordinal)) return null;
+        string modelKey = id.Substring("model:".Length);
+        return string.IsNullOrEmpty(modelKey) ? null : modelKey;
+    }
+
+    private void Hierarchy_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = e.DataTransfer.Contains(ModelKeyFormat)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Hierarchy_Drop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        string? modelKey = e.DataTransfer.TryGetValue(ModelKeyFormat);
+        if (!string.IsNullOrEmpty(modelKey))
+        {
+            vm.AddEntityFromAsset(modelKey);
+            e.Handled = true;
+        }
+    }
+
+    private static T? FindDataContext<T>(Visual start) where T : class
+    {
+        Visual? cur = start;
+        while (cur != null)
+        {
+            if (cur is StyledElement se && se.DataContext is T t) return t;
+            cur = cur.GetVisualParent();
+        }
+        return null;
     }
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)

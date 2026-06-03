@@ -88,8 +88,6 @@ namespace Engine.Logic
         //SDF
         public SdfGenerator _sdfGenerator;
 
-        private BasicEntity testEntity;
-
         #endregion
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +111,7 @@ namespace Engine.Logic
 
             PlayMode = new PlayModeController(this);
 
-            SetUpEditorScene(graphicsDevice);
+            SetUpEmptyEditorScene(graphicsDevice);
         }
 
         /// <summary>
@@ -177,183 +175,26 @@ namespace Engine.Logic
             catch (Exception ex) { EditorBridge.Log("PlayMode.Stop on scene change threw: " + ex); }
         }
 
-        //Load our default setup!
-        private void SetUpEditorScene(GraphicsDevice graphics)
+        // Boots an empty scene: just a camera, environment sample, and one sun-like
+        // directional light. Everything else is added by the user via the editor's
+        // Assets panel + Hierarchy. (Previously this method instantiated the Sponza
+        // demo, a plane grid, the Stanford dragon, physics spheres, decals, and three
+        // point lights — now removed; the demo content lives only as a sample scene
+        // file in the future.)
+        private void SetUpEmptyEditorScene(GraphicsDevice graphics)
         {
-            ////////////////////////////////////////////////////////////////////////
-            // Camera
-
-            //Set up our starting camera position
-
-            // NOTE: Coordinate system depends on Camera.up,
-            //       Right now z is going up, it's not depth!
-
             // Scene's game camera (saved with the scene).
             ActiveScene.MainCamera = new Camera(position: new Vector3(-88, -11f, 4), lookat: new Vector3(38, 8, 32));
 
-            // Editor camera — separate, never serialised. Phase 6 will pick between
-            // the editor camera and the scene's main camera based on Play/Edit mode.
+            // Editor camera — separate, never serialised. Phase 6 picks between the
+            // editor camera and the scene's main camera based on Play/Edit mode.
             EditorCamera = new EditorCamera(position: new Vector3(-88, -11f, 4), lookat: new Vector3(38, 8, 32));
 
             EnvironmentSample = new EnvironmentSample(new Vector3(-45, -5, 5));
-            
+
             _sdfGenerator = new SdfGenerator();
 
-            ////////////////////////////////////////////////////////////////////////
-            // GUI
-
-            ////////////////////////////////////////////////////////////////////////
-            // Static geometry
-
-            // NOTE: If you don't pass a materialEffect it will use the default material from the object
-
-            BasicEntity testEntity = AddEntity(model: _assets.SponzaModel,
-                position: Vector3.Zero,
-                angleX: Math.PI / 2,
-                angleY: 0,
-                angleZ: 0,
-                scale: 0.1f,
-                hasStaticPhysics: false);//CHANGE BACK
-
-
-            //AddEntity(model: _assets.CloneTrooper,
-            //    position: new Vector3(20, 0, 10),
-            //    angleX: Math.PI / 2,
-            //    angleY: 0,
-            //    angleZ: 0,
-            //    scale: 10.4f);
-
-            for (int x = -5; x <= 5; x++)
-            {
-                for (int y = -5; y <= 5; y++)
-                {
-                    AddEntity(model: _assets.Plane,
-                        materialEffect: ((x + 5 + y + 5) % 2 == 1) ? _assets.MirrorMaterial : _assets.MetalRough03Material,
-                        position: new Vector3(30 + x * 4, y * 4 + 4, 0),
-                        angleX: 0,
-                        angleY: 0,
-                        angleZ: 0,
-                        scale: 2);
-                }
-            }
-
-            AddEntity(model: _assets.StanfordDragonLowpoly,
-                materialEffect: _assets.BaseMaterial,
-                position: new Vector3(40, -10, 0),
-                angleX: Math.PI / 2,
-                angleY: 0,
-                angleZ: 0,
-                scale: 10);
-
-            ////////////////////////////////////////////////////////////////////////
-            // Dynamic geometry
-
-            // NOTE: We first have to create a physics object and then apply said object to a rendered model
-            // BEPU could use non-default meshes, but that is much much more expensive so I am using just default ones right now
-            // ... so -> spheres, boxes etc.
-            // For dynamic meshes I could use the same way i have static meshes, but use - MobileMesh - instead
-
-            // NOTE: Our physics entity's position will be overwritten, so it doesn't matter
-            // NOTE: If a physics object has mass it will move, otherwise it is static
-
-            Entity physicsEntity;
-
-            //Just a ground box where nothing should fall through
-            //_physicsSpace.Add(new Box(new BEPUutilities.Vector3(0, 0, -0.5f), 1000, 1000, 1));
-
-            _physicsSpace.Add(physicsEntity = new Sphere(position: BEPUutilities.Vector3.Zero, radius: 5, mass: 50));
-            AddEntity(model: _assets.IsoSphere,
-                materialEffect: _assets.AlphaBlendRim,
-                position: new Vector3(20, 0, 10),
-                angleX: Math.PI / 2,
-                angleY: 0,
-                angleZ: 0,
-                scale: 5,
-                PhysicsEntity: physicsEntity);
-
-            testEntity.ApplyTransformation();
-
-            for (int i = 0; i < 10; i++)
-            {
-                MaterialEffect test = _assets.SilverMaterial.Clone();
-                test.Roughness = i / 9.0f + 0.1f;
-                test.Metallic = 1;
-                _physicsSpace.Add(physicsEntity = new Sphere(position: BEPUutilities.Vector3.Zero, radius: 5, mass: 50));
-                AddEntity(model: _assets.IsoSphere,
-                    materialEffect: test,
-                    position: new Vector3(30 + i * 10, 0, 10),
-                    angleX: Math.PI / 2,
-                    angleY: 0,
-                    angleZ: 0,
-                    scale: 5,
-                    PhysicsEntity: physicsEntity);
-            }
-
-            ////////////////////////////////////////////////////////////////////////
-            // Decals
-
-            Decals.Add(new Decal(_assets.IconDecal, new Vector3(-6, 22, 15), 0, -Math.PI / 2, 0, Vector3.One * 10));
-
-            ////////////////////////////////////////////////////////////////////////
-            // Dynamic lights
-
-            AddPointLight(position: new Vector3(-61, 0, 107),
-                        radius: 150,
-                        color: new Color(104, 163, 223),
-                        intensity: 20,
-                        castShadows: false,
-                        shadowResolution: 1024,
-                        staticShadow: false,
-                        isVolumetric: true);
-
-            AddPointLight(position: new Vector3(15, 0, 107),
-                        radius: 150,
-                        color: new Color(104, 163, 223),
-                        intensity: 30,
-                        castShadows: false,
-                        shadowResolution: 1024,
-                        staticShadow: false,
-                        isVolumetric: true);
-
-            AddPointLight(position: new Vector3(66, 0, 40),
-                radius: 120,
-                color: new Color(255, 248, 232),
-                intensity: 120,
-                castShadows: true,
-                shadowResolution: 1024,
-                softShadowBlurAmount: 0,
-                staticShadow: false,
-                isVolumetric: false);
-
-            //volumetric light!
-            //AddPointLight(position: new Vector3(-4, 40, 66),
-            //    radius: 80,
-            //    color: Color.White,
-            //    intensity: 50,
-            //    castShadows: true,
-            //    shadowResolution: 1024,
-            //    staticShadow: false,
-            //    isVolumetric: true,
-            //    volumetricDensity: 3);
-
-
-            // Spawn a lot of lights to test performance 
-
-            //int sides = 4;
-            //float distance = 20;
-            //Vector3 startPosition = new Vector3(-30, 30, 1);
-
-            ////amount of lights is sides*sides* sides*2
-
-            //for (int x = 0; x < sides * 2; x++)
-            //    for (int y = 0; y < sides; y++)
-            //        for (int z = 0; z < sides; z++)
-            //        {
-            //            Vector3 position = new Vector3(x, -y, z) * distance + startPosition;
-            //            AddPointLight(position, distance, FastRand.NextColor(), 50, false, false, 0.9f);
-            //        }
-
-
+            // One sun so an imported model is visible in the empty viewport.
             AddDirectionalLight(direction: new Vector3(0.2f, 0.2f, -1),
                 intensity: 100,
                 color: Color.White,

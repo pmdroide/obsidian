@@ -423,7 +423,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             {
                 _graphicsDevice.SetRenderTarget(nextAccumulationTarget);
                 _graphicsDevice.Clear(Color.Transparent);
-                _froxelShader.Parameters["FroxelInjectionTexture"].SetValue(_froxelInjectionTexture);
+                _froxelShader.Parameters["FroxelInjectionTexture"]?.SetValue(_froxelInjectionTexture);
                 if (_paramPreviousFroxelAccumulationTexture != null)
                     _paramPreviousFroxelAccumulationTexture.SetValue(previousAccumulationTarget);
                 _froxelShader.CurrentTechnique = _techniqueAccumulateFroxels;

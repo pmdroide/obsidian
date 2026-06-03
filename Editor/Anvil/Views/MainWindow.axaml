@@ -587,31 +587,20 @@
                                 <Button Grid.Column="2" Classes="iconButton" ToolTip.Tip="Add">
                                     <controls:LucideIcon Icon="Plus" />
                                     <Button.Flyout>
-                                        <!-- MenuFlyout items don't inherit DataContext
-                                             from the placement target reliably, so bindings
-                                             that look like {Binding XCommand} silently
-                                             resolve to nothing. Reach back through the
-                                             Window's DataContext explicitly. -->
-                                        <MenuFlyout>
-                                            <MenuItem Header="Point Light"
-                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddPointLightCommand}" />
-                                            <MenuItem Header="Directional Light"
-                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddDirectionalLightCommand}" />
-                                            <MenuItem Header="Basic Mesh (Cube)"
-                                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}"
-                                                      CommandParameter="Cube" />
-                                            <Separator />
-                                            <MenuItem Header="Basic Mesh from Asset…"
-                                                      ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AvailableModels}">
-                                                <MenuItem.Styles>
-                                                    <Style Selector="MenuItem">
-                                                        <Setter Property="Header" Value="{Binding}" />
-                                                        <Setter Property="Command"
-                                                                Value="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddEntityCommand}" />
-                                                        <Setter Property="CommandParameter" Value="{Binding}" />
-                                                    </Style>
-                                                </MenuItem.Styles>
-                                            </MenuItem>
+                                        <!-- Data-driven add-object menu. MenuFlyout items don't inherit
+                                             DataContext from the placement target reliably, so the
+                                             ItemsSource reaches back through the Window's DataContext
+                                             explicitly; each generated MenuItem's DataContext is an
+                                             AddableObjectType, bound via the ItemContainerTheme. Adding a
+                                             new object type is one line in MainWindowViewModel.AttachBridge. -->
+                                        <MenuFlyout ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddableObjects}">
+                                            <MenuFlyout.ItemContainerTheme>
+                                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"
+                                                              x:DataType="m:AddableObjectType">
+                                                    <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                    <Setter Property="Command" Value="{Binding AddCommand}" />
+                                                </ControlTheme>
+                                            </MenuFlyout.ItemContainerTheme>
                                         </MenuFlyout>
                                     </Button.Flyout>
                                 </Button>
@@ -626,12 +615,27 @@
                         </Border>
 
                         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
-                            <TreeView ItemsSource="{Binding SceneObjects}"
-                                      SelectedItem="{Binding SelectedSceneObject, Mode=TwoWay}">
+                            <TreeView Name="HierarchyTreeView"
+                                      ItemsSource="{Binding SceneObjects}"
+                                      SelectedItem="{Binding SelectedSceneObject, Mode=TwoWay}"
+                                      DragDrop.AllowDrop="True"
+                                      DragDrop.DragOver="Hierarchy_DragOver"
+                                      DragDrop.Drop="Hierarchy_Drop">
+                                <TreeView.KeyBindings>
+                                    <KeyBinding Gesture="Delete"
+                                                Command="{Binding DeleteSelectedCommand}" />
+                                </TreeView.KeyBindings>
                                 <TreeView.ItemTemplate>
                                     <TreeDataTemplate DataType="m:SceneObjectViewModel"
                                                       ItemsSource="{Binding Children}">
                                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="22">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Delete"
+                                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteSceneObjectCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
 
                                             <!-- type icon -->
                                             <Grid Grid.Column="0" Width="14" Height="14"
@@ -1472,7 +1476,10 @@
             </Border>
 
             <!-- Assets -->
-            <Border Grid.Column="1" Classes="bottomPanel" BorderThickness="0,1,0,0">
+            <Border Grid.Column="1" Classes="bottomPanel" BorderThickness="0,1,0,0"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="AssetsPanel_DragOver"
+                    DragDrop.Drop="AssetsPanel_Drop">
                 <Grid RowDefinitions="33,*">
 
                     <Border Grid.Row="0" Classes="panelHeader">
@@ -1510,11 +1517,22 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-                        <TreeView ItemsSource="{Binding AssetTree}">
+                        <!-- PointerPressed (drag-start) and DoubleTapped (add to scene) are
+                             registered in code-behind with handledEventsToo so they fire even
+                             though TreeViewItem marks those events handled. -->
+                        <TreeView Name="AssetsTreeView"
+                                  ItemsSource="{Binding AssetTree}"
+                                  ToolTip.Tip="Double-click a mesh to add it to the scene, or drag it into the Hierarchy.">
+
                             <TreeView.ItemTemplate>
                                 <TreeDataTemplate DataType="m:AssetNode"
                                                   ItemsSource="{Binding Children}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                                        <StackPanel.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Delete" Click="AssetDelete_Click" />
+                                            </ContextMenu>
+                                        </StackPanel.ContextMenu>
                                         <Grid Width="14" Height="14" VerticalAlignment="Center">
                                             <controls:LucideIcon Icon="Folder"
                                                   Foreground="{StaticResource AnvilFolderBrush}"

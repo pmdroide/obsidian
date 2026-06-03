@@ -67,6 +67,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ConsoleEntry> ConsoleEntries { get; } = new();
     public ObservableCollection<string> AvailableModels { get; } = new();
 
+    // Data-driven catalog for the "+" add-object menu. Point Light only for now (per Docs/TODO.md);
+    // re-enabling another type is a single AddableObjects.Add(...) line in AttachBridge — no XAML.
+    public ObservableCollection<AddableObjectType> AddableObjects { get; } = new();
+
     /// <summary>
     /// View model for the global post-processing / render settings panel.
     /// Shown inside the Inspector when <see cref="InspectorView"/> ==
@@ -189,9 +193,22 @@ public partial class MainWindowViewModel : ViewModelBase
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
         bridge.ModeChanged += OnBridgeModeChanged;
+        bridge.ModelRegistryChanged += OnBridgeModelRegistryChanged;
 
         // Refresh model picker now (may already be populated after first frame).
         RefreshAvailableModels();
+        RefreshMeshAssetsFolder();
+
+        // Build the "+" add-object catalog. Point Light only for now; the bridge already exposes
+        // EnqueueAddDirectionalLight / EnqueueAddBasicEntity, so re-enabling a type is one line here.
+        AddableObjects.Add(new AddableObjectType(
+            "Point Light",
+            b => b.EnqueueAddPointLight(b.SpawnPoint, radius: 25f, color: XnaColor.White, intensity: 20f),
+            _bridge));
+        // AddableObjects.Add(new AddableObjectType("Directional Light",
+        //     b => b.EnqueueAddDirectionalLight(new XnaVector3(0.3f, 0.2f, -1f), XnaColor.White, intensity: 1f), _bridge));
+        // AddableObjects.Add(new AddableObjectType("Basic Mesh (Cube)",
+        //     b => b.EnqueueAddBasicEntity("Cube", b.SpawnPoint), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -247,6 +264,15 @@ public partial class MainWindowViewModel : ViewModelBase
                 ReconcilerActive = false;
             }
             if (AvailableModels.Count == 0) RefreshAvailableModels();
+            // The Meshes folder is normally repopulated via ModelRegistryChanged, but
+            // built-in models don't fire that event — if the folder was built before the
+            // bridge reported any models, refill it once models are available so they
+            // become visible and draggable.
+            if (_meshesFolder != null && _meshesFolder.Children.Count == 0 &&
+                _bridge.AvailableModelKeys.Count > 0)
+            {
+                RefreshMeshAssetsFolder();
+            }
 
             // Only fire SelectedObject change when its identity actually flipped.
             // Re-firing every 3 frames re-evaluates the inspector's DataContext,
@@ -386,6 +412,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge.EnqueueDelete(id);
     }
 
+    [RelayCommand]
+    private void DeleteSceneObject(SceneObjectViewModel? obj)
+    {
+        if (_bridge == null || obj?.EngineId is not int id) return;
+        _bridge.EnqueueDelete(id);
+    }
+
     // -------- Scene file commands --------
 
     private const string SceneFileExtension = "obsc";
@@ -469,32 +502,135 @@ public partial class MainWindowViewModel : ViewModelBase
         return null;
     }
 
+    private AssetNode? _meshesFolder;
+    private AssetNode? _texturesFolder;
+
     private void BuildAssets()
     {
-        var meshes = new AssetNode { Id = "f-meshes", Name = "Meshes", Kind = AssetKind.Folder, IsExpanded = true };
-        meshes.Children.Add(new AssetNode { Id = "a-cube", Name = "Cube.fbx", Kind = AssetKind.Mesh });
-        meshes.Children.Add(new AssetNode { Id = "a-sphere", Name = "Sphere.fbx", Kind = AssetKind.Mesh });
-        meshes.Children.Add(new AssetNode { Id = "a-pillar", Name = "Pillar.fbx", Kind = AssetKind.Mesh });
-
-        var textures = new AssetNode { Id = "f-textures", Name = "Textures", Kind = AssetKind.Folder };
-        textures.Children.Add(new AssetNode { Id = "a-tex-stone", Name = "Stone_Albedo.png", Kind = AssetKind.Texture });
-        textures.Children.Add(new AssetNode { Id = "a-tex-metal", Name = "Metal_Albedo.png", Kind = AssetKind.Texture });
-
+        // Live "Meshes" + "Textures" folders — repopulated from the bridge whenever it
+        // fires ModelRegistryChanged. The Textures folder holds one subfolder per imported
+        // model; dropping convention-named textures onto a subfolder binds them. The other
+        // folders are stubs for the upcoming script / audio / material flows.
+        _meshesFolder = new AssetNode { Id = "f-meshes", Name = "Meshes", Kind = AssetKind.Folder, IsExpanded = true };
+        _texturesFolder = new AssetNode { Id = "f-textures", Name = "Textures", Kind = AssetKind.Folder };
         var scripts = new AssetNode { Id = "f-scripts", Name = "Scripts", Kind = AssetKind.Folder };
-        scripts.Children.Add(new AssetNode { Id = "a-script-player", Name = "PlayerController.cs", Kind = AssetKind.Script });
-        scripts.Children.Add(new AssetNode { Id = "a-script-scene", Name = "SceneManager.cs", Kind = AssetKind.Script });
-
         var audio = new AssetNode { Id = "f-audio", Name = "Audio", Kind = AssetKind.Folder, IsExpanded = false };
-        audio.Children.Add(new AssetNode { Id = "a-audio-step", Name = "footstep.wav", Kind = AssetKind.Audio });
-
         var materials = new AssetNode { Id = "f-materials", Name = "Materials", Kind = AssetKind.Folder, IsExpanded = false };
-        materials.Children.Add(new AssetNode { Id = "a-mat-default", Name = "Default.mat", Kind = AssetKind.Material });
 
-        AssetTree.Add(meshes);
-        AssetTree.Add(textures);
+        AssetTree.Add(_meshesFolder);
+        AssetTree.Add(_texturesFolder);
         AssetTree.Add(scripts);
         AssetTree.Add(audio);
         AssetTree.Add(materials);
+    }
+
+    private void RefreshMeshAssetsFolder()
+    {
+        if (_bridge == null) return;
+
+        if (_meshesFolder != null)
+        {
+            _meshesFolder.Children.Clear();
+            foreach (var key in _bridge.AvailableModelKeys)
+            {
+                _meshesFolder.Children.Add(new AssetNode
+                {
+                    Id = "model:" + key,
+                    Name = key + ".fbx",
+                    Kind = AssetKind.Mesh,
+                });
+            }
+        }
+
+        // Textures: one subfolder per imported model (built-ins aren't texture-drop
+        // targets), listing whatever the user has already dropped into it.
+        if (_texturesFolder != null)
+        {
+            _texturesFolder.Children.Clear();
+            foreach (var key in _bridge.AvailableModelKeys)
+            {
+                if (!_bridge.IsDeletableModel(key)) continue; // imported models only
+                var folder = new AssetNode { Id = "tex:" + key, Name = key, Kind = AssetKind.Folder, IsExpanded = false };
+                foreach (var file in _bridge.GetModelTextureFiles(key))
+                    folder.Children.Add(new AssetNode { Id = "texfile:" + key + ":" + file, Name = file, Kind = AssetKind.Texture });
+                _texturesFolder.Children.Add(folder);
+            }
+        }
+    }
+
+    private void OnBridgeModelRegistryChanged()
+    {
+        // Fires on the engine thread; ObservableCollection mutations require the UI thread.
+        Dispatcher.UIThread.Post(() =>
+        {
+            RefreshAvailableModels();
+            RefreshMeshAssetsFolder();
+        });
+    }
+
+    /// <summary>
+    /// Forward a disk-path .fbx (or .obj) to the engine importer. The registry-changed
+    /// event handler will refresh the Assets panel + model picker once import completes.
+    /// </summary>
+    public void ImportFbxFromDisk(string path)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(path)) return;
+        _bridge.EnqueueImportModel(path, _ => { /* refresh happens via ModelRegistryChanged */ });
+    }
+
+    /// <summary>
+    /// Spawn a BasicEntity in the scene from a registered model key (drag-drop target
+    /// for the Hierarchy panel).
+    /// </summary>
+    public void AddEntityFromAsset(string modelKey)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(modelKey)) return;
+        _bridge.EnqueueAddBasicEntity(modelKey, _bridge.SpawnPoint);
+    }
+
+    /// <summary>
+    /// Forward dropped texture files to the engine to be bound (by filename convention)
+    /// to <paramref name="modelKey"/>. Refresh happens via ModelRegistryChanged.
+    /// </summary>
+    public void ImportTexturesFromDisk(string modelKey, IEnumerable<string> paths)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(modelKey)) return;
+        var arr = paths?.Where(p => !string.IsNullOrEmpty(p)).ToArray();
+        if (arr == null || arr.Length == 0) return;
+        _bridge.EnqueueImportTextures(modelKey, arr, () => { /* refresh via ModelRegistryChanged */ });
+    }
+
+    /// <summary>
+    /// Permanently delete an imported model (and its disk content). Called after the
+    /// view confirms. No-op for built-ins. Refresh happens via ModelRegistryChanged.
+    /// </summary>
+    public void DeleteModelAsset(string modelKey)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(modelKey)) return;
+        if (!_bridge.IsDeletableModel(modelKey)) return;
+        _bridge.EnqueueDeleteModelAsset(modelKey, () => { /* refresh via ModelRegistryChanged */ });
+    }
+
+    /// <summary>
+    /// Resolves an Assets-tree node to a deletable imported-model key, or null. Mesh nodes
+    /// use the id "model:{key}"; texture folders use "tex:{key}".
+    /// </summary>
+    public string? DeletableModelKeyFor(AssetNode? node)
+    {
+        if (_bridge == null || node == null) return null;
+        string id = node.Id ?? string.Empty;
+        string? key;
+        if (id.StartsWith("model:", StringComparison.Ordinal)) key = id.Substring("model:".Length);
+        else if (id.StartsWith("tex:", StringComparison.Ordinal)) key = id.Substring("tex:".Length);
+        else if (id.StartsWith("texfile:", StringComparison.Ordinal))
+        {
+            // "texfile:{key}:{file}" — take the segment between the two markers.
+            string rest = id.Substring("texfile:".Length);
+            int colon = rest.IndexOf(':');
+            key = colon > 0 ? rest.Substring(0, colon) : null;
+        }
+        else key = null;
+        return !string.IsNullOrEmpty(key) && _bridge.IsDeletableModel(key) ? key : null;
     }
 
     private void BuildConsole()

@@ -99,6 +99,16 @@ namespace Engine.Editor
         bool IsHostKeyDown(int xnaKeyCode);
         void SetHostKeyState(int xnaKeyCode, bool down);
 
+        /// <summary>
+        /// True while the host pointer is hovering over the viewport. Defaults to
+        /// true (standalone engine has no host). When hosted in Anvil and the
+        /// cursor is over the Inspector / Hierarchy / Console, this is false and
+        /// the engine input layer treats the mouse as idle so picking and camera
+        /// drag don't leak across Avalonia panels.
+        /// </summary>
+        bool IsHostPointerOverViewport { get; }
+        void SetHostPointerOverViewport(bool inside);
+
         IReadOnlyList<EditorObjectSnapshot> Snapshot { get; }
         event Action<IReadOnlyList<EditorObjectSnapshot>> SnapshotUpdated;
 
@@ -149,5 +159,50 @@ namespace Engine.Editor
 
         // Model picker support — names of available ModelDefinitions in the Assets registry.
         IReadOnlyList<string> AvailableModelKeys { get; }
+
+        /// <summary>
+        /// Queue a runtime import of a model file from disk. Runs on the engine thread:
+        /// copies the file under Engine/Content/Art/Models/{key}/, scans sibling textures,
+        /// invokes mgcb to build the new entries, loads the resulting model through the
+        /// live ContentManager, and registers it with the Assets dictionary. The callback
+        /// fires on the game thread with the actual registered key (may differ from the
+        /// requested name when collision-deduped) or null on failure.
+        /// </summary>
+        void EnqueueImportModel(string sourceFilePath, Action<string> onCompleted);
+
+        /// <summary>
+        /// Queue a runtime import of texture files for an already-registered model. Copies
+        /// them into the model's <c>Art/Models/{key}/Textures/</c> folder, builds them, and
+        /// binds a material by filename convention (<c>*_BaseColor</c> → albedo, etc.).
+        /// Updates instances already in the scene. The callback fires on the game thread.
+        /// </summary>
+        void EnqueueImportTextures(string modelKey, string[] sourcePaths, Action onCompleted);
+
+        /// <summary>
+        /// Queue permanent deletion of a runtime-imported model: unregisters it and deletes
+        /// its content (files + Content.mgcb entries) from disk. Built-in models are ignored.
+        /// The callback fires on the game thread once done.
+        /// </summary>
+        void EnqueueDeleteModelAsset(string modelKey, Action onCompleted);
+
+        /// <summary>
+        /// Texture file names currently in a model's <c>Textures/</c> folder (for the
+        /// Assets panel). Safe to call from the UI thread.
+        /// </summary>
+        IReadOnlyList<string> GetModelTextureFiles(string modelKey);
+
+        /// <summary>
+        /// True if the model key refers to a runtime-imported model (deletable / a valid
+        /// texture-drop target). False for built-ins. Safe to call from the UI thread.
+        /// </summary>
+        bool IsDeletableModel(string modelKey);
+
+        /// <summary>
+        /// Fires on the engine thread whenever a new model is registered in the Assets
+        /// registry (today: only via <see cref="EnqueueImportModel"/>). UI consumers
+        /// must marshal to the UI thread. <see cref="AvailableModelKeys"/> already
+        /// reflects the addition by the time this event fires.
+        /// </summary>
+        event Action ModelRegistryChanged;
     }
 }
