@@ -9,10 +9,9 @@
 - DirectX 12 support
 - Hotload
 - Spotlights with CookieMap
-- Physics Engine (Jolt Physics)
+- Physics Engine (still deciding)
 - Audio Engine (still deciding)
 - Lightmapping
+- Day light cycle
 
 ## Refactor
-
-- Textures system

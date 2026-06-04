@@ -1,5 +1,127 @@
 # Changelog
 
+## Fix Anvil viewport rendering at 640×480 on startup until the first manual resize
+
+Follow-up to the bloom-device fix below. With the device no longer dying, the embedded viewport
+worked — but on startup it rendered at MonoGame's stale **640×480** default backbuffer
+(white/overexposed borders around the scene; the in-engine overlay read `Res: 640 x 480`) and only
+snapped to the real container size after the user dragged/resized the window once.
+
+**Root cause.** When hosted in Anvil, `MonoGameHost` reparents the engine HWND under its container
+and resizes it to the container's client rect via `SetWindowPos`/`MoveWindow`, pre-syncing
+`PreferredBackBuffer` *without* `ApplyChanges` (the device reset must happen on the game thread).
+The reconcile that actually rebuilds the swap chain + render targets
+(`Engine.ApplyPendingResize` → `ApplyChanges` + `ScreenManager.UpdateResolution`) is driven by
+`Engine.ClientChangedWindowSize`, i.e. a `WM_SIZE` the engine observes. But on boot the container
+sizing happens before the engine begins ticking its own resize bookkeeping, so no reconcile is
+primed and the engine keeps rendering at the 640×480 default the device fell back to. The first
+*user* resize finally raises a `WM_SIZE` the engine sees, which reconciles everything — hence
+"resize and it goes back to normal".
+
+**Fix.** `Engine.ApplyPendingResize` now self-primes for the first ~30 Update ticks: if the actual
+`Window.ClientBounds` differ from the resolution we're rendering at (`GameSettings.g_screenwidth/
+height`), it sets `_pendingResize` so the existing reconcile path runs on the game thread and the
+viewport fits the container on startup — no manual resize needed. It's idempotent (once reconciled,
+`ClientBounds == GameSettings` so it stops firing) and a no-op for the standalone engine, whose
+boot window already matches `GameSettings`.
+
+Changes:
+
+- **`Engine/Engine.cs`**: added `_bootReconcileTicks` (starts at 30); `ApplyPendingResize` decrements
+  it each tick and flags a resize while the live client bounds don't match the rendered resolution.
+
+## Fix all-white engine viewport — `BloomFilter.Dispose()` was killing the shared GraphicsDevice
+
+Addresses [Docs/TODO.md](Docs/TODO.md): after the previous resize work, resizing no longer crashed
+but the embedded engine viewport rendered all white, and `anvil-bridge.log` filled with
+`NullReferenceException`s — `SharpDX.Direct3D11.Texture2D..ctor` inside
+`BloomFilter.UpdateResolution`, then `Monitor.Enter(null)` inside
+`GraphicsDevice.PlatformApplyRenderTargets` on the following frame.
+
+**Root cause.** `BloomFilter.Dispose()` ended with `_graphicsDevice?.Dispose()` and
+`_bloomEffect?.Dispose()`. That `_graphicsDevice` is **the engine's one shared `GraphicsDevice`**
+(handed in at `BloomFilter.Initialize`, owned by the MonoGame `Game`), and `_bloomEffect` is a
+`ContentManager`-owned `Effect`. Critically, `Dispose()` is **not** a shutdown-only path: it is
+called from `BloomFilter.UpdateResolution()` on *every resolution change* to recycle the mip render
+targets. The renderer reconciles bloom's resolution lazily — the first time `BloomFilter.Draw` sees
+`width/height != _width/_height` (which happens as soon as the Anvil container settles to a size
+other than the 1280×720 boot default), it calls `UpdateResolution` → `Dispose()` → **disposes the
+live device**. The very next `RenderTarget2D` it tries to create (Mip0) NREs (first log entry); the
+following frame's `GBufferRenderModule.Draw` → `SetRenderTargets` hits `Monitor.Enter(null)` on the
+dead device (second log entry). The device never recovers, so the viewport stays white. This is the
+only `Dispose()` in the engine that frees the shared device *and* runs during normal runtime
+(`Renderer`/`DebugScreen`/`LightAccumulationModule` also free the device in their `Dispose()`, but
+those are shutdown-only and unaffected).
+
+**Fix.** `BloomFilter.Dispose()` now releases **only** the six bloom mip render targets it actually
+owns — it no longer touches the shared `GraphicsDevice` or the content-managed `_bloomEffect`.
+Resolution changes (startup container-fit and live resize) now recycle just the bloom targets and
+the device survives, so the deferred pipeline keeps drawing.
+
+Changes:
+
+- **`Engine/Renderer/RenderModules/PostProcessingFilters/BloomFilter.cs`**: `Dispose()` drops the
+  `_graphicsDevice?.Dispose()` and `_bloomEffect?.Dispose()` calls (with a comment explaining why
+  this method must only free the mip targets, since it runs on every resolution change).
+- **`Editor/Anvil/Controls/MonoGameHost.cs`**: the `CreateWindowEx` P/Invoke's `lpWindowName`
+  parameter is now `string?`, clearing the runtime `CS8625` warning at line 232 (the `"STATIC"`
+  container is created with a `null` window name).
+
+Verified `dotnet build Engine.slnx` (0 errors) and `dotnet build Editor/Anvil/Anvil.csproj`
+(0 warnings, 0 errors).
+
+## Fix Anvil viewport resize — no black areas, no resize/startup crash, engine fills only its cell
+
+Addresses [Docs/TODO.md](Docs/TODO.md). Two coupled problems:
+
+1. **Black bars + skewed image/axes, resolution stuck at 1280×720.** The render resolution stayed
+   at the boot default the whole session (the in-engine overlay literally read `Res: 1280 x 720`
+   regardless of window size). The final present, `Renderer.DrawMapToScreenToFullScreen`, blits into
+   `Rectangle(0, 0, g_screenwidth, g_screenheight)` and the projection aspect ratio also uses those
+   values, so a stale resolution leaves the rest of the (larger) backbuffer black and the 3D content
+   skewed. `Renderer.UpdateResolution()` (the only thing that refreshes `GameSettings` + rebuilds
+   render targets) was reached via `Engine.ClientChangedWindowSize`, whose guard
+   (`GraphicsDevice.Viewport != PreferredBackBuffer`) was self-defeating: the host had already made
+   both sides equal, so it never ran.
+
+2. **`NullReferenceException` in `GraphicsDevice.CreateSizeDependentResources` on startup and on
+   resize.** MonoGame's `WinFormsGameWindow.OnResize` (subscribed to `Form.Resize`) calls
+   `UpdateBackBufferSize` → `GraphicsDeviceManager.ApplyChanges()` → `GraphicsDevice.Reset()` **only
+   when the form's client size differs from `PreferredBackBuffer`**. Resetting the device from inside
+   that `WndProc`/`OnResize` callstack NREs on the **reparented child window** used by the Anvil
+   viewport. The startup cases were fixed by pre-syncing `PreferredBackBuffer`, but the resize case
+   persisted: Avalonia's `NativeControlHost` resizes the engine HWND *itself* on every layout pass via
+   a **cross-thread `SetWindowPos`** that blocks inside `base.ArrangeOverride` until the game thread's
+   `WndProc` runs — so no pre-sync done afterward could win that race.
+
+The fix combines two rules:
+
+- **An intermediate container HWND decouples Avalonia's resize from the engine.** A plain `STATIC`
+  child window is created under the host HWND and handed back to Avalonia as the native control;
+  the engine HWND is reparented *under* it. Avalonia now resizes the container (no graphics device →
+  harmless), and the engine HWND is resized **only by us**, using the container's exact client-rect
+  pixels for both `PreferredBackBuffer` and `MoveWindow` — so MonoGame's `OnResize` always early-returns
+  (identical integers, no DPI rounding guesswork) and never resets the device from a `WndProc`.
+- **The real swap-chain + render-target rebuild happens on the game thread, outside any `WndProc`.**
+
+Changes:
+
+- **`Engine/Engine.cs`**: `ClientChangedWindowSize` no longer touches the device — it only sets a
+  `_pendingResize` flag (it runs inside the resize `WndProc`). New `ApplyPendingResize()` runs at the
+  top of `Update` (game thread, outside `WndProc`, before the `_isActive` gate): it debounces until the
+  client size settles, then updates `GameSettings`, sets `PreferredBackBuffer`, calls `ApplyChanges()`,
+  sets `GraphicsDevice.Viewport = new Viewport(0, 0, w, h)`, and calls `_screenManager.UpdateResolution()`.
+  This is the single, safe place the swap chain is reset. (Also fixes the stuck-resolution/black-bar
+  bug in standalone, which now rebuilds render targets on user-drag too.)
+- **`Editor/Anvil/Controls/MonoGameHost.cs`**: creates the `STATIC` container in
+  `CreateNativeControlCore` and returns it; `ReparentGameWindow(parent)` parents the engine under the
+  container. `ResizeEngineToContainer` (called from `ArrangeOverride`) reads the container's client
+  rect and calls `SyncPreferredBackBuffer(w, h)` (sets `PreferredBackBuffer` **without** `ApplyChanges`
+  — no UI-thread device reset) immediately before `MoveWindow`-ing the engine to the same size. The
+  old `DispatcherTimer` resize-debounce path was removed (debounce now lives in the engine).
+  `DestroyNativeControlCore` destroys the container. As a final safety net, the game-thread message
+  pump now wraps `DispatchMessage` in try/catch so any stray resize can never hard-crash the app.
+
 ## Migrate solution to XML `.slnx` format
 
 Replaced the legacy MSBuild `Engine.sln` with the XML-based `Engine.slnx` (supported natively by

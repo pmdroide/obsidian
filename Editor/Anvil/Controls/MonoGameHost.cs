@@ -29,10 +29,12 @@ public class MonoGameHost : NativeControlHost
     private string? _previousCwd;
     private volatile bool _disposed;
 
-    private DispatcherTimer? _resizeTimer;
-    private Size _pendingSize;
+    // Avalonia owns and sizes this intermediate container (a plain STATIC window) as the
+    // native control. The engine HWND is reparented UNDER it and is resized only by us, so
+    // MonoGame never receives an Avalonia-driven cross-thread resize — whose in-WndProc
+    // GraphicsDevice.Reset NREs on the reparented child window.
+    private IntPtr _containerHwnd;
     private Size _appliedSize;
-    private bool _initialResizeDone;
 
     /// <summary>
     /// Fires on the UI thread once the embedded engine has constructed its
@@ -46,6 +48,7 @@ public class MonoGameHost : NativeControlHost
     private const int GWL_EXSTYLE = -20;
     private const uint WS_CHILD = 0x40000000;
     private const uint WS_VISIBLE = 0x10000000;
+    private const uint WS_CLIPCHILDREN = 0x02000000;
     private const uint WS_POPUP = 0x80000000;
     private const uint WS_CAPTION = 0x00C00000;
     private const uint WS_THICKFRAME = 0x00040000;
@@ -79,6 +82,14 @@ public class MonoGameHost : NativeControlHost
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreateWindowEx(uint dwExStyle, string lpClassName, string? lpWindowName,
+        uint dwStyle, int x, int y, int nWidth, int nHeight,
+        IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyWindow(IntPtr hWnd);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
@@ -198,11 +209,46 @@ public class MonoGameHost : NativeControlHost
             return base.CreateNativeControlCore(parent);
         }
 
-        ReparentGameWindow();
-        return new PlatformHandle(_gameHwnd, "HWND");
+        // Size the initial geometry from the host's real client rect (Bounds is 0 before the
+        // first layout pass).
+        int cw, ch;
+        if (GetClientRect(_hostHwnd, out var hostRect) && hostRect.Right > 1 && hostRect.Bottom > 1)
+        {
+            cw = hostRect.Right - hostRect.Left;
+            ch = hostRect.Bottom - hostRect.Top;
+        }
+        else
+        {
+            cw = Math.Max(1, (int)Bounds.Width);
+            ch = Math.Max(1, (int)Bounds.Height);
+        }
+
+        // Create an intermediate container under the HWND Avalonia gave us, and hand THAT
+        // back as the native control. Avalonia resizes the returned handle on every layout
+        // pass via a cross-thread SetWindowPos; since the container is a plain STATIC window
+        // with no graphics device, those resizes are harmless. The engine HWND lives under it
+        // and is resized only by us (ResizeEngineToContainer) with PreferredBackBuffer
+        // pre-synced — so MonoGame never resets the device from inside that WndProc.
+        _containerHwnd = CreateWindowEx(0, "STATIC", null,
+            WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, cw, ch,
+            _hostHwnd, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+
+        if (_containerHwnd == IntPtr.Zero)
+        {
+            // Degraded fallback: parent the engine directly under the host (the pre-container
+            // behaviour). Resize crashes can recur here, but STATIC creation effectively never
+            // fails, so this is just a safety net.
+            EditorBridge.Log("MonoGameHost: container HWND creation failed; parenting engine directly");
+            _containerHwnd = _hostHwnd;
+        }
+
+        ReparentGameWindow(_containerHwnd);
+
+        IntPtr returned = _containerHwnd != _hostHwnd ? _containerHwnd : _gameHwnd;
+        return new PlatformHandle(returned, "HWND");
     }
 
-    private void ReparentGameWindow()
+    private void ReparentGameWindow(IntPtr parentHwnd)
     {
         const uint topLevelMask = WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
             | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP | WS_DLGFRAME | WS_BORDER;
@@ -217,13 +263,12 @@ public class MonoGameHost : NativeControlHost
         exStyle |= WS_EX_TOOLWINDOW;
         SetWindowLong(_gameHwnd, GWL_EXSTYLE, unchecked((int)exStyle));
 
-        SetParent(_gameHwnd, _hostHwnd);
+        SetParent(_gameHwnd, parentHwnd);
 
-        // Prefer the parent HWND's actual client rect — Bounds is 0 on first call
-        // (layout hasn't run yet). A 1x1 here would make the engine's resize handler
-        // commit a 1x1 backbuffer and then silently ignore later size changes.
+        // Fill the parent's client area. A 1x1 here would make the engine commit a 1x1
+        // backbuffer, so fall back to Bounds only when the parent rect isn't ready.
         int w, h;
-        if (GetClientRect(_hostHwnd, out var rect) && rect.Right > 1 && rect.Bottom > 1)
+        if (GetClientRect(parentHwnd, out var rect) && rect.Right > 1 && rect.Bottom > 1)
         {
             w = rect.Right - rect.Left;
             h = rect.Bottom - rect.Top;
@@ -234,6 +279,12 @@ public class MonoGameHost : NativeControlHost
             h = Math.Max(1, (int)Bounds.Height);
         }
         _appliedSize = new Size(w, h);
+
+        // Pre-sync PreferredBackBuffer to this size BEFORE the window resizes, so the WM_SIZE
+        // raised below makes MonoGame's WinFormsGameWindow.OnResize early-return instead of
+        // resetting the device mid-initialization (which NREs).
+        SyncPreferredBackBuffer(w, h);
+
         SetWindowPos(_gameHwnd, IntPtr.Zero, 0, 0, w, h,
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     }
@@ -241,8 +292,6 @@ public class MonoGameHost : NativeControlHost
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
         _disposed = true;
-        _resizeTimer?.Stop();
-        _resizeTimer = null;
 
         try
         {
@@ -254,6 +303,14 @@ public class MonoGameHost : NativeControlHost
         }
         finally
         {
+            // Destroy our container (the engine child is torn down with the game thread's
+            // _game.Dispose above). Skip when it aliases the host HWND (degraded fallback).
+            if (_containerHwnd != IntPtr.Zero && _containerHwnd != _hostHwnd)
+            {
+                try { DestroyWindow(_containerHwnd); } catch { }
+            }
+            _containerHwnd = IntPtr.Zero;
+
             if (_previousCwd != null)
             {
                 try { Environment.CurrentDirectory = _previousCwd; } catch { }
@@ -271,7 +328,9 @@ public class MonoGameHost : NativeControlHost
 
             // GraphicsDeviceManager registers itself as IGraphicsDeviceManager in
             // Game.Services during its constructor, so this resolves without forcing
-            // a public field on Engine.Engine.
+            // a public field on Engine.Engine. We only use it to keep PreferredBackBuffer
+            // in lockstep with the child's client size (see ApplyChildSize) so MonoGame's
+            // own OnResize handler early-returns — we never call ApplyChanges from here.
             _graphicsManager = _game.Services.GetService<IGraphicsDeviceManager>() as GraphicsDeviceManager;
 
             // The MonoGame WinForms window is created during the Game constructor;
@@ -314,7 +373,12 @@ public class MonoGameHost : NativeControlHost
                 while (PeekMessage(out MSG msg, IntPtr.Zero, 0, 0, PM_REMOVE))
                 {
                     TranslateMessage(ref msg);
-                    DispatchMessage(ref msg);
+                    // Safety net: a stray resize that slips through with a stale
+                    // PreferredBackBuffer can NRE inside MonoGame's GraphicsDevice.Reset.
+                    // Swallow it here so it never kills the app; the engine reconciles the
+                    // device on its next Update (Engine.ApplyPendingResize).
+                    try { DispatchMessage(ref msg); }
+                    catch (Exception ex) { EditorBridge.Log("DispatchMessage threw: " + ex); }
                 }
 
                 // 2. TICK MONOGAME
@@ -347,61 +411,42 @@ public class MonoGameHost : NativeControlHost
 
     protected override Size ArrangeOverride(Size finalSize)
     {
+        // Avalonia sizes the container window (the handle we returned) here, on the UI thread.
         var result = base.ArrangeOverride(finalSize);
-        if (_gameHwnd == IntPtr.Zero) return result;
-
-        // First layout pass: resize synchronously so the engine never sees a stale
-        // 1x1 size (which would trap its resize handler — see field comment).
-        if (!_initialResizeDone)
-        {
-            _initialResizeDone = true;
-            ApplyChildSize(finalSize);
-            return result;
-        }
-
-        // Subsequent layout passes (the user is dragging the window) get debounced:
-        // resizing on every pass would have the engine rebuild its backbuffer +
-        // render targets dozens of times per second, which leaves the renderer blank.
-        ScheduleResize(finalSize);
+        ResizeEngineToContainer();
         return result;
     }
 
-    private void ApplyChildSize(Size size)
+    // Resize the engine HWND to exactly fill the container's client area. We read the
+    // container's ACTUAL client rect (physical pixels) and use that identical size for both
+    // PreferredBackBuffer and MoveWindow. MoveWindow's WM_SIZE is handled on the game thread by
+    // MonoGame's OnResize, which then sees ClientSize == PreferredBackBuffer and early-returns
+    // instead of resetting the device (the reset NREs on this reparented child window). No DPI
+    // rounding guesswork — the same integers are used on both sides.
+    private void ResizeEngineToContainer()
     {
-        var w = Math.Max(1, (int)size.Width);
-        var h = Math.Max(1, (int)size.Height);
+        if (_gameHwnd == IntPtr.Zero || _containerHwnd == IntPtr.Zero) return;
+        if (!GetClientRect(_containerHwnd, out var rect)) return;
+
+        int w = rect.Right - rect.Left;
+        int h = rect.Bottom - rect.Top;
+        if (w <= 0 || h <= 0) return;
         if (_appliedSize.Width == w && _appliedSize.Height == h) return;
         _appliedSize = new Size(w, h);
+
+        SyncPreferredBackBuffer(w, h);
         MoveWindow(_gameHwnd, 0, 0, w, h, true);
-
-        // MoveWindow alone only resizes the HWND — the DX swap chain stays at its
-        // old dimensions, so the engine keeps stretching an old backbuffer over the
-        // new client area and looks frozen. Push the new size through the manager
-        // to force a swap-chain rebuild at the right resolution.
-        if (_graphicsManager != null)
-        {
-            _graphicsManager.PreferredBackBufferWidth = w;
-            _graphicsManager.PreferredBackBufferHeight = h;
-            try { _graphicsManager.ApplyChanges(); } catch { }
-        }
+        // The engine rebuilds its backbuffer + render targets itself, on the game thread,
+        // once it sees the new client size (Engine.ApplyPendingResize) — debounced there so a
+        // live drag doesn't rebuild every frame.
     }
 
-    private void ScheduleResize(Size finalSize)
+    // Set PreferredBackBuffer without ever calling ApplyChanges — that (a device Reset) must
+    // only ever happen on the game thread, which the engine does itself in Engine.Update.
+    private void SyncPreferredBackBuffer(int w, int h)
     {
-        _pendingSize = finalSize;
-        if (_resizeTimer == null)
-        {
-            _resizeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-            _resizeTimer.Tick += OnResizeTimerTick;
-        }
-        _resizeTimer.Stop();
-        _resizeTimer.Start();
-    }
-
-    private void OnResizeTimerTick(object? sender, EventArgs e)
-    {
-        _resizeTimer?.Stop();
-        if (_disposed || _gameHwnd == IntPtr.Zero) return;
-        ApplyChildSize(_pendingSize);
+        if (_graphicsManager == null) return;
+        _graphicsManager.PreferredBackBufferWidth = w;
+        _graphicsManager.PreferredBackBufferHeight = h;
     }
 }
