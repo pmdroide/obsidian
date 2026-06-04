@@ -1,5 +1,16 @@
 # Changelog
 
+## Add Anvil editor architecture docs
+
+Documented how the Anvil editor is structured and how it interacts with the engine, in a form meant to be extended as the editor grows.
+
+Added:
+
+- [Docs/Editor_Architecture.excalidraw](Docs/excalidraw/Editor_Architecture.excalidraw) — diagram of the editor architecture: the Avalonia UI thread, the MonoGame STA game thread, and the `EditorBridge` seam between them, with the mutation path (UI → engine, queued) and snapshot path (engine → UI, reconciled) drawn as labelled arrows. Colour-coded by thread/role with a legend.
+- [Docs/Editor_Architecture.md](Docs/markdown/Editor_Architecture.md) — companion write-up: component map (Anvil + engine sides), the exact `IEditorBridge` contract (snapshot structs, mutation methods, events), startup/HWND embedding, data-flow diagrams, the threading model, and an "How to Extend This" section keyed to the bridge seams. Cross-links the existing engine and Vista UI docs.
+
+No code changes.
+
 ## Fix game input leaking outside the engine viewport in Anvil
 
 Addresses [Docs/TODO.md](Docs/TODO.md): holding right-click **outside** the viewport (over the
@@ -369,7 +380,7 @@ Anvil Assets panel and drags from there into the Hierarchy to spawn a `BasicEnti
   `AddEntityFromAsset(modelKey)`, `RefreshMeshAssetsFolder()`,
   `OnBridgeModelRegistryChanged()`.
 
-## Editor overhaul (engine-3d branch)
+## Editor overhaul (dev branch)
 
 Implements the TODO in `Docs/TODO.md`. Phased plan in
 `C:/Users/mano3/.claude/plans/docs-todo-md-read-the-todo-wobbly-fern.md`.
