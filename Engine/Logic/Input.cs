@@ -12,6 +12,12 @@ namespace Engine.Logic
         public static KeyboardState keyboardState, keyboardLastState;
         public static MouseState mouseState, mouseLastState;
 
+        // Viewport-gate latch (Anvil-hosted only). True while a mouse drag whose
+        // initial press landed inside the viewport is still held, so the drag keeps
+        // working even when the cursor strays over an Avalonia panel mid-drag.
+        private static bool _dragOwnedByViewport;
+        private static bool _anyButtonDownLast;
+
         /// <summary>
         /// Bridge for host-forwarded input. Set by <c>EditorBridge.Bind</c>.
         /// When the engine is hosted by Anvil, Avalonia owns keyboard focus
@@ -37,21 +43,53 @@ namespace Engine.Logic
             mouseLastState = mouseState;
             keyboardLastState = keyboardState;
 
+            MouseState raw = Mouse.GetState();
+
             // When hosted in Anvil and the pointer is over an Avalonia panel
             // (Inspector / Hierarchy / Console) the global Win32 mouse state
             // still reports those clicks. Synthesize an idle state so picking
             // (WasLMBClicked) and camera drag don't react.
-            if (HostBridge != null && HostBridge.IsHostedByEditor && !HostBridge.IsHostPointerOverViewport)
+            //
+            // Mouse.GetState() reports the cursor relative to the engine window's
+            // OWN client area, so a cursor over a surrounding Avalonia panel lands
+            // outside [0,w)x[0,h). We test that here on the game thread rather than
+            // relying on the host to forward pointer-enter/leave — the reparented
+            // engine HWND eats Avalonia's pointer events over the viewport, so the
+            // host can see the pointer leave a panel but never see it re-enter the
+            // viewport, which would latch input off.
+            bool gateActive = HostBridge != null && HostBridge.IsHostedByEditor;
+            bool insideViewport =
+                raw.X >= 0 && raw.Y >= 0 &&
+                raw.X < GameSettings.g_screenwidth && raw.Y < GameSettings.g_screenheight;
+            bool anyButtonDown =
+                raw.LeftButton == ButtonState.Pressed ||
+                raw.RightButton == ButtonState.Pressed ||
+                raw.MiddleButton == ButtonState.Pressed;
+
+            // A drag is "owned by the viewport" only if its initial press happened
+            // while the cursor was inside. Once owned, keep honoring the drag even if
+            // the cursor strays over a panel (the window holds mouse capture) until all
+            // buttons release. This is what lets RMB-orbit work past the viewport edge
+            // while still ignoring an RMB press that STARTS over a panel.
+            if (!_dragOwnedByViewport && anyButtonDown && !_anyButtonDownLast && insideViewport)
+                _dragOwnedByViewport = true;
+            else if (!anyButtonDown)
+                _dragOwnedByViewport = false;
+            _anyButtonDownLast = anyButtonDown;
+
+            bool allowInput = insideViewport || _dragOwnedByViewport;
+
+            if (gateActive && !allowInput)
             {
                 mouseState = new MouseState(
-                    mouseLastState.X, mouseLastState.Y,
-                    mouseLastState.ScrollWheelValue,
+                    raw.X, raw.Y,
+                    raw.ScrollWheelValue,
                     ButtonState.Released, ButtonState.Released, ButtonState.Released,
                     ButtonState.Released, ButtonState.Released);
             }
             else
             {
-                mouseState = Mouse.GetState();
+                mouseState = raw;
             }
             keyboardState = Keyboard.GetState();
 

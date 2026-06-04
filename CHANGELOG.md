@@ -1,5 +1,40 @@
 # Changelog
 
+## Fix game input leaking outside the engine viewport in Anvil
+
+Addresses [Docs/TODO.md](Docs/TODO.md): holding right-click **outside** the viewport (over the
+Inspector / Hierarchy / Console panels) and dragging still moved the engine camera. Reported as
+having "reached a roadblock" on a previous attempt.
+
+**Root cause.** The engine reads the *global* Win32 mouse state via `Mouse.GetState()`. When hosted
+in Anvil, that global state still reports clicks made over Avalonia panels, so an RMB-drag anywhere
+in the editor orbited the camera. An existing gate in `Input.Update` synthesizes an
+all-buttons-released `MouseState` while the pointer is outside the viewport — but it was keyed off a
+host-forwarded flag (`IsHostPointerOverViewport`) that nothing ever set.
+
+**Why the host can't drive it.** A first fix wired `MonoGameHost` to forward pointer-enter/leave to
+the bridge, but it broke input *inside* the viewport: the reparented engine HWND consumes Avalonia's
+pointer events over the viewport, so Avalonia sees the pointer leave a panel but never sees it
+re-enter the viewport — the flag latched off and the engine ignored all mouse input there.
+
+**Fix.** The gate is now self-contained in the engine and needs no host cooperation.
+`Mouse.GetState()` already reports the cursor relative to the engine window's **own** client area, so
+a cursor over a surrounding panel lands outside `[0,w) x [0,h)`. `Input.Update` tests that on the
+game thread each frame and synthesizes the idle state when hosted and outside. A small latch
+(`_dragOwnedByViewport`) remembers when a drag's initial press landed inside the viewport, so an
+RMB/MMB/LMB drag that starts in the viewport keeps working even if the cursor strays over a panel
+(the window holds mouse capture) — while an RMB press that *starts* over a panel is still ignored.
+Standalone `Engine.exe` is unaffected (no host → `IsHostedByEditor` false → gate skipped).
+
+Changes:
+
+- **`Engine/Logic/Input.cs`**: `Input.Update` reads the raw mouse state, computes
+  `insideViewport` from the cursor vs. `GameSettings.g_screenwidth/height`, and gates with a
+  `_dragOwnedByViewport` / `_anyButtonDownLast` latch so in-viewport drags survive straying out.
+  The gate no longer depends on `IsHostPointerOverViewport`.
+- `MonoGameHost.cs` is unchanged from before this fix; the `IEditorBridge.IsHostPointerOverViewport` /
+  `SetHostPointerOverViewport` API remains but is no longer used by the input gate.
+
 ## Fix Anvil viewport rendering at 640×480 on startup until the first manual resize
 
 Follow-up to the bloom-device fix below. With the device no longer dying, the embedded viewport

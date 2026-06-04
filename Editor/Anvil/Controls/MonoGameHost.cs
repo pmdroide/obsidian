@@ -36,6 +36,15 @@ public class MonoGameHost : NativeControlHost
     private IntPtr _containerHwnd;
     private Size _appliedSize;
 
+    // Boot watchdog: during MonoGame's device/window init, MonoGame forces the engine window's
+    // client size back to its PreferredBackBuffer default (640x480) on a deferred tick — AFTER our
+    // last ArrangeOverride already sized it to the container. That self-shrink only re-fires
+    // ArrangeOverride if Avalonia happens to do another layout pass, which it usually doesn't, so
+    // the viewport stays shrunk (white borders) until a manual resize. This timer re-asserts the
+    // container size for a short window after attach, catching the shrink and moving the engine back.
+    private DispatcherTimer? _bootResizeWatchdog;
+    private int _bootWatchdogTicksLeft;
+
     /// <summary>
     /// Fires on the UI thread once the embedded engine has constructed its
     /// editor bridge. Subscribe to wire engine ↔ Anvil view-model traffic.
@@ -244,8 +253,32 @@ public class MonoGameHost : NativeControlHost
 
         ReparentGameWindow(_containerHwnd);
 
+        StartBootResizeWatchdog();
+
         IntPtr returned = _containerHwnd != _hostHwnd ? _containerHwnd : _gameHwnd;
         return new PlatformHandle(returned, "HWND");
+    }
+
+    // Re-assert the container size on the UI thread for a short window after boot. MonoGame's
+    // deferred init shrinks the engine window to 640x480 ~100ms in; this catches it and resizes
+    // the engine back to the container. ResizeEngineToContainer compares the engine's REAL client
+    // rect, so once the size sticks at the container the timer's calls become no-ops, and the timer
+    // self-stops after its budget.
+    private void StartBootResizeWatchdog()
+    {
+        _bootWatchdogTicksLeft = 60; // ~3s at 50ms ticks — covers MonoGame's deferred resize.
+        _bootResizeWatchdog = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _bootResizeWatchdog.Tick += (_, _) =>
+        {
+            if (_disposed || --_bootWatchdogTicksLeft <= 0)
+            {
+                _bootResizeWatchdog?.Stop();
+                _bootResizeWatchdog = null;
+                return;
+            }
+            ResizeEngineToContainer();
+        };
+        _bootResizeWatchdog.Start();
     }
 
     private void ReparentGameWindow(IntPtr parentHwnd)
@@ -292,6 +325,9 @@ public class MonoGameHost : NativeControlHost
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
         _disposed = true;
+
+        try { _bootResizeWatchdog?.Stop(); } catch { }
+        _bootResizeWatchdog = null;
 
         try
         {
@@ -431,7 +467,20 @@ public class MonoGameHost : NativeControlHost
         int w = rect.Right - rect.Left;
         int h = rect.Bottom - rect.Top;
         if (w <= 0 || h <= 0) return;
-        if (_appliedSize.Width == w && _appliedSize.Height == h) return;
+
+        // Compare against the engine HWND's ACTUAL client rect, not our cached _appliedSize.
+        // During boot MonoGame's own device/window init forces the engine window's client size
+        // back to its PreferredBackBuffer default (640x480) AFTER we already sized it to the
+        // container — a genuine WM_SIZE the engine reconciles to, which is what shrank the
+        // viewport (white borders). If we trusted _appliedSize we'd early-return and never undo
+        // that shrink. Reading the real engine rect lets us re-assert the container size whenever
+        // anything (MonoGame included) moves the engine away from it.
+        if (GetClientRect(_gameHwnd, out var engineRect))
+        {
+            int ew = engineRect.Right - engineRect.Left;
+            int eh = engineRect.Bottom - engineRect.Top;
+            if (ew == w && eh == h) { _appliedSize = new Size(w, h); return; }
+        }
         _appliedSize = new Size(w, h);
 
         SyncPreferredBackBuffer(w, h);

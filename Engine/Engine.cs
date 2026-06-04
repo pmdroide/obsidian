@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 //using Microsoft.Xna.Framework.Input;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using BEPUphysics;
 using BEPUutilities;
@@ -45,7 +46,30 @@ namespace Engine
         //raising a ClientSizeChanged we observe, so the very first frames render at MonoGame's stale
         //default backbuffer (640x480) until the user manually resizes. This makes the first few
         //Update ticks self-prime a reconcile so the viewport fits the container on boot.
-        private int _bootReconcileTicks = 30;
+        private int _bootReconcileTicks = 120;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [DllImport("user32.dll")]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        //Authoritative client size of the engine HWND. When Anvil reparents/resizes the window
+        //from the outside (MoveWindow/SetWindowPos), MonoGame's cached Window.ClientBounds can stay
+        //at the stale 640x480 default — but the real Win32 client rect is always current. Prefer it,
+        //falling back to ClientBounds (standalone, or if the handle isn't ready yet).
+        private void GetRealClientSize(out int w, out int h)
+        {
+            IntPtr hwnd = Window?.Handle ?? IntPtr.Zero;
+            if (hwnd != IntPtr.Zero && GetClientRect(hwnd, out var r))
+            {
+                w = r.Right - r.Left;
+                h = r.Bottom - r.Top;
+                if (w > 0 && h > 0) return;
+            }
+            w = Window.ClientBounds.Width;
+            h = Window.ClientBounds.Height;
+        }
 
         public Engine()
         {
@@ -254,8 +278,7 @@ namespace Engine
             if (_bootReconcileTicks > 0)
             {
                 _bootReconcileTicks--;
-                int cw = Window.ClientBounds.Width;
-                int ch = Window.ClientBounds.Height;
+                GetRealClientSize(out int cw, out int ch);
                 if (cw > 0 && ch > 0 &&
                     (cw != GameSettings.g_screenwidth || ch != GameSettings.g_screenheight))
                 {
@@ -265,8 +288,10 @@ namespace Engine
 
             if (!_pendingResize) return;
 
-            int w = Window.ClientBounds.Width;
-            int h = Window.ClientBounds.Height;
+            //Use the real Win32 client rect, not MonoGame's cached ClientBounds — the latter can be
+            //stale (640x480) when Anvil resizes the HWND externally, which would otherwise make us
+            //"reconcile" to the wrong size.
+            GetRealClientSize(out int w, out int h);
 
             //Ignore degenerate sizes (e.g. while minimized); keep the request pending.
             if (w <= 0 || h <= 0) return;
@@ -288,6 +313,11 @@ namespace Engine
             //PreferredBackBuffer test) is what lets this fire for both the embedded editor
             //(HWND resized by MonoGameHost) and standalone user-drag.
             if (w == GameSettings.g_screenwidth && h == GameSettings.g_screenheight) return;
+
+            EditorBridge.Log($"ApplyPendingResize -> realRect={w}x{h}, ClientBounds=" +
+                $"{Window.ClientBounds.Width}x{Window.ClientBounds.Height}, " +
+                $"backbuffer={GraphicsDevice.PresentationParameters.BackBufferWidth}x" +
+                $"{GraphicsDevice.PresentationParameters.BackBufferHeight}");
 
             GameSettings.g_screenwidth = w;
             GameSettings.g_screenheight = h;
