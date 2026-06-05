@@ -1,5 +1,15 @@
 # Changelog
 
+## Add "Exporting Shaders to Unity URP" guide
+
+Documented how to port a shader out of this MonoGame/HLSL engine into Unity's Universal Render Pipeline, using the froxel volumetric fog as the worked (hardest) example.
+
+Added:
+
+- [Docs/Exporting Shaders to Unity URP.md](Docs/Exporting%20Shaders%20to%20Unity%20URP.md) — guide covering: the three froxel stages to port (inject → accumulate → compose), two porting strategies (compute + `RWTexture3D` recommended, or a faithful 2D-atlas blit port), a MonoGame-FX→URP-HLSL translation reference (sampler macros, matrix `mul` order, depth linearization, coordinate/clip-space flips, URP light/shadow APIs), a uniform→Unity mapping table seeded with current `GameSettings` defaults, a `ScriptableRendererFeature` hook-up note (RenderGraph vs. legacy), a port-blocking gotchas checklist, a validation sequence, and a section generalizing the playbook to other shaders. Sourced from `Froxel.fx`, `DeferredCompose.fx`, `FroxelRenderModule.cs`, and `GameSettings.cs`.
+
+No code changes.
+
 ## Add Anvil editor architecture docs
 
 Documented how the Anvil editor is structured and how it interacts with the engine, in a form meant to be extended as the editor grows.
