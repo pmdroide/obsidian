@@ -47,3 +47,7 @@ See the documention [here](DOCUMENTATION.md).
 
 ## License
 The obsidian engine source code is licensed under the [MIT License](LICENSE)
+
+The FMOD Engine is a proprietary sound engine owned by Firelight Technologies Pty Ltd. It is **not** covered by this repository's MIT license. Use of FMOD is governed strictly by the **FMOD End User License Agreement (EULA)**.
+
+To legally comply with FMOD's terms and maintain an open-source workflow, **this repository does not include FMOD’s proprietary SDK headers or pre-compiled binaries (`.dll`, `.so`, `.dylib`, etc.)**. You must download them directly from FMOD.

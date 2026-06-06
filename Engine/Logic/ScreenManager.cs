@@ -34,6 +34,7 @@ namespace Engine.Logic
         private ShaderManager _shaderManager;
         private DebugScreen _debug;
         private VideoIntroLogic _videoIntro;
+        private AudioManager _audio;
         private SpriteBatch _spriteBatch;
         private GraphicsDevice _graphicsDevice;
 
@@ -63,6 +64,7 @@ namespace Engine.Logic
             _spriteBatch = new SpriteBatch(graphicsDevice);
             _videoIntro.Initialize();
             _renderer.Initialize(graphicsDevice, _assets);
+            _audio.Initialize("Content");
             _sceneLogic.Initialize(_assets, space, graphicsDevice);
             _editorLogic.Initialize(graphicsDevice);
             _debug.Initialize(graphicsDevice);
@@ -80,6 +82,9 @@ namespace Engine.Logic
         //Update per frame
         public void Update(GameTime gameTime, bool isActive)
         {
+            // Pump FMOD every frame, regardless of game state (intro included).
+            _audio?.SystemUpdate();
+
             if (_currentState == GameState.VideoIntro)
             {
                 _videoIntro.Update();
@@ -95,6 +100,8 @@ namespace Engine.Logic
 #endif
             _editorLogic.Update(gameTime, _sceneLogic.BasicEntities, _sceneLogic.Decals, _sceneLogic.PointLights, _sceneLogic.DirectionalLights, _sceneLogic.EnvironmentSample, _sceneLogic.DebugEntities, _editorReceivedDataBuffer, _sceneLogic.MeshMaterialLibrary);
             _sceneLogic.Update(gameTime, isActive);
+            // Listener follows the active camera; 3D emitters reconcile after scene positions advance.
+            _audio?.UpdateListener(_sceneLogic.Camera);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
 
             _debug.Update(gameTime);
@@ -149,6 +156,7 @@ namespace Engine.Logic
             Shaders.Load(content);
             _shaderManager = new ShaderManager(content, graphicsDevice);
             _assets.Load(content, graphicsDevice);
+            _audio = new AudioManager();
             _renderer.Load(content, _shaderManager);
             _sceneLogic.Load(content);
             _debug.LoadContent(content);
@@ -181,6 +189,7 @@ namespace Engine.Logic
         public void Unload(ContentManager content)
         {
             _videoIntro.Unload();
+            _audio?.Dispose();
             content.Dispose();
         }
 

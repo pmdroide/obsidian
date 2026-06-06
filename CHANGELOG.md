@@ -1,5 +1,45 @@
 # Changelog
 
+## Docs website: dark/light theme toggle + PNG logo
+
+Replaced the docs site's non-functional account button with a working dark/light theme switcher, reworked the two stale color palettes into proper Dark and Light themes, and swapped the placeholder "s&" logo box for the project's crystal logo as a PNG.
+
+Added:
+
+- [Docs/website/public/logo.png](Docs/website/public/logo.png) — the Obsidian crystal logo, generated from [Docs/Icon.png](Docs/Icon.png) with its opaque black background made transparent (alpha derived from luminance, RGB forced white) so the mark floats on the header and can be recolored per theme. Also used as the favicon (the previous `/favicon.svg` reference was broken).
+
+Changed:
+
+- [Docs/website/src/styles/theme.css](Docs/website/src/styles/theme.css) — replaced the old "ocean"/"emerald" palettes with semantic **Dark** (`:root` default + `[data-theme='dark']`) and **Light** (`[data-theme='light']`) themes. Added a `.brand-logo` rule that flips the white crystal to dark ink in light mode so it stays legible.
+- [Docs/website/src/devdocs.tsx](Docs/website/src/devdocs.tsx) — added `theme` state (initialized from the `data-theme` set pre-paint), a `useEffect` that reflects it onto `<html>` and persists to `localStorage`, and a toggle handler. The account button is now a Sun/Moon theme switcher; the logo `<div>` is now an `<img src="/logo.png" class="brand-logo">`.
+- [Docs/website/index.html](Docs/website/index.html) — added a pre-paint inline script that picks the theme (saved choice → OS `prefers-color-scheme` → dark fallback) to avoid a flash on load, and pointed the favicon at `/logo.png`.
+
+Notes:
+
+- Default theme follows the OS preference and falls back to dark; the user's choice is remembered across visits. Verified with `tsc -b` (typecheck clean) and `vite build` (logo copied into `dist/`, favicon reference updated).
+
+## Add FMOD audio engine (FmodForFoxes)
+
+Introduced game audio to the engine, which previously had none (only the LibVLC intro video carried sound). Built on FMOD via the FmodForFoxes wrapper for best-in-class 3D spatial audio. Supports 2D one-shot/looping SFX, 3D positional audio (listener follows the active camera, emitters follow world/entity positions with attenuation + Doppler-ready velocity), a master volume, and streamed music. Wired into the engine following the existing subsystem (Load/Initialize/Update/Dispose) convention, with a static `Audio` facade mirroring the `Globals` pattern.
+
+Added:
+
+- [Engine/Recources/AudioManager.cs](Engine/Recources/AudioManager.cs) — `AudioManager` subsystem (FMOD init/update/dispose, 2D `PlaySound`, 3D `PlaySound3D` with fixed or live-tracked positions, streamed `PlayMusic`, `MasterVolume`, `StopAll`) plus the static `Audio` facade. Initializes inside a try/catch so a missing native DLL degrades to a silent no-op instead of crashing the engine. Caches 2D and 3D sounds separately to avoid mode bleed; reaps finished channels each frame. Includes a one-line `ToFmod` coordinate hook (engine is Z-up; flip if 3D panning is mirrored).
+- [Engine/Scripting/AudioTestScript.cs](Engine/Scripting/AudioTestScript.cs) — `IScript` that turns its owning entity into a looping 3D emitter in Play mode (3D verification).
+- [Engine/Content/Audio/](Engine/Content/Audio/) — generated sample assets: `blip.wav` (mono one-shot), `loop3d.wav` (mono seamless loop), `music.wav` (streamed track).
+- [Docs/Audio_Architecture.md](Docs/markdown/Audio_Architecture.md) — architecture doc: the FMOD/FmodForFoxes dependency stack, component map, engine lifecycle wiring, public API, load/playback paths (incl. the `TryPlay` workaround), 3D listener/emitter model and coordinate mapping, the exact native-DLL version requirement, graceful degradation, and how to extend the system.
+
+Changed:
+
+- [Engine/Engine.csproj](Engine/Engine.csproj) — added `FmodForFoxes` + `FmodForFoxes.Desktop` 3.2.0 package references; copy `fmod.dll`/`fmodL.dll` (supplied locally) and `Content/Audio/**` to the output directory.
+- [Engine/Logic/ScreenManager.cs](Engine/Logic/ScreenManager.cs) — instantiate `AudioManager` in `Load`, init in `Initialize`, pump `SystemUpdate()` first every frame (intro included) and `UpdateListener(Camera)` after scene update, dispose in `Unload`.
+- [Engine/Logic/MainSceneLogic.cs](Engine/Logic/MainSceneLogic.cs) — temporary test hooks: **X** plays a 2D blip, **M** toggles streamed music (remove/gate after verification).
+
+Notes:
+
+- FMOD's native libraries are not redistributed by the NuGet package. To hear audio, download the FMOD Engine (Windows) from fmod.com and place `fmod.dll` + `fmodL.dll` (x64) in `Engine/`; the build copies them next to the executable. Verified the engine boots, runs, and degrades gracefully when they are absent (logs "Audio: FMOD init failed" and continues). The FmodForFoxes managed assembly (net8.0) loads cleanly under net10.0-windows.
+- **The native DLL must be exactly FMOD 2.02.37** (`0x00020225` — FmodForFoxes 3.2.0's bundled bindings; FMOD's `init` rejects any other patch with a header mismatch). Init logs the required version and a MATCH/MISMATCH verdict against the loaded DLL. Playback goes through a raw-FMOD helper (`TryPlay`) that wraps the result with the safe single-arg `Channel` ctor, deliberately avoiding FmodForFoxes' 2-arg `Channel(Sound, FMOD.Channel)` ctor — that ctor reads its computed `Sound` property during construction and throws a `NullReferenceException` whenever `playSound` returns a bad channel (e.g. a 2.03.x DLL mismatch). On a bad result we now log the FMOD error code instead of crashing. The detected native version is logged at init for diagnosis.
+
 ## Add "Exporting Shaders to Unity URP" guide
 
 Documented how to port a shader out of this MonoGame/HLSL engine into Unity's Universal Render Pipeline, using the froxel volumetric fog as the worked (hardest) example.

@@ -267,7 +267,21 @@ namespace Engine.Logic
 
                 GameSettings.g_rendermode = (Renderer.Renderer.RenderModes) _renderModeCycle;
             }
+
+            //Plays a one-shot 2D test sound (temporary audio test hook — remove/gate after verification)
+            if (Input.WasKeyPressed(Keys.X))
+            {
+                Audio.PlaySound("blip");
+            }
+            //Toggles streamed test music on/off (temporary audio test hook)
+            if (Input.WasKeyPressed(Keys.M))
+            {
+                if (_musicPlaying) Audio.StopMusic(); else Audio.PlayMusic("music");
+                _musicPlaying = !_musicPlaying;
+            }
         }
+
+        private bool _musicPlaying;
         
 
         //Load content

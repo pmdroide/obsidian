@@ -1,0 +1,171 @@
+/*
+ * Theme tokens.
+ *
+ * Theme-independent tokens (typography, radius) live on :root. Color tokens come
+ * in two palettes — Dark and Light. Dark also lives on :root so the app is themed
+ * before JS runs (no flash), and each `[data-theme]` block overrides it.
+ *
+ * Switching theme = setting `data-theme="dark" | "light"` on <html> (see the
+ * theme toggle in devdocs.tsx). Components only ever use the semantic Tailwind
+ * tokens (bg-background, text-primary, …) declared in `@theme inline` below, so
+ * flipping the attribute re-themes the whole UI.
+ */
+
+:root {
+  /* Typography & shape — shared across both themes */
+  --font-size: 14px;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --radius: 0.5rem;
+
+  /* Default theme: Dark (muted blue on slate) */
+  --background: #15181e;
+  --foreground: #d4d8e0;
+  --card: #1c2027;
+  --primary: #8ab4f8;
+  --primary-foreground: #0b1424;
+  --secondary: #232830;
+  --muted-foreground: #8b94a3;
+  --accent: #2a3038;
+  --border: #2a3038;
+  --input: #1c2027;
+  --ring: #8ab4f8;
+  --sidebar: #15181e;
+  --sidebar-border: #232830;
+  --sidebar-accent: #232830;
+}
+
+/* Dark — explicit, matches the :root default */
+[data-theme='dark'] {
+  --background: #15181e;
+  --foreground: #d4d8e0;
+  --card: #1c2027;
+  --primary: #8ab4f8;
+  --primary-foreground: #0b1424;
+  --secondary: #232830;
+  --muted-foreground: #8b94a3;
+  --accent: #2a3038;
+  --border: #2a3038;
+  --input: #1c2027;
+  --ring: #8ab4f8;
+  --sidebar: #15181e;
+  --sidebar-border: #232830;
+  --sidebar-accent: #232830;
+}
+
+/* Light — dark ink on a clean white base with a blue accent */
+[data-theme='light'] {
+  --background: #ffffff;
+  --foreground: #1f2430;
+  --card: #f5f6f8;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0f4;
+  --muted-foreground: #5b6472;
+  --accent: #eef1f6;
+  --border: #e4e7ec;
+  --input: #f5f6f8;
+  --ring: #2563eb;
+  --sidebar: #f7f8fa;
+  --sidebar-border: #e4e7ec;
+  --sidebar-accent: #eef1f6;
+}
+
+/*
+ * Brand logo. The PNG is a white crystal on a transparent background, so it sits
+ * right on a dark header. In light mode we flip it to dark ink so it stays
+ * legible against the white background.
+ */
+.brand-logo {
+  transition: filter 0.3s ease;
+}
+
+[data-theme='light'] .brand-logo {
+  filter: brightness(0) saturate(100%) invert(13%) sepia(18%) saturate(900%)
+    hue-rotate(185deg) brightness(95%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'JetBrains Mono', monospace;
+    /* Animate palette swaps for a smooth transition between themes */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
