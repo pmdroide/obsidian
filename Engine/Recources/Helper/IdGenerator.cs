@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 
 namespace Engine.Recources.Helper
 {
-    static class IdGenerator
+    public static class IdGenerator
     {
         //start at 3, we need 123 for gizmos
         static int _currentId = 103;
@@ -15,6 +15,15 @@ namespace Engine.Recources.Helper
             //int test2 = GetIdFromColor(test);
 
             return _currentId;
+        }
+
+        /// <summary>
+        /// Advance the next-id counter past <paramref name="minId"/>. Used after loading
+        /// a scene file so freshly-added objects do not collide with persisted IDs.
+        /// </summary>
+        public static void Reseed(int minId)
+        {
+            if (minId > _currentId) _currentId = minId;
         }
 
         public static Color GetColorFromId(int id)

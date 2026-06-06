@@ -1,16 +1,14 @@
 <div align="center">
-  <img src="Docs/logo.png" width="80px" alt="Project Icon">
+  <img src="Docs/Icon.png" width="80px" alt="Project Icon">
 
-  [Getting Started] | [Documentation] | [Contributing]
+  [![Stars](https://img.shields.io/github/stars/pmdroide/obsidian?style=flat-square)](https://github.com/pmdroide/obsidian/stargazers)
+  [![Forks](https://img.shields.io/github/forks/pmdroide/obsidian?style=flat-square)](https://github.com/pmdroide/obsidian/network/members)
+  [![Downloads](https://img.shields.io/github/downloads/pmdroide/obsidian/total?style=flat-square)](https://github.com/pmdroide/obsidian/releases)
 </div>
-
-[Getting Started]: #building
-[Documentation]: DOCUMENTATION.md
-[Contributing]: CONTRIBUTING.md
 
 # Obsidian
 
-Obisidian is a game engine royalty free with objective to make development easy and simple to understand.
+Obsidian is a game engine royalty free with objective to make development easy and simple to understand.
 
 ## Getting started
 
@@ -37,5 +35,19 @@ If you want to contribute to the engine, please check the [contributing guide](C
 ## Documentation
 See the documention [here](DOCUMENTATION.md).
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=pmdroide%2Fobsidian&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=pmdroide/obsidian&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=pmdroide/obsidian&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=pmdroide/obsidian&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ## License
 The obsidian engine source code is licensed under the [MIT License](LICENSE)
+
+The FMOD Engine is a proprietary sound engine owned by Firelight Technologies Pty Ltd. It is **not** covered by this repository's MIT license. Use of FMOD is governed strictly by the **FMOD End User License Agreement (EULA)**.
+
+To legally comply with FMOD's terms and maintain an open-source workflow, **this repository does not include FMOD’s proprietary SDK headers or pre-compiled binaries (`.dll`, `.so`, `.dylib`, etc.)**. You must download them directly from FMOD.

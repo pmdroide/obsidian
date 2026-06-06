@@ -1,0 +1,16 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Editor/" />
+  <Project Path="Editor/Anvil/Anvil.csproj">
+    <BuildType Project="?" />
+    <Platform Project="?" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="Engine/Engine.csproj">
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="Vista/Vista.csproj" />
+</Solution>

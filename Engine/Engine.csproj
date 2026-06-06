@@ -11,6 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FmodForFoxes" Version="3.2.0" />
+    <PackageReference Include="FmodForFoxes.Desktop" Version="3.2.0" />
     <PackageReference Include="LibVLCSharp" Version="3.8.5" />
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.4.1" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4.1" />
@@ -18,7 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HelperSuite\HelperSuite.csproj" />
     <ProjectReference Include="..\Vista\Vista.csproj" />
   </ItemGroup>
 
@@ -32,6 +33,21 @@
     </None>
     <None Update="Content\UI\debug.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- FMOD audio: native libraries (supplied locally by the dev from fmod.com)
+       and loose audio files loaded directly by FMOD (NOT via the MGCB pipeline). -->
+  <ItemGroup>
+    <None Update="fmod.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="fmodL.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Content\Audio\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Content\Audio\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
 

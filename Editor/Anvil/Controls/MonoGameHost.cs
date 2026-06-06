@@ -1,12 +1,16 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Engine.Editor;
 using Microsoft.Xna.Framework;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using XnaKeys = Microsoft.Xna.Framework.Input.Keys;
 
 namespace Anvil.Controls;
 
@@ -25,15 +29,35 @@ public class MonoGameHost : NativeControlHost
     private string? _previousCwd;
     private volatile bool _disposed;
 
-    private DispatcherTimer? _resizeTimer;
-    private Size _pendingSize;
+    // Avalonia owns and sizes this intermediate container (a plain STATIC window) as the
+    // native control. The engine HWND is reparented UNDER it and is resized only by us, so
+    // MonoGame never receives an Avalonia-driven cross-thread resize — whose in-WndProc
+    // GraphicsDevice.Reset NREs on the reparented child window.
+    private IntPtr _containerHwnd;
     private Size _appliedSize;
-    private bool _initialResizeDone;
+
+    // Boot watchdog: during MonoGame's device/window init, MonoGame forces the engine window's
+    // client size back to its PreferredBackBuffer default (640x480) on a deferred tick — AFTER our
+    // last ArrangeOverride already sized it to the container. That self-shrink only re-fires
+    // ArrangeOverride if Avalonia happens to do another layout pass, which it usually doesn't, so
+    // the viewport stays shrunk (white borders) until a manual resize. This timer re-asserts the
+    // container size for a short window after attach, catching the shrink and moving the engine back.
+    private DispatcherTimer? _bootResizeWatchdog;
+    private int _bootWatchdogTicksLeft;
+
+    /// <summary>
+    /// Fires on the UI thread once the embedded engine has constructed its
+    /// editor bridge. Subscribe to wire engine ↔ Anvil view-model traffic.
+    /// </summary>
+    public event Action<IEditorBridge>? BridgeReady;
+
+    public IEditorBridge? Bridge => _game?.Bridge;
 
     private const int GWL_STYLE = -16;
     private const int GWL_EXSTYLE = -20;
     private const uint WS_CHILD = 0x40000000;
     private const uint WS_VISIBLE = 0x10000000;
+    private const uint WS_CLIPCHILDREN = 0x02000000;
     private const uint WS_POPUP = 0x80000000;
     private const uint WS_CAPTION = 0x00C00000;
     private const uint WS_THICKFRAME = 0x00040000;
@@ -68,6 +92,14 @@ public class MonoGameHost : NativeControlHost
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreateWindowEx(uint dwExStyle, string lpClassName, string? lpWindowName,
+        uint dwStyle, int x, int y, int nWidth, int nHeight,
+        IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyWindow(IntPtr hWnd);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -100,6 +132,65 @@ public class MonoGameHost : NativeControlHost
 
     private const uint PM_REMOVE = 1;
 
+    /// <summary>
+    /// Subscribes the parent Window to KeyDown/KeyUp events the first time the
+    /// engine HWND attaches. Listening at window level means the engine sees
+    /// WASD even when focus is on the toolbar or any other Avalonia control —
+    /// the reparented engine HWND never receives keyboard focus directly.
+    /// </summary>
+    private void EnsureKeyForwarding()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+        topLevel.AddHandler(InputElement.KeyDownEvent, OnTopLevelKeyDown, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+        topLevel.AddHandler(InputElement.KeyUpEvent, OnTopLevelKeyUp, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+    }
+
+    private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_game?.Bridge is not EditorBridge b) return;
+        XnaKeys xna = MapAvaloniaKey(e.Key);
+        if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, true);
+    }
+
+    private void OnTopLevelKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (_game?.Bridge is not EditorBridge b) return;
+        XnaKeys xna = MapAvaloniaKey(e.Key);
+        if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, false);
+    }
+
+    /// <summary>
+    /// Map the subset of Avalonia keys the engine cares about (WASD/QE camera
+    /// fly, Shift/Ctrl modifiers, F1 render-mode cycle, Space editor toggle).
+    /// Everything else returns <see cref="XnaKeys.None"/> and is ignored.
+    /// </summary>
+    private static XnaKeys MapAvaloniaKey(Key k) => k switch
+    {
+        Key.A => XnaKeys.A, Key.B => XnaKeys.B, Key.C => XnaKeys.C, Key.D => XnaKeys.D,
+        Key.E => XnaKeys.E, Key.F => XnaKeys.F, Key.G => XnaKeys.G, Key.H => XnaKeys.H,
+        Key.I => XnaKeys.I, Key.J => XnaKeys.J, Key.K => XnaKeys.K, Key.L => XnaKeys.L,
+        Key.M => XnaKeys.M, Key.N => XnaKeys.N, Key.O => XnaKeys.O, Key.P => XnaKeys.P,
+        Key.Q => XnaKeys.Q, Key.R => XnaKeys.R, Key.S => XnaKeys.S, Key.T => XnaKeys.T,
+        Key.U => XnaKeys.U, Key.V => XnaKeys.V, Key.W => XnaKeys.W, Key.X => XnaKeys.X,
+        Key.Y => XnaKeys.Y, Key.Z => XnaKeys.Z,
+        Key.Space => XnaKeys.Space,
+        Key.LeftShift => XnaKeys.LeftShift, Key.RightShift => XnaKeys.RightShift,
+        Key.LeftCtrl => XnaKeys.LeftControl, Key.RightCtrl => XnaKeys.RightControl,
+        Key.LeftAlt => XnaKeys.LeftAlt, Key.RightAlt => XnaKeys.RightAlt,
+        Key.F1 => XnaKeys.F1, Key.F2 => XnaKeys.F2, Key.F3 => XnaKeys.F3,
+        Key.Escape => XnaKeys.Escape,
+        _ => XnaKeys.None,
+    };
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // TopLevel is reliably non-null once attached; subscribing in
+        // CreateNativeControlCore is sometimes too early.
+        EnsureKeyForwarding();
+    }
+
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
         _hostHwnd = parent.Handle;
@@ -127,11 +218,70 @@ public class MonoGameHost : NativeControlHost
             return base.CreateNativeControlCore(parent);
         }
 
-        ReparentGameWindow();
-        return new PlatformHandle(_gameHwnd, "HWND");
+        // Size the initial geometry from the host's real client rect (Bounds is 0 before the
+        // first layout pass).
+        int cw, ch;
+        if (GetClientRect(_hostHwnd, out var hostRect) && hostRect.Right > 1 && hostRect.Bottom > 1)
+        {
+            cw = hostRect.Right - hostRect.Left;
+            ch = hostRect.Bottom - hostRect.Top;
+        }
+        else
+        {
+            cw = Math.Max(1, (int)Bounds.Width);
+            ch = Math.Max(1, (int)Bounds.Height);
+        }
+
+        // Create an intermediate container under the HWND Avalonia gave us, and hand THAT
+        // back as the native control. Avalonia resizes the returned handle on every layout
+        // pass via a cross-thread SetWindowPos; since the container is a plain STATIC window
+        // with no graphics device, those resizes are harmless. The engine HWND lives under it
+        // and is resized only by us (ResizeEngineToContainer) with PreferredBackBuffer
+        // pre-synced — so MonoGame never resets the device from inside that WndProc.
+        _containerHwnd = CreateWindowEx(0, "STATIC", null,
+            WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, cw, ch,
+            _hostHwnd, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+
+        if (_containerHwnd == IntPtr.Zero)
+        {
+            // Degraded fallback: parent the engine directly under the host (the pre-container
+            // behaviour). Resize crashes can recur here, but STATIC creation effectively never
+            // fails, so this is just a safety net.
+            EditorBridge.Log("MonoGameHost: container HWND creation failed; parenting engine directly");
+            _containerHwnd = _hostHwnd;
+        }
+
+        ReparentGameWindow(_containerHwnd);
+
+        StartBootResizeWatchdog();
+
+        IntPtr returned = _containerHwnd != _hostHwnd ? _containerHwnd : _gameHwnd;
+        return new PlatformHandle(returned, "HWND");
     }
 
-    private void ReparentGameWindow()
+    // Re-assert the container size on the UI thread for a short window after boot. MonoGame's
+    // deferred init shrinks the engine window to 640x480 ~100ms in; this catches it and resizes
+    // the engine back to the container. ResizeEngineToContainer compares the engine's REAL client
+    // rect, so once the size sticks at the container the timer's calls become no-ops, and the timer
+    // self-stops after its budget.
+    private void StartBootResizeWatchdog()
+    {
+        _bootWatchdogTicksLeft = 60; // ~3s at 50ms ticks — covers MonoGame's deferred resize.
+        _bootResizeWatchdog = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _bootResizeWatchdog.Tick += (_, _) =>
+        {
+            if (_disposed || --_bootWatchdogTicksLeft <= 0)
+            {
+                _bootResizeWatchdog?.Stop();
+                _bootResizeWatchdog = null;
+                return;
+            }
+            ResizeEngineToContainer();
+        };
+        _bootResizeWatchdog.Start();
+    }
+
+    private void ReparentGameWindow(IntPtr parentHwnd)
     {
         const uint topLevelMask = WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
             | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP | WS_DLGFRAME | WS_BORDER;
@@ -146,13 +296,12 @@ public class MonoGameHost : NativeControlHost
         exStyle |= WS_EX_TOOLWINDOW;
         SetWindowLong(_gameHwnd, GWL_EXSTYLE, unchecked((int)exStyle));
 
-        SetParent(_gameHwnd, _hostHwnd);
+        SetParent(_gameHwnd, parentHwnd);
 
-        // Prefer the parent HWND's actual client rect — Bounds is 0 on first call
-        // (layout hasn't run yet). A 1x1 here would make the engine's resize handler
-        // commit a 1x1 backbuffer and then silently ignore later size changes.
+        // Fill the parent's client area. A 1x1 here would make the engine commit a 1x1
+        // backbuffer, so fall back to Bounds only when the parent rect isn't ready.
         int w, h;
-        if (GetClientRect(_hostHwnd, out var rect) && rect.Right > 1 && rect.Bottom > 1)
+        if (GetClientRect(parentHwnd, out var rect) && rect.Right > 1 && rect.Bottom > 1)
         {
             w = rect.Right - rect.Left;
             h = rect.Bottom - rect.Top;
@@ -163,6 +312,12 @@ public class MonoGameHost : NativeControlHost
             h = Math.Max(1, (int)Bounds.Height);
         }
         _appliedSize = new Size(w, h);
+
+        // Pre-sync PreferredBackBuffer to this size BEFORE the window resizes, so the WM_SIZE
+        // raised below makes MonoGame's WinFormsGameWindow.OnResize early-return instead of
+        // resetting the device mid-initialization (which NREs).
+        SyncPreferredBackBuffer(w, h);
+
         SetWindowPos(_gameHwnd, IntPtr.Zero, 0, 0, w, h,
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     }
@@ -170,8 +325,9 @@ public class MonoGameHost : NativeControlHost
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
         _disposed = true;
-        _resizeTimer?.Stop();
-        _resizeTimer = null;
+
+        try { _bootResizeWatchdog?.Stop(); } catch { }
+        _bootResizeWatchdog = null;
 
         try
         {
@@ -183,6 +339,14 @@ public class MonoGameHost : NativeControlHost
         }
         finally
         {
+            // Destroy our container (the engine child is torn down with the game thread's
+            // _game.Dispose above). Skip when it aliases the host HWND (degraded fallback).
+            if (_containerHwnd != IntPtr.Zero && _containerHwnd != _hostHwnd)
+            {
+                try { DestroyWindow(_containerHwnd); } catch { }
+            }
+            _containerHwnd = IntPtr.Zero;
+
             if (_previousCwd != null)
             {
                 try { Environment.CurrentDirectory = _previousCwd; } catch { }
@@ -194,17 +358,44 @@ public class MonoGameHost : NativeControlHost
     {
         try
         {
+            EditorBridge.Log("MonoGameHost: constructing Engine.Engine");
             _game = new Engine.Engine();
+            EditorBridge.Log("MonoGameHost: Engine.Engine constructed");
 
             // GraphicsDeviceManager registers itself as IGraphicsDeviceManager in
             // Game.Services during its constructor, so this resolves without forcing
-            // a public field on Engine.Engine.
+            // a public field on Engine.Engine. We only use it to keep PreferredBackBuffer
+            // in lockstep with the child's client size (see ApplyChildSize) so MonoGame's
+            // own OnResize handler early-returns — we never call ApplyChanges from here.
             _graphicsManager = _game.Services.GetService<IGraphicsDeviceManager>() as GraphicsDeviceManager;
 
             // The MonoGame WinForms window is created during the Game constructor;
             // touching Window.Handle here also forces handle realization if needed.
             _gameHwnd = _game.Window?.Handle ?? IntPtr.Zero;
             _handleReady.Set();
+
+            // Notify subscribers (on the UI thread) that the editor bridge is alive.
+            // Bridge has been constructed by Engine but Bind() hasn't been called yet
+            // — that happens during the first Initialize. Subscribers should be
+            // tolerant of pre-Bind state; AvailableModelKeys will be empty until then.
+            IEditorBridge? bridge = _game.Bridge;
+            if (bridge != null)
+            {
+                // Tell the engine it is hosted in Anvil — gates the legacy in-engine
+                // HelperSuite GUI off and lets ScreenManager pick the editor-friendly
+                // defaults. Set BEFORE the first RunOneFrame below.
+                (bridge as EditorBridge)?.SetHostedByEditor(true);
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try { BridgeReady?.Invoke(bridge); }
+                    catch (Exception ex) { EditorBridge.Log("BridgeReady handler threw: " + ex); }
+                });
+            }
+            else
+            {
+                EditorBridge.Log("MonoGameHost: _game.Bridge is null after construction");
+            }
 
             // Manual game loop: Game.Run() pumps a blocking WinForms message loop on
             // this thread which deadlocks against Avalonia's UI thread. RunOneFrame
@@ -218,7 +409,12 @@ public class MonoGameHost : NativeControlHost
                 while (PeekMessage(out MSG msg, IntPtr.Zero, 0, 0, PM_REMOVE))
                 {
                     TranslateMessage(ref msg);
-                    DispatchMessage(ref msg);
+                    // Safety net: a stray resize that slips through with a stale
+                    // PreferredBackBuffer can NRE inside MonoGame's GraphicsDevice.Reset.
+                    // Swallow it here so it never kills the app; the engine reconciles the
+                    // device on its next Update (Engine.ApplyPendingResize).
+                    try { DispatchMessage(ref msg); }
+                    catch (Exception ex) { EditorBridge.Log("DispatchMessage threw: " + ex); }
                 }
 
                 // 2. TICK MONOGAME
@@ -226,18 +422,21 @@ public class MonoGameHost : NativeControlHost
                 {
                     _game.RunOneFrame();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Swallow per-frame errors
+                    // Swallow per-frame errors, but log so the user can diagnose
+                    // an "Add Object crashes" sort of regression.
+                    EditorBridge.Log("RunOneFrame threw: " + ex);
                 }
                 
                 Thread.Sleep(1);
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Engine threw during construction — release the waiter so the UI
             // thread doesn't hang forever in CreateNativeControlCore.
+            EditorBridge.Log("GameThreadProc fatal: " + ex);
             _handleReady.Set();
         }
         finally
@@ -248,61 +447,55 @@ public class MonoGameHost : NativeControlHost
 
     protected override Size ArrangeOverride(Size finalSize)
     {
+        // Avalonia sizes the container window (the handle we returned) here, on the UI thread.
         var result = base.ArrangeOverride(finalSize);
-        if (_gameHwnd == IntPtr.Zero) return result;
-
-        // First layout pass: resize synchronously so the engine never sees a stale
-        // 1x1 size (which would trap its resize handler — see field comment).
-        if (!_initialResizeDone)
-        {
-            _initialResizeDone = true;
-            ApplyChildSize(finalSize);
-            return result;
-        }
-
-        // Subsequent layout passes (the user is dragging the window) get debounced:
-        // resizing on every pass would have the engine rebuild its backbuffer +
-        // render targets dozens of times per second, which leaves the renderer blank.
-        ScheduleResize(finalSize);
+        ResizeEngineToContainer();
         return result;
     }
 
-    private void ApplyChildSize(Size size)
+    // Resize the engine HWND to exactly fill the container's client area. We read the
+    // container's ACTUAL client rect (physical pixels) and use that identical size for both
+    // PreferredBackBuffer and MoveWindow. MoveWindow's WM_SIZE is handled on the game thread by
+    // MonoGame's OnResize, which then sees ClientSize == PreferredBackBuffer and early-returns
+    // instead of resetting the device (the reset NREs on this reparented child window). No DPI
+    // rounding guesswork — the same integers are used on both sides.
+    private void ResizeEngineToContainer()
     {
-        var w = Math.Max(1, (int)size.Width);
-        var h = Math.Max(1, (int)size.Height);
-        if (_appliedSize.Width == w && _appliedSize.Height == h) return;
+        if (_gameHwnd == IntPtr.Zero || _containerHwnd == IntPtr.Zero) return;
+        if (!GetClientRect(_containerHwnd, out var rect)) return;
+
+        int w = rect.Right - rect.Left;
+        int h = rect.Bottom - rect.Top;
+        if (w <= 0 || h <= 0) return;
+
+        // Compare against the engine HWND's ACTUAL client rect, not our cached _appliedSize.
+        // During boot MonoGame's own device/window init forces the engine window's client size
+        // back to its PreferredBackBuffer default (640x480) AFTER we already sized it to the
+        // container — a genuine WM_SIZE the engine reconciles to, which is what shrank the
+        // viewport (white borders). If we trusted _appliedSize we'd early-return and never undo
+        // that shrink. Reading the real engine rect lets us re-assert the container size whenever
+        // anything (MonoGame included) moves the engine away from it.
+        if (GetClientRect(_gameHwnd, out var engineRect))
+        {
+            int ew = engineRect.Right - engineRect.Left;
+            int eh = engineRect.Bottom - engineRect.Top;
+            if (ew == w && eh == h) { _appliedSize = new Size(w, h); return; }
+        }
         _appliedSize = new Size(w, h);
+
+        SyncPreferredBackBuffer(w, h);
         MoveWindow(_gameHwnd, 0, 0, w, h, true);
-
-        // MoveWindow alone only resizes the HWND — the DX swap chain stays at its
-        // old dimensions, so the engine keeps stretching an old backbuffer over the
-        // new client area and looks frozen. Push the new size through the manager
-        // to force a swap-chain rebuild at the right resolution.
-        if (_graphicsManager != null)
-        {
-            _graphicsManager.PreferredBackBufferWidth = w;
-            _graphicsManager.PreferredBackBufferHeight = h;
-            try { _graphicsManager.ApplyChanges(); } catch { }
-        }
+        // The engine rebuilds its backbuffer + render targets itself, on the game thread,
+        // once it sees the new client size (Engine.ApplyPendingResize) — debounced there so a
+        // live drag doesn't rebuild every frame.
     }
 
-    private void ScheduleResize(Size finalSize)
+    // Set PreferredBackBuffer without ever calling ApplyChanges — that (a device Reset) must
+    // only ever happen on the game thread, which the engine does itself in Engine.Update.
+    private void SyncPreferredBackBuffer(int w, int h)
     {
-        _pendingSize = finalSize;
-        if (_resizeTimer == null)
-        {
-            _resizeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-            _resizeTimer.Tick += OnResizeTimerTick;
-        }
-        _resizeTimer.Stop();
-        _resizeTimer.Start();
-    }
-
-    private void OnResizeTimerTick(object? sender, EventArgs e)
-    {
-        _resizeTimer?.Stop();
-        if (_disposed || _gameHwnd == IntPtr.Zero) return;
-        ApplyChildSize(_pendingSize);
+        if (_graphicsManager == null) return;
+        _graphicsManager.PreferredBackBufferWidth = w;
+        _graphicsManager.PreferredBackBufferHeight = h;
     }
 }

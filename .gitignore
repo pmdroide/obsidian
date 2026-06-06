@@ -66,9 +66,7 @@ artifacts/
 
 # AI Related files
 .claude
+#CLAUDE.md
 
 # Generated files
 scripts/
-
-# IDE specific files
-.vscode/

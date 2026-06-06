@@ -14,7 +14,7 @@ if errorlevel 1 (
 necho Restoring complete.
 echo Building solution...
 
-ndotnet build Engine.sln /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
+ndotnet build Engine.slnx /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
 if errorlevel 1 (
     echo.
     echo ERROR: dotnet build failed.

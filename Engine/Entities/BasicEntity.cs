@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using BEPUphysics.BroadPhaseEntries;
 using BEPUphysics.Entities;
 using BEPUutilities;
 using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
+using Engine.Scripting;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using BoundingBox = Microsoft.Xna.Framework.BoundingBox;
@@ -84,6 +86,13 @@ namespace Engine.Entities
         }
 
         public override string Name { get; set; }
+
+        /// <summary>
+        /// Optional script behaviours. Driven by <see cref="Logic.PlayModeController"/>:
+        /// <see cref="IScript.OnStart"/> runs once on Play, <see cref="IScript.OnUpdate"/>
+        /// every Play-mode frame. Empty in edit mode.
+        /// </summary>
+        public readonly List<IScript> Scripts = new List<IScript>();
 
 
         public readonly TransformMatrix WorldTransform;

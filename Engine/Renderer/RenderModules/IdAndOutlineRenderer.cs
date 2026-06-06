@@ -144,6 +144,10 @@ namespace Engine.Renderer.RenderModules
         public void DrawGizmos(Matrix staticViewProjection, EditorLogic.EditorSendData editorData, Assets assets)
         {
             if (editorData.SelectedObjectId == 0) return;
+            // Anvil's Select tool: skip writing gizmo IDs into the ID buffer so
+            // clicks resolve to the entity under the cursor, never to a hidden
+            // gizmo arrow at IDs 1-3.
+            if (editorData.GizmoSuppressed) return;
 
             _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
             _graphicsDevice.DepthStencilState = DepthStencilState.None;

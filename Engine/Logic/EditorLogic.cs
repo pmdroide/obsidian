@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using Engine.Entities;
 using Engine.Recources;
 using Engine.Renderer.Helper;
-using HelperSuite.GUIHelper;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using DirectionalLight = Engine.Entities.DirectionalLight;
+using Picking = Engine.Renderer.Helper.Picking;
 
 namespace Engine.Logic
 {
@@ -18,6 +18,12 @@ namespace Engine.Logic
         private Vector3 _gizmoPosition;
         private int _gizmoId;
         private GizmoModes _gizmoMode = GizmoModes.Translation;
+
+        /// <summary>
+        /// When true, the gizmo is hidden and drag handles are inactive — e.g. when the
+        /// user has the "Select" tool active in Anvil. Selection by click still works.
+        /// </summary>
+        public bool IsGizmoSuppressed;
 
         public TransformableObject SelectedObject;
 
@@ -47,6 +53,10 @@ namespace Engine.Logic
             public Vector3 SelectedObjectPosition;
             public bool GizmoTransformationMode;
             public GizmoModes GizmoMode;
+            // True when Anvil's "Select" tool is active. The renderer skips the
+            // gizmo arrows entirely so they don't intercept clicks or visually
+            // suggest a drag interaction that's been intentionally disabled.
+            public bool GizmoSuppressed;
         }
 
         public void Initialize(GraphicsDevice graphicsDevice)
@@ -91,13 +101,13 @@ namespace Engine.Logic
                 }
                 else _gizmoTransformationMode = false;
             }
-            else if (Input.WasLMBClicked() && !GUIControl.UIWasUsed)
+            else if (Input.WasLMBClicked())
             {
                 previousMouseX = Input.mouseState.X;
                 previousMouseY = Input.mouseState.Y;
 
-                //Gizmos
-                if (hoveredId >= 1 && hoveredId <= 3)
+                //Gizmos — suppressed in "Select" tool so clicks only pick objects.
+                if (!IsGizmoSuppressed && hoveredId >= 1 && hoveredId <= 3)
                 {
                     _gizmoId = hoveredId;
                     GizmoControl(_gizmoId, data);
@@ -106,8 +116,19 @@ namespace Engine.Logic
 
                 if (hoveredId <= 0)
                 {
-                    SelectedObject = null;
-                    return;
+                    // ID buffer found nothing — fall back to a world-space ray-vs-AABB
+                    // sweep. Lets selection keep working when IdAndOutlineRenderer is
+                    // disabled or the active render mode skips the ID pass.
+                    int? rayHit = TryPickEntityWithRay(entities, data);
+                    if (rayHit.HasValue)
+                    {
+                        hoveredId = rayHit.Value;
+                    }
+                    else
+                    {
+                        SelectedObject = null;
+                        return;
+                    }
                 }
 
                 bool foundnew = false;
@@ -395,6 +416,16 @@ namespace Engine.Logic
 
         }
 
+        private int? TryPickEntityWithRay(List<BasicEntity> entities, EditorReceivedData data)
+        {
+            if (_graphicsDevice == null || entities == null || entities.Count == 0) return null;
+            Ray ray = Picking.ScreenPointToWorldRay(
+                Input.mouseState.X, Input.mouseState.Y,
+                _graphicsDevice.Viewport.Width, _graphicsDevice.Viewport.Height,
+                data.ProjectionMatrix, data.ViewMatrix, _graphicsDevice);
+            return Picking.PickEntity(ray, entities);
+        }
+
         public EditorSendData GetEditorData()
         {
             if (SelectedObject == null)
@@ -406,7 +437,7 @@ namespace Engine.Logic
                 SelectedObjectPosition = SelectedObject.Position,
                 GizmoTransformationMode = _gizmoTransformationMode,
                 GizmoMode =  _gizmoMode,
-                
+                GizmoSuppressed = IsGizmoSuppressed,
             };
         }
 

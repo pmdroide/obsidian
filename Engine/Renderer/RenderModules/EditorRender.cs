@@ -181,6 +181,10 @@ namespace Engine.Renderer.RenderModules
         public void DrawGizmo(Matrix staticViewProjection, EditorLogic.EditorSendData editorData)
         {
             if (editorData.SelectedObjectId == 0) return;
+            // Select tool active in Anvil — hide arrows so clicks always fall
+            // through to the picker and the user isn't presented with handles
+            // that don't drag.
+            if (editorData.GizmoSuppressed) return;
 
             
 

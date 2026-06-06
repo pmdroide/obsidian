@@ -585,7 +585,11 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
         }
 
         /// <summary>
-        //Dispose our RenderTargets. This is not covered by the Garbage Collector so we have to do it manually
+        //Dispose our RenderTargets. This is not covered by the Garbage Collector so we have to do it manually.
+        //This runs on every resolution change (from UpdateResolution) to recycle the mip targets, so it must
+        //ONLY release the render targets this filter owns. It must NOT dispose the shared GraphicsDevice (owned
+        //by the MonoGame Game) nor the content-managed _bloomEffect (owned by the ContentManager) — doing so
+        //killed the device on the first resize, NRE-ing every later texture/render-target op (white screen).
         /// </summary>
         public void Dispose()
         {
@@ -595,8 +599,6 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             _bloomRenderTarget2DMip3?.Dispose();
             _bloomRenderTarget2DMip4?.Dispose();
             _bloomRenderTarget2DMip5?.Dispose();
-            _graphicsDevice?.Dispose();
-            _bloomEffect?.Dispose();
         }
     }
 }
