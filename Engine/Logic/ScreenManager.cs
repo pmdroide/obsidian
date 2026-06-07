@@ -1,8 +1,8 @@
 using System;
 using System.Globalization;
 using System.IO;
-using BEPUphysics;
 using Engine.Editor;
+using Engine.Physics;
 using Engine.Recources;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -58,14 +58,14 @@ namespace Engine.Logic
             _bridge = bridge;
         }
 
-        public void Initialize(GraphicsDevice graphicsDevice, Space space)
+        public void Initialize(GraphicsDevice graphicsDevice, PhysicsSystem physics)
         {
             _graphicsDevice = graphicsDevice;
             _spriteBatch = new SpriteBatch(graphicsDevice);
             _videoIntro.Initialize();
             _renderer.Initialize(graphicsDevice, _assets);
             _audio.Initialize("Content");
-            _sceneLogic.Initialize(_assets, space, graphicsDevice);
+            _sceneLogic.Initialize(_assets, physics, graphicsDevice);
             _editorLogic.Initialize(graphicsDevice);
             _debug.Initialize(graphicsDevice);
 

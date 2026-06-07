@@ -1,4 +1,3 @@
-using BEPUphysics.Paths;
 using Engine.Recources;
 using Engine.Renderer.Helper.HelperGeometry;
 using Microsoft.Xna.Framework;

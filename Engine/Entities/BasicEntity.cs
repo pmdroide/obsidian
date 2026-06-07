@@ -1,7 +1,6 @@
 using System.Collections.Generic;
-using BEPUphysics.BroadPhaseEntries;
-using BEPUphysics.Entities;
-using BEPUutilities;
+using BepuPhysics;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
@@ -10,7 +9,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using BoundingBox = Microsoft.Xna.Framework.BoundingBox;
 using Matrix = Microsoft.Xna.Framework.Matrix;
-using Quaternion = BEPUutilities.Quaternion;
 using Vector3 = Microsoft.Xna.Framework.Vector3;
 
 namespace Engine.Entities
@@ -29,8 +27,12 @@ namespace Engine.Entities
 
         private Vector3 _position;
 
-        private Entity _dynamicPhysicsObject;
-        public StaticMesh StaticPhysicsObject = null;
+        // BEPUphysics v2 handles (value-type indices into the simulation). Null when
+        // the entity has no physics body. The PhysicsSystem owns the actual bodies;
+        // the entity only keeps handles + a reference to query/teleport them.
+        private PhysicsSystem _physics;
+        private BodyHandle? _dynamicBody;
+        public StaticHandle? StaticBody = null;
 
         public override Vector3 Position
         {
@@ -99,7 +101,7 @@ namespace Engine.Entities
         private Matrix _worldOldMatrix = Matrix.Identity;
         private Matrix _worldNewMatrix = Matrix.Identity;
         
-        public BasicEntity(ModelDefinition modelbb, MaterialEffect material, Vector3 position, double angleZ, double angleX, double angleY, Vector3 scale, MeshMaterialLibrary library = null, Entity physicsObject = null)
+        public BasicEntity(ModelDefinition modelbb, MaterialEffect material, Vector3 position, double angleZ, double angleX, double angleY, Vector3 scale, MeshMaterialLibrary library = null)
         {
             Id = IdGenerator.GetNewId();
             Name = GetType().Name + " " + Id;
@@ -119,9 +121,6 @@ namespace Engine.Entities
 
             if (library != null)
                 RegisterInLibrary(library);
-
-            if (physicsObject != null)
-                RegisterPhysics(physicsObject);
 
             WorldTransform.World = Matrix.CreateScale(Scale) * RotationMatrix * Matrix.CreateTranslation(Position);
             WorldTransform.Scale = Scale;
@@ -155,10 +154,15 @@ namespace Engine.Entities
             library.Register(Material, Model, WorldTransform);
         }
 
-        private void RegisterPhysics(Entity physisEntity)
+        /// <summary>
+        /// Attach a dynamic BEPUphysics v2 body (created via <see cref="PhysicsSystem"/>)
+        /// to this entity. Once attached, the entity's transform follows the body each
+        /// frame (see <see cref="CheckPhysics"/>).
+        /// </summary>
+        public void RegisterPhysics(PhysicsSystem physics, BodyHandle body)
         {
-            _dynamicPhysicsObject = physisEntity;
-            _dynamicPhysicsObject.Position = new BEPUutilities.Vector3(Position.X, Position.Y, Position.Z);
+            _physics = physics;
+            _dynamicBody = body;
         }
 
         public void Dispose(MeshMaterialLibrary library)
@@ -168,7 +172,7 @@ namespace Engine.Entities
 
         public void ApplyTransformation()
         {
-            if (_dynamicPhysicsObject == null)
+            if (_dynamicBody == null)
             {
                 //RotationMatrix = Matrix.CreateRotationX((float) AngleX)*Matrix.CreateRotationY((float) AngleY)*
                 //                  Matrix.CreateRotationZ((float) AngleZ);
@@ -179,29 +183,14 @@ namespace Engine.Entities
                 WorldTransform.World = _worldOldMatrix;
 
                 WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
-                
-                if (StaticPhysicsObject != null && !GameSettings.e_enableeditor)
-                {
-                    AffineTransform change = new AffineTransform(
-                            new BEPUutilities.Vector3(Scale.X, Scale.Y, Scale.Z),
-                            Quaternion.CreateFromRotationMatrix(MathConverter.Convert(RotationMatrix)),
-                            MathConverter.Convert(Position));
-
-                    if (!MathConverter.Equals(change.Matrix, StaticPhysicsObject.WorldTransform.Matrix))
-                    {
-                        //StaticPhysicsMatrix = MathConverter.Copy(Change.Matrix);
-
-                        StaticPhysicsObject.WorldTransform = change;
-                    }
-                }
             }
             else
             {
-                //Has something changed?
+                //Pose (rotation + translation) comes from the physics body; scale is applied on top.
                 WorldTransform.Scale = Scale;
-                _worldOldMatrix = Extensions.CopyFromBepuMatrix(_worldOldMatrix, _dynamicPhysicsObject.WorldTransform);
+                _worldOldMatrix = _physics.GetBodyMatrix(_dynamicBody.Value);
                 Matrix scaleMatrix = Matrix.CreateScale(Scale);
-                //WorldOldMatrix = Matrix.CreateScale(Scale)*WorldOldMatrix; 
+                //WorldOldMatrix = Matrix.CreateScale(Scale)*WorldOldMatrix;
                 WorldTransform.World = scaleMatrix * _worldOldMatrix;
 
                 WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
@@ -211,9 +200,9 @@ namespace Engine.Entities
 
         internal void CheckPhysics()
         {
-            if (_dynamicPhysicsObject == null) return;
+            if (_dynamicBody == null) return;
 
-            _worldNewMatrix = Extensions.CopyFromBepuMatrix(_worldNewMatrix, _dynamicPhysicsObject.WorldTransform);
+            _worldNewMatrix = _physics.GetBodyMatrix(_dynamicBody.Value);
 
             if (_worldNewMatrix != _worldOldMatrix)
             {
@@ -225,24 +214,9 @@ namespace Engine.Entities
             {
                 if (Position != _worldNewMatrix.Translation && GameSettings.e_enableeditor)
                 {
-                    //DynamicPhysicsObject.Position = new BEPUutilities.Vector3(Position.X, Position.Y, Position.Z);
-                    _dynamicPhysicsObject.Position = MathConverter.Convert(Position);
+                    _physics.SetBodyPosition(_dynamicBody.Value, Position);
                 }
-                //    DynamicPhysicsObject.Position = new BEPUutilities.Vector3(Position.X, Position.Y, Position.Z);
-                //    //WorldNewMatrix = Extensions.CopyFromBepuMatrix(WorldNewMatrix, DynamicPhysicsObject.WorldTransform);
-                //    //if (Position != WorldNewMatrix.Translation)
-                //    //{
-                //    //    var i = 0;
-                //    //}
-
-                //}
-                //else
-                //{
-                //    //Position = WorldOldMatrix.Translation;
-                //}
             }
-
-            
         }
     }
 

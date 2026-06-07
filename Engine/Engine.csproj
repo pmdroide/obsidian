@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="FmodForFoxes" Version="3.2.0" />
     <PackageReference Include="FmodForFoxes.Desktop" Version="3.2.0" />
     <PackageReference Include="LibVLCSharp" Version="3.8.5" />
@@ -36,14 +37,18 @@
     </None>
   </ItemGroup>
 
-  <!-- FMOD audio: native libraries (supplied locally by the dev from fmod.com)
-       and loose audio files loaded directly by FMOD (NOT via the MGCB pipeline). -->
+  <!-- FMOD audio: native libraries (supplied locally by the dev from fmod.com,
+       placed under thirdparty/fmod/) and loose audio files loaded directly by
+       FMOD (NOT via the MGCB pipeline). The Link flattens the DLLs to the output
+       root so they sit next to the executable where FMOD can find them. -->
   <ItemGroup>
-    <None Update="fmod.dll">
+    <None Update="thirdparty\fmod\fmod.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>fmod.dll</Link>
     </None>
-    <None Update="fmodL.dll">
+    <None Update="thirdparty\fmod\fmodL.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>fmodL.dll</Link>
     </None>
     <None Include="Content\Audio\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -51,13 +56,14 @@
     </None>
   </ItemGroup>
 
+  <!-- Intro video: a loose file loaded directly (NOT via the MGCB pipeline).
+       VideoIntroLogic reads it from <output>/Content/intro.mp4, so the Link
+       flattens it out of the Content\Video source folder. -->
   <ItemGroup>
-    <Reference Include="BEPUphysics">
-      <HintPath>Content\BEPUphysics.dll</HintPath>
-    </Reference>
-    <Reference Include="BEPUutilities">
-      <HintPath>Content\BEPUutilities.dll</HintPath>
-    </Reference>
+    <None Update="Content\Video\intro.mp4">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Content\intro.mp4</Link>
+    </None>
   </ItemGroup>
 
 </Project>

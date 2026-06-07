@@ -1,5 +1,42 @@
 # Changelog
 
+## Migrate physics from BEPUphysics v1 to BEPUphysics v2 (BepuPhysics)
+
+Replaced the engine's long-dormant, vendored **BEPUphysics v1** DLLs (object-oriented `Space`/`Entity`/`StaticMesh`, 2020-era) with the modern **BEPUphysics v2** NuGet package (handle-based `Simulation` + `BufferPool` + callback structs + `System.Numerics` math). v1 was never actually exercised (physics off by default, no body or collider ever created), so this is a clean plumbing swap rather than a behavior change — physics remains **off by default** (`GameSettings.p_physics == false`). All BEPU v2 specifics are confined behind one new owner class so the rest of the engine never touches a raw physics type. Verified end-to-end by dropping a dynamic box onto a static triangle-mesh ground: it fell along −Z under gravity (z 25.0 → 7.0) and came to rest, with no exceptions.
+
+Added:
+
+- [Engine/Physics/PhysicsSystem.cs](Engine/Physics/PhysicsSystem.cs) — the single seam to BEPUphysics v2. Owns the `Simulation`, the `BufferPool` and the two required callback structs (`PoseIntegratorCallbacks` — applies Z-up gravity `(0,0,-9.81)` per substep, the v2 replacement for v1's `ForceUpdater.Gravity`; `NarrowPhaseCallbacks` — minimal contact material). Exposes everything in engine (XNA) math types: `Step`, `CreateMeshShape`/`CreateBoxShape`, `AddStatic`/`AddStaticMesh`, `AddDynamicBox`, `GetBodyMatrix` (per-frame pose read-back), `SetBodyPosition`, `RemoveStatic`/`RemoveDynamic` (return mesh buffers to the pool), and `Dispose`. `Step` skips non-positive timesteps — v2 throws on `dt <= 0` where v1's `Space.Update` tolerated MonoGame's first 0 ms frame.
+
+Changed:
+
+- [Engine/Engine.csproj](Engine/Engine.csproj) — removed the two `<Reference HintPath>` entries to the vendored `Content\BEPUphysics.dll`/`BEPUutilities.dll`; added `<PackageReference Include="BepuPhysics" Version="2.4.0" />` (pulls `BepuUtilities` transitively), matching the repo's NuGet-for-everything convention.
+- [Engine/Engine.cs](Engine/Engine.cs) — `Space _physicsSpace` → `PhysicsSystem _physics`; ctor builds `new PhysicsSystem(new Vector3(0,0,-9.81f))`; the per-frame `space.Update(dt)` → `_physics.Step(dt)`; added `_physics.Dispose()` to `UnloadContent`.
+- [Engine/Logic/ScreenManager.cs](Engine/Logic/ScreenManager.cs) and [Engine/Logic/MainSceneLogic.cs](Engine/Logic/MainSceneLogic.cs) — threaded `PhysicsSystem` through `Initialize` in place of `Space`. `AddStaticPhysics` now builds a v2 triangle-mesh collider + `StaticHandle` via `_physics.AddStaticMesh(...)`; `OnSceneChanged` detaches via `_physics.RemoveStatic(...)`. Dropped the unused v1 `Entity PhysicsEntity` parameter from the `AddEntity` overloads.
+- [Engine/Entities/BasicEntity.cs](Engine/Entities/BasicEntity.cs) — physics fields changed from v1 objects (`Entity`/`StaticMesh`) to v2 handle structs (`BodyHandle?`/`StaticHandle?`) plus a `PhysicsSystem` reference. `RegisterPhysics`, `CheckPhysics` and `ApplyTransformation` now read the body pose via `_physics.GetBodyMatrix(...)` and write editor drags via `_physics.SetBodyPosition(...)`; the dead static-`AffineTransform` sync branch was removed.
+- [Engine/Recources/Helper/MathConverter.cs](Engine/Recources/Helper/MathConverter.cs) — replaced the whole XNA↔`BEPUutilities` converter set with a small XNA↔`System.Numerics` one (`ToNumerics`/`ToXna` for `Vector3` and `Quaternion`), since v2 speaks `System.Numerics` directly.
+- [Engine/Recources/Helper/ModelDataExtractor.cs](Engine/Recources/Helper/ModelDataExtractor.cs) — removed the `BEPUutilities.Vector3[]` overload; the XNA overload feeds `PhysicsSystem.CreateMeshShape` unchanged.
+
+Removed:
+
+- The vendored `Engine/Content/BEPUphysics.dll` / `BEPUutilities.dll` references, `Extensions.CopyFromBepuMatrix` (replaced by `PhysicsSystem.GetBodyMatrix`), and a stale unused `using BEPUphysics.Paths;` in [Engine/Renderer/Helper/HelperGeometry/LineHelper.cs](Engine/Renderer/Helper/HelperGeometry/LineHelper.cs).
+
+Notes:
+
+- BEPU v2 is up-axis-agnostic; the engine's Z-up convention is preserved by applying gravity down −Z in the pose-integrator callback. Threading is single-threaded for now (`Timestep` is given a null `IThreadDispatcher`); a real dispatcher can be slotted into `PhysicsSystem` later without touching callers. The `AddDynamicBox`/`CreateBoxShape` helpers are left in place as ready-to-use primitives for future gameplay physics.
+
+## Build: copy FMOD DLLs from thirdparty/ and intro.mp4 into bin
+
+Updated the Engine build to copy the FMOD native libraries from their new `thirdparty/fmod/` home and to deploy the intro video as a loose file, so a fresh checkout runs with audio and the intro without manual file copying.
+
+Changed:
+
+- [Engine/Engine.csproj](Engine/Engine.csproj) — repointed the `fmod.dll`/`fmodL.dll` copy items from the project root to `thirdparty\fmod\`, adding a `<Link>` so they still flatten to the output root (next to the executable, where FMOD loads them) instead of nesting under a `thirdparty/` subfolder in bin. Added a new item that copies `Content\Video\intro.mp4` to the output as `Content\intro.mp4` (flattened via `<Link>`), matching the loose-file path `VideoIntroLogic` reads at runtime.
+
+Notes:
+
+- Verified with `dotnet build`: `fmod.dll`/`fmodL.dll` land at the bin root and `intro.mp4` lands at `bin/.../Content/intro.mp4`, with no stray `thirdparty/` folder copied into the output.
+
 ## Docs website: dark/light theme toggle + PNG logo
 
 Replaced the docs site's non-functional account button with a working dark/light theme switcher, reworked the two stale color palettes into proper Dark and Light themes, and swapped the placeholder "s&" logo box for the project's crystal logo as a PNG.
