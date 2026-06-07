@@ -1,5 +1,15 @@
 # Changelog
 
+## Docs: input architecture guide
+
+Added [Docs/Input Architecture.md](Docs/Input%20Architecture.md) — documents how keyboard/mouse input flows through the engine in both the standalone `Engine.exe` and the Anvil-hosted editor, and gives step-by-step recipes for adding new input.
+
+Added:
+
+- [Docs/Input Architecture.md](Docs/Input%20Architecture.md) — covers the single polling seam ([`Engine.Logic.Input`](Engine/Logic/Input.cs)) and its per-frame `Input.Update` call site; the two runtime contexts (standalone window focus vs. Anvil HWND reparenting); keyboard forwarding (Avalonia `KeyDown`/`KeyUp` → `MonoGameHost.MapAvaloniaKey` → `EditorBridge.SetHostKeyState` → `Input.IsKeyDown`); the critical nuance that only `IsKeyDown` merges host-forwarded keys while `WasKeyPressed`/`GetKeyPressed` are native-state-only (so one-shot shortcuts don't fire inside Anvil); the Win32 mouse viewport-ownership gate; camera-input special-casing; a consumer map of where input is read; and six "how to add a new input" recipes plus a rules/gotchas and quick-reference section.
+
+This is a documentation-only change — no engine, editor, or build behavior was modified.
+
 ## Migrate physics from BEPUphysics v1 to BEPUphysics v2 (BepuPhysics)
 
 Replaced the engine's long-dormant, vendored **BEPUphysics v1** DLLs (object-oriented `Space`/`Entity`/`StaticMesh`, 2020-era) with the modern **BEPUphysics v2** NuGet package (handle-based `Simulation` + `BufferPool` + callback structs + `System.Numerics` math). v1 was never actually exercised (physics off by default, no body or collider ever created), so this is a clean plumbing swap rather than a behavior change — physics remains **off by default** (`GameSettings.p_physics == false`). All BEPU v2 specifics are confined behind one new owner class so the rest of the engine never touches a raw physics type. Verified end-to-end by dropping a dynamic box onto a static triangle-mesh ground: it fell along −Z under gravity (z 25.0 → 7.0) and came to rest, with no exceptions.
@@ -24,6 +34,18 @@ Removed:
 Notes:
 
 - BEPU v2 is up-axis-agnostic; the engine's Z-up convention is preserved by applying gravity down −Z in the pose-integrator callback. Threading is single-threaded for now (`Timestep` is given a null `IThreadDispatcher`); a real dispatcher can be slotted into `PhysicsSystem` later without touching callers. The `AddDynamicBox`/`CreateBoxShape` helpers are left in place as ready-to-use primitives for future gameplay physics.
+
+## Editor: skip the intro video when hosted by Anvil
+
+Made the Anvil editor an exception for the standalone intro video. When the engine runs embedded in the editor it now boots straight into the live scene instead of playing (and waiting on) the LibVLC intro, while standalone `Engine.exe` still plays the intro as before.
+
+Changed:
+
+- [Engine/Logic/ScreenManager.cs](Engine/Logic/ScreenManager.cs) — gated the intro on `_bridge.IsHostedByEditor`. `Load` skips `VideoIntroLogic.Load` (no LibVLC instance, no mp4 decode, no 1080p frame buffer) and `Initialize` skips `VideoIntroLogic.Initialize` and starts `_currentState` at `MainGame` instead of `VideoIntro`. `VideoIntroLogic` is null-safe throughout, so leaving it unloaded keeps its Update/Draw/Unload paths as no-ops.
+
+Notes:
+
+- The host flag is valid at both `Load` and `Initialize` time: `MonoGameHost` calls `SetHostedByEditor(true)` before the first `RunOneFrame()` that triggers MonoGame's `Initialize`. Standalone never sets it, so the intro path is unaffected.
 
 ## Build: copy FMOD DLLs from thirdparty/ and intro.mp4 into bin
 

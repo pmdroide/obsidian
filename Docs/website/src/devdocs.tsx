@@ -24,6 +24,8 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Menu,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -208,8 +210,6 @@ const TOP_NAV = ['about', 'games', 'workshop', 'forum', 'learn'];
 
 type Theme = 'dark' | 'light';
 
-// The inline script in index.html sets `data-theme` on <html> before React
-// mounts (matching system preference / localStorage), so we just read it back.
 function getInitialTheme(): Theme {
   const attr = document.documentElement.getAttribute('data-theme');
   return attr === 'light' ? 'light' : 'dark';
@@ -217,13 +217,13 @@ function getInitialTheme(): Theme {
 
 const MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: ReactNode }) => (
-    <h1 className="text-3xl text-primary font-medium mb-8">{children}</h1>
+    <h1 className="text-2xl md:text-3xl text-primary font-medium mb-6 md:mb-8">{children}</h1>
   ),
   h2: ({ children }: { children?: ReactNode }) => (
-    <h2 className="text-xl text-foreground font-medium mt-8 mb-3">{children}</h2>
+    <h2 className="text-lg md:text-xl text-foreground font-medium mt-6 md:mt-8 mb-3">{children}</h2>
   ),
   h3: ({ children }: { children?: ReactNode }) => (
-    <h3 className="text-lg text-foreground font-medium mt-8 mb-3">{children}</h3>
+    <h3 className="text-base md:text-lg text-foreground font-medium mt-6 md:mt-8 mb-3">{children}</h3>
   ),
   p: ({ children }: { children?: ReactNode }) => (
     <p className="text-muted-foreground leading-relaxed mb-3">{children}</p>
@@ -249,7 +249,7 @@ const MARKDOWN_COMPONENTS = {
     </blockquote>
   ),
   code: ({ children }: { children?: ReactNode }) => (
-    <code className="bg-card px-1.5 py-0.5 rounded text-sm text-foreground">
+    <code className="bg-card px-1.5 py-0.5 rounded text-sm text-foreground break-words">
       {children}
     </code>
   ),
@@ -263,6 +263,7 @@ export default function DocsPage() {
     [SIDEBAR_ITEMS[0].label]: true,
   });
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Reflect the active theme onto <html> and remember the choice.
   useEffect(() => {
@@ -270,9 +271,21 @@ export default function DocsPage() {
     try {
       localStorage.setItem('theme', theme);
     } catch {
-      // Ignore storage failures (e.g. private browsing).
+      // Ignore storage failures
     }
   }, [theme]);
+
+  // Prevent background scrolling when mobile sidebar drawer is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   const toggleTheme = () =>
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -281,18 +294,28 @@ export default function DocsPage() {
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
 
   return (
-    <div className="size-full min-h-screen flex flex-col bg-background text-foreground">
-      {/* Top Bar */}
-      <header className="flex items-center justify-between gap-4 px-8 py-4 border-b border-border">
-        {/* Logo */}
-        <img
-          src="/logo.png"
-          alt="Obsidian"
-          className="brand-logo w-10 h-10 shrink-0 select-none"
-        />
+    <div className="size-full min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
+      {/* Top Bar — Kept 4 direct children to maintain correct justify-between alignment on desktop */}
+      <header className="flex items-center justify-between gap-4 px-4 md:px-8 py-4 border-b border-border sticky top-0 bg-background z-30">
+        
+        {/* 1. Logo & Mobile Hamburger Menu toggle */}
+        <div className="flex items-center gap-3">
+          <button 
+            className="md:hidden text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open Menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          <img
+            src="/logo.png"
+            alt="Obsidian"
+            className="brand-logo w-10 h-10 shrink-0 select-none"
+          />
+        </div>
 
-        {/* Nav links */}
-        <nav className="flex items-center gap-6">
+        {/* 2. Nav links (Hidden on mobile/tablet screens) */}
+        <nav className="hidden lg:flex items-center gap-6">
           {TOP_NAV.map((item) => (
             <button
               key={item}
@@ -303,22 +326,22 @@ export default function DocsPage() {
           ))}
         </nav>
 
-        {/* Search */}
-        <div className="relative">
+        {/* 3. Search (Hidden on smallest mobile devices) */}
+        <div className="relative hidden sm:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Find Docs.."
-            className="w-56 bg-input border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
+            className="w-40 md:w-56 bg-input border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
           />
         </div>
 
-        {/* Theme toggle */}
+        {/* 4. Theme toggle (Always visible, stays perfectly pinned to the right edge) */}
         <button
           onClick={toggleTheme}
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          className="flex items-center justify-center w-10 h-10 rounded-lg bg-card border border-border hover:bg-accent transition-colors"
+          className="flex items-center justify-center w-10 h-10 rounded-lg bg-card border border-border hover:bg-accent transition-colors shrink-0"
         >
           {theme === 'dark' ? (
             <Sun className="w-5 h-5 text-muted-foreground" />
@@ -328,19 +351,42 @@ export default function DocsPage() {
         </button>
       </header>
 
-      {/* Body */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto px-8 py-10 gap-12">
-        {/* Sidebar */}
-        <aside className="w-64 shrink-0">
+      {/* Body Layout */}
+      <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-10 gap-6 lg:gap-12 relative">
+        
+        {/* Mobile Backdrop Overlay Blur */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        <aside 
+          className={`
+            fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out
+            md:relative md:z-0 md:p-0 md:border-none md:translate-x-0 md:overflow-visible shrink-0
+            ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+          `}
+        >
+          {/* Mobile Close Bar inside Menu Drawer */}
+          <div className="flex items-center justify-between mb-6 md:hidden">
+            <span className="font-semibold text-foreground">Documentation</span>
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
           <nav className="space-y-1">
             {SIDEBAR_ITEMS.map(({ label, icon: Icon, children }) => {
               const isOpen = expanded[label] ?? false;
-              const hasActiveChild = children.some(
-                (c) => c.slug === activeSlug
-              );
+              const hasActiveChild = children.some((c) => c.slug === activeSlug);
               return (
                 <div key={label}>
-                  {/* Section header — toggles its sub-items */}
                   <button
                     onClick={() => toggleSection(label)}
                     aria-expanded={isOpen}
@@ -358,10 +404,9 @@ export default function DocsPage() {
                       }`}
                     />
                     <Icon className="w-4 h-4 shrink-0 text-primary" />
-                    <span>{label}</span>
+                    <span className="text-left font-medium md:font-normal">{label}</span>
                   </button>
 
-                  {/* Sub-items — each is its own .md page */}
                   {isOpen && (
                     <div className="ml-[1.375rem] mt-1 mb-1 flex flex-col gap-1 border-l border-border pl-3">
                       {children.map((child) => {
@@ -369,10 +414,13 @@ export default function DocsPage() {
                         return (
                           <button
                             key={child.slug}
-                            onClick={() => setActiveSlug(child.slug)}
-                            className={`text-left px-2 py-1 rounded text-sm transition-colors ${
+                            onClick={() => {
+                              setActiveSlug(child.slug);
+                              setIsMobileMenuOpen(false); // Closes the drawer on selection
+                            }}
+                            className={`text-left px-2 py-1.5 md:py-1 rounded text-sm transition-colors ${
                               isActive
-                                ? 'text-primary bg-accent'
+                                ? 'text-primary bg-accent font-medium'
                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                             }`}
                           >
@@ -388,8 +436,8 @@ export default function DocsPage() {
           </nav>
         </aside>
 
-        {/* Main Content — rendered from the active sub-item's .md file */}
-        <main className="flex-1 min-w-0">
+        {/* Main Content Pane */}
+        <main className="flex-1 min-w-0 overflow-hidden">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={MARKDOWN_COMPONENTS}
@@ -398,6 +446,19 @@ export default function DocsPage() {
           </ReactMarkdown>
         </main>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border mt-auto py-6">
+        <div className="max-w-7xl w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} Obsidian. All rights reserved.</p>
+          
+          {/* Optional: Extra small links on the right side of the footer */}
+          <div className="flex items-center gap-4">
+            <button className="hover:text-foreground transition-colors">Privacy Policy</button>
+            <button className="hover:text-foreground transition-colors">Terms of Service</button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
