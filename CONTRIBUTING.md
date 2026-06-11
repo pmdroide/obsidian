@@ -40,7 +40,7 @@ If you have an idea for a new feature or an improvement, feel free to open an is
 
 ### Pull Requests
 
-1.  **Clone the repository** and select branch `3d-engine`.
+1.  **Fork the repository** from the branch `dev`.
 2.  **Ensure any install or build dependencies are removed** before the end of the layer when doing a build.
 3.  **Update the DOCUMENTATION.md** with details of changes to the interface, this includes new environment variables, exposed ports, file locations, and container parameters.
 4.  **Increase the version numbers** in any examples files and the README.md to the new version that this Pull Request would represent.
