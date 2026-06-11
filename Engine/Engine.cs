@@ -5,10 +5,9 @@ using Keys = Microsoft.Xna.Framework.Input.Keys;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-using BEPUphysics;
-using BEPUutilities;
 using Engine.Editor;
 using Engine.Logic;
+using Engine.Physics;
 using Engine.Recources;
 
 namespace Engine
@@ -28,7 +27,7 @@ namespace Engine
 
         public IEditorBridge Bridge => _bridge;
 
-        private readonly Space _physicsSpace;
+        private readonly PhysicsSystem _physics;
 
         //Do not change, these are overwritten (Check GameSettings.cs in Resources
         private bool _vsync = true;
@@ -84,11 +83,9 @@ namespace Engine
             //Initialize screen manager, which controls draw / logic for our screens
             _screenManager = new ScreenManager(_bridge);
 
-            //Initialize our physics and give it gravity
-            _physicsSpace = new Space
-            {
-                ForceUpdater = { Gravity = new BEPUutilities.Vector3(0, 0, -9.81f) }
-            };
+            //Initialize our physics (BEPUphysics v2) and give it gravity. Z is up in
+            //this engine, so gravity points down the negative Z axis.
+            _physics = new PhysicsSystem(new Vector3(0, 0, -9.81f));
 
             //Size of our application / starting back buffer
             _graphics.PreferredBackBufferWidth = GameSettings.g_screenwidth;
@@ -126,7 +123,7 @@ namespace Engine
 
             _screenManager.Load(Content, GraphicsDevice);
             // TODO: Add your initialization logic here
-            _screenManager.Initialize(GraphicsDevice, _physicsSpace);
+            _screenManager.Initialize(GraphicsDevice, _physics);
 
             base.Initialize();
         }
@@ -148,6 +145,7 @@ namespace Engine
         {
             // TODO: Unload any non ContentManager content here
             _screenManager.Unload(Content);
+            _physics?.Dispose();
         }
 
         /// <summary>
@@ -172,9 +170,9 @@ namespace Engine
 
             _screenManager.Update(gameTime, _isActive);
 
-            //BEPU Physics
+            //BEPU Physics v2
             if (!GameSettings.e_enableeditor && GameSettings.p_physics)
-                _physicsSpace.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+                _physics.Step((float)gameTime.ElapsedGameTime.TotalSeconds);
 
             // TODO: Add your update logic here
 

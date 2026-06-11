@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
-using BEPUphysics;
-using BEPUphysics.BroadPhaseEntries;
-using BEPUphysics.Entities;
-using BEPUphysics.Entities.Prefabs;
-using BEPUutilities;
 using Engine.Editor;
 using Engine.Entities;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
@@ -18,7 +14,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using DirectionalLight = Engine.Entities.DirectionalLight;
 using Matrix = Microsoft.Xna.Framework.Matrix;
-using Quaternion = BEPUutilities.Quaternion;
+using Quaternion = Microsoft.Xna.Framework.Quaternion;
 using Vector3 = Microsoft.Xna.Framework.Vector3;
 using Vector4 = Microsoft.Xna.Framework.Vector4;
 
@@ -83,7 +79,7 @@ namespace Engine.Logic
 
         //Which render target are we currently displaying?
         private int _renderModeCycle;
-        private Space _physicsSpace;
+        private PhysicsSystem _physics;
 
         //SDF
         public SdfGenerator _sdfGenerator;
@@ -99,10 +95,10 @@ namespace Engine.Logic
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //Done after Load
-        public void Initialize(Assets assets, Space space, GraphicsDevice graphicsDevice)
+        public void Initialize(Assets assets, PhysicsSystem physics, GraphicsDevice graphicsDevice)
         {
             _assets = assets;
-            _physicsSpace = space;
+            _physics = physics;
 
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
 
@@ -124,15 +120,20 @@ namespace Engine.Logic
         {
             EditorBridge.Log($"MainSceneLogic.OnSceneChanged: '{oldScene?.Name}' -> '{newScene?.Name}'");
 
-            // Detach old physics bodies (only the dynamic + static ones BEPU knows about).
-            if (oldScene != null && _physicsSpace != null)
+            // Detach old physics bodies (the static colliders BEPU v2 knows about).
+            // RemoveStatic also returns the mesh's triangle buffer to the pool.
+            if (oldScene != null && _physics != null)
             {
                 for (int i = 0; i < oldScene.BasicEntities.Count; i++)
                 {
                     BasicEntity e = oldScene.BasicEntities[i];
                     try
                     {
-                        if (e.StaticPhysicsObject != null) _physicsSpace.Remove(e.StaticPhysicsObject);
+                        if (e.StaticBody != null)
+                        {
+                            _physics.RemoveStatic(e.StaticBody.Value);
+                            e.StaticBody = null;
+                        }
                     }
                     catch (Exception ex) { EditorBridge.Log("physics detach static threw: " + ex); }
                 }
@@ -362,17 +363,16 @@ namespace Engine.Logic
         /// <param name="PhysicsEntity">attached physical object</param>
         /// <param name="hasStaticPhysics">if "true" a static mesh will be computed based on the model mesh. Other physical objects can collide with the entity</param>
         /// <returns>returns the basicEntity we created</returns>
-        private BasicEntity AddEntity(ModelDefinition model, Vector3 position, double angleX, double angleY, double angleZ, float scale, Entity PhysicsEntity = null, bool hasStaticPhysics = false)
+        private BasicEntity AddEntity(ModelDefinition model, Vector3 position, double angleX, double angleY, double angleZ, float scale, bool hasStaticPhysics = false)
         {
             BasicEntity entity = new BasicEntity(model,
-                null, 
-                position: position, 
-                angleZ: angleZ, 
-                angleX: angleX, 
-                angleY: angleY, 
+                null,
+                position: position,
+                angleZ: angleZ,
+                angleX: angleX,
+                angleY: angleY,
                 scale: Vector3.One * scale,
-                library: MeshMaterialLibrary,
-                physicsObject: PhysicsEntity);
+                library: MeshMaterialLibrary);
             BasicEntities.Add(entity);
 
             if (hasStaticPhysics) AddStaticPhysics(entity);
@@ -393,7 +393,7 @@ namespace Engine.Logic
         /// <param name="PhysicsEntity">attached physical object</param>
         /// <param name="hasStaticPhysics">if "true" a static mesh will be computed based on the model mesh. Other physical objects can collide with the entity</param>
         /// <returns>returns the basicEntity we created</returns>
-        private BasicEntity AddEntity(ModelDefinition model, MaterialEffect materialEffect, Vector3 position, double angleX, double angleY, double angleZ, float scale, Entity PhysicsEntity = null, bool hasStaticPhysics = false )
+        private BasicEntity AddEntity(ModelDefinition model, MaterialEffect materialEffect, Vector3 position, double angleX, double angleY, double angleZ, float scale, bool hasStaticPhysics = false )
         {
             BasicEntity entity = new BasicEntity(model,
                 materialEffect,
@@ -402,8 +402,7 @@ namespace Engine.Logic
                 angleX: angleX,
                 angleY: angleY,
                 scale: Vector3.One * scale,
-                library: MeshMaterialLibrary,
-                physicsObject: PhysicsEntity);
+                library: MeshMaterialLibrary);
             BasicEntities.Add(entity);
 
             if(hasStaticPhysics) AddStaticPhysics(entity);
@@ -417,17 +416,14 @@ namespace Engine.Logic
         /// <param name="entity"></param>
         private void AddStaticPhysics(BasicEntity entity)
         {
-            BEPUutilities.Vector3[] vertices;
+            Vector3[] vertices;
             int[] indices;
             ModelDataExtractor.GetVerticesAndIndicesFromModel(entity.Model, out vertices, out indices);
-            var mesh = new StaticMesh(vertices, indices,
-                new AffineTransform(
-                    new BEPUutilities.Vector3(entity.Scale.X, entity.Scale.Y, entity.Scale.Z),
-                Quaternion.CreateFromRotationMatrix(MathConverter.Convert(entity.RotationMatrix)),
-                MathConverter.Convert(entity.Position)));
 
-            entity.StaticPhysicsObject = mesh;
-            _physicsSpace.Add(mesh);
+            // The BEPU v2 mesh shape carries the (non-uniform) scale; position and
+            // rotation are placed on the static body itself.
+            Quaternion orientation = Quaternion.CreateFromRotationMatrix(entity.RotationMatrix);
+            entity.StaticBody = _physics.AddStaticMesh(vertices, indices, entity.Position, orientation, entity.Scale);
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////

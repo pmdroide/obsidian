@@ -1,8 +1,8 @@
 using System;
 using System.Globalization;
 using System.IO;
-using BEPUphysics;
 using Engine.Editor;
+using Engine.Physics;
 using Engine.Recources;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -58,14 +58,22 @@ namespace Engine.Logic
             _bridge = bridge;
         }
 
-        public void Initialize(GraphicsDevice graphicsDevice, Space space)
+        public void Initialize(GraphicsDevice graphicsDevice, PhysicsSystem physics)
         {
             _graphicsDevice = graphicsDevice;
             _spriteBatch = new SpriteBatch(graphicsDevice);
-            _videoIntro.Initialize();
+
+            // The Anvil editor is an exception: it skips the standalone intro video
+            // entirely (never loaded — see Load) and boots straight into the live
+            // scene. Standalone Engine.exe plays the intro as usual.
+            if (_bridge?.IsHostedByEditor == true)
+                _currentState = GameState.MainGame;
+            else
+                _videoIntro.Initialize();
+
             _renderer.Initialize(graphicsDevice, _assets);
             _audio.Initialize("Content");
-            _sceneLogic.Initialize(_assets, space, graphicsDevice);
+            _sceneLogic.Initialize(_assets, physics, graphicsDevice);
             _editorLogic.Initialize(graphicsDevice);
             _debug.Initialize(graphicsDevice);
 
@@ -160,7 +168,12 @@ namespace Engine.Logic
             _renderer.Load(content, _shaderManager);
             _sceneLogic.Load(content);
             _debug.LoadContent(content);
-            _videoIntro.Load(content, graphicsDevice);
+
+            // Don't spin up LibVLC / decode the intro mp4 when hosted by the editor;
+            // the intro is a standalone-only screen (see Initialize). VideoIntroLogic
+            // is null-safe, so leaving it unloaded keeps Update/Draw/Unload no-ops.
+            if (_bridge?.IsHostedByEditor != true)
+                _videoIntro.Load(content, graphicsDevice);
 
             LoadVistaUI(content, graphicsDevice);
         }
