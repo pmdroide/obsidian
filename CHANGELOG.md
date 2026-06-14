@@ -1,5 +1,39 @@
 # Changelog
 
+## Editor: fix dead engine keyboard input after maximize / fullscreen
+
+Fixed keyboard input to the embedded engine going dead after the Anvil window was maximized/fullscreened/restored — the mouse (camera orbit/pan/zoom) kept working, but WASD and other forwarded keys did nothing until the user clicked an Avalonia control (e.g. a hierarchy item), which "returned" input. This surfaced alongside the resize fix: once the viewport actually fills the window on fullscreen, the camera is usable and the dead keys became noticeable.
+
+Root cause: while hosted in Anvil the engine HWND never holds Win32 keyboard focus, so MonoGame's native keyboard state is empty and the **only** keyboard path is Avalonia → `MonoGameHost.OnTopLevelKeyDown` → `EditorBridge.SetHostKeyState` → `Input.IsKeyDown`. Avalonia raises `KeyDown`/`KeyUp` only when some element holds focus, but a maximize/fullscreen/restore transition clears the window's focused element while leaving the window active — so forwarding went silent. The mouse was unaffected because it flows through a separate, focus-independent Win32 viewport-gate path. Clicking a hierarchy item re-established a focused element, restoring forwarding.
+
+Key detail: the focus must be restored to a **plain managed control**, not to the `MonoGameHost` itself — focusing a `NativeControlHost` hands OS focus to the embedded engine child window, where MonoGame's keyboard reads empty (hosted) *and* Avalonia stops raising KeyDown, so forwarding would stay dead. A managed control keeps OS focus with Avalonia, which is the only state in which TopLevel KeyDown forwarding works (and is exactly what clicking a hierarchy item does).
+
+Changed:
+
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml) — added an invisible, focusable `Border` (`ViewportKeyboardSink`, `IsHitTestVisible=False`) in the viewport grid to serve as the managed focus target.
+- [Editor/Anvil/Controls/MonoGameHost.cs](Editor/Anvil/Controls/MonoGameHost.cs) — added focus restoration. `OnAttachedToVisualTree` subscribes to the parent window's `PropertyChanged`/`Activated`; on a `WindowState` change (and on activation) it re-asserts focus across the resize-settle window (`RestoreEditorKeyboardFocus` runs each settle tick), since Avalonia clears the focused element slightly after raising the change. `RestoreEditorKeyboardFocus` focuses the managed sink only when nothing meaningful is focused (focus is `null`, or is the host itself meaning OS focus leaked to the engine child) — so it never steals focus from an inspector field mid-edit. The window subscriptions are removed in `OnDetachedFromVisualTree`.
+- [Engine/Editor/EditorBridge.cs](Engine/Editor/EditorBridge.cs) — added `ClearHostKeys()`, which the host calls on a window-state transition to release any forwarded key whose `KeyUp` was swallowed by the transition (otherwise it stays latched "down" and drifts the editor camera).
+
+## Editor: fix empty ColorPicker flyout in the inspector
+
+Fixed the material **Color** picker in the inspector opening as a small empty flyout panel with no spectrum/sliders to pick a color.
+
+Root cause: Avalonia's `ColorPicker`/`ColorView` ship their control templates in a **separate** theme dictionary that `<FluentTheme />` does not merge. [App.axaml](Editor/Anvil/App.axaml) declared only `<FluentTheme />`, so the `ColorPicker` had no applied template and rendered as an empty container.
+
+Changed:
+
+- [Editor/Anvil/App.axaml](Editor/Anvil/App.axaml) — added `<StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />` to `Application.Styles`, after `<FluentTheme />` so the base `Theme*` brushes the ColorPicker theme references via `DynamicResource` are already defined. The picker (bound to `SelectedObject.Material.Color`) now renders its full spectrum/sliders/palette.
+
+## Editor: fix engine viewport not resizing on maximize / fullscreen
+
+Fixed the embedded engine viewport staying at its previous (smaller) size — leaving white borders — when the Anvil window was maximized, restored, or taken fullscreen. Incremental drag-resizes worked, but a single discrete size jump did not.
+
+Root cause: Avalonia's `NativeControlHost` applies the container HWND's new geometry **after** [`MonoGameHost.ArrangeOverride`](Editor/Anvil/Controls/MonoGameHost.cs) returns. `ResizeEngineToContainer()` reads the container's client rect synchronously inside that arrange pass, so on a discrete jump (maximize/restore/fullscreen) it saw the stale pre-jump size and sized the engine HWND to that. A live drag emits a continuous stream of layout passes that masks the one-pass lag; a single maximize has no follow-up pass to correct it, so the viewport stayed shrunk until the next manual resize. This is the runtime analogue of the boot-time deferred-resize the existing boot watchdog already handles.
+
+Changed:
+
+- [Editor/Anvil/Controls/MonoGameHost.cs](Editor/Anvil/Controls/MonoGameHost.cs) — generalized the boot-watchdog pattern to runtime. `ArrangeOverride` now calls a new `NudgeResizeSettle()` after its synchronous `ResizeEngineToContainer()`, starting/refreshing a short-lived `DispatcherTimer` (`_resizeSettleTimer`, ~30 ms × 8 ticks ≈ 240 ms) that re-asserts the container size for a brief settle window — catching the container's final size once Avalonia (and Win32) have applied it. `ResizeEngineToContainer()` already no-ops once the engine matches the container, so the timer settles to cheap no-ops and self-stops; its tick budget resets on every layout change so a live drag keeps it alive and it converges ~240 ms after the last change. The timer is stopped in `DestroyNativeControlCore` alongside the boot watchdog.
+
 ## Docs: input architecture guide
 
 Added [Docs/Input Architecture.md](Docs/Input%20Architecture.md) — documents how keyboard/mouse input flows through the engine in both the standalone `Engine.exe` and the Anvil-hosted editor, and gives step-by-step recipes for adding new input.

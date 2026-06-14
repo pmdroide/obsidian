@@ -52,5 +52,11 @@
 
     <Application.Styles>
         <FluentTheme />
+        <!-- ColorPicker/ColorView ship their control templates in a SEPARATE theme
+             dictionary that FluentTheme does NOT pull in. Without this include the
+             inspector's material ColorPicker has no template and renders as an empty
+             flyout panel. Must come after FluentTheme so the base Theme* brushes it
+             references via DynamicResource are already defined. -->
+        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
     </Application.Styles>
 </Application>

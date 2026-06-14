@@ -521,6 +521,18 @@
                 <Grid Grid.Row="1">
                     <controls:MonoGameHost x:Name="ViewportHost" />
 
+                    <!-- Invisible keyboard sink. The embedded engine receives keys only via
+                         Avalonia TopLevel KeyDown forwarding (MonoGameHost.OnTopLevelKeyDown),
+                         which fires only while a MANAGED element holds focus. Maximize/fullscreen
+                         clears focus and the host can't be the target (focusing a NativeControlHost
+                         hands OS focus to the engine child, where MonoGame's keyboard reads empty),
+                         so MonoGameHost re-focuses this plain Border to keep WASD/camera keys alive.
+                         IsHitTestVisible=False so it never intercepts viewport mouse input. -->
+                    <Border x:Name="ViewportKeyboardSink"
+                            Focusable="True" IsHitTestVisible="False"
+                            Width="1" Height="1" Opacity="0"
+                            HorizontalAlignment="Left" VerticalAlignment="Top" />
+
                     <!-- bottom-left view label -->
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
                                 Margin="14,0,0,14" Spacing="2">

@@ -45,6 +45,29 @@ public class MonoGameHost : NativeControlHost
     private DispatcherTimer? _bootResizeWatchdog;
     private int _bootWatchdogTicksLeft;
 
+    // Runtime resize settle: Avalonia applies the container HWND's new geometry AFTER our
+    // ArrangeOverride returns (the NativeControlHost positions its child post-arrange). During an
+    // incremental drag the continuous stream of layout passes hides that one-pass lag, but a
+    // DISCRETE jump — maximize, restore, OS fullscreen — is a single arrange whose synchronous
+    // container read still sees the OLD size, and no follow-up layout pass fires to correct it, so
+    // the engine stays shrunk (white borders) in the now-larger window. This timer re-reads the
+    // container for a short window after each layout change, catching its final size once Avalonia
+    // (and Win32) have applied it. ResizeEngineToContainer no-ops once the engine already matches,
+    // so the timer settles to cheap no-ops and self-stops.
+    private DispatcherTimer? _resizeSettleTimer;
+    private int _resizeSettleTicksLeft;
+
+    // Parent window we subscribe to for state-change / activation events, so we can re-assert
+    // keyboard focus after a maximize/fullscreen/restore (see RestoreEditorKeyboardFocus).
+    private Window? _parentWindow;
+
+    // Name of a plain managed focus sink declared in MainWindow.axaml next to the viewport.
+    // We re-focus IT (not this NativeControlHost) after a window-state change: focusing the host
+    // hands OS focus to the reparented engine child, where MonoGame's keyboard reads empty and
+    // Avalonia stops raising KeyDown — so forwarding would stay dead. A managed sink keeps OS
+    // focus with Avalonia, which is the only state in which TopLevel KeyDown forwarding works.
+    private const string KeyboardSinkName = "ViewportKeyboardSink";
+
     /// <summary>
     /// Fires on the UI thread once the embedded engine has constructed its
     /// editor bridge. Subscribe to wire engine ↔ Anvil view-model traffic.
@@ -189,6 +212,75 @@ public class MonoGameHost : NativeControlHost
         // TopLevel is reliably non-null once attached; subscribing in
         // CreateNativeControlCore is sometimes too early.
         EnsureKeyForwarding();
+
+        // Watch the parent window so we can restore keyboard focus after a maximize/
+        // fullscreen/restore (which clears the focused element and silences key forwarding).
+        if (TopLevel.GetTopLevel(this) is Window w)
+        {
+            _parentWindow = w;
+            w.PropertyChanged += OnWindowPropertyChanged;
+            w.Activated += OnWindowActivated;
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_parentWindow != null)
+        {
+            _parentWindow.PropertyChanged -= OnWindowPropertyChanged;
+            _parentWindow.Activated -= OnWindowActivated;
+            _parentWindow = null;
+        }
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnWindowActivated(object? sender, EventArgs e)
+    {
+        // Alt-tabbing back can also leave nothing focused; re-assert over a short window.
+        NudgeResizeSettle();
+    }
+
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != Window.WindowStateProperty) return;
+
+        // A maximize/fullscreen/restore transition typically drops in-flight key events, so any
+        // key held across it never gets its KeyUp — release them now so the camera doesn't drift.
+        (_game?.Bridge as EditorBridge)?.ClearHostKeys();
+
+        // Avalonia clears the focused element slightly AFTER raising this change, so a single
+        // immediate re-focus can fire too early and see stale (non-null) focus. Reuse the settle
+        // timer to retry focus restoration across the transition (it also re-asserts size, a
+        // no-op once the engine already matches).
+        NudgeResizeSettle();
+    }
+
+    // Re-assert keyboard focus on a plain managed sink when no managed element holds focus — the
+    // post-fullscreen state in which KeyDown is no longer raised and host-key forwarding goes
+    // silent. When something IS focused (e.g. the user is editing an inspector field) we leave it
+    // untouched, so this never steals focus mid-edit.
+    private void RestoreEditorKeyboardFocus()
+    {
+        if (_disposed) return;
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        // GetFocusedElement() returning this host means OS focus is in the engine child (forwarding
+        // dead); null means nothing is focused (forwarding dead). Either way we must hand focus to a
+        // managed control. Any OTHER non-null managed element already routes KeyDown — leave it.
+        var focused = topLevel.FocusManager?.GetFocusedElement();
+        if (focused != null && !ReferenceEquals(focused, this)) return;
+
+        var sink = _parentWindow?.FindControl<Control>(KeyboardSinkName);
+        if (sink == null)
+        {
+            EditorBridge.Log($"RestoreEditorKeyboardFocus: sink '{KeyboardSinkName}' not found");
+            return;
+        }
+
+        bool ok = sink.Focus();
+        EditorBridge.Log($"RestoreEditorKeyboardFocus: prevFocus={focused?.GetType().Name ?? "null"}, " +
+            $"sink.Focus()={ok}, nowFocus={topLevel.FocusManager?.GetFocusedElement()?.GetType().Name ?? "null"}");
     }
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
@@ -329,6 +421,9 @@ public class MonoGameHost : NativeControlHost
         try { _bootResizeWatchdog?.Stop(); } catch { }
         _bootResizeWatchdog = null;
 
+        try { _resizeSettleTimer?.Stop(); } catch { }
+        _resizeSettleTimer = null;
+
         try
         {
             _gameThread?.Join(TimeSpan.FromSeconds(3));
@@ -449,8 +544,37 @@ public class MonoGameHost : NativeControlHost
     {
         // Avalonia sizes the container window (the handle we returned) here, on the UI thread.
         var result = base.ArrangeOverride(finalSize);
+        // Synchronous attempt — correct for the common incremental-drag case where the container
+        // already carries its new size by the time we read it.
         ResizeEngineToContainer();
+        // ...then re-assert for a short settle window so the engine still catches up after a
+        // maximize/fullscreen jump, whose container resize lands AFTER this arrange pass.
+        NudgeResizeSettle();
         return result;
+    }
+
+    // (Re)start the runtime resize-settle timer. Called on every layout change; resetting the tick
+    // budget keeps it alive across a live drag and lets it settle ~240ms after the last change.
+    private void NudgeResizeSettle()
+    {
+        if (_disposed) return;
+        _resizeSettleTicksLeft = 8; // ~240ms at 30ms ticks — covers the deferred container resize.
+        if (_resizeSettleTimer != null) return;
+        _resizeSettleTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+        _resizeSettleTimer.Tick += (_, _) =>
+        {
+            if (_disposed || --_resizeSettleTicksLeft <= 0)
+            {
+                _resizeSettleTimer?.Stop();
+                _resizeSettleTimer = null;
+                return;
+            }
+            ResizeEngineToContainer();
+            // A window-state change also lands here (via OnWindowPropertyChanged). Retrying the
+            // focus restore across the settle window catches the moment Avalonia clears focus.
+            RestoreEditorKeyboardFocus();
+        };
+        _resizeSettleTimer.Start();
     }
 
     // Resize the engine HWND to exactly fill the container's client area. We read the

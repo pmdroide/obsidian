@@ -76,6 +76,16 @@ namespace Engine.Editor
             }
         }
 
+        /// <summary>
+        /// Release all forwarded keys. The host calls this across a window-state transition
+        /// (maximize/fullscreen/restore), which can swallow a key's KeyUp and otherwise leave it
+        /// latched "down" here — drifting the editor camera until the key is pressed again.
+        /// </summary>
+        public void ClearHostKeys()
+        {
+            lock (_hostKeysLock) _hostKeysDown.Clear();
+        }
+
         // Pointer-over-viewport gate. Defaults to true so standalone Engine.exe
         // (where no host pushes pointer-enter/leave events) is unaffected. The
         // host flips it false when the pointer leaves the viewport so the engine
