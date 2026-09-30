@@ -37,6 +37,7 @@ How to manipulate the scene
 - WASD : move the camera
 - right mouse drag : rotate the camera
 - F1 : Cycle through render targets (albedo, normals, depth etc.)
+- X/M : Audio test
 
 ## Render pipelines
 - Deferred (Main)

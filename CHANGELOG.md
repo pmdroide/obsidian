@@ -1,5 +1,15 @@
 # Changelog
 
+## Engine: fix startup crash / white Anvil viewport from missing built-in models
+
+Fixed the standalone engine silently exiting on launch and the Anvil viewport staying white. Both came from the same `ContentLoadException` in `Assets.Load`: the engine hard-loaded built-in models whose source files are not in the repo, so `Initialize` threw. Standalone, that killed the process. In Anvil, `MonoGameHost` caught the exception inside `RunOneFrame()`, logged it to `anvil-bridge.log`, and retried every frame, so nothing was ever drawn.
+
+Root cause: `daft_helmets.obj`, `skull.obj` and `Sponza/Sponza.obj` were never committed, because `.gitignore`'s `*.[Oo]bj` rule (meant for compiled object files) also matches Wavefront `.obj` models. A fresh clone therefore can't build them. The Sponza folder, `Art/Human` and their `Content.mgcb` entries had also been removed from the working copy. None of these models were placed in the startup scene.
+
+Removed:
+
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs) — the `HelmetModel`/`SkullModel` fields, loads and `ProcessHelmets()`; the `SponzaModel` field, its ~35 Sponza texture loads, `_sponzaTextures`, the `sponza_*` texture fields (and their `Dispose` calls) and `ProcessSponza()`; the `HumanModel` field and load. As a result, `SponzaModel` and `HumanModel` no longer appear as built-in model keys in the editor.
+
 ## Editor: fix dead engine keyboard input after maximize / fullscreen
 
 Fixed keyboard input to the embedded engine going dead after the Anvil window was maximized/fullscreened/restored — the mouse (camera orbit/pan/zoom) kept working, but WASD and other forwarded keys did nothing until the user clicked an Avalonia control (e.g. a hierarchy item), which "returned" input. This surfaced alongside the resize fix: once the viewport actually fills the window on fullscreen, the camera is usable and the dead keys became noticeable.

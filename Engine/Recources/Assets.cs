@@ -29,8 +29,6 @@ namespace Engine.Recources
         //https://sketchfab.com/models/95c4008c4c764c078f679d4c320e7b18
         public ModelDefinition Tiger;
 
-        public ModelDefinition HumanModel;
-
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
         public Texture2D IconDecal;
@@ -66,16 +64,6 @@ namespace Engine.Recources
 
         //public Model Trabant;
         //public MaterialEffect TrabantBigParts;
-
-        public ModelDefinition SponzaModel;
-        readonly List<Texture2D> _sponzaTextures = new List<Texture2D>();
-        private Texture2D sponza_fabric_metallic;
-        private Texture2D sponza_fabric_spec;
-        private Texture2D sponza_curtain_metallic;
-
-        public Model SkullModel;
-
-        public Model HelmetModel;
 
         public ModelDefinition StanfordDragon;
         public ModelDefinition StanfordDragonLowpoly;
@@ -149,7 +137,6 @@ namespace Engine.Recources
             Cube = new ModelDefinition(content, "Art/test/cube", graphicsDevice, true, new Vector3(50, 50, 50));
 
             Tiger = new ModelDefinition(content, "Art/Tiger/Tiger", graphicsDevice, true, new Vector3(50,50,50));
-            HumanModel = new ModelDefinition(content, "Art/Human/human", graphicsDevice, true, new Vector3(50, 50, 50));
 
             IconDecal = content.Load<Texture2D>("Art/Editor/icon_decal");
             IconLight = content.Load<Texture2D>("Art/Editor/icon_light");
@@ -232,53 +219,6 @@ namespace Engine.Recources
             StanfordDragonLowpoly = new ModelDefinition(content, "Art/default/dragon_lowpoly", graphicsDevice, true, new Vector3(60, 60,60));
 
             DragonLowPolyMaterial = CreateMaterial(Color.Red, 0.5f, 0, type: MaterialEffect.MaterialTypes.Basic, normalMap: content.Load<Texture2D>("Art/default/dragon_normal"));
-
-            HelmetModel = content.Load<Model>("Art/default/daft_helmets");
-            SkullModel = content.Load<Model>("Art/default/skull");
-
-            //
-
-            SponzaModel = new ModelDefinition(content, "Sponza/Sponza", graphicsDevice, false);
-            _sponzaTextures.Add(content.Load<Texture2D>("Sponza/textures/background_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/chain_texture_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/chain_texture_mask"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/lion_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/lion2_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/spnza_bricks_a_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/spnza_bricks_a_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_arch_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_arch_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_ceiling_a_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_column_a_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_column_a_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_column_b_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_column_b_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_column_c_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_column_c_ddn"));
-            _sponzaTextures.Add(sponza_fabric_spec = content.Load<Texture2D>("Sponza/textures/sponza_fabric_spec"));
-            _sponzaTextures.Add(sponza_fabric_metallic = content.Load<Texture2D>("Sponza/textures/sponza_fabric_metallic"));
-            _sponzaTextures.Add(content.Load<Texture2D>("Sponza/textures/sponza_curtain_green_spec"));
-            _sponzaTextures.Add(content.Load<Texture2D>("Sponza/textures/sponza_curtain_blue_spec"));
-            _sponzaTextures.Add(content.Load<Texture2D>("Sponza/textures/sponza_curtain_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_details_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_flagpole_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_thorn_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_thorn_mask"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/sponza_thorn_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/vase_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/vase_plant_mask"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/vase_plant_spec"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/vase_round_ddn"));
-            _sponzaTextures.Add( content.Load<Texture2D>("Sponza/textures/vase_round_spec"));
-
-            _sponzaTextures.Add(content.Load<Texture2D>("Sponza/textures/sponza_floor_a_spec"));
-            _sponzaTextures.Add(content.Load<Texture2D>("Sponza/textures/sponza_floor_a_ddn"));
-            
-            sponza_curtain_metallic = content.Load<Texture2D>("Sponza/textures/sponza_curtain_metallic");
-
-            ProcessSponza();
-            
-            ProcessHelmets();
 
             RockMaterial = CreateMaterial(Color.White, roughness: 1, metallic: 0,
                 albedoMap: content.Load<Texture2D>("Art/test/squarebricks-diffuse"),
@@ -442,7 +382,7 @@ namespace Engine.Recources
             if (_dynamicModels.ContainsKey(key)) return true;
             // Also check hard-coded public ModelDefinition fields, so dynamic imports
             // never shadow a built-in (e.g. someone dropping a file literally named
-            // "SponzaModel.fbx" doesn't replace the hard-coded reference).
+            // "StanfordDragon.fbx" doesn't replace the hard-coded reference).
             var f = typeof(Assets).GetField(key, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
             return f != null && f.FieldType == typeof(ModelDefinition);
         }
@@ -543,71 +483,6 @@ namespace Engine.Recources
             return mat;
         }
 
-        /// <summary>
-        /// The helmets have many submaterials and I want specific values for each one of them!
-        /// </summary>
-        private void ProcessHelmets()
-        {
-            for (int i = 0; i < HelmetModel.Meshes.Count; i++)
-            {
-                ModelMesh mesh = HelmetModel.Meshes[i];
-                for (int index = 0; index < mesh.MeshParts.Count; index++)
-                {
-                    ModelMeshPart meshPart = mesh.MeshParts[index];
-                    MaterialEffect matEffect = new MaterialEffect(meshPart.Effect);
-
-                    matEffect.DiffuseColor = Color.Gray.ToVector3();
-
-                    if (mesh.Name == "Helmet1_Interior")
-                    {
-                        matEffect.DiffuseColor = Color.White.ToVector3();
-                    }
-
-                    if (i == 5)
-                    {
-                        matEffect.DiffuseColor = new Color(0, 0.49f, 0.95f).ToVector3();
-                        matEffect.Type = MaterialEffect.MaterialTypes.Hologram;
-                    }
-
-                    if (i == 0)
-                    {
-                        matEffect.DiffuseColor = Color.Black.ToVector3();
-                        matEffect.Roughness = 0.1f;
-                        matEffect.Type = MaterialEffect.MaterialTypes.ProjectHologram;
-                    }
-
-                    if (i == 1)
-                    {
-                        matEffect.DiffuseColor = new Color(0, 0.49f, 0.95f).ToVector3();
-                    }
-
-                    if (i == 2)
-                    {
-                        matEffect.DiffuseColor = Color.Silver.ToVector3();
-                        matEffect.Metallic = 1;
-                        matEffect.Roughness = 0.1f;
-                    }
-
-                    //Helmet color - should be gold!
-                    if (i == 4)
-                    {
-                        matEffect.DiffuseColor = new Color(255, 255, 155).ToVector3() * 0.5f;
-                        matEffect.Roughness = 0.3f;
-                        matEffect.Metallic = 0.8f;
-                    }
-
-                    if (i == 13)
-                    {
-                        matEffect.DiffuseColor = Color.Black.ToVector3();
-                        matEffect.Roughness = 0.05f;
-                        matEffect.Type = MaterialEffect.MaterialTypes.ProjectHologram;
-                    }
-
-                    meshPart.Effect = matEffect;
-                }
-            }
-        }
-        
         private Model ProcessModel(Model model)
         {
             foreach (ModelMesh mesh in model.Meshes)
@@ -635,133 +510,6 @@ namespace Engine.Recources
             return model;
         }
 
-        //Assign specific materials to submeshes
-        private void ProcessSponza()
-        {
-            foreach (ModelMesh mesh in SponzaModel.Model.Meshes)
-            {
-                foreach (ModelMeshPart meshPart in mesh.MeshParts)
-                {
-                    MaterialEffect matEffect = new MaterialEffect(meshPart.Effect);
-
-                    BasicEffect oEffect = meshPart.Effect as BasicEffect;
-
-                    //I want to remove this mesh
-                    if (mesh.Name == "g sponza_04")
-                    {
-                        //Put the boudning sphere into space?
-                        mesh.BoundingSphere = new BoundingSphere(new Vector3(-100000, 0, 0), 0);
-
-                        //Make it transparent
-                        matEffect.IsTransparent = true;
-                    }
-
-                    matEffect.DiffuseColor = oEffect.DiffuseColor;
-
-                    if (oEffect.TextureEnabled)
-                    {
-                        matEffect.AlbedoMap = oEffect.Texture;
-
-                        string[] name = matEffect.AlbedoMap.Name.Split('\\');
-
-                        string compare = name[2].Replace("_0", "");
-
-                        if (compare.Contains("vase_round") || compare.Contains("vase_hanging"))
-                        {
-                            matEffect.Roughness = 0.1f;
-                            matEffect.Metallic = 0.5f;
-                        }
-
-                        //Make the vases emissive!
-
-                        //if (compare.Contains("vase_hanging"))
-                        //{
-                        //    matEffect.EmissiveStrength = 2;
-                        //    matEffect.Type = MaterialEffect.MaterialTypes.Emissive;
-                        //    matEffect.DiffuseColor = Color.Gold.ToVector3();
-
-                        //    matEffect.AlbedoMap = null;
-                        //    matEffect.HasDiffuse = false;
-                        //}
-
-                        //if (compare.Contains("floor"))
-                        //{
-                        //    matEffect.Roughness = 0.2f;
-                        //    matEffect.Metallic = 1;
-                        //    //matEffect.HasDiffuse = false;
-                        //}
-
-
-                        if (compare.Contains("chain"))
-                        {
-                            matEffect.Roughness = 0.5f;
-                            matEffect.Metallic = 1f;
-                        }
-
-                        if (compare.Contains("curtain"))
-                        {
-                            matEffect.MetallicMap = sponza_curtain_metallic;
-                        }
-
-                        if (compare.Contains("sponza_fabric"))
-                        {
-                            matEffect.MetallicMap = sponza_fabric_metallic;
-                            matEffect.RoughnessMap = sponza_fabric_spec;
-                        }
-
-
-                        if (compare.Contains("lion"))
-                        {
-                            matEffect.Metallic = 0.9f;
-                        }
-
-                        if (compare.Contains("_diff"))
-                        {
-                            compare = compare.Replace("_diff", "");
-                        }
-
-                        foreach (Texture2D tex2d in _sponzaTextures)
-                        {
-                            if (tex2d.Name.Contains(compare))
-                            {
-                                //We got a match!
-
-                                string ending = tex2d.Name.Replace(compare, "");
-
-                                ending = ending.Replace("Sponza/textures/", "");
-
-                                if (ending == "_spec")
-                                {
-                                    matEffect.RoughnessMap = tex2d;
-                                }
-
-                                if (ending == "_metallic")
-                                {
-                                    matEffect.MetallicMap = tex2d;
-                                }
-
-                                if (ending == "_ddn")
-                                {
-                                    matEffect.NormalMap = tex2d;
-                                }
-
-                                if (ending == "_mask")
-                                {
-                                    matEffect.Mask = tex2d;
-                                }
-
-                            }
-                        }
-
-
-                    }
-                    meshPart.Effect = matEffect;
-                }
-
-
-            }
-        }
-
         public void Dispose()
         {
             IconLight?.Dispose();
@@ -780,9 +528,6 @@ namespace Engine.Recources
             MirrorMaterial?.Dispose();
             NoiseMap?.Dispose();
             SkyTexture?.Dispose();
-            sponza_fabric_metallic?.Dispose();
-            sponza_fabric_spec?.Dispose();
-            sponza_curtain_metallic?.Dispose();
             RockMaterial?.Dispose();
             ErrorMaterial?.Dispose();
             ErrorTexture?.Dispose();
