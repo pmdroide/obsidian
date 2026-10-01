@@ -22,8 +22,8 @@ This project does **not** have a broad automatic asset discovery system. It main
 - [Engine/Recources/Assets.cs](C:/Dev/GitHub/obsidian/Engine/Recources/Assets.cs:94)  
   Central hard-coded asset registry. Loads models, textures, fonts, sky maps, materials, Sponza textures, icons, etc. Example paths are extensionless:
   ```csharp
-  content.Load<Model>("Art/Editor/Arrow");
-  content.Load<Texture2D>("Art/Editor/icon_light");
+  content.Load<Model>("GameObjects/Editor/Arrow");
+  content.Load<Texture2D>("GameObjects/Editor/icon_light");
   content.Load<SpriteFont>("Fonts/defaultFont");
   ```
 
@@ -61,7 +61,7 @@ This project does **not** have a broad automatic asset discovery system. It main
 Engine/
   Content/
     Content.mgcb              main MonoGame import manifest
-    Art/                      models, editor icons, sky, test materials
+    GameObjects/              models, editor icons, sky, test materials
       Default/
       Editor/
       Human/

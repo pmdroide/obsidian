@@ -1534,7 +1534,15 @@
                              though TreeViewItem marks those events handled. -->
                         <TreeView Name="AssetsTreeView"
                                   ItemsSource="{Binding AssetTree}"
-                                  ToolTip.Tip="Double-click a mesh to add it to the scene, or drag it into the Hierarchy.">
+                                  ToolTip.Tip="Double-click a mesh to add it to the scene (or drag it into the Hierarchy). Double-click a shader, XML or CSS file to open it in a text editor.">
+
+                            <!-- Two-way so folder expansion survives tree rebuilds
+                                 (the tree is rebuilt whenever Engine/Content changes). -->
+                            <TreeView.Styles>
+                                <Style Selector="TreeViewItem" x:DataType="m:AssetNode">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                </Style>
+                            </TreeView.Styles>
 
                             <TreeView.ItemTemplate>
                                 <TreeDataTemplate DataType="m:AssetNode"
@@ -1567,6 +1575,18 @@
                                             <controls:LucideIcon Icon="FileImage"
                                                   Foreground="{StaticResource AnvilPrimaryBrush}"
                                                   IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Scene}" />
+                                            <controls:LucideIcon Icon="FileCode"
+                                                  Foreground="{StaticResource AnvilPrimaryAltBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Shader}" />
+                                            <controls:LucideIcon Icon="Type"
+                                                  Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Font}" />
+                                            <controls:LucideIcon Icon="FileVideo"
+                                                  Foreground="{StaticResource AnvilAudioBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Video}" />
+                                            <controls:LucideIcon Icon="File"
+                                                  Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=File}" />
                                         </Grid>
                                         <TextBlock Text="{Binding Name}" FontSize="11.5"
                                                    VerticalAlignment="Center" />

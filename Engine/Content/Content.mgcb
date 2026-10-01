@@ -13,7 +13,7 @@
 
 #---------------------------------- Content ---------------------------------#
 
-#begin Art/Default/dragon_lowpoly.fbx
+#begin GameObjects/Default/dragon_lowpoly.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -30,9 +30,9 @@
 /processorParam:Scale=10
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:Art/Default/dragon_lowpoly.fbx
+/build:GameObjects/Default/dragon_lowpoly.fbx
 
-#begin Art/Default/dragon_normal.png
+#begin GameObjects/Default/dragon_normal.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -42,9 +42,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Default/dragon_normal.png
+/build:GameObjects/Default/dragon_normal.png
 
-#begin Art/Default/dragon_uv_smooth.fbx
+#begin GameObjects/Default/dragon_uv_smooth.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -61,9 +61,9 @@
 /processorParam:Scale=10
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/Default/dragon_uv_smooth.fbx
+/build:GameObjects/Default/dragon_uv_smooth.fbx
 
-#begin Art/Default/isosphere.fbx
+#begin GameObjects/Default/isosphere.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -80,9 +80,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:Art/Default/isosphere.fbx
+/build:GameObjects/Default/isosphere.fbx
 
-#begin Art/Default/sphere.x
+#begin GameObjects/Default/sphere.x
 /importer:XImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -99,9 +99,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/Default/sphere.x
+/build:GameObjects/Default/sphere.x
 
-#begin Art/Editor/arrow.fbx
+#begin GameObjects/Editor/arrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -118,9 +118,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/Editor/arrow.fbx
+/build:GameObjects/Editor/arrow.fbx
 
-#begin Art/Editor/arrowRound.fbx
+#begin GameObjects/Editor/arrowRound.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -137,9 +137,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/Editor/arrowRound.fbx
+/build:GameObjects/Editor/arrowRound.fbx
 
-#begin Art/Editor/icon_decal.png
+#begin GameObjects/Editor/icon_decal.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -149,9 +149,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Editor/icon_decal.png
+/build:GameObjects/Editor/icon_decal.png
 
-#begin Art/Editor/icon_envmap.png
+#begin GameObjects/Editor/icon_envmap.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -161,9 +161,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Editor/icon_envmap.png
+/build:GameObjects/Editor/icon_envmap.png
 
-#begin Art/Editor/icon_light.png
+#begin GameObjects/Editor/icon_light.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -173,9 +173,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Editor/icon_light.png
+/build:GameObjects/Editor/icon_light.png
 
-#begin Art/Editor/texStrip.png
+#begin GameObjects/Editor/texStrip.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -185,9 +185,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Editor/texStrip.png
+/build:GameObjects/Editor/texStrip.png
 
-#begin Art/plane.fbx
+#begin GameObjects/plane.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -204,9 +204,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/plane.fbx
+/build:GameObjects/plane.fbx
 
-#begin Art/Test/cube.fbx
+#begin GameObjects/Test/cube.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -223,9 +223,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/Test/cube.fbx
+/build:GameObjects/Test/cube.fbx
 
-#begin Art/Test/squarebricks-ambientocclusion.jpg
+#begin GameObjects/Test/squarebricks-ambientocclusion.jpg
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -235,9 +235,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Test/squarebricks-ambientocclusion.jpg
+/build:GameObjects/Test/squarebricks-ambientocclusion.jpg
 
-#begin Art/Test/squarebricks-depth.jpg
+#begin GameObjects/Test/squarebricks-depth.jpg
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -247,9 +247,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Test/squarebricks-depth.jpg
+/build:GameObjects/Test/squarebricks-depth.jpg
 
-#begin Art/Test/squarebricks-diffuse.jpg
+#begin GameObjects/Test/squarebricks-diffuse.jpg
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -259,9 +259,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Test/squarebricks-diffuse.jpg
+/build:GameObjects/Test/squarebricks-diffuse.jpg
 
-#begin Art/Test/squarebricks-normal.jpg
+#begin GameObjects/Test/squarebricks-normal.jpg
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -271,9 +271,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Test/squarebricks-normal.jpg
+/build:GameObjects/Test/squarebricks-normal.jpg
 
-#begin Art/Test/tubes.fbx
+#begin GameObjects/Test/tubes.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -290,9 +290,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=DxtCompressed
-/build:Art/Test/tubes.fbx
+/build:GameObjects/Test/tubes.fbx
 
-#begin Art/Tiger/Tiger.fbx
+#begin GameObjects/Tiger/Tiger.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -309,9 +309,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:Art/Tiger/Tiger.fbx
+/build:GameObjects/Tiger/Tiger.fbx
 
-#begin Art/Truck/truck_skeleton.FBX
+#begin GameObjects/Truck/truck_skeleton.FBX
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -328,9 +328,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:Art/Truck/truck_skeleton.FBX
+/build:GameObjects/Truck/truck_skeleton.FBX
 
-#begin Art/Truck/truck_skeleton_albedo.png
+#begin GameObjects/Truck/truck_skeleton_albedo.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -340,9 +340,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Truck/truck_skeleton_albedo.png
+/build:GameObjects/Truck/truck_skeleton_albedo.png
 
-#begin Art/Truck/truck_skeleton_Metalness.png
+#begin GameObjects/Truck/truck_skeleton_Metalness.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -352,9 +352,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Truck/truck_skeleton_Metalness.png
+/build:GameObjects/Truck/truck_skeleton_Metalness.png
 
-#begin Art/Truck/truck_skeleton_normal.png
+#begin GameObjects/Truck/truck_skeleton_normal.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -364,9 +364,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Truck/truck_skeleton_normal.png
+/build:GameObjects/Truck/truck_skeleton_normal.png
 
-#begin Art/Truck/truck_skeleton_roughness.png
+#begin GameObjects/Truck/truck_skeleton_roughness.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -376,7 +376,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/Truck/truck_skeleton_roughness.png
+/build:GameObjects/Truck/truck_skeleton_roughness.png
 
 #begin Fonts/defaultfont.spritefont
 /importer:FontDescriptionImporter
@@ -632,7 +632,7 @@
 /processorParam:DebugMode=Auto
 /build:Shaders/Test/TexFilter.fx
 
-#begin Art/sky.dds
+#begin GameObjects/sky.dds
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -642,9 +642,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=NoChange
-/build:Art/sky.dds
+/build:GameObjects/sky.dds
 
-#begin Art/error.png
+#begin GameObjects/error.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -654,9 +654,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Art/error.png
+/build:GameObjects/error.png
 
-#begin Art/Error/ERRORText.fbx
+#begin GameObjects/Error/ERRORText.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -673,4 +673,4 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:Art/Error/ERRORText.fbx
+/build:GameObjects/Error/ERRORText.fbx

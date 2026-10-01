@@ -27,6 +27,10 @@ namespace Engine.Editor
         private Assets _assets;
         private Dictionary<string, ModelDefinition> _modelKeys = new Dictionary<string, ModelDefinition>();
         private List<string> _modelKeyList = new List<string>();
+        // key -> content-relative asset path. Rebuilt on the game thread and swapped in
+        // whole so UI-thread readers never see a half-built dictionary.
+        private volatile Dictionary<string, string> _modelAssetPaths =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Throttle snapshot publication: 60fps engine / 6 = ~10Hz. Lower than
         // 20Hz because each publish re-evaluates every NumericUpDown / ColorPicker
@@ -217,6 +221,11 @@ namespace Engine.Editor
                 _modelKeys[kvp.Key] = kvp.Value;
                 _modelKeyList.Add(kvp.Key);
             }
+
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in _modelKeys)
+                if (!string.IsNullOrEmpty(kvp.Value?.AssetPath)) paths[kvp.Key] = kvp.Value.AssetPath;
+            _modelAssetPaths = paths;
         }
 
         private void OnAssetModelRegistered(string key, ModelDefinition md)
@@ -454,6 +463,11 @@ namespace Engine.Editor
 
         public bool IsDeletableModel(string modelKey) =>
             _assets != null && _assets.DynamicModels.ContainsKey(modelKey);
+
+        public string ContentSourceRoot => AssetImporter.LocateEngineContentRoot();
+
+        public string GetModelAssetPath(string modelKey) =>
+            modelKey != null && _modelAssetPaths.TryGetValue(modelKey, out string path) ? path : null;
 
         // Copies texture slots + scalar material fields from a freshly bound material onto
         // every already-placed entity using the same model, so dropping textures updates

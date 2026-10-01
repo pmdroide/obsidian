@@ -19,9 +19,13 @@ namespace Engine.Recources
         public Model Model;
         public SignedDistanceField SDF;
 
+        // Content-relative, extensionless path this model was loaded from (null for
+        // models built in memory). Lets the editor map Content files back to model keys.
+        public string AssetPath;
+
         public ModelDefinition(ContentManager content, string assetpath, GraphicsDevice graphics, bool UseSDF, Vector3 sdfResolution /*default = 50^3*/)
         {
-            
+            AssetPath = assetpath;
             Model = content.Load<Model>(assetpath);
 
             string bbxpath = content.RootDirectory + "/" + assetpath + ".bbox";

@@ -1,5 +1,43 @@
 # Changelog
 
+## Content: `Art` → `GameObjects`; Anvil Assets panel mirrors `Engine/Content`
+
+The `Engine/Content/Art` folder was renamed to `Engine/Content/GameObjects`. Every path that pointed at it now uses the new name, and the Anvil Assets panel shows the real Content folder instead of fixed virtual folders.
+
+Changed:
+
+- [Engine/Content/Content.mgcb](Engine/Content/Content.mgcb): all `Art/...` build entries now point to `GameObjects/...`.
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs), [Engine/Recources/AssetImporter.cs](Engine/Recources/AssetImporter.cs), [Engine/Renderer/RenderModules/TexFilter.cs](Engine/Renderer/RenderModules/TexFilter.cs): content load paths changed from `Art/...` to `GameObjects/...`. Runtime-imported models now go to `GameObjects/Models/{key}/` and standalone textures to `GameObjects/Textures/`. `AssetImporter.LocateEngineContentRoot()` is now `internal` so the bridge can use it.
+- [Engine/Recources/ModelDefinition.cs](Engine/Recources/ModelDefinition.cs): new `AssetPath` field that stores the content path the model was loaded from.
+- [Engine/Editor/IEditorBridge.cs](Engine/Editor/IEditorBridge.cs), [Engine/Editor/EditorBridge.cs](Engine/Editor/EditorBridge.cs): added `ContentSourceRoot` (absolute path of `Engine/Content`) and `GetModelAssetPath(key)`. Both are safe to call from the UI thread. The key→path map is rebuilt on the game thread and swapped in whole.
+- [Editor/Anvil/ViewModels/MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): the Assets tree is now built from the files and folders in `Engine/Content`. The top-level `bin`, `obj` and `Graphical User Interface` folders are hidden. A mesh file that a registered model was loaded from (for example `GameObjects/Test/cube.fbx` → `Cube`) can still be double-clicked or dragged into the Hierarchy. Anything under `GameObjects/Models/{key}/` still accepts texture drops and Delete for that imported model. A debounced `FileSystemWatcher` rebuilds the tree when Content changes on disk (changes under `bin`/`obj` are ignored), and expanded folders stay expanded after a rebuild.
+- [Editor/Anvil/Models/AssetNode.cs](Editor/Anvil/Models/AssetNode.cs): added `RelativePath`, `ModelKey` and `OwnerModelKey`, plus the asset kinds `Shader`, `Font`, `Video` and `File`.
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [MainWindow.axaml.cs](Editor/Anvil/Views/MainWindow.axaml.cs): icons for the new kinds. Tree items now bind `IsExpanded` two-way. Drag and double-click now read `AssetNode.ModelKey` instead of parsing `"model:"` ids.
+- [Docs/markdown/Importing Structure.md](Docs/markdown/Importing%20Structure.md): paths updated to `GameObjects`.
+
+Removed:
+
+- The virtual Meshes / Textures / Scripts / Audio / Materials folders in the Assets panel (`BuildAssets`, `RefreshMeshAssetsFolder`).
+
+Added:
+
+- Double-clicking a text asset in the Assets panel opens it in an external editor. This covers `.fx`, `.fxh`, `.hlsl`, `.xml`, `.css`, `.cs`, `.spritefont`, `.mgcb`, `.json`, `.txt` and `.md`. The new [Editor/Anvil/Services/ExternalTextEditor.cs](Editor/Anvil/Services/ExternalTextEditor.cs) looks for VS Code's `Code.exe` in the per-user and machine install folders and next to the `code` shim on PATH. If it can't find VS Code, it opens the file in Notepad. If neither can start, an error goes to the Anvil console. The file opened is the source copy in `Engine/Content`, so shader hot reload picks up your edits. `MainWindowViewModel` gained `OpenInTextEditor`, `IsTextAsset` and a small `AddConsoleEntry` helper.
+- The Assets search box now filters the tree. It matches file and folder names, ignoring case. A folder whose name matches is shown with everything inside it. A folder that only contains matches is shown expanded, with just those matches, and your own expanded/collapsed folders are left as they were. Clearing the box brings back the full tree.
+- The Assets panel accepts any file or folder dragged in from Explorer (`MainWindowViewModel.CopyFilesIntoContent`). Dropped items are copied into the folder you drop onto. If you drop onto a file, they go into that file's folder; if you drop onto empty space, they go into the Content root. Folders are copied with everything inside them. If a name is already taken, the copy gets a `_2`, `_3`, … suffix. Copying runs off the UI thread and the file watcher refreshes the tree. Copy errors go to the Anvil console. `.fbx`/`.obj` files still go through the model importer, and images dropped on an imported model's folder still bind to that model. Plain copies are **not** added to `Content.mgcb`.
+
+- New [Engine/Recources/ContentManifest.cs](Engine/Recources/ContentManifest.cs) keeps `Content.mgcb` in step with the Content folder:
+  - `Register` adds build entries for pipeline assets: models (`.fbx` → FbxImporter; `.obj`/`.dae`/`.gltf`/`.glb` → OpenAssetImporter; `.x` → XImporter), textures (`.png`/`.jpg`/`.jpeg`/`.tga`/`.bmp`/`.dds`), effects (`.fx`) and sprite fonts (`.spritefont`). It uses the same settings as the existing entries and skips paths that are already listed. Files the engine reads directly are not registered: FMOD audio, video, Vista XML/CSS, `.bbox`/`.sdft` and `.fxh`.
+  - `Unregister` removes a file's entry, or every entry under a folder.
+  - `Rename` repoints entries to the new path and keeps their importer and processor settings.
+  - Every edit holds the same named mutex as `AssetImporter`, whose `MgcbEditMutex` now points at it, and keeps the file's line endings. Registering and then unregistering leaves the file byte-identical (tested on a copy of the manifest).
+- Anvil registers dropped files automatically. Pipeline assets copied into Content, including everything inside dropped folders, get a `Content.mgcb` entry, and the Anvil console lists what was added.
+- Anvil removes manifest entries automatically. When the file watcher sees a Content file or folder deleted, from Explorer or from the editor, its entries are removed. When one is renamed or moved, its entries follow it. Paths are checked again after the debounce, so editors that save by delete-then-rename, and git checkouts, don't strip entries for files that come straight back.
+- Assets panel **Delete** (context menu or the Delete key) now works on any file or folder. It moves the item to the Recycle Bin and removes its manifest entries, after a confirmation that warns if the engine loads the file as a model. Deleting an imported model's mesh or its `GameObjects/Models/{key}` folder still removes the whole model through the engine. Files inside that folder are now deleted on their own instead of taking the whole model with them (`MainWindowViewModel.ModelKeyToDeleteFor` / `DeleteAssetFromDisk`).
+
+Hidden in the Assets panel:
+
+- `Content.mgcb`, `Content.mgcb.org` (Content root) and every `*.mgcontent` build-state file. The file watcher ignores `*.mgcontent` changes as well.
+
 ## Engine: fix startup crash / white Anvil viewport from missing built-in models
 
 Fixed the standalone engine silently exiting on launch and the Anvil viewport staying white. Both came from the same `ContentLoadException` in `Assets.Load`: the engine hard-loaded built-in models whose source files are not in the repo, so `Initialize` threw. Standalone, that killed the process. In Anvil, `MonoGameHost` caught the exception inside `RunOneFrame()`, logged it to `anvil-bridge.log`, and retried every frame, so nothing was ever drawn.

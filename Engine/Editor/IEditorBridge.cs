@@ -162,7 +162,7 @@ namespace Engine.Editor
 
         /// <summary>
         /// Queue a runtime import of a model file from disk. Runs on the engine thread:
-        /// copies the file under Engine/Content/Art/Models/{key}/, scans sibling textures,
+        /// copies the file under Engine/Content/GameObjects/Models/{key}/, scans sibling textures,
         /// invokes mgcb to build the new entries, loads the resulting model through the
         /// live ContentManager, and registers it with the Assets dictionary. The callback
         /// fires on the game thread with the actual registered key (may differ from the
@@ -172,7 +172,7 @@ namespace Engine.Editor
 
         /// <summary>
         /// Queue a runtime import of texture files for an already-registered model. Copies
-        /// them into the model's <c>Art/Models/{key}/Textures/</c> folder, builds them, and
+        /// them into the model's <c>GameObjects/Models/{key}/Textures/</c> folder, builds them, and
         /// binds a material by filename convention (<c>*_BaseColor</c> → albedo, etc.).
         /// Updates instances already in the scene. The callback fires on the game thread.
         /// </summary>
@@ -196,6 +196,18 @@ namespace Engine.Editor
         /// texture-drop target). False for built-ins. Safe to call from the UI thread.
         /// </summary>
         bool IsDeletableModel(string modelKey);
+
+        /// <summary>
+        /// Absolute path of the source <c>Engine/Content</c> folder (the one Content.mgcb
+        /// lives in), for the editor's Assets browser. Safe to call from the UI thread.
+        /// </summary>
+        string ContentSourceRoot { get; }
+
+        /// <summary>
+        /// Content-relative, extensionless asset path a model key was loaded from
+        /// (e.g. <c>GameObjects/Test/cube</c>), or null if unknown. Safe to call from the UI thread.
+        /// </summary>
+        string GetModelAssetPath(string modelKey);
 
         /// <summary>
         /// Fires on the engine thread whenever a new model is registered in the Assets

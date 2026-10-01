@@ -28,7 +28,7 @@ namespace Engine.Recources
             { ".png", ".jpg", ".jpeg", ".tga", ".dds", ".bmp" };
 
         // Cross-process guard around the Content.mgcb read-modify-write.
-        private static readonly Mutex MgcbEditMutex = new Mutex(false, "obsidian.mgcb.edit");
+        private static Mutex MgcbEditMutex => ContentManifest.EditMutex;
 
         private readonly ContentManager _content;
         private readonly GraphicsDevice _graphics;
@@ -60,7 +60,7 @@ namespace Engine.Recources
             EditorBridge.Log($"AssetImporter: src='{_contentSourceRoot}', built='{_contentBuiltRoot}', exe='{_contentExecutableRoot}', mgcb='{_mgcbExe} {_mgcbArgPrefix}'");
         }
 
-        private static string LocateEngineContentRoot()
+        internal static string LocateEngineContentRoot()
         {
             // Walk ancestors of the executable's base dir until we find one that contains
             // Engine/Content/Content.mgcb. That's the repo root; the Engine/Content
@@ -99,7 +99,7 @@ namespace Engine.Recources
 
             string ext = (Path.GetExtension(sourceModelPath) ?? ".fbx").ToLowerInvariant();
             // Treat anything other than .obj as an FBX-style model (same importer).
-            string modelRelDir = $"Art/Models/{key}";
+            string modelRelDir = $"GameObjects/Models/{key}";
             string modelRelPath = $"{modelRelDir}/{key}{ext}";
             string modelDestAbs = Path.Combine(_contentSourceRoot, modelRelPath.Replace('/', Path.DirectorySeparatorChar));
 
@@ -182,7 +182,7 @@ namespace Engine.Recources
                 try
                 {
                     Directory.CreateDirectory(Path.Combine(_contentSourceRoot,
-                        $"Art/Models/{registeredKey}/Textures".Replace('/', Path.DirectorySeparatorChar)));
+                        $"GameObjects/Models/{registeredKey}/Textures".Replace('/', Path.DirectorySeparatorChar)));
                 }
                 catch (Exception ex) { EditorBridge.Log($"AssetImporter: could not create Textures dir for '{registeredKey}': {ex.Message}"); }
 
@@ -234,7 +234,7 @@ namespace Engine.Recources
                 ? Path.GetFileNameWithoutExtension(sourcePath)
                 : requestedKey);
             string ext = Path.GetExtension(sourcePath).ToLowerInvariant();
-            string relPath = $"Art/Textures/{key}{ext}";
+            string relPath = $"GameObjects/Textures/{key}{ext}";
             string destAbs = Path.Combine(_contentSourceRoot, relPath.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(destAbs)!);
             File.Copy(sourcePath, destAbs, overwrite: true);
@@ -247,7 +247,7 @@ namespace Engine.Recources
             RunMgcbBuild();
             CopyXnbForAsset(relPath);
 
-            string assetPath = $"Art/Textures/{key}";
+            string assetPath = $"GameObjects/Textures/{key}";
             return _content.Load<Texture2D>(assetPath);
         }
 
@@ -548,7 +548,7 @@ namespace Engine.Recources
         }
 
         /// <summary>
-        /// Copy dropped texture files into the model's <c>Art/Models/{key}/Textures/</c>
+        /// Copy dropped texture files into the model's <c>GameObjects/Models/{key}/Textures/</c>
         /// folder, build them via mgcb, and bind a convention-based material to the model.
         /// Returns true when an albedo-bearing material was bound; false otherwise (caller
         /// keeps the error material). Used by the "drop textures onto a model" editor flow.
@@ -558,7 +558,7 @@ namespace Engine.Recources
             material = null;
             if (string.IsNullOrEmpty(modelKey) || sourcePaths == null || sourcePaths.Count == 0) return false;
 
-            string texRelDir = $"Art/Models/{modelKey}/Textures";
+            string texRelDir = $"GameObjects/Models/{modelKey}/Textures";
             string texDestDir = Path.Combine(_contentSourceRoot, texRelDir.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(texDestDir);
 
@@ -602,13 +602,13 @@ namespace Engine.Recources
 
         /// <summary>
         /// Permanently remove a runtime-imported model's content: its Content.mgcb build
-        /// entries (model + Textures/* under Art/Models/{key}) and the copied source/built/
+        /// entries (model + Textures/* under GameObjects/Models/{key}) and the copied source/built/
         /// executable folders. Used by the Assets-panel "Delete" with disk removal.
         /// </summary>
         public void DeleteModelContent(string modelKey)
         {
             if (string.IsNullOrEmpty(modelKey)) return;
-            string modelRelDir = $"Art/Models/{modelKey}";
+            string modelRelDir = $"GameObjects/Models/{modelKey}";
             char sep = Path.DirectorySeparatorChar;
 
             string mgcbPath = Path.Combine(_contentSourceRoot, "Content.mgcb");
@@ -646,7 +646,7 @@ namespace Engine.Recources
 
         /// <summary>
         /// Lists the texture file names currently sitting in a model's
-        /// <c>Art/Models/{key}/Textures/</c> source folder. Static + lightweight so the
+        /// <c>GameObjects/Models/{key}/Textures/</c> source folder. Static + lightweight so the
         /// editor UI can populate the Textures tree without constructing an importer or
         /// touching the GPU. Returns an empty list when the folder doesn't exist.
         /// </summary>
@@ -656,7 +656,7 @@ namespace Engine.Recources
             if (string.IsNullOrEmpty(modelKey)) return result;
             try
             {
-                string dir = Path.Combine(LocateEngineContentRoot(), "Art", "Models", modelKey, "Textures");
+                string dir = Path.Combine(LocateEngineContentRoot(), "GameObjects", "Models", modelKey, "Textures");
                 if (!Directory.Exists(dir)) return result;
                 foreach (string f in Directory.EnumerateFiles(dir))
                 {
