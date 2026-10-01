@@ -84,6 +84,9 @@ namespace Engine.Recources
         public ModelDefinition ErrorModel;
         public Texture2D ErrorTexture;
         public MaterialEffect ErrorMaterial;
+        // Material for the ERROR mesh itself, built from its ERRORText_typeBlinn_* maps
+        // (the FBX doesn't reference them). Falls back to ErrorMaterial (error.png).
+        public MaterialEffect ErrorModelMaterial;
 
         // -------- Runtime-registered models (added via AssetImporter at editor runtime) --------
 
@@ -241,9 +244,6 @@ namespace Engine.Recources
             try
             {
                 ErrorModel = new ModelDefinition(content, "GameObjects/Error/ERRORText", graphicsDevice);
-                // Bind the mesh's own embedded textures so the error model shows them when
-                // spawned with a null material (TODO: "Error model doesn't display textures").
-                BindEmbeddedTextures(ErrorModel.Model);
             }
             catch
             {
@@ -259,6 +259,23 @@ namespace Engine.Recources
                 ErrorTexture = null;
                 ErrorMaterial = CreateMaterial(Color.Magenta, 0.6f, 0);
                 EditorBridge.Log("Assets: failed to load GameObjects/error texture: " + ex.Message);
+            }
+            ErrorModelMaterial = ErrorMaterial;
+            if (ErrorModel != Cube)
+            {
+                try
+                {
+                    const string errorTex = "GameObjects/Error/ERRORText_typeBlinn_";
+                    ErrorModelMaterial = CreateMaterial(Color.White, 1, 0,
+                        albedoMap: content.Load<Texture2D>(errorTex + "BaseColor"),
+                        normalMap: content.Load<Texture2D>(errorTex + "Normal"),
+                        roughnessMap: content.Load<Texture2D>(errorTex + "Roughness"),
+                        metallicMap: content.Load<Texture2D>(errorTex + "Metallic"));
+                }
+                catch (Exception ex)
+                {
+                    EditorBridge.Log("Assets: failed to load ERRORText textures, using error.png: " + ex.Message);
+                }
             }
 
             // Re-register models imported in previous editor sessions so they reappear
@@ -529,6 +546,7 @@ namespace Engine.Recources
             NoiseMap?.Dispose();
             SkyTexture?.Dispose();
             RockMaterial?.Dispose();
+            if (ErrorModelMaterial != ErrorMaterial) ErrorModelMaterial?.Dispose();
             ErrorMaterial?.Dispose();
             ErrorTexture?.Dispose();
         }

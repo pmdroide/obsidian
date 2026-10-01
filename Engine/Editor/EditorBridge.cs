@@ -6,6 +6,7 @@ using System.Reflection;
 using Engine.Entities;
 using Engine.Logic;
 using Engine.Recources;
+using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Editor
@@ -140,6 +141,7 @@ namespace Engine.Editor
         public event Action SceneChanged;
         public event Action<Logic.GameMode> ModeChanged;
         public event Action ModelRegistryChanged;
+        public event Action<LightingBakeStatus> LightingStatusChanged;
 
         // Lazy-constructed on first import — needs Assets.Content + Assets.GraphicsDevice
         // populated, which only happens after ScreenManager.Load() runs.
@@ -169,6 +171,7 @@ namespace Engine.Editor
             if (scene != null)
             {
                 scene.SceneManager.SceneChanged += OnSceneSwap;
+                scene.Lighting.StatusChanged += OnLightingStatusChanged;
                 if (scene.PlayMode != null) scene.PlayMode.ModeChanged += OnModeChanged;
             }
 
@@ -348,14 +351,14 @@ namespace Engine.Editor
                         md = _assets.ErrorModel;
 
                     // Material selection:
-                    //  - The ERROR mesh renders with its own embedded textures (null material).
+                    //  - The ERROR mesh uses its own texture set, or error.png if those failed.
                     //  - A convention-bound import uses its bound material.
                     //  - An import without bound textures falls back to the visible error.png.
                     //  - A built-in uses its embedded per-mesh-part materials (null material),
                     //    so Sponza/Helmets etc. keep their textures.
                     MaterialEffect material;
                     if (md == _assets.ErrorModel)
-                        material = null;
+                        material = (_assets.ErrorModelMaterial ?? _assets.ErrorMaterial)?.Clone();
                     else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound))
                         material = bound.Clone();
                     else if (_assets.DynamicModels.ContainsKey(modelKey))
@@ -509,6 +512,56 @@ namespace Engine.Editor
             to.MetallicMap = from.MetallicMap;
             to.Mask = from.Mask;
             to.DisplacementMap = from.DisplacementMap;
+        }
+
+        // -------- Baked lighting --------
+
+        public LightingBakeStatus LightingStatus => _scene?.Lighting.Status ?? LightingBakeStatus.Idle;
+
+        private void OnLightingStatusChanged(LightingBakeStatus status)
+        {
+            try { LightingStatusChanged?.Invoke(status); }
+            catch (Exception ex) { Log("LightingStatusChanged handler threw: " + ex); }
+        }
+
+        public LightingSettings GetLightingSettings() =>
+            _scene?.ActiveScene?.Lighting?.Clone() ?? new LightingSettings();
+
+        public void EnqueueMutateLighting(Action<LightingSettings> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                Logic.Scene active = _scene?.ActiveScene;
+                if (active == null) return;
+                try { mutate(active.Lighting); active.IsDirty = true; }
+                catch (Exception ex) { Log("EnqueueMutateLighting threw: " + ex); }
+            });
+        }
+
+        public void EnqueueBakeLighting()
+        {
+            Log("EnqueueBakeLighting");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene?.ActiveScene == null) return;
+                _scene.Lighting.StartBake(_scene.ActiveScene);
+            });
+        }
+
+        public void CancelLightingBake() => _scene?.Lighting.Cancel();
+
+        public void EnqueueClearBakedLighting()
+        {
+            _pendingOps.Enqueue(() => _scene?.Lighting.ClearBake(_scene.ActiveScene));
+        }
+
+        public string GetBakedLightingSummary()
+        {
+            ProbeVolumeData d = _scene?.ActiveScene?.BakedProbes;
+            if (d == null) return null;
+            return $"{d.CountX}×{d.CountY}×{d.CountZ} probes ({d.ProbeCount:N0}) · {d.SamplesPerProbe} rays · " +
+                   $"{d.Bounces} bounce{(d.Bounces == 1 ? "" : "s")} · baked {d.BakedAtUtc.ToLocalTime():g} in {d.BakeSeconds:0.0} s";
         }
 
         public void EnqueueNewScene()

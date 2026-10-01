@@ -1,5 +1,110 @@
 # Changelog
 
+## Added: baked lighting (irradiance probe volume) with a Lighting tab in Anvil
+
+A first version of baked global illumination. The Inspector has a new **Lighting** tab (also under Window > Lighting). From it you can bake a 3D grid of light probes for the scene on the CPU. Inside the grid, the deferred renderer then uses the probes for diffuse ambient light instead of the environment cubemap. Probes need no lightmap UVs, so they work with every existing model.
+
+How it works:
+
+- **Bake.** `LightingBakeInput.Gather` takes a world-space copy of all meshes on the game thread: triangles, outward normals, and an approximate albedo per material, plus the enabled directional and point lights. `ProbeVolumeBaker` then works on that copy on a background thread. It builds a `TriangleBvh` (SAH), and each probe casts *Rays / Probe* rays:
+  - a ray that escapes picks up the sky;
+  - a ray that hits a back face counts towards marking the probe as inside geometry;
+  - a ray that hits a front face picks up albedo × (direct light at the hit point + the previous pass's probes).
+  
+  Each pass adds one bounce (the DDGI approach). The result is stored per probe and colour channel as L1 spherical harmonics, already in the deferred shaders' light units (×0.1, linear colour). Probes inside geometry are replaced by the average of their valid neighbours.
+- **Runtime.** `LightingSystem` uploads the probes as three `HalfVector4` `Texture3D`s. `DeferredEnvironmentMap.fx` rebuilds each pixel's world position from depth, samples the volume with trilinear filtering, and blends from the cubemap's diffuse to the probe irradiance near the volume's edges. Specular reflections still come from the cubemap/SSR.
+- **Persistence.** Lighting settings are saved inside the `.obsc` scene file (an optional `Lighting` block, so older v1 files still load). The bake is saved as a binary `<scene>.probes` file next to it.
+
+Added:
+
+- [Engine/Renderer/Lighting/LightingSettings.cs](Engine/Renderer/Lighting/LightingSettings.cs): per-scene settings.
+  - Runtime: enable, intensity, show probes.
+  - Volume: fit to scene + padding or manual bounds, probe spacing, max probes per axis.
+  - Quality: rays per probe, bounces, validity threshold.
+  - Sky colour and intensity.
+- [Engine/Renderer/Lighting/ProbeVolumeData.cs](Engine/Renderer/Lighting/ProbeVolumeData.cs): the baked grid, trilinear `EvaluateIrradiance`, and the `.probes` read/write code (versioned header).
+- [Engine/Renderer/Lighting/LightingBakeInput.cs](Engine/Renderer/Lighting/LightingBakeInput.cs): scene gather. Reads positions and normals from the vertex buffers using the vertex declaration, and averages the albedo texture from a small mip level.
+- [Engine/Renderer/Lighting/TriangleBvh.cs](Engine/Renderer/Lighting/TriangleBvh.cs): binned-SAH BVH with closest-hit and any-hit queries.
+- [Engine/Renderer/Lighting/ProbeVolumeBaker.cs](Engine/Renderer/Lighting/ProbeVolumeBaker.cs): the multi-bounce CPU baker. Uses `Parallel.For`, can be cancelled, reports progress, and uses deterministic per-probe ray rotations.
+- [Engine/Renderer/Lighting/LightingSystem.cs](Engine/Renderer/Lighting/LightingSystem.cs), [LightingBakeStatus.cs](Engine/Renderer/Lighting/LightingBakeStatus.cs): starts, cancels and finishes bakes, uploads to the GPU, publishes status, and draws the probe debug view (probes coloured by irradiance, magenta for invalid ones, plus the volume bounds).
+- [Editor/Anvil/Models/LightingViewModel.cs](Editor/Anvil/Models/LightingViewModel.cs): the Lighting tab's view model. Reloads when the scene changes, sends edits to the game thread, and logs bake results to the Anvil console.
+
+Changed:
+
+- [Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx](Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx), [DeferredEnvironmentMapRenderModule.cs](Engine/Renderer/RenderModules/DeferredEnvironmentMapRenderModule.cs): probe volume parameters, `SampleProbeVolume`, and a new `SetProbeVolume(...)`.
+- [Engine/Renderer/Renderer.cs](Engine/Renderer/Renderer.cs): `Draw` takes optional `lighting` / `lightingSettings` arguments, binds the probe volume before the environment pass, and draws the probe debug view when *Show probes* is on (editor mode only).
+- [Engine/Logic/Scene.cs](Engine/Logic/Scene.cs): new `Lighting` (settings) and `BakedProbes` fields. [MainSceneLogic.cs](Engine/Logic/MainSceneLogic.cs) owns a `LightingSystem`. [ScreenManager.cs](Engine/Logic/ScreenManager.cs) updates and disposes it and passes it to the renderer.
+- [Engine/Logic/SceneSerialization.cs](Engine/Logic/SceneSerialization.cs): `LightingRecord` (settings + probe file name). Saves and loads the `.probes` file next to the scene; a missing or unreadable file is logged and ignored.
+- [Engine/Editor/IEditorBridge.cs](Engine/Editor/IEditorBridge.cs), [EditorBridge.cs](Engine/Editor/EditorBridge.cs): `GetLightingSettings`, `EnqueueMutateLighting`, `EnqueueBakeLighting`, `CancelLightingBake`, `EnqueueClearBakedLighting`, `GetBakedLightingSummary`, `LightingStatus`, `LightingStatusChanged`.
+- [Engine/Renderer/Helper/HelperGeometry/OctahedronHelperManager.cs](Engine/Renderer/Helper/HelperGeometry/OctahedronHelperManager.cs), [HelperGeometryManager.cs](Engine/Renderer/Helper/HelperGeometry/HelperGeometryManager.cs): octahedron helpers accept an optional radius. Existing callers still use 0.005.
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): a third Inspector chip, **Lighting**, and Window > Lighting. The panel has Bake (Bake/Cancel/Clear, progress bar, last-bake summary), Probe Volume, Volume (manual min/max when *Fit to scene* is off), Quality and Sky sections.
+
+Known limits / next steps:
+
+- Albedo is one average per material (no per-texel UV lookup) and emissive surfaces don't emit light.
+- Rays that escape the scene pick up a flat sky colour, not the sky cubemap.
+- Thin walls can leak light: there is no per-probe depth/visibility test like DDGI's Chebyshev test.
+- Probe irradiance is only applied while `g_environmentmapping` is on, because it shares the environment pass.
+- Mesh `IsEnabled` is ignored when gathering geometry, matching the renderer (editor-spawned entities leave it false). Lights still respect it.
+- Probes don't move with objects; rebake after editing the scene.
+
+## Added: window size, resizing, fullscreen, VSync and FPS cap in Game Settings; System folder hidden
+
+The Game Settings dialog now also controls how the standalone game window is sized and paced. These settings are only applied when the engine runs standalone. The viewport embedded in Anvil is unaffected.
+
+Added:
+
+- [Engine/Recources/GameInfo.cs](Engine/Recources/GameInfo.cs): new `WindowWidth`/`WindowHeight` (default 1280x720), `AllowResizing` (default on), `Fullscreen`, `VSync` and `FpsCap` (0 = unlimited) fields, plus `ApplyToGameSettings()`, which pushes them into `GameSettings.g_screenwidth/height`, `g_vsync` and `g_fixedfps`.
+- [Editor/Anvil/Views/GameSettingsWindow.axaml](Editor/Anvil/Views/GameSettingsWindow.axaml), [Editor/Anvil/ViewModels/GameSettingsViewModel.cs](Editor/Anvil/ViewModels/GameSettingsViewModel.cs): **Window** section (Width, Height, "Allow the player to resize the window", "Fullscreen (borderless, desktop resolution)") and **Frame Rate** section (VSync, FPS Cap). Width/Height and resizing are greyed out while Fullscreen is on.
+
+Changed:
+
+- [Engine/Engine.cs](Engine/Engine.cs): `Initialize()` now calls a new `ApplyGameInfo()` only when `IsHostedByEditor` is false. It applies the title and icon, sets `Window.AllowUserResizing`, switches to borderless fullscreen at the desktop resolution when requested, and resizes the back buffer before the render targets are created.
+- [Engine/Engine.cs](Engine/Engine.cs): `SetFPSLimit()` now calls `ApplyChanges()` in the fixed-FPS branch. Before, VSync stayed on, so an FPS cap was silently limited to the monitor refresh rate.
+- `GameInfo.json` moved from `Engine/Content/` to `Engine/Content/System/GameInfo.json` ([Engine.csproj](Engine/Engine.csproj) copy rule updated).
+- [Editor/Anvil/ViewModels/MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): the top-level `System` folder is always hidden in the Assets panel. It holds engine-managed files: editor gizmo meshes/icons, `GameInfo.json` and `GameIcon.ico`.
+
+## Added: Game Settings (window name + icon)
+
+A new **Game Settings** entry in Anvil's title-bar menu opens a dialog where you set the standalone game's window name and upload a custom icon image.
+
+Added:
+
+- [Engine/Recources/GameInfo.cs](Engine/Recources/GameInfo.cs): reads and writes `Engine/Content/System/GameInfo.json` (`WindowTitle`, `IconPath`). Dev runs read the source `Engine/Content` copy directly, and shipped builds read the copy next to the executable. `ApplyToWindow` sets the MonoGame window title and sets the icon through the WinForms `Form.Icon`.
+- [Editor/Anvil/Views/GameSettingsWindow.axaml](Editor/Anvil/Views/GameSettingsWindow.axaml) / [.axaml.cs](Editor/Anvil/Views/GameSettingsWindow.axaml.cs), [Editor/Anvil/ViewModels/GameSettingsViewModel.cs](Editor/Anvil/ViewModels/GameSettingsViewModel.cs): a modal dialog with a Window Name field, an icon preview, **Upload Image...** (png/jpg/bmp/ico/gif/webp) and **Reset**. Nothing is written until you press Save.
+- [Editor/Anvil/Services/IconWriter.cs](Editor/Anvil/Services/IconWriter.cs): converts the chosen image into a multi-size `.ico` (256/64/48/32/16, PNG-compressed entries). Non-square images are fitted into a transparent square, not stretched. The icon is written to `Engine/Content/System/GameIcon.ico`.
+
+Changed:
+
+- [Engine/Engine.cs](Engine/Engine.cs): `Initialize()` loads `GameInfo` and applies it, replacing the hard-coded `"Engine"` title.
+- [Engine/Engine.csproj](Engine/Engine.csproj): `Content/GameInfo.json` and `Content/System/GameIcon.ico` are copied to the output. When `GameIcon.ico` exists it also becomes the executable's `ApplicationIcon` on the next build.
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [Editor/Anvil/ViewModels/MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): new top-level `Game Settings` menu item (`OpenGameSettingsCommand`). The title bar's project name now shows the game's window name. Saving logs to the Anvil console.
+
+## Fix: volumetric fog hid the scene; fog settings in the inspector
+
+With the default sun (intensity 100) the froxel fog covered the whole editor viewport, and objects only showed through at extreme light intensities such as 10000. The deferred light shaders scale their output by `0.1`, but the fog used the light's full `colour × intensity`, so lit fog was far brighter than the lit surfaces behind it.
+
+Changed:
+
+- [Engine/Content/Shaders/Deferred/Froxel.fx](Engine/Content/Shaders/Deferred/Froxel.fx): light scattered into the fog by directional and point lights is now scaled by the same `0.1` (`LIGHT_OUTPUT_SCALE`) as surface lighting. Fog keeps its density, but no longer outshines the objects inside it.
+- [Engine/Recources/GameSettings.cs](Engine/Recources/GameSettings.cs): new `g_FroxelAnisotropy` (Henyey-Greenstein `G`, default 0.45, clamped to ±0.95). It used to be fixed in the shader.
+- [Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs](Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs): passes `g_FroxelAnisotropy` to the shader's `G` parameter each frame.
+
+Added:
+
+- A **Volumetric Fog** section in the Anvil inspector's Post FX tab ([MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [PostProcessingViewModel.cs](Editor/Anvil/Models/PostProcessingViewModel.cs)). It has an Enable Fog toggle, which sets both `g_FroxelsEnabled` and `g_FroxelFogEnabled` so turning fog off also skips the froxel passes. It also has Density, Absorption, Sun Scatter, Point Scatter, Anisotropy, Start/Full Distance, Sky Fog and History. The fields are greyed out while fog is off. Changes are applied on the game thread, like the other Post FX settings.
+
+## Fix: ERROR mesh spawned white
+
+When the ERROR mesh was dropped into the scene it showed up plain white. It didn't use its own textures, and it didn't fall back to `error.png` either. The cause: `EnqueueAddBasicEntity` gave it a `null` material so it would use its embedded FBX materials, but `ERRORText.fbx` doesn't reference any textures. Its `ERRORText_typeBlinn_*.jpg` maps were also missing from the content build.
+
+Changed:
+
+- [Engine/Content/Content.mgcb](Engine/Content/Content.mgcb): added the `ERRORText_typeBlinn_` BaseColor, Normal, Roughness and Metallic textures.
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs): new `ErrorModelMaterial`, built from those four maps. If any of them fails to load, it falls back to `ErrorMaterial` (`error.png`). Removed the `BindEmbeddedTextures(ErrorModel.Model)` call, since the FBX has nothing to bind. `ErrorModelMaterial` is disposed in `Dispose()`.
+- [Engine/Editor/EditorBridge.cs](Engine/Editor/EditorBridge.cs): `EnqueueAddBasicEntity` gives the ERROR mesh a clone of `ErrorModelMaterial` (or `ErrorMaterial`) instead of `null`. This also applies to imports that failed and were registered with the error mesh.
+- [Engine/Recources/MaterialEffect.cs](Engine/Recources/MaterialEffect.cs): `Clone()` only called the `Effect` copy constructor, so every clone lost its texture maps, colour, roughness, metallic and type, and rendered as the default gray. This was the main reason the ERROR mesh (and imported models using `error.png` or textures bound by convention) still showed white. `Clone()` now copies all the material state.
+
 ## Content: `Art` â†’ `GameObjects`; Anvil Assets panel mirrors `Engine/Content`
 
 The `Engine/Content/Art` folder was renamed to `Engine/Content/GameObjects`. Every path that pointed at it now uses the new name, and the Anvil Assets panel shows the real Content folder instead of fixed virtual folders.

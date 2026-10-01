@@ -112,6 +112,9 @@ namespace Engine.Logic
             _audio?.UpdateListener(_sceneLogic.Camera);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
 
+            //Hands finished bakes to their scene and keeps the probe volume textures in sync
+            _sceneLogic.Lighting.Update(_graphicsDevice, _sceneLogic.ActiveScene);
+
             _debug.Update(gameTime);
 
             UpdateVistaUI(gameTime);
@@ -203,6 +206,7 @@ namespace Engine.Logic
         {
             _videoIntro.Unload();
             _audio?.Dispose();
+            _sceneLogic?.Lighting.Dispose();
             content.Dispose();
         }
 
@@ -227,7 +231,9 @@ namespace Engine.Logic
                 envSample: _sceneLogic.EnvironmentSample,
                 debugEntities: _sceneLogic.DebugEntities,
                 editorData: _editorLogic.GetEditorData(),
-                gameTime: gameTime);
+                gameTime: gameTime,
+                lighting: _sceneLogic.Lighting,
+                lightingSettings: _sceneLogic.ActiveScene.Lighting);
 
             _debug.Draw(gameTime);
 

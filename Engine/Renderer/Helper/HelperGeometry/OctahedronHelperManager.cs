@@ -10,12 +10,14 @@ namespace Engine.Renderer.Helper
         private OctahedronMesh _octahedronMesh;
         private List<Vector3> positions = new List<Vector3>();
         private List<Vector4> colors = new List<Vector4>();
-        private Matrix scale = Matrix.CreateScale(.005f);
+        private List<float> radii = new List<float>();
+        private const float DefaultRadius = .005f;
 
-        public void AddOctahedron(Vector3 position, Vector4 color)
+        public void AddOctahedron(Vector3 position, Vector4 color, float radius = DefaultRadius)
         {
             positions.Add(position);
             colors.Add(color);
+            radii.Add(radius);
         }
 
         public void Draw(GraphicsDevice graphics, Matrix viewProjection, EffectParameter worldViewProjection, EffectParameter globalColor, EffectPass globalColorPass)
@@ -28,7 +30,7 @@ namespace Engine.Renderer.Helper
             for (var index = 0; index < positions.Count; index++)
             {
                 
-                Matrix wvp = scale * Matrix.CreateTranslation(positions[index]) * viewProjection;
+                Matrix wvp = Matrix.CreateScale(radii[index]) * Matrix.CreateTranslation(positions[index]) * viewProjection;
 
                 worldViewProjection.SetValue(wvp);
                 globalColor.SetValue(colors[index]);
@@ -42,6 +44,7 @@ namespace Engine.Renderer.Helper
 
             positions.Clear();
             colors.Clear();
+            radii.Clear();
         }
 
     }

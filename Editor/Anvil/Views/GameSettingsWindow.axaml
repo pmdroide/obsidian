@@ -1,0 +1,167 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Anvil.ViewModels"
+        xmlns:controls="using:Anvil.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="Anvil.Views.GameSettingsWindow"
+        x:DataType="vm:GameSettingsViewModel"
+        Icon="/Assets/Icon.ico"
+        Title="Game Settings"
+        Width="440"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource AnvilPanelBackgroundBrush}"
+        FontFamily="{StaticResource AnvilFontFamily}"
+        Foreground="{StaticResource AnvilTextPrimaryBrush}">
+
+    <Design.DataContext>
+        <vm:GameSettingsViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+        </Style>
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="NumericUpDown.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="CheckBox">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Border.divider">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{StaticResource AnvilBorderBrush}" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="80" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource AnvilPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+    </Window.Styles>
+
+    <StackPanel Margin="20" Spacing="18">
+
+        <!-- Window name -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="Window Name" Classes="section" />
+            <TextBox Classes="field" Text="{Binding WindowTitle}" PlaceholderText="Engine" />
+            <TextBlock Text="Shown in the game window's title bar and taskbar." Classes="hint" />
+        </StackPanel>
+
+        <Border Classes="divider" />
+
+        <!-- Window -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Window" Classes="section" />
+            <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto">
+                <TextBlock Grid.Column="0" Grid.Row="0" Text="Width" Classes="label" Margin="0,0,0,6" />
+                <TextBlock Grid.Column="2" Grid.Row="0" Text="Height" Classes="label" Margin="0,0,0,6" />
+                <NumericUpDown Grid.Column="0" Grid.Row="1" Classes="field"
+                               Value="{Binding WindowWidth, Mode=TwoWay}"
+                               Minimum="320" Maximum="7680" Increment="10" FormatString="0"
+                               IsEnabled="{Binding IsWindowed}" />
+                <NumericUpDown Grid.Column="2" Grid.Row="1" Classes="field"
+                               Value="{Binding WindowHeight, Mode=TwoWay}"
+                               Minimum="240" Maximum="4320" Increment="10" FormatString="0"
+                               IsEnabled="{Binding IsWindowed}" />
+            </Grid>
+            <CheckBox Content="Allow the player to resize the window"
+                      IsChecked="{Binding AllowResizing}"
+                      IsEnabled="{Binding IsWindowed}" />
+            <CheckBox Content="Fullscreen (borderless, desktop resolution)"
+                      IsChecked="{Binding Fullscreen}" />
+        </StackPanel>
+
+        <Border Classes="divider" />
+
+        <!-- Performance -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Frame Rate" Classes="section" />
+            <CheckBox Content="VSync" IsChecked="{Binding VSync}" />
+            <StackPanel Spacing="6">
+                <TextBlock Text="FPS Cap" Classes="label" />
+                <NumericUpDown Classes="field" Width="140" HorizontalAlignment="Left"
+                               Value="{Binding FpsCap, Mode=TwoWay}"
+                               Minimum="0" Maximum="1000" Increment="5" FormatString="0" />
+                <TextBlock Text="0 = unlimited. A cap above 0 takes precedence over VSync."
+                           Classes="hint" />
+            </StackPanel>
+        </StackPanel>
+
+        <Border Classes="divider" />
+
+        <!-- Icon -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="Game Icon" Classes="section" />
+            <Grid ColumnDefinitions="Auto,*">
+                <Border Grid.Column="0" Width="72" Height="72" CornerRadius="6"
+                        Background="{StaticResource AnvilInputBackgroundBrush}"
+                        BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1">
+                    <Grid>
+                        <Image Source="{Binding IconPreview}" Width="56" Height="56"
+                               Stretch="Uniform" IsVisible="{Binding HasIcon}" />
+                        <controls:LucideIcon Icon="Image" Width="24" Height="24"
+                                             Foreground="{StaticResource AnvilTextDisabledBrush}"
+                                             IsVisible="{Binding HasNoIcon}" />
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding IconLabel}" FontSize="11"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Upload Image..."
+                                Command="{Binding BrowseIconCommand}"
+                                CommandParameter="{Binding $parent[Window]}" />
+                        <Button Content="Reset" Command="{Binding ClearIconCommand}"
+                                IsEnabled="{Binding HasIcon}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+            <TextBlock Text="PNG, JPG, BMP or ICO. Converted to a multi-size .ico; the executable icon updates on the next build."
+                       Classes="hint" />
+        </StackPanel>
+
+        <TextBlock Text="These settings apply when the game runs standalone, not to the editor viewport."
+                   Classes="hint" />
+
+        <!-- Actions -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Cancel" IsCancel="True" Click="Cancel_Click" />
+            <Button Content="Save" Classes="primary" IsDefault="True" Click="Save_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

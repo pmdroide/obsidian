@@ -119,13 +119,44 @@ namespace Engine
         /// </summary>
         protected override void Initialize()
         {
-            this.Window.Title = "Engine";
+            //Standalone window/display settings come from Content/System/GameInfo.json (edited in
+            //Anvil > Game Settings). Skipped when hosted: Anvil owns the embedded viewport's size.
+            if (!_bridge.IsHostedByEditor)
+                ApplyGameInfo();
 
             _screenManager.Load(Content, GraphicsDevice);
             // TODO: Add your initialization logic here
             _screenManager.Initialize(GraphicsDevice, _physics);
 
             base.Initialize();
+        }
+
+        /// <summary>
+        /// Applies the standalone game settings: title, icon, window size, resizability,
+        /// fullscreen and the FPS limit (picked up by CheckFPSLimitChange on the first Draw).
+        /// Runs before the screen manager creates its resolution-sized render targets.
+        /// </summary>
+        private void ApplyGameInfo()
+        {
+            GameInfo.Data info = GameInfo.Load();
+            GameInfo.ApplyToGameSettings();
+            GameInfo.ApplyToWindow(Window);
+
+            Window.AllowUserResizing = info.AllowResizing && !info.Fullscreen;
+
+            if (info.Fullscreen)
+            {
+                //Borderless fullscreen at the desktop resolution (no display mode switch)
+                DisplayMode mode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+                GameSettings.g_screenwidth = mode.Width;
+                GameSettings.g_screenheight = mode.Height;
+                _graphics.HardwareModeSwitch = false;
+                _graphics.IsFullScreen = true;
+            }
+
+            _graphics.PreferredBackBufferWidth = GameSettings.g_screenwidth;
+            _graphics.PreferredBackBufferHeight = GameSettings.g_screenheight;
+            _graphics.ApplyChanges();
         }
 
         /// <summary>
@@ -229,6 +260,9 @@ namespace Engine
                     _graphics.SynchronizeWithVerticalRetrace = false;
                     IsFixedTimeStep = true;
                     TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0f / GameSettings.g_fixedfps);
+                    //Without this the swap chain keeps MonoGame's default VSync and the cap is
+                    //silently clamped to the monitor refresh rate.
+                    _graphics.ApplyChanges();
                 }
                 else //Vsync
                 {

@@ -1,6 +1,7 @@
 using System;
 using Engine.Entities;
 using Engine.Renderer.Helper;
+using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -41,6 +42,16 @@ namespace Engine.Renderer.RenderModules
         public EffectParameter ParamInstancesCount;
 
         public EffectParameter ParamUseSDFAO;
+
+        //Baked probe volume (see LightingSystem / ProbeVolumeData)
+        private EffectParameter _paramUseProbeVolume;
+        private EffectParameter _paramProbeVolumeIntensity;
+        private EffectParameter _paramProbeVolumeMin;
+        private EffectParameter _paramProbeVolumeExtentRcp;
+        private EffectParameter _paramProbeVolumeCells;
+        private EffectParameter _paramProbeSHR;
+        private EffectParameter _paramProbeSHG;
+        private EffectParameter _paramProbeSHB;
 
 
         private EffectPass _passBasic;
@@ -217,6 +228,15 @@ namespace Engine.Renderer.RenderModules
 
             ParamUseSDFAO = _deferredEnvironmentShader.Parameters["UseSDFAO"];
 
+            _paramUseProbeVolume = _deferredEnvironmentShader.Parameters["UseProbeVolume"];
+            _paramProbeVolumeIntensity = _deferredEnvironmentShader.Parameters["ProbeVolumeIntensity"];
+            _paramProbeVolumeMin = _deferredEnvironmentShader.Parameters["ProbeVolumeMin"];
+            _paramProbeVolumeExtentRcp = _deferredEnvironmentShader.Parameters["ProbeVolumeExtentRcp"];
+            _paramProbeVolumeCells = _deferredEnvironmentShader.Parameters["ProbeVolumeCells"];
+            _paramProbeSHR = _deferredEnvironmentShader.Parameters["ProbeSHR"];
+            _paramProbeSHG = _deferredEnvironmentShader.Parameters["ProbeSHG"];
+            _paramProbeSHB = _deferredEnvironmentShader.Parameters["ProbeSHB"];
+
             _passSky = _deferredEnvironmentShader.Techniques["Sky"].Passes[0];
             _passBasic = _deferredEnvironmentShader.Techniques["Basic"].Passes[0];
 
@@ -240,6 +260,32 @@ namespace Engine.Renderer.RenderModules
         {
             _deferredEnvironmentShader = content.Load<Effect>(shaderPath);
 
+        }
+
+        /// <summary>
+        /// Bind the baked probe volume for the next DrawEnvironmentMap, or disable it (null).
+        /// Parameters may be missing while an older compiled shader is loaded; that just disables it.
+        /// </summary>
+        public void SetProbeVolume(LightingSystem lighting, float intensity)
+        {
+            if (_paramUseProbeVolume == null) return;
+
+            ProbeVolumeData data = lighting?.GpuData;
+            if (data == null || lighting.ProbeSHR == null || _paramProbeSHR == null)
+            {
+                _paramUseProbeVolume.SetValue(false);
+                return;
+            }
+
+            Vector3 extent = data.BoundsMax - data.BoundsMin;
+            _paramUseProbeVolume.SetValue(true);
+            _paramProbeVolumeIntensity?.SetValue(intensity);
+            _paramProbeVolumeMin?.SetValue(data.BoundsMin);
+            _paramProbeVolumeExtentRcp?.SetValue(new Vector3(1f / extent.X, 1f / extent.Y, 1f / extent.Z));
+            _paramProbeVolumeCells?.SetValue(new Vector3(data.CountX - 1, data.CountY - 1, data.CountZ - 1));
+            _paramProbeSHR.SetValue(lighting.ProbeSHR);
+            _paramProbeSHG?.SetValue(lighting.ProbeSHG);
+            _paramProbeSHB?.SetValue(lighting.ProbeSHB);
         }
 
         public void DrawEnvironmentMap(GraphicsDevice graphicsDevice, Camera camera, Matrix view, FullScreenTriangle fullScreenTriangle, EnvironmentSample envSample, GameTime gameTime, bool fireflyReduction, float ffThreshold)

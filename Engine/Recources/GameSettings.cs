@@ -344,6 +344,15 @@ namespace Engine.Recources
             set { _g_froxelFogDistanceFull = Math.Max(_g_froxelFogDistanceStart + 1f, value); }
         }
 
+        // Henyey-Greenstein anisotropy. 0 = isotropic, > 0 = forward scattering (glow around the
+        // sun when looking towards it), < 0 = back scattering.
+        private static float _g_froxelAnisotropy = 0.45f;
+        public static float g_FroxelAnisotropy
+        {
+            get { return _g_froxelAnisotropy; }
+            set { _g_froxelAnisotropy = Math.Clamp(value, -0.95f, 0.95f); }
+        }
+
         // Temporal history weight. Higher = smoother but laggier (and blocks visible when still).
         // Lower = more responsive but noisier. 0 disables temporal blending.
         private static float _g_froxelHistoryBlend = 0.7f;

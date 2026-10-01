@@ -18,7 +18,8 @@ namespace Anvil.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    [ObservableProperty] private string _projectName = "MyGame";
+    // Mirrors the game's window name (Game Settings) in the title bar.
+    [ObservableProperty] private string _projectName = Engine.Recources.GameInfo.Read().WindowTitle;
     [ObservableProperty] private string _sceneName = "SampleScene";
     [ObservableProperty] private string _platform = "PC, Mac & Linux";
     [ObservableProperty] private string _graphicsApi = "DX11";
@@ -81,6 +82,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public PostProcessingViewModel PostProcessing { get; } = new();
 
     /// <summary>
+    /// Baked lighting (probe volume) settings + bake controls for the active scene. Shown inside
+    /// the Inspector when <see cref="InspectorView"/> == "Lighting".
+    /// </summary>
+    public LightingViewModel Lighting { get; } = new();
+
+    /// <summary>
     /// Inspector content switch: "Selection" (default) shows the selected
     /// object; "PostProcessing" shows <see cref="PostProcessing"/>. Driven by
     /// the segmented control in the inspector header and by
@@ -88,11 +95,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
-        nameof(IsInspectorPostProcessingView))]
+        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
     public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
+    public bool IsInspectorLightingView => InspectorView == "Lighting";
 
     [RelayCommand]
     private void SetInspectorView(string view) => InspectorView = view;
@@ -215,6 +223,10 @@ public partial class MainWindowViewModel : ViewModelBase
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
         PostProcessing.AttachBridge(bridge);
+
+        // Baked lighting tab: per-scene settings + bake progress; bake results go to the console.
+        Lighting.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:Lighting");
+        Lighting.AttachBridge(bridge);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).
@@ -487,6 +499,29 @@ public partial class MainWindowViewModel : ViewModelBase
         catch { return null; }
     }
 
+    // -------- Game settings (standalone window title + icon) --------
+
+    [RelayCommand]
+    private async Task OpenGameSettingsAsync(Window? owner)
+    {
+        if (owner == null) return;
+        var vm = new GameSettingsViewModel();
+        var dialog = new Views.GameSettingsWindow { DataContext = vm };
+        if (!await dialog.ShowDialog<bool>(owner)) return;
+
+        try
+        {
+            ProjectName = vm.Apply();
+            AddConsoleEntry(ConsoleLevel.Log,
+                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\")",
+                "Anvil:GameSettings");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't save game settings: " + ex.Message, "Anvil:GameSettings");
+        }
+    }
+
     // -------- Helpers --------
 
     private static SceneObjectViewModel? FindObject(IEnumerable<SceneObjectViewModel> list, string? id)
@@ -504,12 +539,14 @@ public partial class MainWindowViewModel : ViewModelBase
     // -------- Assets panel (mirrors Engine/Content on disk) --------
 
     // Top-level Content entries that aren't user assets: mgcb build output, the mgcb
-    // manifest (+ its backup) and the legacy GUI folder. *.mgcontent build-state files
+    // manifest (+ its backup), the legacy GUI folder and the engine's System folder. *.mgcontent build-state files
     // are hidden at any depth.
     private static readonly HashSet<string> HiddenContentEntries =
         new(StringComparer.OrdinalIgnoreCase)
         {
             "bin", "obj", "Graphical User Interface", "Content.mgcb", "Content.mgcb.org",
+            // Engine-managed files (editor gizmo meshes/icons, GameInfo.json, GameIcon.ico).
+            "System",
         };
 
     private static bool IsHiddenContentFile(string name) =>

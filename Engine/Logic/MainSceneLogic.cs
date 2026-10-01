@@ -7,6 +7,7 @@ using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
+using Engine.Renderer.Lighting;
 using Engine.Renderer.RenderModules.Signed_Distance_Fields.SDF_Generator;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -35,6 +36,9 @@ namespace Engine.Logic
         // mesh library, SDF, editor camera, debug entities).
         public readonly SceneManager SceneManager = new SceneManager(new Scene());
         public Scene ActiveScene => SceneManager.ActiveScene;
+
+        // Baked lighting (probe volume) bakes + GPU data for the active scene.
+        public readonly LightingSystem Lighting = new LightingSystem();
 
         // Editor-only camera. Active in Edit mode; Play mode swaps in the scene's
         // MainCamera (the actual gameplay camera).

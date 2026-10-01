@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Engine.Entities;
 using Engine.Recources;
+using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Editor
@@ -156,6 +157,31 @@ namespace Engine.Editor
         string CurrentSceneName { get; }
         bool IsSceneDirty { get; }
         event Action SceneChanged;
+
+        // ---- Baked lighting (probe volume) — Inspector > Lighting ----
+
+        /// <summary>Copy of the active scene's lighting settings. Safe to call from the UI thread.</summary>
+        LightingSettings GetLightingSettings();
+
+        /// <summary>Queue an edit of the active scene's lighting settings (marks the scene dirty).</summary>
+        void EnqueueMutateLighting(Action<LightingSettings> mutate);
+
+        /// <summary>Queue a bake of the active scene. Progress arrives via <see cref="LightingStatusChanged"/>.</summary>
+        void EnqueueBakeLighting();
+
+        /// <summary>Cancel a running bake. Safe from any thread.</summary>
+        void CancelLightingBake();
+
+        /// <summary>Queue removal of the active scene's baked probes.</summary>
+        void EnqueueClearBakedLighting();
+
+        /// <summary>One-line summary of the active scene's bake (grid, samples, date), or null.</summary>
+        string GetBakedLightingSummary();
+
+        LightingBakeStatus LightingStatus { get; }
+
+        /// <summary>Fires on the game thread or the bake worker; UI consumers must marshal.</summary>
+        event Action<LightingBakeStatus> LightingStatusChanged;
 
         // Model picker support — names of available ModelDefinitions in the Assets registry.
         IReadOnlyList<string> AvailableModelKeys { get; }

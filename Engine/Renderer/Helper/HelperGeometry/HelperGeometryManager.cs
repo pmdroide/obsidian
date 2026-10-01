@@ -61,6 +61,11 @@ namespace Engine.Renderer.Helper.HelperGeometry
             _octahedronHelperManager.AddOctahedron(position, color);
         }
 
+        public void AddOctahedron(Vector3 position, Vector4 color, float radius)
+        {
+            _octahedronHelperManager.AddOctahedron(position, color, radius);
+        }
+
         public void AddBoundingBox(BasicEntity basicEntity)
         {
             _lineHelperManager.AddBoundingBox(basicEntity);
