@@ -124,6 +124,13 @@ namespace Engine.Logic
             _bridge?.DrainAndPublish();
         }
 
+        /// <summary>Sync + step scene physics (BEPU v2). Called by Engine after <see cref="Update"/>.</summary>
+        public void UpdatePhysics(float dt)
+        {
+            if (_currentState == GameState.VideoIntro) return;
+            _sceneLogic.UpdatePhysics(dt);
+        }
+
         // Update the Vista UI with performance metrics and other dynamic information.
         private void UpdateVistaUI(GameTime gameTime)
         {

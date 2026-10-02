@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Engine.Entities;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -56,6 +57,18 @@ namespace Engine.Editor
         }
     }
 
+    public readonly struct PhysicsSnapshot
+    {
+        public readonly PhysicsBodyType BodyType;
+        public readonly float Mass;
+
+        public PhysicsSnapshot(PhysicsBodyType bodyType, float mass)
+        {
+            BodyType = bodyType;
+            Mass = mass;
+        }
+    }
+
     public readonly struct EditorObjectSnapshot
     {
         public readonly int Id;
@@ -67,9 +80,12 @@ namespace Engine.Editor
         public readonly bool IsEnabled;
         public readonly LightSnapshot? Light;
         public readonly MaterialSnapshot? Material;
+        // BasicEntity only — drives the Inspector's Physics section.
+        public readonly PhysicsSnapshot? Physics;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, PhysicsSnapshot? physics = null)
         {
+            Physics = physics;
             Id = id;
             Name = name;
             Kind = kind;

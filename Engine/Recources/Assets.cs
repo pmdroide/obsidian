@@ -22,12 +22,7 @@ namespace Engine.Recources
         public ModelMeshPart SphereMeshPart;
         public ModelDefinition IsoSphere;
 
-        public ModelDefinition Plane;
-
         public ModelDefinition Cube;
-
-        //https://sketchfab.com/models/95c4008c4c764c078f679d4c320e7b18
-        public ModelDefinition Tiger;
 
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
@@ -68,7 +63,6 @@ namespace Engine.Recources
         public ModelDefinition StanfordDragon;
         public ModelDefinition StanfordDragonLowpoly;
 
-        public MaterialEffect RockMaterial;
 
 
         public SpriteFont DefaultFont;
@@ -127,23 +121,19 @@ namespace Engine.Recources
             Content = content;
             GraphicsDevice = graphicsDevice;
             //Default Meshes + Editor
-            EditorArrow = content.Load<Model>("GameObjects/Editor/Arrow");
-            EditorArrowRound = content.Load<Model>("GameObjects/Editor/ArrowRound");
+            EditorArrow = content.Load<Model>("System/Editor/arrow");
+            EditorArrowRound = content.Load<Model>("System/Editor/arrowRound");
 
             IsoSphere = new ModelDefinition(content, "GameObjects/default/isosphere", graphicsDevice, true, new Vector3(50, 50, 50));
-            
+
             Sphere = content.Load<Model>("GameObjects/default/sphere");
             SphereMeshPart = Sphere.Meshes[0].MeshParts[0];
 
-            Plane = new ModelDefinition(content, "GameObjects/Plane", graphicsDevice);
+            Cube = new ModelDefinition(content, "GameObjects/Default/cube", graphicsDevice, true, new Vector3(50, 50, 50));
 
-            Cube = new ModelDefinition(content, "GameObjects/test/cube", graphicsDevice, true, new Vector3(50, 50, 50));
-
-            Tiger = new ModelDefinition(content, "GameObjects/Tiger/Tiger", graphicsDevice, true, new Vector3(50,50,50));
-
-            IconDecal = content.Load<Texture2D>("GameObjects/Editor/icon_decal");
-            IconLight = content.Load<Texture2D>("GameObjects/Editor/icon_light");
-            IconEnvmap = content.Load<Texture2D>("GameObjects/Editor/icon_envmap");
+            IconDecal = content.Load<Texture2D>("System/Editor/icon_decal");
+            IconLight = content.Load<Texture2D>("System/Editor/icon_light");
+            IconEnvmap = content.Load<Texture2D>("System/Editor/icon_envmap");
             //Default Materials
 
             BaseMaterial = CreateMaterial(Color.Red, 0.5f, 0, type: MaterialEffect.MaterialTypes.Basic);
@@ -222,15 +212,6 @@ namespace Engine.Recources
             StanfordDragonLowpoly = new ModelDefinition(content, "GameObjects/default/dragon_lowpoly", graphicsDevice, true, new Vector3(60, 60,60));
 
             DragonLowPolyMaterial = CreateMaterial(Color.Red, 0.5f, 0, type: MaterialEffect.MaterialTypes.Basic, normalMap: content.Load<Texture2D>("GameObjects/default/dragon_normal"));
-
-            RockMaterial = CreateMaterial(Color.White, roughness: 1, metallic: 0,
-                albedoMap: content.Load<Texture2D>("GameObjects/test/squarebricks-diffuse"),
-                normalMap: content.Load<Texture2D>("GameObjects/test/squarebricks-normal"),
-                roughnessMap: null,
-                metallicMap: null,
-                mask: null,
-                displacementMap: content.Load<Texture2D>("GameObjects/test/squarebricks-depth")
-            );
 
             //Fonts
 
@@ -545,7 +526,6 @@ namespace Engine.Recources
             MirrorMaterial?.Dispose();
             NoiseMap?.Dispose();
             SkyTexture?.Dispose();
-            RockMaterial?.Dispose();
             if (ErrorModelMaterial != ErrorMaterial) ErrorModelMaterial?.Dispose();
             ErrorMaterial?.Dispose();
             ErrorTexture?.Dispose();

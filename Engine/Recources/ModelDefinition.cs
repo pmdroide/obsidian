@@ -34,10 +34,18 @@ namespace Engine.Recources
             {
                 CreateBoundingBox(Model);
 
-                //Optionally save that new one
+                //Optionally save that new one. The sidecar is only a cache, so a failed
+                //write (e.g. the folder doesn't exist relative to the cwd) must not stop boot.
                 if (GameSettings.e_saveBoundingBoxes)
                 {
-                    DataStream.SaveBoundingBoxData(BoundingBox, bbxpath);
+                    try
+                    {
+                        DataStream.SaveBoundingBoxData(BoundingBox, bbxpath);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        Editor.EditorBridge.Log("ModelDefinition: couldn't save " + bbxpath + ": " + ex.Message);
+                    }
                 }
             }
 

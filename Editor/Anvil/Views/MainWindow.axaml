@@ -963,6 +963,51 @@
                                     </StackPanel>
                                 </Expander>
 
+                                <!-- Physics -->
+                                <Expander IsExpanded="True"
+                                          IsVisible="{Binding Physics, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Atom" />
+                                            <TextBlock Text="Physics" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12"
+                                                DataContext="{Binding Physics}"
+                                                x:DataType="m:PhysicsInfo">
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Body"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <!-- Order must match Engine.Physics.PhysicsBodyType -->
+                                            <ComboBox Grid.Column="1" Classes="field"
+                                                      HorizontalAlignment="Stretch"
+                                                      SelectedIndex="{Binding BodyType, Mode=TwoWay}">
+                                                <ComboBoxItem>None</ComboBoxItem>
+                                                <ComboBoxItem>Static</ComboBoxItem>
+                                                <ComboBoxItem>Dynamic</ComboBoxItem>
+                                            </ComboBox>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
+                                              IsVisible="{Binding IsDynamic}">
+                                            <TextBlock Grid.Column="0" Text="Mass"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Mass, Mode=TwoWay}"
+                                                           Minimum="0.001"
+                                                           ShowButtonSpinner="False" FormatString="0.###" />
+                                        </Grid>
+                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsStatic}"
+                                                   Text="Immovable mesh collider. Other bodies collide with it." />
+                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsDynamic}"
+                                                   Text="Falls with gravity and collides (convex hull). Simulated in Play mode." />
+                                    </StackPanel>
+                                </Expander>
+
                                 <!-- Light -->
                                 <Expander IsExpanded="True"
                                           IsVisible="{Binding Light, Converter={x:Static ObjectConverters.IsNotNull}}">

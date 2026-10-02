@@ -27,12 +27,24 @@ namespace Engine.Entities
 
         private Vector3 _position;
 
-        // BEPUphysics v2 handles (value-type indices into the simulation). Null when
-        // the entity has no physics body. The PhysicsSystem owns the actual bodies;
-        // the entity only keeps handles + a reference to query/teleport them.
-        private PhysicsSystem _physics;
-        private BodyHandle? _dynamicBody;
+        // Physics component — authored in Anvil's Inspector > Physics and saved with the
+        // scene. ScenePhysics creates/rebuilds the actual BEPU body to match these.
+        public PhysicsBodyType PhysicsType = PhysicsBodyType.None;
+        public float Mass = 1f;
+
+        // BEPUphysics v2 runtime state, owned by ScenePhysics. Handles are value-type
+        // indices into the simulation; null when the entity has no body of that kind.
         public StaticHandle? StaticBody = null;
+        public BodyHandle? DynamicBody = null;
+        internal PhysicsBodyType AttachedPhysicsType;
+        internal Vector3 AttachedScale;
+        internal float AttachedMass;
+        // Collider centre in entity-local (scaled) space; dynamic bodies sit on their centre of mass.
+        internal Vector3 ColliderOffset;
+        // Transform last exchanged with the body, used to detect editor/script moves.
+        internal Vector3 SyncedPosition;
+        internal Matrix SyncedRotation;
+        internal int PhysicsFrame;
 
         public override Vector3 Position
         {
@@ -83,7 +95,11 @@ namespace Engine.Entities
             get
             {
                 //Not very clean...
-                return new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale );   
+                return new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
+                {
+                    PhysicsType = PhysicsType,
+                    Mass = Mass,
+                };
             }  
         }
 
@@ -98,8 +114,7 @@ namespace Engine.Entities
 
 
         public readonly TransformMatrix WorldTransform;
-        private Matrix _worldOldMatrix = Matrix.Identity;
-        private Matrix _worldNewMatrix = Matrix.Identity;
+        private Matrix _worldMatrix = Matrix.Identity;
         
         public BasicEntity(ModelDefinition modelbb, MaterialEffect material, Vector3 position, double angleZ, double angleX, double angleY, Vector3 scale, MeshMaterialLibrary library = null)
         {
@@ -154,17 +169,6 @@ namespace Engine.Entities
             library.Register(Material, Model, WorldTransform);
         }
 
-        /// <summary>
-        /// Attach a dynamic BEPUphysics v2 body (created via <see cref="PhysicsSystem"/>)
-        /// to this entity. Once attached, the entity's transform follows the body each
-        /// frame (see <see cref="CheckPhysics"/>).
-        /// </summary>
-        public void RegisterPhysics(PhysicsSystem physics, BodyHandle body)
-        {
-            _physics = physics;
-            _dynamicBody = body;
-        }
-
         public void Dispose(MeshMaterialLibrary library)
         {
             library.DeleteFromRegistry(this);
@@ -172,51 +176,15 @@ namespace Engine.Entities
 
         public void ApplyTransformation()
         {
-            if (_dynamicBody == null)
-            {
-                //RotationMatrix = Matrix.CreateRotationX((float) AngleX)*Matrix.CreateRotationY((float) AngleY)*
-                //                  Matrix.CreateRotationZ((float) AngleZ);
-                Matrix scaleMatrix = Matrix.CreateScale(Scale);
-                _worldOldMatrix = scaleMatrix* RotationMatrix * Matrix.CreateTranslation(Position);
+            // Dynamic bodies write their pose back into Position/RotationMatrix
+            // (ScenePhysics), so every entity builds its world matrix the same way.
+            Matrix scaleMatrix = Matrix.CreateScale(Scale);
+            _worldMatrix = scaleMatrix * RotationMatrix * Matrix.CreateTranslation(Position);
 
-                WorldTransform.Scale = Scale;
-                WorldTransform.World = _worldOldMatrix;
+            WorldTransform.Scale = Scale;
+            WorldTransform.World = _worldMatrix;
 
-                WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
-            }
-            else
-            {
-                //Pose (rotation + translation) comes from the physics body; scale is applied on top.
-                WorldTransform.Scale = Scale;
-                _worldOldMatrix = _physics.GetBodyMatrix(_dynamicBody.Value);
-                Matrix scaleMatrix = Matrix.CreateScale(Scale);
-                //WorldOldMatrix = Matrix.CreateScale(Scale)*WorldOldMatrix;
-                WorldTransform.World = scaleMatrix * _worldOldMatrix;
-
-                WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
-
-            }
-        }
-
-        internal void CheckPhysics()
-        {
-            if (_dynamicBody == null) return;
-
-            _worldNewMatrix = _physics.GetBodyMatrix(_dynamicBody.Value);
-
-            if (_worldNewMatrix != _worldOldMatrix)
-            {
-                WorldTransform.HasChanged = true;
-                _worldOldMatrix = _worldNewMatrix;
-                Position = _worldOldMatrix.Translation;
-            }
-            else
-            {
-                if (Position != _worldNewMatrix.Translation && GameSettings.e_enableeditor)
-                {
-                    _physics.SetBodyPosition(_dynamicBody.Value, Position);
-                }
-            }
+            WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
         }
     }
 

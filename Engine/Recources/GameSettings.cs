@@ -11,7 +11,7 @@ namespace Engine.Recources
         public static bool g_vsync = false;
         public static int g_fixedfps = 0;
         public static int u_showdisplayinfo = 3;
-        public static bool p_physics = false;
+        public static bool p_physics = true; //Master switch: simulate physics bodies outside editor mode (Play)
         public static Renderer.Renderer.RenderModes g_rendermode = Renderer.Renderer.RenderModes.Deferred;
 
         //Editor

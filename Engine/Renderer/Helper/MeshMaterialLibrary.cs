@@ -313,13 +313,9 @@ namespace Engine.Renderer.Helper
             //        matLib.HasChangedThisFrame = true;
             //    }
             //}
-            
-            for (int index1 = 0; index1 < entities.Count; index1++)
-            {
-                BasicEntity entity = entities[index1];
-                entity.CheckPhysics();
-            }
 
+            // Physics poses are written into entity transforms by ScenePhysics during
+            // Update, which flags WorldTransform.HasChanged — nothing to poll here.
         }
 
         /// <summary>

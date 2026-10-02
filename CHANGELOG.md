@@ -1,5 +1,57 @@
 # Changelog
 
+## Added: Physics section in the Anvil inspector (static / dynamic bodies)
+
+Selecting a model in Anvil now shows a **Physics** section in the Inspector with a **Body** dropdown:
+
+- **None**: no collider (the default).
+- **Static**: an immovable triangle-mesh collider built from the model. Other bodies collide with it.
+- **Dynamic**: a rigid body that falls with gravity and collides with other bodies. Its collider is the convex hull of the model. A **Mass** field appears for this option.
+
+Physics only runs in Play mode. While editing, every collider follows its object, so moving, rotating or scaling with the gizmo or the inspector also moves the collider. In Play mode, dynamic bodies fall and collide. If a script or the gizmo moves a dynamic body during Play, the body is teleported there and keeps its velocity. Stop puts every object back where it was before Play and clears all velocities.
+
+Added:
+
+- [Engine/Physics/ScenePhysics.cs](Engine/Physics/ScenePhysics.cs): runs once per frame on the game thread and keeps BEPU bodies matching each entity's physics component. It creates, rebuilds and removes bodies when the type, scale or mass changes. It removes the bodies of deleted entities and of entities left behind by a scene swap. While editing it moves bodies to match their entities; in Play mode it steps the simulation and writes dynamic poses back into `Position`/`RotationMatrix`. The timestep is clamped to 1/20 s so a frame hitch can't push bodies through colliders. Model geometry is cached per `Model`.
+- [Engine/Physics/PhysicsSystem.cs](Engine/Physics/PhysicsSystem.cs): the `PhysicsBodyType` enum (`None`/`Static`/`Dynamic`), plus `AddDynamicConvex` and `GetBodyPose`/`SetBodyPose`/`SetStaticPose`. `AddDynamicConvex` builds a convex hull and falls back to a bounding box when the model is flat or has more than 20k unique vertices. The body is centred on its centre of mass, and the offset from the entity origin is returned.
+- `PhysicsSnapshot` in [IEditorBridge.cs](Engine/Editor/IEditorBridge.cs), filled for each `BasicEntity` in `EditorBridge.BuildSnapshot()`.
+- `PhysicsInfo` in [SceneObjectViewModel.cs](Editor/Anvil/Models/SceneObjectViewModel.cs), reconciled in [BridgeReconciler.cs](Editor/Anvil/Services/BridgeReconciler.cs) and shown in the new Physics expander in [MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml). Edits go through `EnqueueMutate`.
+- `.obsc` scenes save an optional `Physics` block (`Type`, `Mass`) per entity, and skip it for `None`. Older files still load, and the scene version is still 1.
+
+Changed:
+
+- [Engine/Entities/BasicEntity.cs](Engine/Entities/BasicEntity.cs): new public `PhysicsType`/`Mass` fields and internal runtime body state. `ApplyTransformation` now has a single code path. `Clone` (Ctrl+C / Insert) copies the physics component.
+- [Engine/Logic/MainSceneLogic.cs](Engine/Logic/MainSceneLogic.cs): the new `UpdatePhysics(dt)`, called by `Engine.Update` through `ScreenManager.UpdatePhysics`, replaces the direct `PhysicsSystem.Step`. The simulation still only steps when `!e_enableeditor && p_physics`. On a scene swap, `DetachAll` replaces the manual static-collider removal. `EditorDelete` detaches the entity's body. `AddStaticPhysics` now only sets `PhysicsType = Static`.
+- [Engine/Recources/GameSettings.cs](Engine/Recources/GameSettings.cs): `p_physics` now defaults to `true`. With `false` nothing could ever be simulated. Scenes with no physics components behave the same as before.
+
+Removed:
+
+- `BasicEntity.RegisterPhysics`, `BasicEntity.CheckPhysics` and the per-frame `CheckPhysics` loop in `MeshMaterialLibrary.FlagMovedObjects`. `ScenePhysics` replaces them.
+
+Notes:
+
+- BEPU mesh colliders are one-sided. A headless drop test confirmed that triangles with XNA's normal clockwise front faces collide, but reverse-wound triangles let bodies fall through. A model with flipped winding won't work as a Static collider.
+
+## Added: `clean.ps1` build-output cleanup script
+
+[clean.ps1](clean.ps1) at the repo root deletes the `bin/` and `obj/` folders of every project: Engine, Engine/Content, Editor/Anvil and Vista. It only deletes `bin/` and `obj/` folders that sit next to a `.csproj` or `.mgcb` file, so stale `.xnb` outputs can't keep removed assets loading. `-WhatIf` lists what would be deleted without deleting anything.
+
+## Fixed: standalone engine crashed on boot due to stale asset paths
+
+The standalone engine crashed on startup without any message. [Assets.cs](Engine/Recources/Assets.cs) still loaded assets that the content reorg had moved or removed (`GameObjects/Plane`, `GameObjects/test/cube`, `GameObjects/Tiger/Tiger`, `GameObjects/Editor/*`, `GameObjects/test/squarebricks-*`). These loads only worked because old `.xnb` files were still in `bin`. When a model had no `.bbox`, `ModelDefinition` tried to save one relative to the working directory, which was the source `Engine/Content` folder. This created a stray `Plane.bbox` there, then threw `DirectoryNotFoundException` for `GameObjects/test/cube.bbox`.
+
+Changed:
+
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs): the editor arrows and icons now load from `System/Editor/*`, and `Cube` loads from `GameObjects/Default/cube`.
+- [Engine/Renderer/RenderModules/TexFilter.cs](Engine/Renderer/RenderModules/TexFilter.cs): `texStrip` now loads from `System/Editor/texStrip`.
+- [Engine/Recources/ModelDefinition.cs](Engine/Recources/ModelDefinition.cs): if saving a `.bbox` cache fails, the error is logged and the engine keeps booting.
+- [Engine/Program.cs](Engine/Program.cs): unhandled exceptions are written to `crash.log` next to the executable, then rethrown.
+
+Removed:
+
+- The unused `Assets.Plane`, `Assets.Tiger` and `Assets.RockMaterial`, whose source assets no longer exist.
+- The stray `Engine/Content/GameObjects/Plane.bbox` generated by the crash.
+
 ## Added: baked lighting (irradiance probe volume) with a Lighting tab in Anvil
 
 A first version of baked global illumination. The Inspector has a new **Lighting** tab (also under Window > Lighting). From it you can bake a 3D grid of light probes for the scene on the CPU. Inside the grid, the deferred renderer then uses the probes for diffuse ambient light instead of the environment cubemap. Probes need no lightmap UVs, so they work with every existing model.
@@ -9,9 +61,9 @@ How it works:
 - **Bake.** `LightingBakeInput.Gather` takes a world-space copy of all meshes on the game thread: triangles, outward normals, and an approximate albedo per material, plus the enabled directional and point lights. `ProbeVolumeBaker` then works on that copy on a background thread. It builds a `TriangleBvh` (SAH), and each probe casts *Rays / Probe* rays:
   - a ray that escapes picks up the sky;
   - a ray that hits a back face counts towards marking the probe as inside geometry;
-  - a ray that hits a front face picks up albedo × (direct light at the hit point + the previous pass's probes).
+  - a ray that hits a front face picks up albedo ï¿½ (direct light at the hit point + the previous pass's probes).
   
-  Each pass adds one bounce (the DDGI approach). The result is stored per probe and colour channel as L1 spherical harmonics, already in the deferred shaders' light units (×0.1, linear colour). Probes inside geometry are replaced by the average of their valid neighbours.
+  Each pass adds one bounce (the DDGI approach). The result is stored per probe and colour channel as L1 spherical harmonics, already in the deferred shaders' light units (ï¿½0.1, linear colour). Probes inside geometry are replaced by the average of their valid neighbours.
 - **Runtime.** `LightingSystem` uploads the probes as three `HalfVector4` `Texture3D`s. `DeferredEnvironmentMap.fx` rebuilds each pixel's world position from depth, samples the volume with trilinear filtering, and blends from the cubemap's diffuse to the probe irradiance near the volume's edges. Specular reflections still come from the cubemap/SSR.
 - **Persistence.** Lighting settings are saved inside the `.obsc` scene file (an optional `Lighting` block, so older v1 files still load). The bake is saved as a binary `<scene>.probes` file next to it.
 
@@ -82,12 +134,12 @@ Changed:
 
 ## Fix: volumetric fog hid the scene; fog settings in the inspector
 
-With the default sun (intensity 100) the froxel fog covered the whole editor viewport, and objects only showed through at extreme light intensities such as 10000. The deferred light shaders scale their output by `0.1`, but the fog used the light's full `colour × intensity`, so lit fog was far brighter than the lit surfaces behind it.
+With the default sun (intensity 100) the froxel fog covered the whole editor viewport, and objects only showed through at extreme light intensities such as 10000. The deferred light shaders scale their output by `0.1`, but the fog used the light's full `colour ï¿½ intensity`, so lit fog was far brighter than the lit surfaces behind it.
 
 Changed:
 
 - [Engine/Content/Shaders/Deferred/Froxel.fx](Engine/Content/Shaders/Deferred/Froxel.fx): light scattered into the fog by directional and point lights is now scaled by the same `0.1` (`LIGHT_OUTPUT_SCALE`) as surface lighting. Fog keeps its density, but no longer outshines the objects inside it.
-- [Engine/Recources/GameSettings.cs](Engine/Recources/GameSettings.cs): new `g_FroxelAnisotropy` (Henyey-Greenstein `G`, default 0.45, clamped to ±0.95). It used to be fixed in the shader.
+- [Engine/Recources/GameSettings.cs](Engine/Recources/GameSettings.cs): new `g_FroxelAnisotropy` (Henyey-Greenstein `G`, default 0.45, clamped to ï¿½0.95). It used to be fixed in the shader.
 - [Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs](Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs): passes `g_FroxelAnisotropy` to the shader's `G` parameter each frame.
 
 Added:

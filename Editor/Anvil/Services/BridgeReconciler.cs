@@ -163,6 +163,24 @@ public static class BridgeReconciler
                 vm.Light = null;
             }
 
+            // Physics — BasicEntity only. Same keep-the-instance rule as Material.
+            if (snap.Physics.HasValue)
+            {
+                var ph = snap.Physics.Value;
+                vm.Physics ??= new PhysicsInfo();
+                vm.Physics.AttachToParent(vm);
+                if (!freezeFields)
+                {
+                    int bodyType = (int)ph.BodyType;
+                    if (vm.Physics.BodyType != bodyType) vm.Physics.BodyType = bodyType;
+                    SetIfChanged(v => vm.Physics.Mass = v, vm.Physics.Mass, ph.Mass);
+                }
+            }
+            else if (!freezeFields)
+            {
+                vm.Physics = null;
+            }
+
             // Camera info — only Camera kind shows the camera expander.
             if (snap.Kind == EditorObjectKind.Camera)
             {

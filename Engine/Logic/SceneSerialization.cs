@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Engine.Editor;
 using Engine.Entities;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Lighting;
@@ -97,6 +98,11 @@ namespace Engine.Logic
                 var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
                 be.Name = rec.Name ?? be.Name;
                 be.IsEnabled = rec.IsEnabled;
+                if (rec.Physics != null)
+                {
+                    be.PhysicsType = rec.Physics.Type;
+                    be.Mass = rec.Physics.Mass;
+                }
                 if (rec.Id > 0) { be.Id = rec.Id; if (rec.Id > maxId) maxId = rec.Id; }
                 scene.BasicEntities.Add(be);
             }
@@ -239,6 +245,11 @@ namespace Engine.Logic
                         RoughnessKey = LookupKey(textureReverse, be.Material.RoughnessMap),
                         MetallicKey = LookupKey(textureReverse, be.Material.MetallicMap),
                         MaskKey = LookupKey(textureReverse, be.Material.Mask),
+                    },
+                    Physics = be.PhysicsType == PhysicsBodyType.None ? null : new PhysicsRecord
+                    {
+                        Type = be.PhysicsType,
+                        Mass = be.Mass,
                     },
                 });
             }
@@ -410,6 +421,15 @@ namespace Engine.Logic
             public Quaternion Rotation { get; set; } = Quaternion.Identity;
             public Vector3 Scale { get; set; } = Vector3.One;
             public MaterialRecord Material { get; set; }
+            // Optional: omitted when the entity has no physics component
+            public PhysicsRecord Physics { get; set; }
+        }
+
+        public class PhysicsRecord
+        {
+            [JsonConverter(typeof(JsonStringEnumConverter))]
+            public PhysicsBodyType Type { get; set; }
+            public float Mass { get; set; } = 1f;
         }
 
         public class MaterialRecord

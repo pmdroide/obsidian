@@ -201,9 +201,9 @@ namespace Engine
 
             _screenManager.Update(gameTime, _isActive);
 
-            //BEPU Physics v2
-            if (!GameSettings.e_enableeditor && GameSettings.p_physics)
-                _physics.Step((float)gameTime.ElapsedGameTime.TotalSeconds);
+            //BEPU Physics v2 — bodies follow entities while editing; gravity/collisions
+            //only step outside editor mode (Play). Gated in MainSceneLogic.UpdatePhysics.
+            _screenManager.UpdatePhysics((float)gameTime.ElapsedGameTime.TotalSeconds);
 
             // TODO: Add your update logic here
 

@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using Engine.Entities;
 using Engine.Logic;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -743,7 +744,8 @@ namespace Engine.Editor
                     scale: be.Scale,
                     isEnabled: be.IsEnabled,
                     light: null,
-                    material: matSnap));
+                    material: matSnap,
+                    physics: new PhysicsSnapshot(be.PhysicsType, be.Mass)));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)
