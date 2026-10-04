@@ -54,6 +54,7 @@ namespace Engine.Renderer
         private DecalRenderModule _decalRenderModule;
         private SubsurfaceScatterRenderModule _subsurfaceScatterRenderModule;
         private ForwardRenderModule _forwardRenderModule;
+        private WaterRenderModule _waterRenderModule;
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
@@ -208,6 +209,7 @@ namespace Engine.Renderer
             _decalRenderModule = new DecalRenderModule(shaderManager, "Shaders/Deferred/DeferredDecal");
             _subsurfaceScatterRenderModule = new SubsurfaceScatterRenderModule(content, "Shaders/SubsurfaceScattering/SubsurfaceScattering");
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
+            _waterRenderModule = new WaterRenderModule(content);
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
             _froxelRenderModule = new FroxelRenderModule(shaderManager, "Shaders/Deferred/Froxel");
@@ -433,6 +435,14 @@ namespace Engine.Renderer
 
                 //Forward
                 _currentOutput = DrawForward(_currentOutput, meshMaterialLibrary, camera, pointLights);
+                // The opaque depth is reconstructed for both forward passes.
+                if (!GameSettings.g_forwardenable)
+                {
+                    _graphicsDevice.SetRenderTarget(_currentOutput);
+                    ReconstructDepth();
+                }
+                _waterRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, _viewProjection,
+                    camera, _renderTargetCubeMap, directionalLights, gameTime);
                 
                 //Compose the image and add information from previous frames to apply temporal super sampling
                 _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
@@ -1843,6 +1853,7 @@ namespace Engine.Renderer
             _temporalAntialiasingRenderModule?.Dispose();
             _deferredEnvironmentMapRenderModule?.Dispose();
             _decalRenderModule?.Dispose();
+            _waterRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();

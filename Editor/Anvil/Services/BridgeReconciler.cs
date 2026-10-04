@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using Anvil.Models;
 using Avalonia.Media;
 using Engine.Editor;
+using Engine.Components;
+using System.Linq;
 using XnaColor = Microsoft.Xna.Framework.Color;
 
 namespace Anvil.Services;
@@ -98,6 +100,24 @@ public static class BridgeReconciler
             var newObjectType = MapKindToType(snap.Kind);
             if (vm.Type != newObjectType) vm.Type = newObjectType;
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
+
+            // Structural changes must reconcile even while the Add Component menu has focus.
+            var componentIds = snap.Components.Select(c => c.Type).ToHashSet();
+            for (int i = vm.Components.Count - 1; i >= 0; i--)
+                if (!componentIds.Contains(vm.Components[i].TypeId)) vm.Components.RemoveAt(i);
+            foreach (var record in snap.Components)
+            {
+                var editor = vm.Components.FirstOrDefault(c => c.TypeId == record.Type);
+                bool added = editor == null;
+                if (added)
+                {
+                    editor = ComponentEditorRegistry.Create(record.Type, vm);
+                    if (editor == null) continue;
+                    vm.Components.Add(editor);
+                }
+                var component = ComponentRegistry.Restore(record);
+                if (component != null) editor!.Apply(component, freezeFields && !added);
+            }
 
             if (!freezeFields)
             {

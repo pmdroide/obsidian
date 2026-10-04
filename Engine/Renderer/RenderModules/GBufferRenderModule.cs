@@ -31,6 +31,9 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _Material_DisplacementMap;
         private EffectParameter _Material_RoughnessMap;
         private EffectParameter _Material_MaterialType;
+        private EffectParameter _OverrideSurface;
+        private EffectParameter _SurfaceTint;
+        private EffectParameter _ComponentSurface;
 
         private EffectTechnique _DrawTextureDisplacement;
         private EffectTechnique _DrawTextureSpecularNormalMask;
@@ -100,6 +103,9 @@ namespace Engine.Renderer.RenderModules
             _Material_DisplacementMap = _gbufferShader.Parameters["DisplacementMap"];
 
             _Material_MaterialType = _gbufferShader.Parameters["MaterialType"];
+            _OverrideSurface = _gbufferShader.Parameters["OverrideSurface"];
+            _SurfaceTint = _gbufferShader.Parameters["SurfaceTint"];
+            _ComponentSurface = _gbufferShader.Parameters["ComponentSurface"];
 
             //Techniques
 
@@ -159,6 +165,12 @@ namespace Engine.Renderer.RenderModules
 
         public void SetMaterialSettings(MaterialEffect material)
         {
+            bool componentSurface = material.IsInstanceMaterial && !GameSettings.d_defaultmaterial;
+            _OverrideSurface.SetValue(componentSurface);
+            _SurfaceTint.SetValue(material.HasDiffuse ? material.DiffuseColor : Vector3.One);
+            _ComponentSurface.SetValue(new Vector2(material.Roughness,
+                material.Type == MaterialEffect.MaterialTypes.Emissive
+                    ? Math.Clamp(material.EmissiveStrength / 8f, 0, 1) : material.Metallic));
             if (GameSettings.d_defaultmaterial)
             {
                 _Material_DiffuseColor.SetValue(Color.Gray.ToVector3());

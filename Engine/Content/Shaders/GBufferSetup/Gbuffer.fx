@@ -24,6 +24,10 @@ int MaterialType = 0;
 const float CLIP_VALUE = 0.49;
 
 float4 DiffuseColor = float4(0.8f, 0.8f, 0.8f, 1);
+// Component instances tint imported albedo and override scalar surface values.
+bool OverrideSurface = false;
+float3 SurfaceTint = float3(1, 1, 1);
+float2 ComponentSurface;
 
 Texture2D<float4> Texture;
 
@@ -147,6 +151,12 @@ float3 GetNormalMap(float2 TexCoord)
 //See BufferSetup.dgml for overview
 PixelShaderOutput WriteBuffers(Render_IN input)
 {       
+    if (OverrideSurface)
+    {
+        input.Color.rgb *= SurfaceTint;
+        input.roughness = ComponentSurface.x;
+        input.Metallic = ComponentSurface.y;
+    }
     float4 finalValue = input.Color;
 
     //Deferred MRT

@@ -73,6 +73,8 @@ namespace Engine.Logic
 
             _renderer.Initialize(graphicsDevice, _assets);
             _audio.Initialize("Content");
+            if (_bridge?.IsHostedByEditor == true)
+                _audio.EditorContentRoot = AssetImporter.LocateEngineContentRoot();
             _sceneLogic.Initialize(_assets, physics, graphicsDevice);
             _editorLogic.Initialize(graphicsDevice);
             _debug.Initialize(graphicsDevice);
@@ -214,6 +216,8 @@ namespace Engine.Logic
             _videoIntro.Unload();
             _audio?.Dispose();
             _sceneLogic?.Lighting.Dispose();
+            if (_sceneLogic?.MeshMaterialLibrary != null)
+                foreach (var entity in _sceneLogic.BasicEntities) entity.Dispose(_sceneLogic.MeshMaterialLibrary);
             content.Dispose();
         }
 

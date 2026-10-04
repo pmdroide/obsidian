@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Engine.Components;
+using GameComponent = Engine.Components.GameComponent;
 using BepuPhysics;
 using Engine.Physics;
 using Engine.Recources;
@@ -22,6 +24,8 @@ namespace Engine.Entities
         public readonly Vector3 BoundingBoxOffset;
         public readonly SignedDistanceField SignedDistanceField;
         public readonly MaterialEffect Material;
+        private MeshMaterialLibrary _materialLibrary;
+        private readonly List<MaterialEffect> _materialInstances = new();
 
         private int _id;
 
@@ -99,6 +103,7 @@ namespace Engine.Entities
                 {
                     PhysicsType = PhysicsType,
                     Mass = Mass,
+                    Components = Components.Select(ComponentRegistry.Copy).ToList(),
                 };
             }  
         }
@@ -111,6 +116,8 @@ namespace Engine.Entities
         /// every Play-mode frame. Empty in edit mode.
         /// </summary>
         public readonly List<IScript> Scripts = new List<IScript>();
+
+        public List<GameComponent> Components { get; private set; } = new();
 
 
         public readonly TransformMatrix WorldTransform;
@@ -166,12 +173,40 @@ namespace Engine.Entities
 
         public void RegisterInLibrary(MeshMaterialLibrary library)
         {
-            library.Register(Material, Model, WorldTransform);
+            _materialLibrary = library;
+            var component = Components.OfType<MaterialComponent>().FirstOrDefault(c => c.Enabled);
+            if (component == null)
+            {
+                library.Register(Material, Model, WorldTransform);
+                return;
+            }
+            if (Model == null) return;
+            foreach (var mesh in Model.Meshes)
+                foreach (var part in mesh.MeshParts)
+                {
+                    var source = Material ?? part.Effect as MaterialEffect;
+                    var instance = source != null ? source.Clone() : new MaterialEffect(part.Effect);
+                    component.ApplyTo(instance);
+                    _materialInstances.Add(instance);
+                    library.Register(instance, part, WorldTransform, mesh.BoundingSphere);
+                }
+        }
+
+        public void RefreshMaterials()
+        {
+            if (_materialLibrary == null) return;
+            var library = _materialLibrary;
+            Dispose(library);
+            RegisterInLibrary(library);
+            WorldTransform.HasChanged = true;
         }
 
         public void Dispose(MeshMaterialLibrary library)
         {
             library.DeleteFromRegistry(this);
+            foreach (var instance in _materialInstances) instance.Dispose();
+            _materialInstances.Clear();
+            _materialLibrary = null;
         }
 
         public void ApplyTransformation()

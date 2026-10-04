@@ -1,5 +1,13 @@
 # Changelog
 
+## Added: Material component with a water shader example
+
+- Added `MaterialComponent` and its Anvil inspector editor. **Add Component > Material** offers Standard/Water shader selection, color, roughness, metallic, emission, shadow settings, and water opacity/wave controls. **Apply Water Example** supplies a teal preset. Component settings save in scenes and clone independently.
+- Added `Shaders/Forward/Water.fx` to the content pipeline and `WaterRenderModule` to the renderer. Water uses animated procedural normals, Fresnel, environment cubemap reflections, and directional highlights. It renders with alpha blending and depth testing, without depth writes, before TAA/bloom, and animates in Edit and Play modes.
+- Added per-object material instances that retain imported maps. Standard materials tint albedo textures and override roughness/metallic through the G-buffer. Disabling/removing the component restores the source materials; edits, deletions, scene swaps, and unload dispose owned instances without disposing shared assets.
+- Fixed material-library sort pointers when adding/removing batches, needed when inspector edits replace material instances.
+- Added material persistence/inspector/clone checks and optional hidden-window WindowsDX graphics checks for water pixels, animation, reflections, depth occlusion, zero opacity, Standard tint/roughness, and material disposal. Documented usage and example limitations in `Docs/markdown/Material_Component.md`.
+
 ## Added: Physics section in the Anvil inspector (static / dynamic bodies)
 
 Selecting a model in Anvil now shows a **Physics** section in the Inspector with a **Body** dropdown:

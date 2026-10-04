@@ -476,6 +476,11 @@
 
                         <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="2"
                                     VerticalAlignment="Center">
+                            <Button Classes="iconButton" Classes.active="{Binding IsAudioEnabled}"
+                                    Command="{Binding ToggleAudioCommand}" ToolTip.Tip="{Binding AudioToggleTip}"
+                                    AutomationProperties.Name="Game audio">
+                                <controls:LucideIcon Icon="{Binding AudioIcon}" />
+                            </Button>
                             <Button Classes="iconButton" ToolTip.Tip="Camera">
                                 <controls:LucideIcon Icon="Camera" />
                             </Button>
@@ -851,7 +856,8 @@
 
                                 <!-- Material -->
                                 <Expander IsExpanded="True"
-                                          IsVisible="{Binding Material, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                          IsVisible="{Binding Material, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                          IsEnabled="{Binding !HasMaterialComponent}">
                                     <Expander.Header>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <controls:LucideIcon Icon="Palette" />
@@ -1075,6 +1081,106 @@
                                                   FontSize="11" />
                                     </StackPanel>
                                 </Expander>
+
+                                <!-- Components use typed templates so new editors can be added independently. -->
+                                <ItemsControl ItemsSource="{Binding Components}">
+                                    <ItemsControl.DataTemplates>
+                                        <DataTemplate DataType="m:MaterialComponentViewModel" x:DataType="m:MaterialComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Palette" />
+                                                        <TextBlock Text="Material Component" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <ComboBox ItemsSource="{Binding Shaders}" SelectedIndex="{Binding ShaderIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                                                    <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
+                                                    <TextBlock Text="Color (RGB)" Classes="muted" FontSize="11" />
+                                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                        <NumericUpDown Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Red, Mode=TwoWay}" FormatString="0.00" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Green, Mode=TwoWay}" FormatString="0.00" />
+                                                        <NumericUpDown Grid.Column="2" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Blue, Mode=TwoWay}" FormatString="0.00" />
+                                                    </Grid>
+                                                    <TextBlock Text="Roughness" Classes="muted" FontSize="11" />
+                                                    <Slider Minimum="0.001" Maximum="1" Value="{Binding Roughness, Mode=TwoWay}" />
+                                                    <StackPanel Spacing="8" IsVisible="{Binding !IsWater}">
+                                                        <TextBlock Text="Metallic" Classes="muted" FontSize="11" />
+                                                        <Slider Minimum="0" Maximum="1" Value="{Binding Metallic, Mode=TwoWay}" />
+                                                        <TextBlock Text="Emission" Classes="muted" FontSize="11" />
+                                                        <NumericUpDown Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding EmissiveStrength, Mode=TwoWay}" />
+                                                        <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" FontSize="11" />
+                                                    </StackPanel>
+                                                    <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
+                                                        <TextBlock Text="Opacity" Classes="muted" FontSize="11" />
+                                                        <Slider Minimum="0" Maximum="1" Value="{Binding Opacity, Mode=TwoWay}" />
+                                                        <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
+                                                        <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
+                                                        <TextBlock Text="Wave Speed" Classes="muted" FontSize="11" />
+                                                        <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveSpeed, Mode=TwoWay}" FormatString="0.00" />
+                                                        <TextBlock Text="Wave Strength" Classes="muted" FontSize="11" />
+                                                        <Slider Minimum="0" Maximum="2" Value="{Binding WaveStrength, Mode=TwoWay}" />
+                                                        <TextBlock Text="Apply to a flat mesh on the XY plane. Ripples animate in Edit and Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:AudioComponentViewModel" x:DataType="m:AudioComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Volume2" Foreground="{StaticResource AnvilAudioBrush}" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Border Padding="10" MinHeight="52" CornerRadius="4"
+                                                            Background="{StaticResource AnvilSubtleBandBrush}"
+                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1"
+                                                            DragDrop.AllowDrop="True"
+                                                            DragDrop.DragOver="AudioClip_DragOver" DragDrop.Drop="AudioClip_Drop">
+                                                        <StackPanel Spacing="4">
+                                                            <TextBlock Text="Audio Clip" Classes="muted" FontSize="10" />
+                                                            <TextBlock Text="{Binding ClipLabel}" FontSize="11" TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <TextBlock Text="Drag a WAV, MP3, OGG or FLAC file from Assets." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                                        <TextBlock Text="Volume" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Volume, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
+                                                    <CheckBox Content="Play on Start" IsChecked="{Binding PlayOnStart, Mode=TwoWay}" FontSize="11" />
+                                                    <CheckBox Content="3D Spatial Audio" IsChecked="{Binding Spatial, Mode=TwoWay}" FontSize="11" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Button Content="Play" Command="{Binding PlayCommand}" />
+                                                        <Button Content="Stop" Command="{Binding StopCommand}" />
+                                                        <Button Content="Clear Clip" Command="{Binding ClearClipCommand}" />
+                                                    </StackPanel>
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </ItemsControl.DataTemplates>
+                                </ItemsControl>
+
+                                <Button Content="Add Component" Margin="12" HorizontalAlignment="Stretch"
+                                        IsVisible="{Binding CanAddComponents}">
+                                    <Button.Flyout>
+                                        <MenuFlyout ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.AddableComponents}">
+                                            <MenuFlyout.ItemContainerTheme>
+                                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="m:AddableComponentType">
+                                                    <Setter Property="Header" Value="{Binding DisplayName}" />
+                                                    <Setter Property="Command" Value="{Binding AddCommand}" />
+                                                </ControlTheme>
+                                            </MenuFlyout.ItemContainerTheme>
+                                        </MenuFlyout>
+                                    </Button.Flyout>
+                                </Button>
 
                                 <!-- Camera -->
                                 <Expander IsExpanded="True"

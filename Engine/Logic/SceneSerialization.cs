@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Engine.Editor;
+using Engine.Components;
 using Engine.Entities;
 using Engine.Physics;
 using Engine.Recources;
@@ -98,6 +99,12 @@ namespace Engine.Logic
                 var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
                 be.Name = rec.Name ?? be.Name;
                 be.IsEnabled = rec.IsEnabled;
+                foreach (var record in rec.Components ?? new())
+                {
+                    var component = ComponentRegistry.Restore(record);
+                    if (component != null) be.Components.Add(component);
+                    else EditorBridge.Log($"LoadScene: unknown component '{record.Type}' on '{be.Name}'");
+                }
                 if (rec.Physics != null)
                 {
                     be.PhysicsType = rec.Physics.Type;
@@ -225,6 +232,7 @@ namespace Engine.Logic
                     Name = be.Name,
                     IsEnabled = be.IsEnabled,
                     ModelKey = modelKey,
+                    Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
                     Position = be.Position,
                     Rotation = Quaternion.CreateFromRotationMatrix(be.RotationMatrix),
                     Scale = be.Scale,
@@ -423,6 +431,7 @@ namespace Engine.Logic
             public MaterialRecord Material { get; set; }
             // Optional: omitted when the entity has no physics component
             public PhysicsRecord Physics { get; set; }
+            public List<ComponentRecord> Components { get; set; } = new();
         }
 
         public class PhysicsRecord

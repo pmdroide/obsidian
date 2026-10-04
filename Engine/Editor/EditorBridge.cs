@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Engine.Entities;
+using Engine.Components;
+using GameComponent = Engine.Components.GameComponent;
 using Engine.Logic;
 using Engine.Physics;
 using Engine.Recources;
@@ -97,6 +99,9 @@ namespace Engine.Editor
         // host flips it false when the pointer leaves the viewport so the engine
         // ignores Win32's globally-visible mouse state during that interval.
         private volatile bool _hostPointerOverViewport = true;
+        private volatile bool _hostDragDropActive;
+        public bool IsHostDragDropActive => _hostDragDropActive;
+        public void SetHostDragDropActive(bool active) => _hostDragDropActive = active;
         public bool IsHostPointerOverViewport => _hostPointerOverViewport;
         public void SetHostPointerOverViewport(bool inside)
         {
@@ -288,6 +293,66 @@ namespace Engine.Editor
                 TransformableObject obj = LookupById(id);
                 if (obj == null) return;
                 try { mutate(obj); } catch { /* swallow per-op errors */ }
+            });
+        }
+
+        public void EnqueueAddComponent(int entityId, string componentType)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = LookupEntityById(entityId);
+                var definition = ComponentRegistry.Find(componentType);
+                if (entity == null || definition == null ||
+                    entity.Components.Any(c => c.GetType() == definition.ComponentType)) return;
+                var component = definition.Create();
+                entity.Components.Add(component);
+                component.OnChanged(entity);
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        private GameComponent FindComponent(int entityId, string componentType)
+        {
+            var type = ComponentRegistry.Find(componentType)?.ComponentType;
+            return LookupEntityById(entityId)?.Components.FirstOrDefault(c => c.GetType() == type);
+        }
+
+        public void EnqueueRemoveComponent(int entityId, string componentType)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var component = FindComponent(entityId, componentType);
+                if (component == null) return;
+                component.OnStop();
+                LookupEntityById(entityId).Components.Remove(component);
+                if (component is MaterialComponent) LookupEntityById(entityId).RefreshMaterials();
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        public void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var component = FindComponent(entityId, componentType);
+                if (component == null) return;
+                mutate(component);
+                component.OnChanged(LookupEntityById(entityId));
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        public void EnqueueSetAudioEnabled(bool enabled) =>
+            _pendingOps.Enqueue(() => Audio.IsMuted = !enabled);
+
+        public void EnqueuePlayAudio(int entityId, bool play)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (FindComponent(entityId, AudioComponent.TypeId) is not AudioComponent audio) return;
+                if (play) audio.Play(LookupEntityById(entityId));
+                else audio.OnStop();
             });
         }
 
@@ -745,7 +810,8 @@ namespace Engine.Editor
                     isEnabled: be.IsEnabled,
                     light: null,
                     material: matSnap,
-                    physics: new PhysicsSnapshot(be.PhysicsType, be.Mass)));
+                    physics: new PhysicsSnapshot(be.PhysicsType, be.Mass),
+                    components: be.Components.Select(ComponentRegistry.Capture).ToArray()));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)

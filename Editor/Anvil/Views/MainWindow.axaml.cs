@@ -12,6 +12,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Engine.Components;
 
 namespace Anvil.Views;
 
@@ -108,6 +109,23 @@ public partial class MainWindow : Window
     // Assets panel to the Hierarchy TreeView.
     private static readonly DataFormat<string> ModelKeyFormat =
         DataFormat.CreateInProcessFormat<string>("obsidian/modelKey");
+    private static readonly DataFormat<string> AudioAssetFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/audioAsset");
+
+    private void AudioClip_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = AudioComponent.IsAudioAsset(e.DataTransfer.TryGetValue(AudioAssetFormat))
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void AudioClip_Drop(object? sender, DragEventArgs e)
+    {
+        var path = e.DataTransfer.TryGetValue(AudioAssetFormat);
+        if ((sender as Control)?.DataContext is AudioComponentViewModel audio &&
+            AudioComponent.IsAudioAsset(path)) audio.AssignClip(path!);
+        e.Handled = true;
+    }
 
     private void AssetsPanel_DragOver(object? sender, DragEventArgs e)
     {
@@ -238,18 +256,30 @@ public partial class MainWindow : Window
         // Avalonia 12's DragDrop.DoDragDropAsync requires the original
         // PointerPressedEventArgs (the new API dropped the pre-12 move-threshold
         // helper), so we kick off the drag immediately on a left-click that
-        // lands on a Mesh AssetNode. Other clicks fall through to the TreeView's
+        // lands on a mesh or playable audio AssetNode. Other clicks fall through to the TreeView's
         // normal selection behaviour.
         var props = e.GetCurrentPoint(this).Properties;
         if (!props.IsLeftButtonPressed) return;
 
         if (e.Source is not Visual v) return;
-        string? modelKey = ModelKeyFromVisual(v);
-        if (string.IsNullOrEmpty(modelKey)) return;
-
+        var node = FindDataContext<AssetNode>(v);
         var dt = new DataTransfer();
-        dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
-        await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+        if (node?.Kind == AssetKind.Audio && AudioComponent.IsAudioAsset(node.RelativePath))
+            dt.Add(DataTransferItem.Create(AudioAssetFormat, node.RelativePath));
+        else if (ModelKeyFromVisual(v) is { } modelKey)
+            dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
+        else return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        vm.SetAssetDragActive(true);
+        try
+        {
+            await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+        }
+        finally
+        {
+            // Cancel, drop, and failures must all release the viewport input guard.
+            vm.SetAssetDragActive(false);
+        }
     }
 
     private void AssetsTree_DoubleTapped(object? sender, TappedEventArgs e)

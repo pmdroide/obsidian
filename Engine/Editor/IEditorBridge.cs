@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Engine.Entities;
+using Engine.Components;
+using GameComponent = Engine.Components.GameComponent;
 using Engine.Physics;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
@@ -82,9 +84,11 @@ namespace Engine.Editor
         public readonly MaterialSnapshot? Material;
         // BasicEntity only — drives the Inspector's Physics section.
         public readonly PhysicsSnapshot? Physics;
+        public readonly IReadOnlyList<ComponentRecord> Components;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, PhysicsSnapshot? physics = null)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, PhysicsSnapshot? physics = null, IReadOnlyList<ComponentRecord> components = null)
         {
+            Components = components ?? Array.Empty<ComponentRecord>();
             Physics = physics;
             Id = id;
             Name = name;
@@ -126,6 +130,10 @@ namespace Engine.Editor
         bool IsHostPointerOverViewport { get; }
         void SetHostPointerOverViewport(bool inside);
 
+        /// <summary>True during an editor asset drag; viewport input must not consume it.</summary>
+        bool IsHostDragDropActive { get; }
+        void SetHostDragDropActive(bool active);
+
         IReadOnlyList<EditorObjectSnapshot> Snapshot { get; }
         event Action<IReadOnlyList<EditorObjectSnapshot>> SnapshotUpdated;
 
@@ -148,6 +156,12 @@ namespace Engine.Editor
 
         void EnqueueMutate(int id, Action<TransformableObject> mutate);
         void EnqueueMutateMaterial(int entityId, Action<MaterialEffect> mutate);
+        void EnqueueAddComponent(int entityId, string componentType);
+        void EnqueueRemoveComponent(int entityId, string componentType);
+        void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate);
+        void EnqueuePlayAudio(int entityId, bool play);
+        /// <summary>Enable or mute the engine's output, including editor audio previews.</summary>
+        void EnqueueSetAudioEnabled(bool enabled);
         void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity);
         void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity);
         void EnqueueAddBasicEntity(string modelKey, Vector3 position);

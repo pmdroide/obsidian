@@ -52,6 +52,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _shadingMode = "Solid";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AudioIcon), nameof(AudioToggleTip))]
+    private bool _isAudioEnabled = true;
+
+    public string AudioIcon => IsAudioEnabled ? "Volume2" : "VolumeX";
+    public string AudioToggleTip => IsAudioEnabled ? "Mute game audio" : "Enable game audio";
+    partial void OnIsAudioEnabledChanged(bool value) => _bridge?.EnqueueSetAudioEnabled(value);
+
+    [RelayCommand]
+    private void ToggleAudio() => IsAudioEnabled = !IsAudioEnabled;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilteredConsole))]
     private string _consoleFilter = "All";
 
@@ -198,6 +209,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge != null) return;
         _bridge = bridge;
+        bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
@@ -319,6 +331,8 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // -------- Commands --------
+
+    public void SetAssetDragActive(bool active) => _bridge?.SetHostDragDropActive(active);
 
     [RelayCommand]
     private void SetActiveTool(string tool) => ActiveTool = tool;

@@ -193,13 +193,16 @@ namespace Engine
             //window is not the active window.
             ApplyPendingResize();
 
-            if (!_isActive) return;
+            // Avalonia owns focus in Anvil. The child game window's activation
+            // events must not stop FMOD, Play-mode scripts, or queued editor actions.
+            bool active = _isActive || _bridge.IsHostedByEditor;
+            if (!active) return;
 
             //Exit the game when pressing escape
             if (Input.WasKeyPressed(Keys.Escape))
                 Exit();
 
-            _screenManager.Update(gameTime, _isActive);
+            _screenManager.Update(gameTime, active);
 
             //BEPU Physics v2 — bodies follow entities while editing; gravity/collisions
             //only step outside editor mode (Play). Gated in MainSceneLogic.UpdatePhysics.
@@ -217,7 +220,7 @@ namespace Engine
         protected override void Draw(GameTime gameTime)
         {
             //Don't draw when the game is not running
-            if (!_isActive)
+            if (!_isActive && !_bridge.IsHostedByEditor)
             {
                 Thread.Sleep(20);
                 return;

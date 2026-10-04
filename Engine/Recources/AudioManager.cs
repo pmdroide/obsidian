@@ -41,6 +41,9 @@ namespace Engine.Recources
         private readonly List<Tracked3D> _tracked = new List<Tracked3D>();
         private Channel? _music;
         private float _masterVolume = 1f;
+        private bool _isMuted;
+        /// <summary>Source content root for live editor assets; null in standalone games.</summary>
+        public string EditorContentRoot { get; set; }
 
         ////////////////////////////////////////////////////////////////////////////////
         //  LIFECYCLE
@@ -64,6 +67,7 @@ namespace Engine.Recources
                 _initialized = true;
                 Audio.Instance = this;
                 MasterVolume = _masterVolume;
+                IsMuted = _isMuted;
 
                 CoreSystem.Native.getVersion(out uint dllVersion);
                 bool match = dllVersion == expected;
@@ -124,10 +128,10 @@ namespace Engine.Recources
         ////////////////////////////////////////////////////////////////////////////////
 
         /// <summary>One-shot or looping 2D (non-positional) sound.</summary>
-        public Channel? PlaySound(string name, float volume = 1f, float pitch = 1f, bool loop = false)
+        public Channel? PlaySound(string name, float volume = 1f, float pitch = 1f, bool loop = false, bool contentRelativePath = false)
         {
             if (!_initialized) return null;
-            Sound sound = GetOrLoad(name, streamed: false, is3d: false);
+            Sound sound = GetOrLoad(name, streamed: false, is3d: false, contentRelativePath);
             if (sound == null) return null;
             if (!TryPlay(sound, paused: false, out Channel channel)) return null;
 
@@ -144,10 +148,10 @@ namespace Engine.Recources
 
         /// <summary>Plays a sound at a fixed world position.</summary>
         public Channel? PlaySound3D(string name, Vector3 worldPosition, float volume = 1f, bool loop = false,
-                                    float minDist = 1f, float maxDist = 10000f)
+                                    float minDist = 1f, float maxDist = 10000f, bool contentRelativePath = false)
         {
             if (!_initialized) return null;
-            Sound sound = GetOrLoad(name, streamed: false, is3d: true);
+            Sound sound = GetOrLoad(name, streamed: false, is3d: true, contentRelativePath);
             if (sound == null) return null;
 
             // Play paused so the first audible frame is already positioned/attenuated.
@@ -168,10 +172,10 @@ namespace Engine.Recources
         /// every frame in <see cref="UpdateListener"/> until the channel stops.
         /// </summary>
         public Channel? PlaySound3D(string name, Func<Vector3> positionSource, float volume = 1f, bool loop = false,
-                                    float minDist = 1f, float maxDist = 10000f)
+                                    float minDist = 1f, float maxDist = 10000f, bool contentRelativePath = false)
         {
             if (!_initialized || positionSource == null) return null;
-            Channel? channel = PlaySound3D(name, positionSource(), volume, loop, minDist, maxDist);
+            Channel? channel = PlaySound3D(name, positionSource(), volume, loop, minDist, maxDist, contentRelativePath);
             if (channel.HasValue)
                 _tracked.Add(new Tracked3D { Channel = channel.Value, PositionSource = positionSource });
             return channel;
@@ -226,6 +230,19 @@ namespace Engine.Recources
                 if (!_initialized) return;
                 if (CoreSystem.Native.getMasterChannelGroup(out var masterGroup) == FMOD.RESULT.OK)
                     masterGroup.setVolume(_masterVolume);
+            }
+        }
+
+        /// <summary>Mute output without changing master or per-component volumes.</summary>
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set
+            {
+                _isMuted = value;
+                if (!_initialized) return;
+                if (CoreSystem.Native.getMasterChannelGroup(out var masterGroup) == FMOD.RESULT.OK)
+                    masterGroup.setMute(value);
             }
         }
 
@@ -287,15 +304,35 @@ namespace Engine.Recources
             return true;
         }
 
-        private Sound GetOrLoad(string name, bool streamed, bool is3d)
+        private Sound GetOrLoad(string name, bool streamed, bool is3d, bool contentRelativePath = false)
         {
             Dictionary<string, Sound> cache = is3d ? _cache3D : _cache2D;
-            if (cache.TryGetValue(name, out Sound cached)) return cached;
-
-            string rel = "Audio/" + (name.Contains('.') ? name : name + ".wav");
+            string rel = contentRelativePath ? name.Replace('\\', '/')
+                : "Audio/" + (name.Contains('.') ? name : name + ".wav");
+            if (Path.IsPathRooted(rel) || rel.Split('/').Any(p => p is ".." or "."))
+            {
+                EditorBridge.Log("Audio: invalid content path '" + rel + "'");
+                return null;
+            }
+            if (cache.TryGetValue(rel, out Sound cached)) return cached;
             Sound sound;
             try
             {
+                // Assets imported while Anvil is running have not gone through a build yet.
+                if (EditorContentRoot != null)
+                {
+                    string source = Path.Combine(EditorContentRoot, rel);
+                    string target = Path.Combine(AppContext.BaseDirectory, "Content", rel);
+                    if (File.Exists(source) && !source.Equals(target, StringComparison.OrdinalIgnoreCase) &&
+                        (!File.Exists(target) || new FileInfo(source).Length != new FileInfo(target).Length ||
+                         File.GetLastWriteTimeUtc(source) != File.GetLastWriteTimeUtc(target)))
+                    {
+                        // A sound cached in the other spatial mode can still hold the
+                        // target open. Reuse an up-to-date runtime copy in that case.
+                        Directory.CreateDirectory(Path.GetDirectoryName(target));
+                        File.Copy(source, target, overwrite: true);
+                    }
+                }
                 sound = streamed ? CoreSystem.LoadStreamedSound(rel) : CoreSystem.LoadSound(rel);
             }
             catch (Exception e)
@@ -305,7 +342,7 @@ namespace Engine.Recources
             }
 
             sound.Is3D = is3d;
-            cache[name] = sound;
+            cache[rel] = sound;
             return sound;
         }
 
@@ -346,6 +383,12 @@ namespace Engine.Recources
         {
             get => Instance?.MasterVolume ?? 0f;
             set { if (Instance != null) Instance.MasterVolume = value; }
+        }
+
+        public static bool IsMuted
+        {
+            get => Instance?.IsMuted ?? false;
+            set { if (Instance != null) Instance.IsMuted = value; }
         }
     }
 }

@@ -50,9 +50,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>fmodL.dll</Link>
     </None>
-    <None Include="Content\Audio\**\*.*">
+    <None Update="Content\Audio\**\*.*;Content\**\*.wav;Content\**\*.mp3;Content\**\*.ogg;Content\**\*.flac">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>Content\Audio\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
 

@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using Anvil.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Engine.Editor;
+using Engine.Components;
 using Engine.Entities;
 using Engine.Physics;
 using Color = Avalonia.Media.Color;
@@ -223,6 +225,19 @@ public partial class SceneObjectViewModel : ObservableObject
     [ObservableProperty] private PhysicsInfo? _physics;
 
     public ObservableCollection<SceneObjectViewModel> Children { get; } = new();
+    public ObservableCollection<ComponentViewModel> Components { get; } = new();
+    public ObservableCollection<AddableComponentType> AddableComponents { get; } = new();
+    public bool CanAddComponents => EngineId.HasValue && Kind == EditorObjectKind.BasicEntity;
+    public bool HasMaterialComponent => Components.Any(c => c.TypeId == MaterialComponent.TypeId);
+
+    public SceneObjectViewModel()
+    {
+        Components.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasMaterialComponent));
+            foreach (var type in AddableComponents) type.AddCommand.NotifyCanExecuteChanged();
+        };
+    }
 
     public bool HasChildren => Children.Count > 0;
 
@@ -243,6 +258,10 @@ public partial class SceneObjectViewModel : ObservableObject
         Bridge = bridge;
         EngineId = engineId;
         Kind = kind;
+        foreach (var definition in ComponentRegistry.All)
+            if (ComponentEditorRegistry.Supports(definition.Id))
+                AddableComponents.Add(new AddableComponentType(definition, this));
+        OnPropertyChanged(nameof(CanAddComponents));
     }
 
     public void BeginSuppressPush() => SuppressPush = true;

@@ -59,6 +59,13 @@ namespace Engine.Logic
                 var ctx = new ScriptContext { Scene = s };
                 foreach (var e in s.BasicEntities)
                 {
+                    foreach (var component in e.Components)
+                    {
+                        component.OnStop();
+                        if (!e.IsEnabled || !component.Enabled) continue;
+                        try { component.OnStart(e); }
+                        catch (Exception ex) { EditorBridge.Log("Component.OnStart threw: " + ex); }
+                    }
                     if (e.Scripts.Count == 0) continue;
                     ctx.Owner = e;
                     for (int i = 0; i < e.Scripts.Count; i++)
@@ -86,6 +93,15 @@ namespace Engine.Logic
             var ctx = new ScriptContext { Scene = s };
             foreach (var e in s.BasicEntities)
             {
+                foreach (var component in e.Components)
+                {
+                    try
+                    {
+                        if (e.IsEnabled && component.Enabled) component.OnUpdate(e, gameTime);
+                        else component.OnStop();
+                    }
+                    catch (Exception ex) { EditorBridge.Log("Component.OnUpdate threw: " + ex); }
+                }
                 if (e.Scripts.Count == 0) continue;
                 ctx.Owner = e;
                 for (int i = 0; i < e.Scripts.Count; i++)
@@ -98,6 +114,10 @@ namespace Engine.Logic
 
         public void Stop()
         {
+            // Also stop inspector previews when leaving a scene in edit mode.
+            if (_sceneLogic.ActiveScene is { } scene)
+                foreach (var entity in scene.BasicEntities)
+                    foreach (var component in entity.Components) component.OnStop();
             if (Mode == GameMode.Edit) return;
             EditorBridge.Log("PlayModeController.Stop");
 

@@ -21,6 +21,13 @@ namespace Engine.Recources
 
         public bool HasShadow = true;
 
+        // Owned by one entity; never batch with independently editable material instances.
+        public bool IsInstanceMaterial;
+        public float Opacity = 0.65f;
+        public float WaveScale = 0.3f;
+        public float WaveSpeed = 1f;
+        public float WaveStrength = 0.2f;
+
         public bool HasDiffuse;
         public bool HasRoughnessMap;
         public bool HasMask;
@@ -116,6 +123,7 @@ namespace Engine.Recources
             ProjectHologram = 2,
             SubsurfaceScattering = 4,
             ForwardShaded = 5,
+            Water = 6,
         }
 
         public MaterialTypes Type
@@ -174,6 +182,10 @@ namespace Engine.Recources
         public bool Equals(MaterialEffect b)
         {
             if (b==null) return false;
+            if (IsInstanceMaterial || b.IsInstanceMaterial) return ReferenceEquals(this, b);
+            if (Type == MaterialTypes.Water &&
+                (Opacity != b.Opacity || WaveScale != b.WaveScale ||
+                 WaveSpeed != b.WaveSpeed || WaveStrength != b.WaveStrength)) return false;
 
             if (HasDiffuse != b.HasDiffuse) return false;
 
@@ -220,6 +232,11 @@ namespace Engine.Recources
                 _displacementMap = _displacementMap,
                 IsTransparent = IsTransparent,
                 HasShadow = HasShadow,
+                IsInstanceMaterial = IsInstanceMaterial,
+                Opacity = Opacity,
+                WaveScale = WaveScale,
+                WaveSpeed = WaveSpeed,
+                WaveStrength = WaveStrength,
                 HasDiffuse = HasDiffuse,
                 HasRoughnessMap = HasRoughnessMap,
                 HasMask = HasMask,

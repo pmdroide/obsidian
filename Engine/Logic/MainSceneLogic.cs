@@ -124,6 +124,12 @@ namespace Engine.Logic
         /// </summary>
         private void OnSceneChanged(Scene oldScene, Scene newScene)
         {
+            if (oldScene != null)
+                foreach (var entity in oldScene.BasicEntities)
+                {
+                    foreach (var component in entity.Components) component.OnStop();
+                    if (MeshMaterialLibrary != null) entity.Dispose(MeshMaterialLibrary);
+                }
             EditorBridge.Log($"MainSceneLogic.OnSceneChanged: '{oldScene?.Name}' -> '{newScene?.Name}'");
 
             // Detach the old scene's physics bodies; the new scene's entities get
@@ -449,7 +455,8 @@ namespace Engine.Logic
             {
                 if (BasicEntities[i].Id != id) continue;
                 BasicEntity entity = BasicEntities[i];
-                MeshMaterialLibrary?.DeleteFromRegistry(entity);
+                foreach (var component in entity.Components) component.OnStop();
+                if (MeshMaterialLibrary != null) entity.Dispose(MeshMaterialLibrary);
                 _scenePhysics?.Detach(entity);
                 BasicEntities.RemoveAt(i);
                 return true;
