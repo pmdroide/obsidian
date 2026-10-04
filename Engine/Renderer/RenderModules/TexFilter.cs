@@ -19,7 +19,7 @@ namespace Engine.Renderer.RenderModules
 
         public void Load(ContentManager content)
         {
-            tex = content.Load<Texture2D>("Art/Editor/texStrip");
+            tex = content.Load<Texture2D>("System/Editor/texStrip");
 
             texFilterEffect = content.Load<Effect>("Shaders/Test/texFilter");
             Texture = texFilterEffect.Parameters["ScreenTexture"];

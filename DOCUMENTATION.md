@@ -37,6 +37,7 @@ How to manipulate the scene
 - WASD : move the camera
 - right mouse drag : rotate the camera
 - F1 : Cycle through render targets (albedo, normals, depth etc.)
+- X/M : Audio test
 
 ## Render pipelines
 - Deferred (Main)
@@ -45,3 +46,12 @@ How to manipulate the scene
 ## Current target
 - WindowsDX
 - Monogame 3.8.4.1
+
+## TROUBLESHOOT
+
+Sometimes the game might fail due to old packages or assets that were in old build of the game, to fix this use the [clean.ps1](clean.ps1) file to cleanup the old build.
+
+```
+.\clean.ps1          # delete
+.\clean.ps1 -WhatIf  # just list what would go
+```

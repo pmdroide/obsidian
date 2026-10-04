@@ -65,6 +65,49 @@ SamplerState SkyMap2DSampler
 };
 bool UseSkyMap2D;
 
+//Baked probe volume (Engine/Renderer/Lighting). Each probe stores cosine-convolved L1 SH per colour
+//channel as (c0, cx, cy, cz): irradiance E(n) = c0 + dot(c.yzw, n), in deferred light units.
+//Probes sit on the corners of a regular grid spanning [ProbeVolumeMin, ProbeVolumeMin + 1/ExtentRcp].
+bool UseProbeVolume = false;
+float ProbeVolumeIntensity = 1.0f;
+float3 ProbeVolumeMin;
+float3 ProbeVolumeExtentRcp;
+float3 ProbeVolumeCells; //probes per axis - 1
+
+Texture3D ProbeSHR;
+SamplerState ProbeSHRSampler
+{
+    texture = <ProbeSHR>;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    AddressW = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = POINT;
+};
+Texture3D ProbeSHG;
+SamplerState ProbeSHGSampler
+{
+    texture = <ProbeSHG>;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    AddressW = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = POINT;
+};
+Texture3D ProbeSHB;
+SamplerState ProbeSHBSampler
+{
+    texture = <ProbeSHB>;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    AddressW = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = POINT;
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -233,6 +276,29 @@ float4 GetSSR(float2 TexCoord)
 //    return variance/SAMPLE_COUNT;
 //}
 
+//rgb = baked irradiance for a world-space normal, a = blend weight (fades to 0 at the volume's border)
+float4 SampleProbeVolume(float3 positionWS, float3 normalWS)
+{
+	float3 uvw = (positionWS - ProbeVolumeMin) * ProbeVolumeExtentRcp;
+
+	//Distance to the nearest face in probe cells; full weight half a cell inside
+	float3 edge = min(uvw, 1 - uvw) * ProbeVolumeCells;
+	float weight = saturate(min(edge.x, min(edge.y, edge.z)) * 2);
+	if (weight <= 0) return float4(0, 0, 0, 0);
+
+	//Corner-aligned probes -> texel centres
+	float3 tc = (uvw * ProbeVolumeCells + 0.5f) / (ProbeVolumeCells + 1);
+
+	float4 r = ProbeSHR.SampleLevel(ProbeSHRSampler, tc, 0);
+	float4 g = ProbeSHG.SampleLevel(ProbeSHGSampler, tc, 0);
+	float4 b = ProbeSHB.SampleLevel(ProbeSHBSampler, tc, 0);
+
+	float3 irradiance = float3(r.x + dot(r.yzw, normalWS),
+	                           g.x + dot(g.yzw, normalWS),
+	                           b.x + dot(b.yzw, normalWS));
+	return float4(max(irradiance, 0), weight);
+}
+
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//  BASE FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +388,19 @@ PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
 		ao = smoothstep(0, 1, ao);
 	}
 	
-    output.Diffuse = float4(diffuseReflection.xyz, 0) * EnvironmentMapDiffuseStrength * ao;
+	float3 diffuseAmbient = diffuseReflection.xyz * EnvironmentMapDiffuseStrength;
+
+	//Baked GI: inside the probe volume the probes' irradiance replaces the cubemap's diffuse term
+	[branch]
+	if (UseProbeVolume)
+	{
+		float probeDepth = DepthMap.Load(texCoordInt).r;
+		float3 probePositionWS = CameraPositionWS + probeDepth * input.ViewDir;
+		float4 probe = SampleProbeVolume(probePositionWS, normalize(normal));
+		diffuseAmbient = lerp(diffuseAmbient, probe.rgb * ProbeVolumeIntensity, probe.a);
+	}
+
+    output.Diffuse = float4(diffuseAmbient, 0) * ao;
     output.Specular = float4(specularReflection.xyz, 0) *EnvironmentMapSpecularStrength * (ao * 0.5f + 0.5f);
 
     return output;

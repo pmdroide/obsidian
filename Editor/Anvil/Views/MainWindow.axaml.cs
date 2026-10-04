@@ -129,41 +129,38 @@ public partial class MainWindow : Window
         var files = e.DataTransfer.TryGetFiles();
         if (files == null) return;
 
+        // The node under the cursor decides where things go: an imported model's folder
+        // binds dropped textures to it; any other folder (or a file's folder) receives
+        // plain copies. Empty space means the Content root.
+        var node = e.Source is Visual v ? FindDataContext<AssetNode>(v) : null;
+        string? modelKey = vm.DeletableModelKeyFor(node);
+
         var images = new System.Collections.Generic.List<string>();
+        var copies = new System.Collections.Generic.List<string>();
         foreach (var item in files)
         {
             string? path = item.TryGetLocalPath();
             if (string.IsNullOrEmpty(path)) continue;
             string ext = Path.GetExtension(path).ToLowerInvariant();
-            if (ext == ".fbx" || ext == ".obj")
-                vm.ImportFbxFromDisk(path);
-            else if (Array.IndexOf(ImageExtensions, ext) >= 0)
+            if (File.Exists(path) && (ext == ".fbx" || ext == ".obj"))
+                vm.ImportFbxFromDisk(path); // importer places it under GameObjects/Models/{key}
+            else if (modelKey != null && File.Exists(path) && Array.IndexOf(ImageExtensions, ext) >= 0)
                 images.Add(path);
+            else
+                copies.Add(path);
         }
 
-        // Route dropped textures to the imported model whose Textures folder (or mesh
-        // node) they were dropped on. Ignored if dropped on empty space / a built-in.
-        if (images.Count > 0)
-        {
-            var node = e.Source is Visual v ? FindDataContext<AssetNode>(v) : null;
-            string? modelKey = vm.DeletableModelKeyFor(node);
-            if (!string.IsNullOrEmpty(modelKey))
-                vm.ImportTexturesFromDisk(modelKey, images);
-        }
+        if (images.Count > 0) vm.ImportTexturesFromDisk(modelKey!, images);
+        if (copies.Count > 0) vm.CopyFilesIntoContent(node, copies);
         e.Handled = true;
     }
 
-    // Delete an imported model from the Assets panel (context-menu "Delete"). Confirms
-    // first because this permanently removes the model's files from disk.
+    // Delete from the Assets panel (context-menu "Delete"). Confirms first because this
+    // removes files from disk and their Content.mgcb entries.
     private async void AssetDelete_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
-        var node = (sender as Control)?.DataContext as AssetNode;
-        string? modelKey = vm.DeletableModelKeyFor(node);
-        if (string.IsNullOrEmpty(modelKey)) return; // only imported models are deletable
-
-        bool ok = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
-        if (ok) vm.DeleteModelAsset(modelKey);
+        await DeleteAssetAsync(vm, (sender as Control)?.DataContext as AssetNode);
     }
 
     private async void AssetsTree_KeyDown(object? sender, KeyEventArgs e)
@@ -171,13 +168,30 @@ public partial class MainWindow : Window
         if (e.Key != Key.Delete) return;
         if (DataContext is not MainWindowViewModel vm) return;
         var assetsTree = this.FindControl<TreeView>("AssetsTreeView");
-        var node = assetsTree?.SelectedItem as AssetNode;
-        string? modelKey = vm.DeletableModelKeyFor(node);
-        if (string.IsNullOrEmpty(modelKey)) return;
-
+        if (assetsTree?.SelectedItem is not AssetNode node) return;
         e.Handled = true;
-        bool ok = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
-        if (ok) vm.DeleteModelAsset(modelKey);
+        await DeleteAssetAsync(vm, node);
+    }
+
+    private async System.Threading.Tasks.Task DeleteAssetAsync(MainWindowViewModel vm, AssetNode? node)
+    {
+        if (node == null) return;
+
+        // An imported model (its mesh or its GameObjects/Models/{key} folder) is removed
+        // as a whole so the engine unregisters it too.
+        string? modelKey = vm.ModelKeyToDeleteFor(node);
+        if (!string.IsNullOrEmpty(modelKey))
+        {
+            bool okModel = await ConfirmAsync($"Delete model \"{modelKey}\" and all its imported files from disk?\nThis cannot be undone.");
+            if (okModel) vm.DeleteModelAsset(modelKey);
+            return;
+        }
+
+        string what = node.Kind == AssetKind.Folder ? "folder" : "file";
+        string message = $"Move {what} \"{node.RelativePath}\" to the Recycle Bin?\nIts Content.mgcb entries will be removed.";
+        if (!string.IsNullOrEmpty(node.ModelKey))
+            message += $"\n\nThe engine loads this as model \"{node.ModelKey}\" — removing it can break engine startup.";
+        if (await ConfirmAsync(message)) vm.DeleteAssetFromDisk(node);
     }
 
     // Minimal modal yes/no dialog (Avalonia has no built-in MessageBox).
@@ -241,24 +255,28 @@ public partial class MainWindow : Window
     private void AssetsTree_DoubleTapped(object? sender, TappedEventArgs e)
     {
         // Reliable, drag-free path to add a mesh to the scene: double-click it.
+        // Text assets (shaders, UI XML/CSS) open in an external editor instead.
         if (DataContext is not MainWindowViewModel vm) return;
         if (e.Source is not Visual v) return;
         string? modelKey = ModelKeyFromVisual(v);
-        if (string.IsNullOrEmpty(modelKey)) return;
-        vm.AddEntityFromAsset(modelKey);
-        e.Handled = true;
+        if (!string.IsNullOrEmpty(modelKey))
+        {
+            vm.AddEntityFromAsset(modelKey);
+            e.Handled = true;
+            return;
+        }
+        if (vm.OpenInTextEditor(FindDataContext<AssetNode>(v)))
+            e.Handled = true;
     }
 
-    // Resolves the model key from a mesh AssetNode under the given visual. AssetNode.Id
-    // for mesh entries is "model:{key}" (see MainWindowViewModel.RefreshMeshAssetsFolder).
+    // Resolves the model key from a mesh AssetNode under the given visual. Only mesh files
+    // that a registered model was loaded from carry a ModelKey
+    // (see MainWindowViewModel.RefreshAssetTree).
     private static string? ModelKeyFromVisual(Visual v)
     {
         var node = FindDataContext<AssetNode>(v);
         if (node is null || node.Kind != AssetKind.Mesh) return null;
-        string id = node.Id ?? string.Empty;
-        if (!id.StartsWith("model:", StringComparison.Ordinal)) return null;
-        string modelKey = id.Substring("model:".Length);
-        return string.IsNullOrEmpty(modelKey) ? null : modelKey;
+        return string.IsNullOrEmpty(node.ModelKey) ? null : node.ModelKey;
     }
 
     private void Hierarchy_DragOver(object? sender, DragEventArgs e)

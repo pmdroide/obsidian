@@ -112,6 +112,9 @@ namespace Engine.Logic
             _audio?.UpdateListener(_sceneLogic.Camera);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
 
+            //Hands finished bakes to their scene and keeps the probe volume textures in sync
+            _sceneLogic.Lighting.Update(_graphicsDevice, _sceneLogic.ActiveScene);
+
             _debug.Update(gameTime);
 
             UpdateVistaUI(gameTime);
@@ -119,6 +122,13 @@ namespace Engine.Logic
             // Drain queued editor ops + publish snapshot. Runs on the game thread,
             // strictly after all logic mutations but before the next Draw.
             _bridge?.DrainAndPublish();
+        }
+
+        /// <summary>Sync + step scene physics (BEPU v2). Called by Engine after <see cref="Update"/>.</summary>
+        public void UpdatePhysics(float dt)
+        {
+            if (_currentState == GameState.VideoIntro) return;
+            _sceneLogic.UpdatePhysics(dt);
         }
 
         // Update the Vista UI with performance metrics and other dynamic information.
@@ -203,6 +213,7 @@ namespace Engine.Logic
         {
             _videoIntro.Unload();
             _audio?.Dispose();
+            _sceneLogic?.Lighting.Dispose();
             content.Dispose();
         }
 
@@ -227,7 +238,9 @@ namespace Engine.Logic
                 envSample: _sceneLogic.EnvironmentSample,
                 debugEntities: _sceneLogic.DebugEntities,
                 editorData: _editorLogic.GetEditorData(),
-                gameTime: gameTime);
+                gameTime: gameTime,
+                lighting: _sceneLogic.Lighting,
+                lightingSettings: _sceneLogic.ActiveScene.Lighting);
 
             _debug.Draw(gameTime);
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Engine.Entities;
+using Engine.Renderer.Lighting;
 using DirectionalLight = Engine.Entities.DirectionalLight;
 
 namespace Engine.Logic
@@ -28,6 +29,15 @@ namespace Engine.Logic
         /// </summary>
         public Camera MainCamera;
 
+        /// <summary>Baked lighting settings (Anvil > Inspector > Lighting). Saved with the scene.</summary>
+        public LightingSettings Lighting = new LightingSettings();
+
+        /// <summary>
+        /// Result of the last probe volume bake, or null. Persisted as a <c>.probes</c> file next to
+        /// the .obsc; uploaded to the GPU by <see cref="LightingSystem"/>.
+        /// </summary>
+        public ProbeVolumeData BakedProbes;
+
         public void Clear()
         {
             BasicEntities.Clear();
@@ -36,6 +46,7 @@ namespace Engine.Logic
             DirectionalLights.Clear();
             EnvironmentSample = null;
             MainCamera = null;
+            BakedProbes = null;
         }
     }
 }

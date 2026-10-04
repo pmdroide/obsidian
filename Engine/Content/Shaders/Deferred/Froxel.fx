@@ -36,6 +36,11 @@ float FogDistanceFull = 400.0f;
 
 float G = 0.45f;
 
+// The deferred light shaders scale their output by 0.1 (OUTPUTCONST in DeferredPointLight.fx,
+// the * 0.1f in DeferredDirectionalLight.fx). Apply the same scale to in-scattered light so the
+// fog is in the same units as lit surfaces; without it the fog outshines everything behind it.
+static const float LIGHT_OUTPUT_SCALE = 0.1f;
+
 bool UseDirectionalLight;
 
 float3 DirectionalLightDirectionVS;
@@ -298,7 +303,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         float cosTheta = dot(lightDir, viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
         float shadow = ComputeShadow(worldPos);
-        scatter += DirectionalLightColor * phase * density * DirectionalScatter * shadow;
+        scatter += DirectionalLightColor * LIGHT_OUTPUT_SCALE * phase * density * DirectionalScatter * shadow;
     }
 
     [loop]
@@ -323,7 +328,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         if (PointLightCastShadows[li] > 0.5)
             ptShadow = ComputePointLightShadow(li, worldPos, PointLightPositionsWS[li], radius);
 
-        scatter += PointLightColors[li] * phase * density * PointScatter * attenuation * ptShadow;
+        scatter += PointLightColors[li] * LIGHT_OUTPUT_SCALE * phase * density * PointScatter * attenuation * ptShadow;
     }
 
     return float4(scatter, density);

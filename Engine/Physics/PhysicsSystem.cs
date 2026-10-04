@@ -15,6 +15,18 @@ using XnaVector3 = Microsoft.Xna.Framework.Vector3;
 namespace Engine.Physics
 {
     /// <summary>
+    /// Physics component of a <see cref="Entities.BasicEntity"/>, picked in Anvil's
+    /// Inspector > Physics. <see cref="Static"/> = immovable triangle-mesh collider;
+    /// <see cref="Dynamic"/> = convex rigid body affected by gravity and collisions.
+    /// </summary>
+    public enum PhysicsBodyType
+    {
+        None,
+        Static,
+        Dynamic,
+    }
+
+    /// <summary>
     /// The single seam between the engine and BEPUphysics v2. Owns the
     /// <see cref="Simulation"/>, the <see cref="BufferPool"/> and the two required
     /// callback structs, and exposes everything in engine (XNA) math types so the
@@ -120,6 +132,114 @@ namespace Engine.Physics
             var pose = new RigidPose(MathConverter.ToNumerics(position));
             return Simulation.Bodies.Add(
                 BodyDescription.CreateDynamic(pose, inertia, new CollidableDescription(shapeIndex), new BodyActivityDescription(0.01f)));
+        }
+
+        // Hull building is roughly O(n log n) in the point count; past this a bounding
+        // box is used instead so a huge mesh can't stall the frame it is made dynamic.
+        private const int MaxHullPoints = 20000;
+
+        /// <summary>
+        /// Add a dynamic rigid body whose collider is the convex hull of
+        /// <paramref name="localPoints"/> (entity-local space, scale already applied).
+        /// Falls back to the points' bounding box when the hull can't be built (flat,
+        /// too few or too many points). The collider is centred on its own centre of
+        /// mass, so <paramref name="localCenter"/> returns that centre in entity-local
+        /// space: body position = entity position + orientation * localCenter.
+        /// </summary>
+        public BodyHandle AddDynamicConvex(XnaVector3[] localPoints, XnaVector3 entityPosition, XnaQuaternion orientation, float mass, out XnaVector3 localCenter)
+        {
+            if (!TryCreateHull(localPoints, mass, out TypedIndex shape, out BodyInertia inertia, out Vector3 center))
+                CreateBoundsBox(localPoints, mass, out shape, out inertia, out center);
+
+            localCenter = MathConverter.ToXna(center);
+            XnaVector3 position = entityPosition + XnaVector3.Transform(localCenter, orientation);
+            var pose = new RigidPose(MathConverter.ToNumerics(position), MathConverter.ToNumerics(orientation));
+            return Simulation.Bodies.Add(
+                BodyDescription.CreateDynamic(pose, inertia, new CollidableDescription(shape), new BodyActivityDescription(0.01f)));
+        }
+
+        private bool TryCreateHull(XnaVector3[] points, float mass, out TypedIndex shape, out BodyInertia inertia, out Vector3 center)
+        {
+            shape = default;
+            inertia = default;
+            center = default;
+            if (points.Length < 4 || points.Length > MaxHullPoints) return false;
+
+            // A flat point set (plane, quad) has no volume, so no usable inertia.
+            GetBounds(points, out Vector3 min, out Vector3 max);
+            Vector3 extent = max - min;
+            float largest = MathF.Max(extent.X, MathF.Max(extent.Y, extent.Z));
+            float smallest = MathF.Min(extent.X, MathF.Min(extent.Y, extent.Z));
+            if (largest <= 0f || smallest < largest * 1e-3f) return false;
+
+            var numerics = new Vector3[points.Length];
+            for (int i = 0; i < points.Length; i++) numerics[i] = MathConverter.ToNumerics(points[i]);
+
+            ConvexHull hull;
+            try { hull = new ConvexHull(numerics, BufferPool, out center); }
+            catch { return false; }
+
+            inertia = hull.ComputeInertia(mass);
+            if (!float.IsFinite(inertia.InverseMass) || !float.IsFinite(inertia.InverseInertiaTensor.XX) ||
+                !float.IsFinite(inertia.InverseInertiaTensor.YY) || !float.IsFinite(inertia.InverseInertiaTensor.ZZ))
+            {
+                hull.Dispose(BufferPool);
+                return false;
+            }
+
+            shape = Simulation.Shapes.Add(hull);
+            return true;
+        }
+
+        private void CreateBoundsBox(XnaVector3[] points, float mass, out TypedIndex shape, out BodyInertia inertia, out Vector3 center)
+        {
+            GetBounds(points, out Vector3 min, out Vector3 max);
+            center = (min + max) * 0.5f;
+            // Keep a minimum thickness so a flat model still gets a solid slab.
+            Vector3 size = Vector3.Max(max - min, new Vector3(0.01f));
+            var box = new Box(size.X, size.Y, size.Z);
+            inertia = box.ComputeInertia(mass);
+            shape = Simulation.Shapes.Add(box);
+        }
+
+        private static void GetBounds(XnaVector3[] points, out Vector3 min, out Vector3 max)
+        {
+            if (points.Length == 0) { min = max = Vector3.Zero; return; }
+            min = max = MathConverter.ToNumerics(points[0]);
+            for (int i = 1; i < points.Length; i++)
+            {
+                Vector3 p = MathConverter.ToNumerics(points[i]);
+                min = Vector3.Min(min, p);
+                max = Vector3.Max(max, p);
+            }
+        }
+
+        public void GetBodyPose(BodyHandle handle, out XnaVector3 position, out XnaQuaternion orientation)
+        {
+            var pose = Simulation.Bodies[handle].Pose;
+            position = MathConverter.ToXna(pose.Position);
+            orientation = MathConverter.ToXna(pose.Orientation);
+        }
+
+        /// <summary>
+        /// Teleport a body to a full pose and wake it. <paramref name="resetVelocity"/>
+        /// zeroes its motion (editor placement / returning from Play mode).
+        /// </summary>
+        public void SetBodyPose(BodyHandle handle, XnaVector3 position, XnaQuaternion orientation, bool resetVelocity)
+        {
+            var body = Simulation.Bodies[handle];
+            body.Pose = new RigidPose(MathConverter.ToNumerics(position), MathConverter.ToNumerics(orientation));
+            if (resetVelocity) body.Velocity = default;
+            body.Awake = true;
+            body.UpdateBounds();
+        }
+
+        /// <summary>Move a static collider; ApplyDescription refreshes its bounds and wakes nearby bodies.</summary>
+        public void SetStaticPose(StaticHandle handle, XnaVector3 position, XnaQuaternion orientation)
+        {
+            Simulation.Statics.GetDescription(handle, out var description);
+            description.Pose = new RigidPose(MathConverter.ToNumerics(position), MathConverter.ToNumerics(orientation));
+            Simulation.Statics.ApplyDescription(handle, description);
         }
 
         /// <summary>Per-frame read-back: the body's pose as an XNA rotation*translation matrix (no scale).</summary>

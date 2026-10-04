@@ -11,7 +11,7 @@ namespace Engine.Recources
         public static bool g_vsync = false;
         public static int g_fixedfps = 0;
         public static int u_showdisplayinfo = 3;
-        public static bool p_physics = false;
+        public static bool p_physics = true; //Master switch: simulate physics bodies outside editor mode (Play)
         public static Renderer.Renderer.RenderModes g_rendermode = Renderer.Renderer.RenderModes.Deferred;
 
         //Editor
@@ -342,6 +342,15 @@ namespace Engine.Recources
         {
             get { return _g_froxelFogDistanceFull; }
             set { _g_froxelFogDistanceFull = Math.Max(_g_froxelFogDistanceStart + 1f, value); }
+        }
+
+        // Henyey-Greenstein anisotropy. 0 = isotropic, > 0 = forward scattering (glow around the
+        // sun when looking towards it), < 0 = back scattering.
+        private static float _g_froxelAnisotropy = 0.45f;
+        public static float g_FroxelAnisotropy
+        {
+            get { return _g_froxelAnisotropy; }
+            set { _g_froxelAnisotropy = Math.Clamp(value, -0.95f, 0.95f); }
         }
 
         // Temporal history weight. Higher = smoother but laggier (and blocks visible when still).

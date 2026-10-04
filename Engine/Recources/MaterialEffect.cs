@@ -208,8 +208,32 @@ namespace Engine.Recources
 
         public MaterialEffect Clone()
         {
-            return new MaterialEffect(this);
-
+            // The Effect copy constructor only clones the shader; copy the material state too,
+            // otherwise the clone loses its maps/colour and renders as the default gray.
+            MaterialEffect clone = new MaterialEffect(this)
+            {
+                _albedoMap = _albedoMap,
+                _roughnessMap = _roughnessMap,
+                _mask = _mask,
+                _normalMap = _normalMap,
+                _metallicMap = _metallicMap,
+                _displacementMap = _displacementMap,
+                IsTransparent = IsTransparent,
+                HasShadow = HasShadow,
+                HasDiffuse = HasDiffuse,
+                HasRoughnessMap = HasRoughnessMap,
+                HasMask = HasMask,
+                HasNormalMap = HasNormalMap,
+                HasMetallic = HasMetallic,
+                HasDisplacement = HasDisplacement,
+                DiffuseColor = DiffuseColor,
+                _roughness = _roughness,
+                Metallic = Metallic,
+                EmissiveStrength = EmissiveStrength,
+                Type = Type,
+                RenderCClockwise = RenderCClockwise,
+            };
+            return clone;
         }
     }
 }

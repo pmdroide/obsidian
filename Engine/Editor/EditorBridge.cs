@@ -5,7 +5,9 @@ using System.IO;
 using System.Reflection;
 using Engine.Entities;
 using Engine.Logic;
+using Engine.Physics;
 using Engine.Recources;
+using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Editor
@@ -27,6 +29,10 @@ namespace Engine.Editor
         private Assets _assets;
         private Dictionary<string, ModelDefinition> _modelKeys = new Dictionary<string, ModelDefinition>();
         private List<string> _modelKeyList = new List<string>();
+        // key -> content-relative asset path. Rebuilt on the game thread and swapped in
+        // whole so UI-thread readers never see a half-built dictionary.
+        private volatile Dictionary<string, string> _modelAssetPaths =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Throttle snapshot publication: 60fps engine / 6 = ~10Hz. Lower than
         // 20Hz because each publish re-evaluates every NumericUpDown / ColorPicker
@@ -74,6 +80,16 @@ namespace Engine.Editor
                 if (down) _hostKeysDown.Add(xnaKeyCode);
                 else _hostKeysDown.Remove(xnaKeyCode);
             }
+        }
+
+        /// <summary>
+        /// Release all forwarded keys. The host calls this across a window-state transition
+        /// (maximize/fullscreen/restore), which can swallow a key's KeyUp and otherwise leave it
+        /// latched "down" here — drifting the editor camera until the key is pressed again.
+        /// </summary>
+        public void ClearHostKeys()
+        {
+            lock (_hostKeysLock) _hostKeysDown.Clear();
         }
 
         // Pointer-over-viewport gate. Defaults to true so standalone Engine.exe
@@ -126,6 +142,7 @@ namespace Engine.Editor
         public event Action SceneChanged;
         public event Action<Logic.GameMode> ModeChanged;
         public event Action ModelRegistryChanged;
+        public event Action<LightingBakeStatus> LightingStatusChanged;
 
         // Lazy-constructed on first import — needs Assets.Content + Assets.GraphicsDevice
         // populated, which only happens after ScreenManager.Load() runs.
@@ -155,6 +172,7 @@ namespace Engine.Editor
             if (scene != null)
             {
                 scene.SceneManager.SceneChanged += OnSceneSwap;
+                scene.Lighting.StatusChanged += OnLightingStatusChanged;
                 if (scene.PlayMode != null) scene.PlayMode.ModeChanged += OnModeChanged;
             }
 
@@ -207,6 +225,11 @@ namespace Engine.Editor
                 _modelKeys[kvp.Key] = kvp.Value;
                 _modelKeyList.Add(kvp.Key);
             }
+
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in _modelKeys)
+                if (!string.IsNullOrEmpty(kvp.Value?.AssetPath)) paths[kvp.Key] = kvp.Value.AssetPath;
+            _modelAssetPaths = paths;
         }
 
         private void OnAssetModelRegistered(string key, ModelDefinition md)
@@ -329,14 +352,14 @@ namespace Engine.Editor
                         md = _assets.ErrorModel;
 
                     // Material selection:
-                    //  - The ERROR mesh renders with its own embedded textures (null material).
+                    //  - The ERROR mesh uses its own texture set, or error.png if those failed.
                     //  - A convention-bound import uses its bound material.
                     //  - An import without bound textures falls back to the visible error.png.
                     //  - A built-in uses its embedded per-mesh-part materials (null material),
                     //    so Sponza/Helmets etc. keep their textures.
                     MaterialEffect material;
                     if (md == _assets.ErrorModel)
-                        material = null;
+                        material = (_assets.ErrorModelMaterial ?? _assets.ErrorMaterial)?.Clone();
                     else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound))
                         material = bound.Clone();
                     else if (_assets.DynamicModels.ContainsKey(modelKey))
@@ -445,6 +468,11 @@ namespace Engine.Editor
         public bool IsDeletableModel(string modelKey) =>
             _assets != null && _assets.DynamicModels.ContainsKey(modelKey);
 
+        public string ContentSourceRoot => AssetImporter.LocateEngineContentRoot();
+
+        public string GetModelAssetPath(string modelKey) =>
+            modelKey != null && _modelAssetPaths.TryGetValue(modelKey, out string path) ? path : null;
+
         // Copies texture slots + scalar material fields from a freshly bound material onto
         // every already-placed entity using the same model, so dropping textures updates
         // instances already in the scene. The draw path reads these fields live each frame,
@@ -485,6 +513,56 @@ namespace Engine.Editor
             to.MetallicMap = from.MetallicMap;
             to.Mask = from.Mask;
             to.DisplacementMap = from.DisplacementMap;
+        }
+
+        // -------- Baked lighting --------
+
+        public LightingBakeStatus LightingStatus => _scene?.Lighting.Status ?? LightingBakeStatus.Idle;
+
+        private void OnLightingStatusChanged(LightingBakeStatus status)
+        {
+            try { LightingStatusChanged?.Invoke(status); }
+            catch (Exception ex) { Log("LightingStatusChanged handler threw: " + ex); }
+        }
+
+        public LightingSettings GetLightingSettings() =>
+            _scene?.ActiveScene?.Lighting?.Clone() ?? new LightingSettings();
+
+        public void EnqueueMutateLighting(Action<LightingSettings> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                Logic.Scene active = _scene?.ActiveScene;
+                if (active == null) return;
+                try { mutate(active.Lighting); active.IsDirty = true; }
+                catch (Exception ex) { Log("EnqueueMutateLighting threw: " + ex); }
+            });
+        }
+
+        public void EnqueueBakeLighting()
+        {
+            Log("EnqueueBakeLighting");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene?.ActiveScene == null) return;
+                _scene.Lighting.StartBake(_scene.ActiveScene);
+            });
+        }
+
+        public void CancelLightingBake() => _scene?.Lighting.Cancel();
+
+        public void EnqueueClearBakedLighting()
+        {
+            _pendingOps.Enqueue(() => _scene?.Lighting.ClearBake(_scene.ActiveScene));
+        }
+
+        public string GetBakedLightingSummary()
+        {
+            ProbeVolumeData d = _scene?.ActiveScene?.BakedProbes;
+            if (d == null) return null;
+            return $"{d.CountX}×{d.CountY}×{d.CountZ} probes ({d.ProbeCount:N0}) · {d.SamplesPerProbe} rays · " +
+                   $"{d.Bounces} bounce{(d.Bounces == 1 ? "" : "s")} · baked {d.BakedAtUtc.ToLocalTime():g} in {d.BakeSeconds:0.0} s";
         }
 
         public void EnqueueNewScene()
@@ -666,7 +744,8 @@ namespace Engine.Editor
                     scale: be.Scale,
                     isEnabled: be.IsEnabled,
                     light: null,
-                    material: matSnap));
+                    material: matSnap,
+                    physics: new PhysicsSnapshot(be.PhysicsType, be.Mass)));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)

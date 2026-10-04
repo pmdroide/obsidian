@@ -1,5 +1,244 @@
 # Changelog
 
+## Added: Physics section in the Anvil inspector (static / dynamic bodies)
+
+Selecting a model in Anvil now shows a **Physics** section in the Inspector with a **Body** dropdown:
+
+- **None**: no collider (the default).
+- **Static**: an immovable triangle-mesh collider built from the model. Other bodies collide with it.
+- **Dynamic**: a rigid body that falls with gravity and collides with other bodies. Its collider is the convex hull of the model. A **Mass** field appears for this option.
+
+Physics only runs in Play mode. While editing, every collider follows its object, so moving, rotating or scaling with the gizmo or the inspector also moves the collider. In Play mode, dynamic bodies fall and collide. If a script or the gizmo moves a dynamic body during Play, the body is teleported there and keeps its velocity. Stop puts every object back where it was before Play and clears all velocities.
+
+Added:
+
+- [Engine/Physics/ScenePhysics.cs](Engine/Physics/ScenePhysics.cs): runs once per frame on the game thread and keeps BEPU bodies matching each entity's physics component. It creates, rebuilds and removes bodies when the type, scale or mass changes. It removes the bodies of deleted entities and of entities left behind by a scene swap. While editing it moves bodies to match their entities; in Play mode it steps the simulation and writes dynamic poses back into `Position`/`RotationMatrix`. The timestep is clamped to 1/20 s so a frame hitch can't push bodies through colliders. Model geometry is cached per `Model`.
+- [Engine/Physics/PhysicsSystem.cs](Engine/Physics/PhysicsSystem.cs): the `PhysicsBodyType` enum (`None`/`Static`/`Dynamic`), plus `AddDynamicConvex` and `GetBodyPose`/`SetBodyPose`/`SetStaticPose`. `AddDynamicConvex` builds a convex hull and falls back to a bounding box when the model is flat or has more than 20k unique vertices. The body is centred on its centre of mass, and the offset from the entity origin is returned.
+- `PhysicsSnapshot` in [IEditorBridge.cs](Engine/Editor/IEditorBridge.cs), filled for each `BasicEntity` in `EditorBridge.BuildSnapshot()`.
+- `PhysicsInfo` in [SceneObjectViewModel.cs](Editor/Anvil/Models/SceneObjectViewModel.cs), reconciled in [BridgeReconciler.cs](Editor/Anvil/Services/BridgeReconciler.cs) and shown in the new Physics expander in [MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml). Edits go through `EnqueueMutate`.
+- `.obsc` scenes save an optional `Physics` block (`Type`, `Mass`) per entity, and skip it for `None`. Older files still load, and the scene version is still 1.
+
+Changed:
+
+- [Engine/Entities/BasicEntity.cs](Engine/Entities/BasicEntity.cs): new public `PhysicsType`/`Mass` fields and internal runtime body state. `ApplyTransformation` now has a single code path. `Clone` (Ctrl+C / Insert) copies the physics component.
+- [Engine/Logic/MainSceneLogic.cs](Engine/Logic/MainSceneLogic.cs): the new `UpdatePhysics(dt)`, called by `Engine.Update` through `ScreenManager.UpdatePhysics`, replaces the direct `PhysicsSystem.Step`. The simulation still only steps when `!e_enableeditor && p_physics`. On a scene swap, `DetachAll` replaces the manual static-collider removal. `EditorDelete` detaches the entity's body. `AddStaticPhysics` now only sets `PhysicsType = Static`.
+- [Engine/Recources/GameSettings.cs](Engine/Recources/GameSettings.cs): `p_physics` now defaults to `true`. With `false` nothing could ever be simulated. Scenes with no physics components behave the same as before.
+
+Removed:
+
+- `BasicEntity.RegisterPhysics`, `BasicEntity.CheckPhysics` and the per-frame `CheckPhysics` loop in `MeshMaterialLibrary.FlagMovedObjects`. `ScenePhysics` replaces them.
+
+Notes:
+
+- BEPU mesh colliders are one-sided. A headless drop test confirmed that triangles with XNA's normal clockwise front faces collide, but reverse-wound triangles let bodies fall through. A model with flipped winding won't work as a Static collider.
+
+## Added: `clean.ps1` build-output cleanup script
+
+[clean.ps1](clean.ps1) at the repo root deletes the `bin/` and `obj/` folders of every project: Engine, Engine/Content, Editor/Anvil and Vista. It only deletes `bin/` and `obj/` folders that sit next to a `.csproj` or `.mgcb` file, so stale `.xnb` outputs can't keep removed assets loading. `-WhatIf` lists what would be deleted without deleting anything.
+
+## Fixed: standalone engine crashed on boot due to stale asset paths
+
+The standalone engine crashed on startup without any message. [Assets.cs](Engine/Recources/Assets.cs) still loaded assets that the content reorg had moved or removed (`GameObjects/Plane`, `GameObjects/test/cube`, `GameObjects/Tiger/Tiger`, `GameObjects/Editor/*`, `GameObjects/test/squarebricks-*`). These loads only worked because old `.xnb` files were still in `bin`. When a model had no `.bbox`, `ModelDefinition` tried to save one relative to the working directory, which was the source `Engine/Content` folder. This created a stray `Plane.bbox` there, then threw `DirectoryNotFoundException` for `GameObjects/test/cube.bbox`.
+
+Changed:
+
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs): the editor arrows and icons now load from `System/Editor/*`, and `Cube` loads from `GameObjects/Default/cube`.
+- [Engine/Renderer/RenderModules/TexFilter.cs](Engine/Renderer/RenderModules/TexFilter.cs): `texStrip` now loads from `System/Editor/texStrip`.
+- [Engine/Recources/ModelDefinition.cs](Engine/Recources/ModelDefinition.cs): if saving a `.bbox` cache fails, the error is logged and the engine keeps booting.
+- [Engine/Program.cs](Engine/Program.cs): unhandled exceptions are written to `crash.log` next to the executable, then rethrown.
+
+Removed:
+
+- The unused `Assets.Plane`, `Assets.Tiger` and `Assets.RockMaterial`, whose source assets no longer exist.
+- The stray `Engine/Content/GameObjects/Plane.bbox` generated by the crash.
+
+## Added: baked lighting (irradiance probe volume) with a Lighting tab in Anvil
+
+A first version of baked global illumination. The Inspector has a new **Lighting** tab (also under Window > Lighting). From it you can bake a 3D grid of light probes for the scene on the CPU. Inside the grid, the deferred renderer then uses the probes for diffuse ambient light instead of the environment cubemap. Probes need no lightmap UVs, so they work with every existing model.
+
+How it works:
+
+- **Bake.** `LightingBakeInput.Gather` takes a world-space copy of all meshes on the game thread: triangles, outward normals, and an approximate albedo per material, plus the enabled directional and point lights. `ProbeVolumeBaker` then works on that copy on a background thread. It builds a `TriangleBvh` (SAH), and each probe casts *Rays / Probe* rays:
+  - a ray that escapes picks up the sky;
+  - a ray that hits a back face counts towards marking the probe as inside geometry;
+  - a ray that hits a front face picks up albedo � (direct light at the hit point + the previous pass's probes).
+  
+  Each pass adds one bounce (the DDGI approach). The result is stored per probe and colour channel as L1 spherical harmonics, already in the deferred shaders' light units (�0.1, linear colour). Probes inside geometry are replaced by the average of their valid neighbours.
+- **Runtime.** `LightingSystem` uploads the probes as three `HalfVector4` `Texture3D`s. `DeferredEnvironmentMap.fx` rebuilds each pixel's world position from depth, samples the volume with trilinear filtering, and blends from the cubemap's diffuse to the probe irradiance near the volume's edges. Specular reflections still come from the cubemap/SSR.
+- **Persistence.** Lighting settings are saved inside the `.obsc` scene file (an optional `Lighting` block, so older v1 files still load). The bake is saved as a binary `<scene>.probes` file next to it.
+
+Added:
+
+- [Engine/Renderer/Lighting/LightingSettings.cs](Engine/Renderer/Lighting/LightingSettings.cs): per-scene settings.
+  - Runtime: enable, intensity, show probes.
+  - Volume: fit to scene + padding or manual bounds, probe spacing, max probes per axis.
+  - Quality: rays per probe, bounces, validity threshold.
+  - Sky colour and intensity.
+- [Engine/Renderer/Lighting/ProbeVolumeData.cs](Engine/Renderer/Lighting/ProbeVolumeData.cs): the baked grid, trilinear `EvaluateIrradiance`, and the `.probes` read/write code (versioned header).
+- [Engine/Renderer/Lighting/LightingBakeInput.cs](Engine/Renderer/Lighting/LightingBakeInput.cs): scene gather. Reads positions and normals from the vertex buffers using the vertex declaration, and averages the albedo texture from a small mip level.
+- [Engine/Renderer/Lighting/TriangleBvh.cs](Engine/Renderer/Lighting/TriangleBvh.cs): binned-SAH BVH with closest-hit and any-hit queries.
+- [Engine/Renderer/Lighting/ProbeVolumeBaker.cs](Engine/Renderer/Lighting/ProbeVolumeBaker.cs): the multi-bounce CPU baker. Uses `Parallel.For`, can be cancelled, reports progress, and uses deterministic per-probe ray rotations.
+- [Engine/Renderer/Lighting/LightingSystem.cs](Engine/Renderer/Lighting/LightingSystem.cs), [LightingBakeStatus.cs](Engine/Renderer/Lighting/LightingBakeStatus.cs): starts, cancels and finishes bakes, uploads to the GPU, publishes status, and draws the probe debug view (probes coloured by irradiance, magenta for invalid ones, plus the volume bounds).
+- [Editor/Anvil/Models/LightingViewModel.cs](Editor/Anvil/Models/LightingViewModel.cs): the Lighting tab's view model. Reloads when the scene changes, sends edits to the game thread, and logs bake results to the Anvil console.
+
+Changed:
+
+- [Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx](Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx), [DeferredEnvironmentMapRenderModule.cs](Engine/Renderer/RenderModules/DeferredEnvironmentMapRenderModule.cs): probe volume parameters, `SampleProbeVolume`, and a new `SetProbeVolume(...)`.
+- [Engine/Renderer/Renderer.cs](Engine/Renderer/Renderer.cs): `Draw` takes optional `lighting` / `lightingSettings` arguments, binds the probe volume before the environment pass, and draws the probe debug view when *Show probes* is on (editor mode only).
+- [Engine/Logic/Scene.cs](Engine/Logic/Scene.cs): new `Lighting` (settings) and `BakedProbes` fields. [MainSceneLogic.cs](Engine/Logic/MainSceneLogic.cs) owns a `LightingSystem`. [ScreenManager.cs](Engine/Logic/ScreenManager.cs) updates and disposes it and passes it to the renderer.
+- [Engine/Logic/SceneSerialization.cs](Engine/Logic/SceneSerialization.cs): `LightingRecord` (settings + probe file name). Saves and loads the `.probes` file next to the scene; a missing or unreadable file is logged and ignored.
+- [Engine/Editor/IEditorBridge.cs](Engine/Editor/IEditorBridge.cs), [EditorBridge.cs](Engine/Editor/EditorBridge.cs): `GetLightingSettings`, `EnqueueMutateLighting`, `EnqueueBakeLighting`, `CancelLightingBake`, `EnqueueClearBakedLighting`, `GetBakedLightingSummary`, `LightingStatus`, `LightingStatusChanged`.
+- [Engine/Renderer/Helper/HelperGeometry/OctahedronHelperManager.cs](Engine/Renderer/Helper/HelperGeometry/OctahedronHelperManager.cs), [HelperGeometryManager.cs](Engine/Renderer/Helper/HelperGeometry/HelperGeometryManager.cs): octahedron helpers accept an optional radius. Existing callers still use 0.005.
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): a third Inspector chip, **Lighting**, and Window > Lighting. The panel has Bake (Bake/Cancel/Clear, progress bar, last-bake summary), Probe Volume, Volume (manual min/max when *Fit to scene* is off), Quality and Sky sections.
+
+Known limits / next steps:
+
+- Albedo is one average per material (no per-texel UV lookup) and emissive surfaces don't emit light.
+- Rays that escape the scene pick up a flat sky colour, not the sky cubemap.
+- Thin walls can leak light: there is no per-probe depth/visibility test like DDGI's Chebyshev test.
+- Probe irradiance is only applied while `g_environmentmapping` is on, because it shares the environment pass.
+- Mesh `IsEnabled` is ignored when gathering geometry, matching the renderer (editor-spawned entities leave it false). Lights still respect it.
+- Probes don't move with objects; rebake after editing the scene.
+
+## Added: window size, resizing, fullscreen, VSync and FPS cap in Game Settings; System folder hidden
+
+The Game Settings dialog now also controls how the standalone game window is sized and paced. These settings are only applied when the engine runs standalone. The viewport embedded in Anvil is unaffected.
+
+Added:
+
+- [Engine/Recources/GameInfo.cs](Engine/Recources/GameInfo.cs): new `WindowWidth`/`WindowHeight` (default 1280x720), `AllowResizing` (default on), `Fullscreen`, `VSync` and `FpsCap` (0 = unlimited) fields, plus `ApplyToGameSettings()`, which pushes them into `GameSettings.g_screenwidth/height`, `g_vsync` and `g_fixedfps`.
+- [Editor/Anvil/Views/GameSettingsWindow.axaml](Editor/Anvil/Views/GameSettingsWindow.axaml), [Editor/Anvil/ViewModels/GameSettingsViewModel.cs](Editor/Anvil/ViewModels/GameSettingsViewModel.cs): **Window** section (Width, Height, "Allow the player to resize the window", "Fullscreen (borderless, desktop resolution)") and **Frame Rate** section (VSync, FPS Cap). Width/Height and resizing are greyed out while Fullscreen is on.
+
+Changed:
+
+- [Engine/Engine.cs](Engine/Engine.cs): `Initialize()` now calls a new `ApplyGameInfo()` only when `IsHostedByEditor` is false. It applies the title and icon, sets `Window.AllowUserResizing`, switches to borderless fullscreen at the desktop resolution when requested, and resizes the back buffer before the render targets are created.
+- [Engine/Engine.cs](Engine/Engine.cs): `SetFPSLimit()` now calls `ApplyChanges()` in the fixed-FPS branch. Before, VSync stayed on, so an FPS cap was silently limited to the monitor refresh rate.
+- `GameInfo.json` moved from `Engine/Content/` to `Engine/Content/System/GameInfo.json` ([Engine.csproj](Engine/Engine.csproj) copy rule updated).
+- [Editor/Anvil/ViewModels/MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): the top-level `System` folder is always hidden in the Assets panel. It holds engine-managed files: editor gizmo meshes/icons, `GameInfo.json` and `GameIcon.ico`.
+
+## Added: Game Settings (window name + icon)
+
+A new **Game Settings** entry in Anvil's title-bar menu opens a dialog where you set the standalone game's window name and upload a custom icon image.
+
+Added:
+
+- [Engine/Recources/GameInfo.cs](Engine/Recources/GameInfo.cs): reads and writes `Engine/Content/System/GameInfo.json` (`WindowTitle`, `IconPath`). Dev runs read the source `Engine/Content` copy directly, and shipped builds read the copy next to the executable. `ApplyToWindow` sets the MonoGame window title and sets the icon through the WinForms `Form.Icon`.
+- [Editor/Anvil/Views/GameSettingsWindow.axaml](Editor/Anvil/Views/GameSettingsWindow.axaml) / [.axaml.cs](Editor/Anvil/Views/GameSettingsWindow.axaml.cs), [Editor/Anvil/ViewModels/GameSettingsViewModel.cs](Editor/Anvil/ViewModels/GameSettingsViewModel.cs): a modal dialog with a Window Name field, an icon preview, **Upload Image...** (png/jpg/bmp/ico/gif/webp) and **Reset**. Nothing is written until you press Save.
+- [Editor/Anvil/Services/IconWriter.cs](Editor/Anvil/Services/IconWriter.cs): converts the chosen image into a multi-size `.ico` (256/64/48/32/16, PNG-compressed entries). Non-square images are fitted into a transparent square, not stretched. The icon is written to `Engine/Content/System/GameIcon.ico`.
+
+Changed:
+
+- [Engine/Engine.cs](Engine/Engine.cs): `Initialize()` loads `GameInfo` and applies it, replacing the hard-coded `"Engine"` title.
+- [Engine/Engine.csproj](Engine/Engine.csproj): `Content/GameInfo.json` and `Content/System/GameIcon.ico` are copied to the output. When `GameIcon.ico` exists it also becomes the executable's `ApplicationIcon` on the next build.
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [Editor/Anvil/ViewModels/MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): new top-level `Game Settings` menu item (`OpenGameSettingsCommand`). The title bar's project name now shows the game's window name. Saving logs to the Anvil console.
+
+## Fix: volumetric fog hid the scene; fog settings in the inspector
+
+With the default sun (intensity 100) the froxel fog covered the whole editor viewport, and objects only showed through at extreme light intensities such as 10000. The deferred light shaders scale their output by `0.1`, but the fog used the light's full `colour � intensity`, so lit fog was far brighter than the lit surfaces behind it.
+
+Changed:
+
+- [Engine/Content/Shaders/Deferred/Froxel.fx](Engine/Content/Shaders/Deferred/Froxel.fx): light scattered into the fog by directional and point lights is now scaled by the same `0.1` (`LIGHT_OUTPUT_SCALE`) as surface lighting. Fog keeps its density, but no longer outshines the objects inside it.
+- [Engine/Recources/GameSettings.cs](Engine/Recources/GameSettings.cs): new `g_FroxelAnisotropy` (Henyey-Greenstein `G`, default 0.45, clamped to �0.95). It used to be fixed in the shader.
+- [Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs](Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs): passes `g_FroxelAnisotropy` to the shader's `G` parameter each frame.
+
+Added:
+
+- A **Volumetric Fog** section in the Anvil inspector's Post FX tab ([MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [PostProcessingViewModel.cs](Editor/Anvil/Models/PostProcessingViewModel.cs)). It has an Enable Fog toggle, which sets both `g_FroxelsEnabled` and `g_FroxelFogEnabled` so turning fog off also skips the froxel passes. It also has Density, Absorption, Sun Scatter, Point Scatter, Anisotropy, Start/Full Distance, Sky Fog and History. The fields are greyed out while fog is off. Changes are applied on the game thread, like the other Post FX settings.
+
+## Fix: ERROR mesh spawned white
+
+When the ERROR mesh was dropped into the scene it showed up plain white. It didn't use its own textures, and it didn't fall back to `error.png` either. The cause: `EnqueueAddBasicEntity` gave it a `null` material so it would use its embedded FBX materials, but `ERRORText.fbx` doesn't reference any textures. Its `ERRORText_typeBlinn_*.jpg` maps were also missing from the content build.
+
+Changed:
+
+- [Engine/Content/Content.mgcb](Engine/Content/Content.mgcb): added the `ERRORText_typeBlinn_` BaseColor, Normal, Roughness and Metallic textures.
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs): new `ErrorModelMaterial`, built from those four maps. If any of them fails to load, it falls back to `ErrorMaterial` (`error.png`). Removed the `BindEmbeddedTextures(ErrorModel.Model)` call, since the FBX has nothing to bind. `ErrorModelMaterial` is disposed in `Dispose()`.
+- [Engine/Editor/EditorBridge.cs](Engine/Editor/EditorBridge.cs): `EnqueueAddBasicEntity` gives the ERROR mesh a clone of `ErrorModelMaterial` (or `ErrorMaterial`) instead of `null`. This also applies to imports that failed and were registered with the error mesh.
+- [Engine/Recources/MaterialEffect.cs](Engine/Recources/MaterialEffect.cs): `Clone()` only called the `Effect` copy constructor, so every clone lost its texture maps, colour, roughness, metallic and type, and rendered as the default gray. This was the main reason the ERROR mesh (and imported models using `error.png` or textures bound by convention) still showed white. `Clone()` now copies all the material state.
+
+## Content: `Art` → `GameObjects`; Anvil Assets panel mirrors `Engine/Content`
+
+The `Engine/Content/Art` folder was renamed to `Engine/Content/GameObjects`. Every path that pointed at it now uses the new name, and the Anvil Assets panel shows the real Content folder instead of fixed virtual folders.
+
+Changed:
+
+- [Engine/Content/Content.mgcb](Engine/Content/Content.mgcb): all `Art/...` build entries now point to `GameObjects/...`.
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs), [Engine/Recources/AssetImporter.cs](Engine/Recources/AssetImporter.cs), [Engine/Renderer/RenderModules/TexFilter.cs](Engine/Renderer/RenderModules/TexFilter.cs): content load paths changed from `Art/...` to `GameObjects/...`. Runtime-imported models now go to `GameObjects/Models/{key}/` and standalone textures to `GameObjects/Textures/`. `AssetImporter.LocateEngineContentRoot()` is now `internal` so the bridge can use it.
+- [Engine/Recources/ModelDefinition.cs](Engine/Recources/ModelDefinition.cs): new `AssetPath` field that stores the content path the model was loaded from.
+- [Engine/Editor/IEditorBridge.cs](Engine/Editor/IEditorBridge.cs), [Engine/Editor/EditorBridge.cs](Engine/Editor/EditorBridge.cs): added `ContentSourceRoot` (absolute path of `Engine/Content`) and `GetModelAssetPath(key)`. Both are safe to call from the UI thread. The key→path map is rebuilt on the game thread and swapped in whole.
+- [Editor/Anvil/ViewModels/MainWindowViewModel.cs](Editor/Anvil/ViewModels/MainWindowViewModel.cs): the Assets tree is now built from the files and folders in `Engine/Content`. The top-level `bin`, `obj` and `Graphical User Interface` folders are hidden. A mesh file that a registered model was loaded from (for example `GameObjects/Test/cube.fbx` → `Cube`) can still be double-clicked or dragged into the Hierarchy. Anything under `GameObjects/Models/{key}/` still accepts texture drops and Delete for that imported model. A debounced `FileSystemWatcher` rebuilds the tree when Content changes on disk (changes under `bin`/`obj` are ignored), and expanded folders stay expanded after a rebuild.
+- [Editor/Anvil/Models/AssetNode.cs](Editor/Anvil/Models/AssetNode.cs): added `RelativePath`, `ModelKey` and `OwnerModelKey`, plus the asset kinds `Shader`, `Font`, `Video` and `File`.
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml), [MainWindow.axaml.cs](Editor/Anvil/Views/MainWindow.axaml.cs): icons for the new kinds. Tree items now bind `IsExpanded` two-way. Drag and double-click now read `AssetNode.ModelKey` instead of parsing `"model:"` ids.
+- [Docs/markdown/Importing Structure.md](Docs/markdown/Importing%20Structure.md): paths updated to `GameObjects`.
+
+Removed:
+
+- The virtual Meshes / Textures / Scripts / Audio / Materials folders in the Assets panel (`BuildAssets`, `RefreshMeshAssetsFolder`).
+
+Added:
+
+- Double-clicking a text asset in the Assets panel opens it in an external editor. This covers `.fx`, `.fxh`, `.hlsl`, `.xml`, `.css`, `.cs`, `.spritefont`, `.mgcb`, `.json`, `.txt` and `.md`. The new [Editor/Anvil/Services/ExternalTextEditor.cs](Editor/Anvil/Services/ExternalTextEditor.cs) looks for VS Code's `Code.exe` in the per-user and machine install folders and next to the `code` shim on PATH. If it can't find VS Code, it opens the file in Notepad. If neither can start, an error goes to the Anvil console. The file opened is the source copy in `Engine/Content`, so shader hot reload picks up your edits. `MainWindowViewModel` gained `OpenInTextEditor`, `IsTextAsset` and a small `AddConsoleEntry` helper.
+- The Assets search box now filters the tree. It matches file and folder names, ignoring case. A folder whose name matches is shown with everything inside it. A folder that only contains matches is shown expanded, with just those matches, and your own expanded/collapsed folders are left as they were. Clearing the box brings back the full tree.
+- The Assets panel accepts any file or folder dragged in from Explorer (`MainWindowViewModel.CopyFilesIntoContent`). Dropped items are copied into the folder you drop onto. If you drop onto a file, they go into that file's folder; if you drop onto empty space, they go into the Content root. Folders are copied with everything inside them. If a name is already taken, the copy gets a `_2`, `_3`, … suffix. Copying runs off the UI thread and the file watcher refreshes the tree. Copy errors go to the Anvil console. `.fbx`/`.obj` files still go through the model importer, and images dropped on an imported model's folder still bind to that model. Plain copies are **not** added to `Content.mgcb`.
+
+- New [Engine/Recources/ContentManifest.cs](Engine/Recources/ContentManifest.cs) keeps `Content.mgcb` in step with the Content folder:
+  - `Register` adds build entries for pipeline assets: models (`.fbx` → FbxImporter; `.obj`/`.dae`/`.gltf`/`.glb` → OpenAssetImporter; `.x` → XImporter), textures (`.png`/`.jpg`/`.jpeg`/`.tga`/`.bmp`/`.dds`), effects (`.fx`) and sprite fonts (`.spritefont`). It uses the same settings as the existing entries and skips paths that are already listed. Files the engine reads directly are not registered: FMOD audio, video, Vista XML/CSS, `.bbox`/`.sdft` and `.fxh`.
+  - `Unregister` removes a file's entry, or every entry under a folder.
+  - `Rename` repoints entries to the new path and keeps their importer and processor settings.
+  - Every edit holds the same named mutex as `AssetImporter`, whose `MgcbEditMutex` now points at it, and keeps the file's line endings. Registering and then unregistering leaves the file byte-identical (tested on a copy of the manifest).
+- Anvil registers dropped files automatically. Pipeline assets copied into Content, including everything inside dropped folders, get a `Content.mgcb` entry, and the Anvil console lists what was added.
+- Anvil removes manifest entries automatically. When the file watcher sees a Content file or folder deleted, from Explorer or from the editor, its entries are removed. When one is renamed or moved, its entries follow it. Paths are checked again after the debounce, so editors that save by delete-then-rename, and git checkouts, don't strip entries for files that come straight back.
+- Assets panel **Delete** (context menu or the Delete key) now works on any file or folder. It moves the item to the Recycle Bin and removes its manifest entries, after a confirmation that warns if the engine loads the file as a model. Deleting an imported model's mesh or its `GameObjects/Models/{key}` folder still removes the whole model through the engine. Files inside that folder are now deleted on their own instead of taking the whole model with them (`MainWindowViewModel.ModelKeyToDeleteFor` / `DeleteAssetFromDisk`).
+
+Hidden in the Assets panel:
+
+- `Content.mgcb`, `Content.mgcb.org` (Content root) and every `*.mgcontent` build-state file. The file watcher ignores `*.mgcontent` changes as well.
+
+## Engine: fix startup crash / white Anvil viewport from missing built-in models
+
+Fixed the standalone engine silently exiting on launch and the Anvil viewport staying white. Both came from the same `ContentLoadException` in `Assets.Load`: the engine hard-loaded built-in models whose source files are not in the repo, so `Initialize` threw. Standalone, that killed the process. In Anvil, `MonoGameHost` caught the exception inside `RunOneFrame()`, logged it to `anvil-bridge.log`, and retried every frame, so nothing was ever drawn.
+
+Root cause: `daft_helmets.obj`, `skull.obj` and `Sponza/Sponza.obj` were never committed, because `.gitignore`'s `*.[Oo]bj` rule (meant for compiled object files) also matches Wavefront `.obj` models. A fresh clone therefore can't build them. The Sponza folder, `Art/Human` and their `Content.mgcb` entries had also been removed from the working copy. None of these models were placed in the startup scene.
+
+Removed:
+
+- [Engine/Recources/Assets.cs](Engine/Recources/Assets.cs) — the `HelmetModel`/`SkullModel` fields, loads and `ProcessHelmets()`; the `SponzaModel` field, its ~35 Sponza texture loads, `_sponzaTextures`, the `sponza_*` texture fields (and their `Dispose` calls) and `ProcessSponza()`; the `HumanModel` field and load. As a result, `SponzaModel` and `HumanModel` no longer appear as built-in model keys in the editor.
+
+## Editor: fix dead engine keyboard input after maximize / fullscreen
+
+Fixed keyboard input to the embedded engine going dead after the Anvil window was maximized/fullscreened/restored — the mouse (camera orbit/pan/zoom) kept working, but WASD and other forwarded keys did nothing until the user clicked an Avalonia control (e.g. a hierarchy item), which "returned" input. This surfaced alongside the resize fix: once the viewport actually fills the window on fullscreen, the camera is usable and the dead keys became noticeable.
+
+Root cause: while hosted in Anvil the engine HWND never holds Win32 keyboard focus, so MonoGame's native keyboard state is empty and the **only** keyboard path is Avalonia → `MonoGameHost.OnTopLevelKeyDown` → `EditorBridge.SetHostKeyState` → `Input.IsKeyDown`. Avalonia raises `KeyDown`/`KeyUp` only when some element holds focus, but a maximize/fullscreen/restore transition clears the window's focused element while leaving the window active — so forwarding went silent. The mouse was unaffected because it flows through a separate, focus-independent Win32 viewport-gate path. Clicking a hierarchy item re-established a focused element, restoring forwarding.
+
+Key detail: the focus must be restored to a **plain managed control**, not to the `MonoGameHost` itself — focusing a `NativeControlHost` hands OS focus to the embedded engine child window, where MonoGame's keyboard reads empty (hosted) *and* Avalonia stops raising KeyDown, so forwarding would stay dead. A managed control keeps OS focus with Avalonia, which is the only state in which TopLevel KeyDown forwarding works (and is exactly what clicking a hierarchy item does).
+
+Changed:
+
+- [Editor/Anvil/Views/MainWindow.axaml](Editor/Anvil/Views/MainWindow.axaml) — added an invisible, focusable `Border` (`ViewportKeyboardSink`, `IsHitTestVisible=False`) in the viewport grid to serve as the managed focus target.
+- [Editor/Anvil/Controls/MonoGameHost.cs](Editor/Anvil/Controls/MonoGameHost.cs) — added focus restoration. `OnAttachedToVisualTree` subscribes to the parent window's `PropertyChanged`/`Activated`; on a `WindowState` change (and on activation) it re-asserts focus across the resize-settle window (`RestoreEditorKeyboardFocus` runs each settle tick), since Avalonia clears the focused element slightly after raising the change. `RestoreEditorKeyboardFocus` focuses the managed sink only when nothing meaningful is focused (focus is `null`, or is the host itself meaning OS focus leaked to the engine child) — so it never steals focus from an inspector field mid-edit. The window subscriptions are removed in `OnDetachedFromVisualTree`.
+- [Engine/Editor/EditorBridge.cs](Engine/Editor/EditorBridge.cs) — added `ClearHostKeys()`, which the host calls on a window-state transition to release any forwarded key whose `KeyUp` was swallowed by the transition (otherwise it stays latched "down" and drifts the editor camera).
+
+## Editor: fix empty ColorPicker flyout in the inspector
+
+Fixed the material **Color** picker in the inspector opening as a small empty flyout panel with no spectrum/sliders to pick a color.
+
+Root cause: Avalonia's `ColorPicker`/`ColorView` ship their control templates in a **separate** theme dictionary that `<FluentTheme />` does not merge. [App.axaml](Editor/Anvil/App.axaml) declared only `<FluentTheme />`, so the `ColorPicker` had no applied template and rendered as an empty container.
+
+Changed:
+
+- [Editor/Anvil/App.axaml](Editor/Anvil/App.axaml) — added `<StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />` to `Application.Styles`, after `<FluentTheme />` so the base `Theme*` brushes the ColorPicker theme references via `DynamicResource` are already defined. The picker (bound to `SelectedObject.Material.Color`) now renders its full spectrum/sliders/palette.
+
+## Editor: fix engine viewport not resizing on maximize / fullscreen
+
+Fixed the embedded engine viewport staying at its previous (smaller) size — leaving white borders — when the Anvil window was maximized, restored, or taken fullscreen. Incremental drag-resizes worked, but a single discrete size jump did not.
+
+Root cause: Avalonia's `NativeControlHost` applies the container HWND's new geometry **after** [`MonoGameHost.ArrangeOverride`](Editor/Anvil/Controls/MonoGameHost.cs) returns. `ResizeEngineToContainer()` reads the container's client rect synchronously inside that arrange pass, so on a discrete jump (maximize/restore/fullscreen) it saw the stale pre-jump size and sized the engine HWND to that. A live drag emits a continuous stream of layout passes that masks the one-pass lag; a single maximize has no follow-up pass to correct it, so the viewport stayed shrunk until the next manual resize. This is the runtime analogue of the boot-time deferred-resize the existing boot watchdog already handles.
+
+Changed:
+
+- [Editor/Anvil/Controls/MonoGameHost.cs](Editor/Anvil/Controls/MonoGameHost.cs) — generalized the boot-watchdog pattern to runtime. `ArrangeOverride` now calls a new `NudgeResizeSettle()` after its synchronous `ResizeEngineToContainer()`, starting/refreshing a short-lived `DispatcherTimer` (`_resizeSettleTimer`, ~30 ms × 8 ticks ≈ 240 ms) that re-asserts the container size for a brief settle window — catching the container's final size once Avalonia (and Win32) have applied it. `ResizeEngineToContainer()` already no-ops once the engine matches the container, so the timer settles to cheap no-ops and self-stops; its tick budget resets on every layout change so a live drag keeps it alive and it converges ~240 ms after the last change. The timer is stopped in `DestroyNativeControlCore` alongside the boot watchdog.
+
 ## Docs: input architecture guide
 
 Added [Docs/Input Architecture.md](Docs/Input%20Architecture.md) — documents how keyboard/mouse input flows through the engine in both the standalone `Engine.exe` and the Anvil-hosted editor, and gives step-by-step recipes for adding new input.

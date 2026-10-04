@@ -56,6 +56,21 @@
     </None>
   </ItemGroup>
 
+  <!-- Standalone game settings (Anvil > Game Settings): GameInfo.json + the icon converted by the
+       editor (both under the hidden System folder). Loose files read directly (NOT via the MGCB pipeline). When a custom icon exists
+       it also becomes the executable's icon on the next build. -->
+  <ItemGroup>
+    <None Update="Content\System\GameInfo.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\System\GameIcon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <PropertyGroup Condition="Exists('Content\System\GameIcon.ico')">
+    <ApplicationIcon>Content\System\GameIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+
   <!-- Intro video: a loose file loaded directly (NOT via the MGCB pipeline).
        VideoIntroLogic reads it from <output>/Content/intro.mp4, so the Link
        flattens it out of the Content\Video source folder. -->

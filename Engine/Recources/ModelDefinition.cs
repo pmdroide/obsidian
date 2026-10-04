@@ -19,9 +19,13 @@ namespace Engine.Recources
         public Model Model;
         public SignedDistanceField SDF;
 
+        // Content-relative, extensionless path this model was loaded from (null for
+        // models built in memory). Lets the editor map Content files back to model keys.
+        public string AssetPath;
+
         public ModelDefinition(ContentManager content, string assetpath, GraphicsDevice graphics, bool UseSDF, Vector3 sdfResolution /*default = 50^3*/)
         {
-            
+            AssetPath = assetpath;
             Model = content.Load<Model>(assetpath);
 
             string bbxpath = content.RootDirectory + "/" + assetpath + ".bbox";
@@ -30,10 +34,18 @@ namespace Engine.Recources
             {
                 CreateBoundingBox(Model);
 
-                //Optionally save that new one
+                //Optionally save that new one. The sidecar is only a cache, so a failed
+                //write (e.g. the folder doesn't exist relative to the cwd) must not stop boot.
                 if (GameSettings.e_saveBoundingBoxes)
                 {
-                    DataStream.SaveBoundingBoxData(BoundingBox, bbxpath);
+                    try
+                    {
+                        DataStream.SaveBoundingBoxData(BoundingBox, bbxpath);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        Editor.EditorBridge.Log("ModelDefinition: couldn't save " + bbxpath + ": " + ex.Message);
+                    }
                 }
             }
 

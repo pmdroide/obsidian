@@ -65,6 +65,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramFogDistanceStart;
         private EffectParameter _paramFogDistanceFull;
         private EffectParameter _paramHistoryAlpha;
+        private EffectParameter _paramAnisotropy;
         private EffectParameter _paramPointLightCount;
         private EffectParameter _paramPointLightPositionsVS;
         private EffectParameter _paramPointLightPositionsWS;
@@ -170,6 +171,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramFogDistanceStart = GetEffectParameter("FogDistanceStart");
             _paramFogDistanceFull = GetEffectParameter("FogDistanceFull");
             _paramHistoryAlpha = GetEffectParameter("HistoryAlpha");
+            _paramAnisotropy = GetEffectParameter("G");
             _paramPointLightCount = GetEffectParameter("PointLightCount");
             _paramPointLightPositionsVS = GetEffectParameter("PointLightPositionsVS");
             _paramPointLightPositionsWS = GetEffectParameter("PointLightPositionsWS");
@@ -285,6 +287,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             if (_paramFogDistanceStart != null) _paramFogDistanceStart.SetValue(GameSettings.g_FroxelFogDistanceStart);
             if (_paramFogDistanceFull != null) _paramFogDistanceFull.SetValue(GameSettings.g_FroxelFogDistanceFull);
             if (_paramHistoryAlpha != null) _paramHistoryAlpha.SetValue(GameSettings.g_FroxelHistoryBlend);
+            if (_paramAnisotropy != null) _paramAnisotropy.SetValue(GameSettings.g_FroxelAnisotropy);
         }
 
         private void ApplyPointLights(List<PointLight> pointLights)

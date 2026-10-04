@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Engine.Entities;
+using Engine.Physics;
 using Engine.Recources;
+using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Editor
@@ -55,6 +57,18 @@ namespace Engine.Editor
         }
     }
 
+    public readonly struct PhysicsSnapshot
+    {
+        public readonly PhysicsBodyType BodyType;
+        public readonly float Mass;
+
+        public PhysicsSnapshot(PhysicsBodyType bodyType, float mass)
+        {
+            BodyType = bodyType;
+            Mass = mass;
+        }
+    }
+
     public readonly struct EditorObjectSnapshot
     {
         public readonly int Id;
@@ -66,9 +80,12 @@ namespace Engine.Editor
         public readonly bool IsEnabled;
         public readonly LightSnapshot? Light;
         public readonly MaterialSnapshot? Material;
+        // BasicEntity only — drives the Inspector's Physics section.
+        public readonly PhysicsSnapshot? Physics;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, PhysicsSnapshot? physics = null)
         {
+            Physics = physics;
             Id = id;
             Name = name;
             Kind = kind;
@@ -157,12 +174,37 @@ namespace Engine.Editor
         bool IsSceneDirty { get; }
         event Action SceneChanged;
 
+        // ---- Baked lighting (probe volume) — Inspector > Lighting ----
+
+        /// <summary>Copy of the active scene's lighting settings. Safe to call from the UI thread.</summary>
+        LightingSettings GetLightingSettings();
+
+        /// <summary>Queue an edit of the active scene's lighting settings (marks the scene dirty).</summary>
+        void EnqueueMutateLighting(Action<LightingSettings> mutate);
+
+        /// <summary>Queue a bake of the active scene. Progress arrives via <see cref="LightingStatusChanged"/>.</summary>
+        void EnqueueBakeLighting();
+
+        /// <summary>Cancel a running bake. Safe from any thread.</summary>
+        void CancelLightingBake();
+
+        /// <summary>Queue removal of the active scene's baked probes.</summary>
+        void EnqueueClearBakedLighting();
+
+        /// <summary>One-line summary of the active scene's bake (grid, samples, date), or null.</summary>
+        string GetBakedLightingSummary();
+
+        LightingBakeStatus LightingStatus { get; }
+
+        /// <summary>Fires on the game thread or the bake worker; UI consumers must marshal.</summary>
+        event Action<LightingBakeStatus> LightingStatusChanged;
+
         // Model picker support — names of available ModelDefinitions in the Assets registry.
         IReadOnlyList<string> AvailableModelKeys { get; }
 
         /// <summary>
         /// Queue a runtime import of a model file from disk. Runs on the engine thread:
-        /// copies the file under Engine/Content/Art/Models/{key}/, scans sibling textures,
+        /// copies the file under Engine/Content/GameObjects/Models/{key}/, scans sibling textures,
         /// invokes mgcb to build the new entries, loads the resulting model through the
         /// live ContentManager, and registers it with the Assets dictionary. The callback
         /// fires on the game thread with the actual registered key (may differ from the
@@ -172,7 +214,7 @@ namespace Engine.Editor
 
         /// <summary>
         /// Queue a runtime import of texture files for an already-registered model. Copies
-        /// them into the model's <c>Art/Models/{key}/Textures/</c> folder, builds them, and
+        /// them into the model's <c>GameObjects/Models/{key}/Textures/</c> folder, builds them, and
         /// binds a material by filename convention (<c>*_BaseColor</c> → albedo, etc.).
         /// Updates instances already in the scene. The callback fires on the game thread.
         /// </summary>
@@ -196,6 +238,18 @@ namespace Engine.Editor
         /// texture-drop target). False for built-ins. Safe to call from the UI thread.
         /// </summary>
         bool IsDeletableModel(string modelKey);
+
+        /// <summary>
+        /// Absolute path of the source <c>Engine/Content</c> folder (the one Content.mgcb
+        /// lives in), for the editor's Assets browser. Safe to call from the UI thread.
+        /// </summary>
+        string ContentSourceRoot { get; }
+
+        /// <summary>
+        /// Content-relative, extensionless asset path a model key was loaded from
+        /// (e.g. <c>GameObjects/Test/cube</c>), or null if unknown. Safe to call from the UI thread.
+        /// </summary>
+        string GetModelAssetPath(string modelKey);
 
         /// <summary>
         /// Fires on the engine thread whenever a new model is registered in the Assets

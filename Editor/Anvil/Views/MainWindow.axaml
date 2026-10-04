@@ -19,7 +19,7 @@
         Foreground="{StaticResource AnvilTextPrimaryBrush}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="36"   
-        Title="Anvil Editor">
+        Title="Anvil">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -328,10 +328,6 @@
                         <Separator />
                         <MenuItem Header="Preferences..." />
                     </MenuItem>
-                    <MenuItem Header="Assets">
-                        <MenuItem Header="Import Asset..." />
-                        <MenuItem Header="Refresh" />
-                    </MenuItem>
                     <MenuItem Header="GameObject">
                         <MenuItem Header="Create Empty" />
                         <MenuItem Header="3D Object">
@@ -344,10 +340,9 @@
                             <MenuItem Header="Point Light" />
                         </MenuItem>
                     </MenuItem>
-                    <MenuItem Header="Component">
-                        <MenuItem Header="Mesh" />
-                        <MenuItem Header="Physics" />
-                    </MenuItem>
+                    <MenuItem Header="Game Settings"
+                              Command="{Binding OpenGameSettingsCommand}"
+                              CommandParameter="{Binding $parent[Window]}" />
                     <MenuItem Header="Window">
                         <MenuItem Header="Hierarchy" />
                         <MenuItem Header="Inspector" />
@@ -355,9 +350,12 @@
                         <MenuItem Header="Post Processing"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="PostProcessing" />
+                        <MenuItem Header="Lighting"
+                                  Command="{Binding SetInspectorViewCommand}"
+                                  CommandParameter="Lighting" />
                     </MenuItem>
                     <MenuItem Header="Help">
-                        <MenuItem Header="About Anvil" />
+                        <MenuItem Header="Anvil Docs" />
                     </MenuItem>
                 </Menu>
 
@@ -420,9 +418,6 @@
                                 <controls:LucideIcon Icon="Pause" IsVisible="{Binding IsPlaying}" />
                             </Grid>
                         </Button>
-                        <Button Classes="tool" ToolTip.Tip="Step">
-                            <controls:LucideIcon Icon="SkipForward" />
-                        </Button>
                     </StackPanel>
 
                     <!-- top tools -->
@@ -452,11 +447,6 @@
                                 ToolTip.Tip="Pan (Space)">
                             <controls:LucideIcon Icon="Hand" />
                         </Button>
-                        <Button Classes="tool" Classes.active="{Binding IsToolSnap}"
-                                Command="{Binding SetActiveToolCommand}" CommandParameter="Snap"
-                                ToolTip.Tip="Snap (S)">
-                            <controls:LucideIcon Icon="Magnet" />
-                        </Button>
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -477,27 +467,12 @@
                                    Foreground="{StaticResource AnvilTextMutedBrush}"
                                    Margin="0,0,8,0" VerticalAlignment="Center" />
 
-                        <ListBox Grid.Column="1" Classes="segmented"
-                                 SelectedItem="{Binding ViewMode, Mode=TwoWay}">
-                            <ListBoxItem Content="Perspective" />
-                            <ListBoxItem Content="Top" />
-                            <ListBoxItem Content="Front" />
-                            <ListBoxItem Content="Side" />
-                        </ListBox>
-
                         <Rectangle Grid.Column="2" Width="1" Margin="10,4"
                                    Fill="{StaticResource AnvilBorderBrush}" />
 
                         <TextBlock Grid.Column="3" Text="Shading" FontSize="11"
                                    Foreground="{StaticResource AnvilTextMutedBrush}"
                                    Margin="0,0,8,0" VerticalAlignment="Center" />
-
-                        <ListBox Grid.Column="4" Classes="segmented"
-                                 SelectedItem="{Binding ShadingMode, Mode=TwoWay}">
-                            <ListBoxItem Content="Solid" />
-                            <ListBoxItem Content="Wireframe" />
-                            <ListBoxItem Content="Unlit" />
-                        </ListBox>
 
                         <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="2"
                                     VerticalAlignment="Center">
@@ -520,6 +495,18 @@
                 <!-- viewport scene -->
                 <Grid Grid.Row="1">
                     <controls:MonoGameHost x:Name="ViewportHost" />
+
+                    <!-- Invisible keyboard sink. The embedded engine receives keys only via
+                         Avalonia TopLevel KeyDown forwarding (MonoGameHost.OnTopLevelKeyDown),
+                         which fires only while a MANAGED element holds focus. Maximize/fullscreen
+                         clears focus and the host can't be the target (focusing a NativeControlHost
+                         hands OS focus to the engine child, where MonoGame's keyboard reads empty),
+                         so MonoGameHost re-focuses this plain Border to keep WASD/camera keys alive.
+                         IsHitTestVisible=False so it never intercepts viewport mouse input. -->
+                    <Border x:Name="ViewportKeyboardSink"
+                            Focusable="True" IsHitTestVisible="False"
+                            Width="1" Height="1" Opacity="0"
+                            HorizontalAlignment="Left" VerticalAlignment="Top" />
 
                     <!-- bottom-left view label -->
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
@@ -732,6 +719,10 @@
                                             Command="{Binding SetInspectorViewCommand}"
                                             CommandParameter="PostProcessing"
                                             Classes.active="{Binding IsInspectorPostProcessingView}" />
+                                    <Button Content="Lighting" Classes="toolbarChip"
+                                            Command="{Binding SetInspectorViewCommand}"
+                                            CommandParameter="Lighting"
+                                            Classes.active="{Binding IsInspectorLightingView}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -969,6 +960,51 @@
                                         <CheckBox Content="Transparent"
                                                   IsChecked="{Binding IsTransparent, Mode=TwoWay}"
                                                   FontSize="11" />
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Physics -->
+                                <Expander IsExpanded="True"
+                                          IsVisible="{Binding Physics, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Atom" />
+                                            <TextBlock Text="Physics" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12"
+                                                DataContext="{Binding Physics}"
+                                                x:DataType="m:PhysicsInfo">
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Body"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <!-- Order must match Engine.Physics.PhysicsBodyType -->
+                                            <ComboBox Grid.Column="1" Classes="field"
+                                                      HorizontalAlignment="Stretch"
+                                                      SelectedIndex="{Binding BodyType, Mode=TwoWay}">
+                                                <ComboBoxItem>None</ComboBoxItem>
+                                                <ComboBoxItem>Static</ComboBoxItem>
+                                                <ComboBoxItem>Dynamic</ComboBoxItem>
+                                            </ComboBox>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
+                                              IsVisible="{Binding IsDynamic}">
+                                            <TextBlock Grid.Column="0" Text="Mass"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field"
+                                                           Value="{Binding Mass, Mode=TwoWay}"
+                                                           Minimum="0.001"
+                                                           ShowButtonSpinner="False" FormatString="0.###" />
+                                        </Grid>
+                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsStatic}"
+                                                   Text="Immovable mesh collider. Other bodies collide with it." />
+                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsDynamic}"
+                                                   Text="Falls with gravity and collides (convex hull). Simulated in Play mode." />
                                     </StackPanel>
                                 </Expander>
 
@@ -1236,6 +1272,78 @@
                                     </StackPanel>
                                 </Expander>
 
+                                <!-- Volumetric Fog (froxels) -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="CloudFog" />
+                                            <TextBlock Text="Volumetric Fog" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Enable Fog"
+                                                  IsChecked="{Binding FogEnabled, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                                              RowSpacing="6" IsEnabled="{Binding FogEnabled}">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Density"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0.001" Maximum="5" Increment="0.001"
+                                                           Value="{Binding FogDensity, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Absorption"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="1" Increment="0.01"
+                                                           Value="{Binding FogAbsorption, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Sun Scatter"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="4" Increment="0.01"
+                                                           Value="{Binding FogDirectionalScatter, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Point Scatter"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="16" Increment="0.1"
+                                                           Value="{Binding FogPointScatter, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Anisotropy"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
+                                                           Minimum="-0.95" Maximum="0.95" Increment="0.05"
+                                                           Value="{Binding FogAnisotropy, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Start Dist."
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="2000" Increment="5"
+                                                           Value="{Binding FogDistanceStart, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Full Dist."
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="5000" Increment="10"
+                                                           Value="{Binding FogDistanceFull, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Sky Fog"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="1" Increment="0.05"
+                                                           Value="{Binding FogSkyStrength, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="8" Grid.Column="0" Text="History"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="0.98" Increment="0.05"
+                                                           Value="{Binding FogHistoryBlend, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
                                 <!-- Screen-Space Reflections -->
                                 <Expander IsExpanded="False">
                                     <Expander.Header>
@@ -1332,6 +1440,211 @@
                                                   IsChecked="{Binding DrawSdf, Mode=TwoWay}" />
                                         <CheckBox Content="Draw SDF volume"
                                                   IsChecked="{Binding DrawSdfVolume, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Expander>
+
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Lighting (baked probe volume) panel - visible when the inspector is
+                             switched to Lighting. Settings are per scene and saved with it. -->
+                        <ScrollViewer Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      IsVisible="{Binding IsInspectorLightingView}">
+                            <StackPanel Spacing="0" DataContext="{Binding Lighting}"
+                                        x:DataType="m:LightingViewModel">
+
+                                <!-- Bake -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Flame" />
+                                            <TextBlock Text="Bake" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Content="Bake Lighting" Command="{Binding BakeCommand}"
+                                                    IsVisible="{Binding IsIdle}" />
+                                            <Button Content="Cancel" Command="{Binding CancelBakeCommand}"
+                                                    IsVisible="{Binding IsBaking}" />
+                                            <Button Content="Clear" Command="{Binding ClearBakeCommand}" />
+                                        </StackPanel>
+                                        <StackPanel Spacing="4" IsVisible="{Binding IsBaking}">
+                                            <ProgressBar Minimum="0" Maximum="100" Height="6" MinHeight="6"
+                                                         Value="{Binding BakeProgress}" />
+                                            <TextBlock Text="{Binding BakeStage}" FontSize="10.5"
+                                                       Classes="muted" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding StatusMessage}" FontSize="10.5"
+                                                   TextWrapping="Wrap" Classes="muted"
+                                                   IsVisible="{Binding IsIdle}" />
+                                        <TextBlock Text="{Binding BakedSummary}" FontSize="10.5"
+                                                   TextWrapping="Wrap" Classes="subtle"
+                                                   IsVisible="{Binding HasBakedData}" />
+                                        <TextBlock Text="Not baked. Saving the scene stores the bake as a .probes file next to the .obsc."
+                                                   FontSize="10.5" TextWrapping="Wrap" Classes="subtle"
+                                                   IsVisible="{Binding !HasBakedData}" />
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Runtime -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Lightbulb" />
+                                            <TextBlock Text="Probe Volume" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Use baked lighting"
+                                                  IsChecked="{Binding ProbeVolumeEnabled, Mode=TwoWay}" />
+                                        <CheckBox Content="Show probes"
+                                                  IsChecked="{Binding ShowProbes, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Intensity"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="16" Increment="0.05"
+                                                           Value="{Binding Intensity, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Volume layout -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Box" />
+                                            <TextBlock Text="Volume" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Fit to scene"
+                                                  IsChecked="{Binding AutoBounds, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Padding"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="100" Increment="0.5"
+                                                           Value="{Binding BoundsPadding, Mode=TwoWay}"
+                                                           IsEnabled="{Binding AutoBounds}"
+                                                           ShowButtonSpinner="False" FormatString="0.##" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Probe Spacing"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="0.1" Maximum="100" Increment="0.25"
+                                                           Value="{Binding ProbeSpacing, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.##" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Max / Axis"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="2" Maximum="128" Increment="1"
+                                                           Value="{Binding MaxProbesPerAxis, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                        </Grid>
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsManualBounds}">
+                                            <TextBlock Text="Min" Classes="muted" FontSize="11" />
+                                            <Grid ColumnDefinitions="*,4,*,4,*">
+                                                <NumericUpDown Grid.Column="0" Classes="field"
+                                                               Value="{Binding BoundsMinX, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="2" Classes="field"
+                                                               Value="{Binding BoundsMinY, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="4" Classes="field"
+                                                               Value="{Binding BoundsMinZ, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                            </Grid>
+                                            <TextBlock Text="Max" Classes="muted" FontSize="11" />
+                                            <Grid ColumnDefinitions="*,4,*,4,*">
+                                                <NumericUpDown Grid.Column="0" Classes="field"
+                                                               Value="{Binding BoundsMaxX, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="2" Classes="field"
+                                                               Value="{Binding BoundsMaxY, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                                <NumericUpDown Grid.Column="4" Classes="field"
+                                                               Value="{Binding BoundsMaxZ, Mode=TwoWay}"
+                                                               ShowButtonSpinner="False" FormatString="0.#" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Quality -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Sparkles" />
+                                            <TextBlock Text="Quality" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Rays / Probe"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="16" Maximum="4096" Increment="32"
+                                                           Value="{Binding SamplesPerProbe, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Bounces"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="1" Maximum="8" Increment="1"
+                                                           Value="{Binding Bounces, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Validity"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Back-face hit ratio above which a probe counts as inside geometry" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="1" Increment="0.05"
+                                                           Value="{Binding ValidityThreshold, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Sky -->
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Cloud" />
+                                            <TextBlock Text="Sky" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Color"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Button Grid.Row="0" Grid.Column="1" Padding="4,2"
+                                                    HorizontalAlignment="Left">
+                                                <Border Width="28" Height="18" CornerRadius="3"
+                                                        Background="{Binding SkyColor, Converter={StaticResource ColorToBrush}}"
+                                                        BorderBrush="{StaticResource AnvilBorderBrush}"
+                                                        BorderThickness="1" />
+                                                <Button.Flyout>
+                                                    <!-- Same as the material colour: reach the live VM through the Window -->
+                                                    <Flyout>
+                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).Lighting.SkyColor, Mode=TwoWay}" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Intensity"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="16" Increment="0.05"
+                                                           Value="{Binding SkyIntensity, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                        <TextBlock Text="Radiance of rays that escape the scene. Rebake to apply."
+                                                   FontSize="10.5" TextWrapping="Wrap" Classes="subtle" />
                                     </StackPanel>
                                 </Expander>
 
@@ -1509,10 +1822,6 @@
                                              MinHeight="18" Padding="0" FontSize="11" />
                                 </Grid>
                             </Border>
-
-                            <Button Grid.Column="3" Classes="iconButton" ToolTip.Tip="Filter">
-                                <controls:LucideIcon Icon="Funnel" />
-                            </Button>
                         </Grid>
                     </Border>
 
@@ -1522,7 +1831,15 @@
                              though TreeViewItem marks those events handled. -->
                         <TreeView Name="AssetsTreeView"
                                   ItemsSource="{Binding AssetTree}"
-                                  ToolTip.Tip="Double-click a mesh to add it to the scene, or drag it into the Hierarchy.">
+                                  ToolTip.Tip="Double-click a mesh to add it to the scene (or drag it into the Hierarchy). Double-click a shader, XML or CSS file to open it in a text editor.">
+
+                            <!-- Two-way so folder expansion survives tree rebuilds
+                                 (the tree is rebuilt whenever Engine/Content changes). -->
+                            <TreeView.Styles>
+                                <Style Selector="TreeViewItem" x:DataType="m:AssetNode">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                </Style>
+                            </TreeView.Styles>
 
                             <TreeView.ItemTemplate>
                                 <TreeDataTemplate DataType="m:AssetNode"
@@ -1555,6 +1872,18 @@
                                             <controls:LucideIcon Icon="FileImage"
                                                   Foreground="{StaticResource AnvilPrimaryBrush}"
                                                   IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Scene}" />
+                                            <controls:LucideIcon Icon="FileCode"
+                                                  Foreground="{StaticResource AnvilPrimaryAltBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Shader}" />
+                                            <controls:LucideIcon Icon="Type"
+                                                  Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Font}" />
+                                            <controls:LucideIcon Icon="FileVideo"
+                                                  Foreground="{StaticResource AnvilAudioBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Video}" />
+                                            <controls:LucideIcon Icon="File"
+                                                  Foreground="{StaticResource AnvilTextSubtleBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=File}" />
                                         </Grid>
                                         <TextBlock Text="{Binding Name}" FontSize="11.5"
                                                    VerticalAlignment="Center" />

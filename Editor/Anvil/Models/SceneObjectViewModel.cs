@@ -3,6 +3,7 @@ using Anvil.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Engine.Editor;
 using Engine.Entities;
+using Engine.Physics;
 using Color = Avalonia.Media.Color;
 using XnaColor = Microsoft.Xna.Framework.Color;
 using XnaVector3 = Microsoft.Xna.Framework.Vector3;
@@ -144,6 +145,46 @@ public partial class LightInfo : ObservableObject
     }
 }
 
+public partial class PhysicsInfo : ObservableObject
+{
+    // ComboBox index; matches Engine.Physics.PhysicsBodyType (None, Static, Dynamic).
+    [ObservableProperty] private int _bodyType;
+    [ObservableProperty] private double _mass = 1.0;
+
+    public bool IsStatic => BodyType == (int)PhysicsBodyType.Static;
+    public bool IsDynamic => BodyType == (int)PhysicsBodyType.Dynamic;
+
+    private SceneObjectViewModel? _parent;
+    internal void AttachToParent(SceneObjectViewModel parent) => _parent = parent;
+
+    partial void OnBodyTypeChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsStatic));
+        OnPropertyChanged(nameof(IsDynamic));
+        if (value < 0) return; // ComboBox clears SelectedIndex transiently
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
+        {
+            var type = (PhysicsBodyType)value;
+            bridge.EnqueueMutate(id, obj =>
+            {
+                if (obj is BasicEntity be) be.PhysicsType = type;
+            });
+        }
+    }
+
+    partial void OnMassChanged(double value)
+    {
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
+        {
+            float m = (float)System.Math.Max(value, 0.001);
+            bridge.EnqueueMutate(id, obj =>
+            {
+                if (obj is BasicEntity be) be.Mass = m;
+            });
+        }
+    }
+}
+
 public partial class CameraInfo : ObservableObject
 {
     [ObservableProperty] private double _fov = 60;
@@ -179,6 +220,7 @@ public partial class SceneObjectViewModel : ObservableObject
     [ObservableProperty] private MaterialInfo? _material;
     [ObservableProperty] private LightInfo? _light;
     [ObservableProperty] private CameraInfo? _camera;
+    [ObservableProperty] private PhysicsInfo? _physics;
 
     public ObservableCollection<SceneObjectViewModel> Children { get; } = new();
 

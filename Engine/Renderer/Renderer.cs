@@ -7,6 +7,7 @@ using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
+using Engine.Renderer.Lighting;
 using Engine.Renderer.RenderModules;
 using Engine.Renderer.RenderModules.Default;
 using Engine.Renderer.RenderModules.DeferredLighting;
@@ -46,6 +47,10 @@ namespace Engine.Renderer
         private GBufferRenderModule _gBufferRenderModule;
         private TemporalAntialiasingRenderModule _temporalAntialiasingRenderModule;
         private DeferredEnvironmentMapRenderModule _deferredEnvironmentMapRenderModule;
+
+        //Baked lighting for the current frame (set at the top of Draw; may be null)
+        private LightingSystem _lighting;
+        private LightingSettings _lightingSettings;
         private DecalRenderModule _decalRenderModule;
         private SubsurfaceScatterRenderModule _subsurfaceScatterRenderModule;
         private ForwardRenderModule _forwardRenderModule;
@@ -309,9 +314,14 @@ namespace Engine.Renderer
         /// <param name="directionalLights"></param>
         /// <param name="editorData">The data passed from our editor logic</param>
         /// <param name="gameTime"></param>
+        /// <param name="lighting">Baked lighting (probe volume GPU data); optional</param>
+        /// <param name="lightingSettings">The active scene's lighting settings; optional</param>
         /// <returns></returns>
-        public EditorLogic.EditorReceivedData Draw(Camera camera, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities, EditorLogic.EditorSendData editorData, GameTime gameTime)
+        public EditorLogic.EditorReceivedData Draw(Camera camera, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities, EditorLogic.EditorSendData editorData, GameTime gameTime, LightingSystem lighting = null, LightingSettings lightingSettings = null)
         {
+            _lighting = lighting;
+            _lightingSettings = lightingSettings;
+
             //Reset the stat counter, so we can count stats/information for this frame only
             ResetStats();
 
@@ -463,6 +473,12 @@ namespace Engine.Renderer
 
             //Debug ray marching
                 CpuRayMarch(camera);
+
+            //Baked lighting probes / volume bounds (Inspector > Lighting > Show Probes)
+            if (GameSettings.e_enableeditor && _lightingSettings != null && _lightingSettings.ShowProbes)
+                _lighting?.DrawDebug(_lightingSettings, _lightingSettings.AutoBounds
+                    ? (BoundingBox?)null
+                    : new BoundingBox(_lightingSettings.BoundsMin, _lightingSettings.BoundsMax));
 
             //Draw debug geometry
             _helperGeometryRenderModule.Draw(_graphicsDevice, _staticViewProjection);
@@ -1239,6 +1255,12 @@ namespace Engine.Renderer
         private void DrawEnvironmentMap(EnvironmentSample envSample, Camera camera, GameTime gameTime)
         {
             if (!GameSettings.g_environmentmapping) return;
+
+            //Baked probe volume replaces the cubemap's diffuse ambient where it has data
+            bool useProbes = _lighting?.GpuData != null && _lighting.ProbeSHR != null &&
+                             _lightingSettings != null && _lightingSettings.ProbeVolumeEnabled;
+            _deferredEnvironmentMapRenderModule.SetProbeVolume(useProbes ? _lighting : null,
+                _lightingSettings?.Intensity ?? 1f);
 
             _deferredEnvironmentMapRenderModule.DrawEnvironmentMap(_graphicsDevice, camera, _view, _fullScreenTriangle, envSample, gameTime, GameSettings.g_SSReflection_FireflyReduction, GameSettings.g_SSReflection_FireflyThreshold);
 

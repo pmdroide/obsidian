@@ -55,6 +55,18 @@ public partial class PostProcessingViewModel : ObservableObject
     [ObservableProperty] private double _bloomRadius5;
     [ObservableProperty] private double _bloomStrength5;
 
+    // --------- Volumetric Fog (froxels) ---------
+    [ObservableProperty] private bool _fogEnabled;
+    [ObservableProperty] private double _fogDensity;
+    [ObservableProperty] private double _fogAbsorption;
+    [ObservableProperty] private double _fogDirectionalScatter;
+    [ObservableProperty] private double _fogPointScatter;
+    [ObservableProperty] private double _fogAnisotropy;
+    [ObservableProperty] private double _fogDistanceStart;
+    [ObservableProperty] private double _fogDistanceFull;
+    [ObservableProperty] private double _fogSkyStrength;
+    [ObservableProperty] private double _fogHistoryBlend;
+
     // --------- General view options ---------
     [ObservableProperty] private bool _highlightMeshes;
     [ObservableProperty] private bool _drawSdf;
@@ -112,6 +124,17 @@ public partial class PostProcessingViewModel : ObservableObject
             BloomRadius5         = GameSettings.g_BloomRadius5;
             BloomStrength5       = GameSettings.g_BloomStrength5;
 
+            FogEnabled           = GameSettings.g_FroxelsEnabled && GameSettings.g_FroxelFogEnabled;
+            FogDensity           = GameSettings.g_FroxelDensity;
+            FogAbsorption        = GameSettings.g_FroxelAbsorption;
+            FogDirectionalScatter= GameSettings.g_FroxelDirectionalScatter;
+            FogPointScatter      = GameSettings.g_FroxelPointScatter;
+            FogAnisotropy        = GameSettings.g_FroxelAnisotropy;
+            FogDistanceStart     = GameSettings.g_FroxelFogDistanceStart;
+            FogDistanceFull      = GameSettings.g_FroxelFogDistanceFull;
+            FogSkyStrength       = GameSettings.g_FroxelSkyFogStrength;
+            FogHistoryBlend      = GameSettings.g_FroxelHistoryBlend;
+
             HighlightMeshes      = GameSettings.e_drawoutlines;
             DrawSdf              = GameSettings.sdf_drawdistance;
             DrawSdfVolume        = GameSettings.sdf_drawvolume;
@@ -164,6 +187,19 @@ public partial class PostProcessingViewModel : ObservableObject
     partial void OnBloomStrength4Changed(double value)     => Push(() => GameSettings.g_BloomStrength4 = (float)value);
     partial void OnBloomRadius5Changed(double value)       => Push(() => GameSettings.g_BloomRadius5 = (float)value);
     partial void OnBloomStrength5Changed(double value)     => Push(() => GameSettings.g_BloomStrength5 = (float)value);
+
+    // g_FroxelsEnabled gates the froxel passes, g_FroxelFogEnabled the compose; toggle both so
+    // turning fog off also stops paying for it.
+    partial void OnFogEnabledChanged(bool value)           => Push(() => { GameSettings.g_FroxelsEnabled = value; GameSettings.g_FroxelFogEnabled = value; });
+    partial void OnFogDensityChanged(double value)         => Push(() => GameSettings.g_FroxelDensity = (float)value);
+    partial void OnFogAbsorptionChanged(double value)      => Push(() => GameSettings.g_FroxelAbsorption = (float)value);
+    partial void OnFogDirectionalScatterChanged(double value) => Push(() => GameSettings.g_FroxelDirectionalScatter = (float)value);
+    partial void OnFogPointScatterChanged(double value)    => Push(() => GameSettings.g_FroxelPointScatter = (float)value);
+    partial void OnFogAnisotropyChanged(double value)      => Push(() => GameSettings.g_FroxelAnisotropy = (float)value);
+    partial void OnFogDistanceStartChanged(double value)   => Push(() => GameSettings.g_FroxelFogDistanceStart = (float)value);
+    partial void OnFogDistanceFullChanged(double value)    => Push(() => GameSettings.g_FroxelFogDistanceFull = (float)value);
+    partial void OnFogSkyStrengthChanged(double value)     => Push(() => GameSettings.g_FroxelSkyFogStrength = (float)value);
+    partial void OnFogHistoryBlendChanged(double value)    => Push(() => GameSettings.g_FroxelHistoryBlend = (float)value);
 
     partial void OnHighlightMeshesChanged(bool value)      => Push(() => GameSettings.e_drawoutlines = value);
     partial void OnDrawSdfChanged(bool value)              => Push(() => GameSettings.sdf_drawdistance = value);

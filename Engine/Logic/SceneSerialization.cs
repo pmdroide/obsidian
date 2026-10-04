@@ -6,8 +6,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Engine.Editor;
 using Engine.Entities;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
+using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using DirectionalLight = Engine.Entities.DirectionalLight;
@@ -43,6 +45,11 @@ namespace Engine.Logic
             if (assets == null) throw new ArgumentNullException(nameof(assets));
 
             var doc = BuildDocument(scene, assets);
+            doc.Lighting = new LightingRecord
+            {
+                Settings = scene.Lighting,
+                ProbeDataFile = SaveBakedProbes(scene, path),
+            };
             string json = JsonSerializer.Serialize(doc, Options);
             File.WriteAllText(path, json);
             EditorBridge.Log($"SceneSerialization.SaveToFile: '{path}' ({doc.Entities.Count} entities, {doc.PointLights.Count} pls, {doc.DirectionalLights.Count} dls, {doc.Decals.Count} decals)");
@@ -91,6 +98,11 @@ namespace Engine.Logic
                 var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
                 be.Name = rec.Name ?? be.Name;
                 be.IsEnabled = rec.IsEnabled;
+                if (rec.Physics != null)
+                {
+                    be.PhysicsType = rec.Physics.Type;
+                    be.Mass = rec.Physics.Mass;
+                }
                 if (rec.Id > 0) { be.Id = rec.Id; if (rec.Id > maxId) maxId = rec.Id; }
                 scene.BasicEntities.Add(be);
             }
@@ -152,11 +164,45 @@ namespace Engine.Logic
                 scene.MainCamera.FieldOfView = doc.MainCamera.FieldOfView;
             }
 
+            if (doc.Lighting != null)
+            {
+                scene.Lighting = doc.Lighting.Settings ?? new LightingSettings();
+                scene.BakedProbes = LoadBakedProbes(doc.Lighting.ProbeDataFile, path);
+            }
+
             // Advance the global ID generator so newly-added objects can't collide.
             IdGenerator.Reseed(maxId);
 
             EditorBridge.Log($"SceneSerialization.LoadFromFile: '{path}' loaded ({scene.BasicEntities.Count}/{scene.PointLights.Count}/{scene.DirectionalLights.Count}/{scene.Decals.Count})");
             return scene;
+        }
+
+        // Baked probes live in "<scene>.probes" next to the .obsc (binary, can be large).
+        // Returns the file name to store in the scene, or null when nothing is baked.
+        private static string SaveBakedProbes(Scene scene, string scenePath)
+        {
+            // A cleared bake just stops being referenced; an old .probes file is left untouched.
+            if (scene.BakedProbes == null) return null;
+            string probePath = Path.ChangeExtension(scenePath, ".probes");
+            scene.BakedProbes.Save(probePath);
+            return Path.GetFileName(probePath);
+        }
+
+        private static ProbeVolumeData LoadBakedProbes(string fileName, string scenePath)
+        {
+            if (string.IsNullOrEmpty(fileName)) return null;
+            string probePath = Path.Combine(Path.GetDirectoryName(scenePath) ?? "", Path.GetFileName(fileName));
+            if (!File.Exists(probePath))
+            {
+                EditorBridge.Log($"LoadScene: baked lighting '{probePath}' not found — rebake to restore it");
+                return null;
+            }
+            try { return ProbeVolumeData.Load(probePath); }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"LoadScene: couldn't read baked lighting '{probePath}': {ex.Message}");
+                return null;
+            }
         }
 
         private static SceneDocument BuildDocument(Scene scene, Assets assets)
@@ -199,6 +245,11 @@ namespace Engine.Logic
                         RoughnessKey = LookupKey(textureReverse, be.Material.RoughnessMap),
                         MetallicKey = LookupKey(textureReverse, be.Material.MetallicMap),
                         MaskKey = LookupKey(textureReverse, be.Material.Mask),
+                    },
+                    Physics = be.PhysicsType == PhysicsBodyType.None ? null : new PhysicsRecord
+                    {
+                        Type = be.PhysicsType,
+                        Mass = be.Mass,
                     },
                 });
             }
@@ -349,6 +400,15 @@ namespace Engine.Logic
             public List<DecalRecord> Decals { get; set; } = new();
             public EnvironmentSampleRecord EnvironmentSample { get; set; }
             public CameraRecord MainCamera { get; set; }
+            // Optional: older v1 files without it load with default lighting settings
+            public LightingRecord Lighting { get; set; }
+        }
+
+        public class LightingRecord
+        {
+            public LightingSettings Settings { get; set; }
+            // File name (same folder as the .obsc) of the baked probe volume, or null
+            public string ProbeDataFile { get; set; }
         }
 
         public class BasicEntityRecord
@@ -361,6 +421,15 @@ namespace Engine.Logic
             public Quaternion Rotation { get; set; } = Quaternion.Identity;
             public Vector3 Scale { get; set; } = Vector3.One;
             public MaterialRecord Material { get; set; }
+            // Optional: omitted when the entity has no physics component
+            public PhysicsRecord Physics { get; set; }
+        }
+
+        public class PhysicsRecord
+        {
+            [JsonConverter(typeof(JsonStringEnumConverter))]
+            public PhysicsBodyType Type { get; set; }
+            public float Mass { get; set; } = 1f;
         }
 
         public class MaterialRecord

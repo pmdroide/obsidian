@@ -14,8 +14,18 @@ namespace Engine
         [STAThread]
         static void Main()
         {
-            using (var game = new Engine())
-                game.Run();
+            try
+            {
+                using (var game = new Engine())
+                    game.Run();
+            }
+            catch (Exception ex)
+            {
+                // WinExe has no console, so an unhandled exception would otherwise vanish.
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "crash.log"), ex.ToString()); }
+                catch { }
+                throw;
+            }
         }
     }
 #endif

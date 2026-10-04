@@ -7,6 +7,7 @@ using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
+using Engine.Renderer.Lighting;
 using Engine.Renderer.RenderModules.Signed_Distance_Fields.SDF_Generator;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -35,6 +36,9 @@ namespace Engine.Logic
         // mesh library, SDF, editor camera, debug entities).
         public readonly SceneManager SceneManager = new SceneManager(new Scene());
         public Scene ActiveScene => SceneManager.ActiveScene;
+
+        // Baked lighting (probe volume) bakes + GPU data for the active scene.
+        public readonly LightingSystem Lighting = new LightingSystem();
 
         // Editor-only camera. Active in Edit mode; Play mode swaps in the scene's
         // MainCamera (the actual gameplay camera).
@@ -79,7 +83,9 @@ namespace Engine.Logic
 
         //Which render target are we currently displaying?
         private int _renderModeCycle;
-        private PhysicsSystem _physics;
+
+        // Builds/syncs BEPU bodies from each entity's physics component (Inspector > Physics).
+        private ScenePhysics _scenePhysics;
 
         //SDF
         public SdfGenerator _sdfGenerator;
@@ -98,7 +104,7 @@ namespace Engine.Logic
         public void Initialize(Assets assets, PhysicsSystem physics, GraphicsDevice graphicsDevice)
         {
             _assets = assets;
-            _physics = physics;
+            _scenePhysics = new ScenePhysics(physics);
 
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
 
@@ -120,24 +126,9 @@ namespace Engine.Logic
         {
             EditorBridge.Log($"MainSceneLogic.OnSceneChanged: '{oldScene?.Name}' -> '{newScene?.Name}'");
 
-            // Detach old physics bodies (the static colliders BEPU v2 knows about).
-            // RemoveStatic also returns the mesh's triangle buffer to the pool.
-            if (oldScene != null && _physics != null)
-            {
-                for (int i = 0; i < oldScene.BasicEntities.Count; i++)
-                {
-                    BasicEntity e = oldScene.BasicEntities[i];
-                    try
-                    {
-                        if (e.StaticBody != null)
-                        {
-                            _physics.RemoveStatic(e.StaticBody.Value);
-                            e.StaticBody = null;
-                        }
-                    }
-                    catch (Exception ex) { EditorBridge.Log("physics detach static threw: " + ex); }
-                }
-            }
+            // Detach the old scene's physics bodies; the new scene's entities get
+            // theirs from their physics component on the next physics update.
+            _scenePhysics?.DetachAll();
 
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
@@ -283,7 +274,17 @@ namespace Engine.Logic
         }
 
         private bool _musicPlaying;
-        
+
+        /// <summary>
+        /// Syncs physics bodies with the scene's entities and, outside editor mode
+        /// (i.e. in Play), steps gravity/collisions. Called once per Update.
+        /// </summary>
+        public void UpdatePhysics(float dt)
+        {
+            bool simulate = !GameSettings.e_enableeditor && GameSettings.p_physics;
+            _scenePhysics?.Update(BasicEntities, dt, simulate);
+        }
+
 
         //Load content
         public void Load(ContentManager content)
@@ -411,19 +412,13 @@ namespace Engine.Logic
         }
 
         /// <summary>
-        /// Create a static physics mesh from a model and scale.
+        /// Give the entity a static physics mesh (built from the model and scale by
+        /// ScenePhysics on the next physics update).
         /// </summary>
         /// <param name="entity"></param>
         private void AddStaticPhysics(BasicEntity entity)
         {
-            Vector3[] vertices;
-            int[] indices;
-            ModelDataExtractor.GetVerticesAndIndicesFromModel(entity.Model, out vertices, out indices);
-
-            // The BEPU v2 mesh shape carries the (non-uniform) scale; position and
-            // rotation are placed on the static body itself.
-            Quaternion orientation = Quaternion.CreateFromRotationMatrix(entity.RotationMatrix);
-            entity.StaticBody = _physics.AddStaticMesh(vertices, indices, entity.Position, orientation, entity.Scale);
+            entity.PhysicsType = PhysicsBodyType.Static;
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -455,6 +450,7 @@ namespace Engine.Logic
                 if (BasicEntities[i].Id != id) continue;
                 BasicEntity entity = BasicEntities[i];
                 MeshMaterialLibrary?.DeleteFromRegistry(entity);
+                _scenePhysics?.Detach(entity);
                 BasicEntities.RemoveAt(i);
                 return true;
             }

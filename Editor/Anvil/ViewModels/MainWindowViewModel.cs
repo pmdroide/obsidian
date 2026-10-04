@@ -18,7 +18,8 @@ namespace Anvil.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    [ObservableProperty] private string _projectName = "MyGame";
+    // Mirrors the game's window name (Game Settings) in the title bar.
+    [ObservableProperty] private string _projectName = Engine.Recources.GameInfo.Read().WindowTitle;
     [ObservableProperty] private string _sceneName = "SampleScene";
     [ObservableProperty] private string _platform = "PC, Mac & Linux";
     [ObservableProperty] private string _graphicsApi = "DX11";
@@ -62,6 +63,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private string _assetsSearch = string.Empty;
 
+    partial void OnAssetsSearchChanged(string value) => ApplyAssetFilter();
+
     public ObservableCollection<SceneObjectViewModel> SceneObjects { get; } = new();
     public ObservableCollection<AssetNode> AssetTree { get; } = new();
     public ObservableCollection<ConsoleEntry> ConsoleEntries { get; } = new();
@@ -79,6 +82,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public PostProcessingViewModel PostProcessing { get; } = new();
 
     /// <summary>
+    /// Baked lighting (probe volume) settings + bake controls for the active scene. Shown inside
+    /// the Inspector when <see cref="InspectorView"/> == "Lighting".
+    /// </summary>
+    public LightingViewModel Lighting { get; } = new();
+
+    /// <summary>
     /// Inspector content switch: "Selection" (default) shows the selected
     /// object; "PostProcessing" shows <see cref="PostProcessing"/>. Driven by
     /// the segmented control in the inspector header and by
@@ -86,11 +95,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
-        nameof(IsInspectorPostProcessingView))]
+        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
     public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
+    public bool IsInspectorLightingView => InspectorView == "Lighting";
 
     [RelayCommand]
     private void SetInspectorView(string view) => InspectorView = view;
@@ -179,7 +189,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        BuildAssets();
         BuildConsole();
     }
 
@@ -197,7 +206,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Refresh model picker now (may already be populated after first frame).
         RefreshAvailableModels();
-        RefreshMeshAssetsFolder();
+        RefreshAssetTree();
+        StartContentWatcher();
 
         // Build the "+" add-object catalog. Point Light only for now; the bridge already exposes
         // EnqueueAddDirectionalLight / EnqueueAddBasicEntity, so re-enabling a type is one line here.
@@ -213,6 +223,10 @@ public partial class MainWindowViewModel : ViewModelBase
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
         PostProcessing.AttachBridge(bridge);
+
+        // Baked lighting tab: per-scene settings + bake progress; bake results go to the console.
+        Lighting.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:Lighting");
+        Lighting.AttachBridge(bridge);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).
@@ -264,15 +278,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 ReconcilerActive = false;
             }
             if (AvailableModels.Count == 0) RefreshAvailableModels();
-            // The Meshes folder is normally repopulated via ModelRegistryChanged, but
-            // built-in models don't fire that event — if the folder was built before the
-            // bridge reported any models, refill it once models are available so they
-            // become visible and draggable.
-            if (_meshesFolder != null && _meshesFolder.Children.Count == 0 &&
-                _bridge.AvailableModelKeys.Count > 0)
-            {
-                RefreshMeshAssetsFolder();
-            }
+            // The asset tree is normally rebuilt via ModelRegistryChanged, but built-in
+            // models don't fire that event — if the tree was built before the bridge
+            // reported its models, rebuild once they're available so mesh files map to
+            // their model keys and become draggable.
+            if (_assetTreeModelCount != _bridge.AvailableModelKeys.Count)
+                RefreshAssetTree();
 
             // Only fire SelectedObject change when its identity actually flipped.
             // Re-firing every 3 frames re-evaluates the inspector's DataContext,
@@ -488,6 +499,29 @@ public partial class MainWindowViewModel : ViewModelBase
         catch { return null; }
     }
 
+    // -------- Game settings (standalone window title + icon) --------
+
+    [RelayCommand]
+    private async Task OpenGameSettingsAsync(Window? owner)
+    {
+        if (owner == null) return;
+        var vm = new GameSettingsViewModel();
+        var dialog = new Views.GameSettingsWindow { DataContext = vm };
+        if (!await dialog.ShowDialog<bool>(owner)) return;
+
+        try
+        {
+            ProjectName = vm.Apply();
+            AddConsoleEntry(ConsoleLevel.Log,
+                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\")",
+                "Anvil:GameSettings");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't save game settings: " + ex.Message, "Anvil:GameSettings");
+        }
+    }
+
     // -------- Helpers --------
 
     private static SceneObjectViewModel? FindObject(IEnumerable<SceneObjectViewModel> list, string? id)
@@ -502,59 +536,275 @@ public partial class MainWindowViewModel : ViewModelBase
         return null;
     }
 
-    private AssetNode? _meshesFolder;
-    private AssetNode? _texturesFolder;
+    // -------- Assets panel (mirrors Engine/Content on disk) --------
 
-    private void BuildAssets()
-    {
-        // Live "Meshes" + "Textures" folders — repopulated from the bridge whenever it
-        // fires ModelRegistryChanged. The Textures folder holds one subfolder per imported
-        // model; dropping convention-named textures onto a subfolder binds them. The other
-        // folders are stubs for the upcoming script / audio / material flows.
-        _meshesFolder = new AssetNode { Id = "f-meshes", Name = "Meshes", Kind = AssetKind.Folder, IsExpanded = true };
-        _texturesFolder = new AssetNode { Id = "f-textures", Name = "Textures", Kind = AssetKind.Folder };
-        var scripts = new AssetNode { Id = "f-scripts", Name = "Scripts", Kind = AssetKind.Folder };
-        var audio = new AssetNode { Id = "f-audio", Name = "Audio", Kind = AssetKind.Folder, IsExpanded = false };
-        var materials = new AssetNode { Id = "f-materials", Name = "Materials", Kind = AssetKind.Folder, IsExpanded = false };
+    // Top-level Content entries that aren't user assets: mgcb build output, the mgcb
+    // manifest (+ its backup), the legacy GUI folder and the engine's System folder. *.mgcontent build-state files
+    // are hidden at any depth.
+    private static readonly HashSet<string> HiddenContentEntries =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "bin", "obj", "Graphical User Interface", "Content.mgcb", "Content.mgcb.org",
+            // Engine-managed files (editor gizmo meshes/icons, GameInfo.json, GameIcon.ico).
+            "System",
+        };
 
-        AssetTree.Add(_meshesFolder);
-        AssetTree.Add(_texturesFolder);
-        AssetTree.Add(scripts);
-        AssetTree.Add(audio);
-        AssetTree.Add(materials);
-    }
+    private static bool IsHiddenContentFile(string name) =>
+        name.EndsWith(".mgcontent", StringComparison.OrdinalIgnoreCase);
 
-    private void RefreshMeshAssetsFolder()
+    private static readonly Dictionary<string, AssetKind> AssetKindsByExtension =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            [".fbx"] = AssetKind.Mesh, [".obj"] = AssetKind.Mesh, [".x"] = AssetKind.Mesh,
+            [".dae"] = AssetKind.Mesh, [".gltf"] = AssetKind.Mesh, [".glb"] = AssetKind.Mesh,
+            [".png"] = AssetKind.Texture, [".jpg"] = AssetKind.Texture, [".jpeg"] = AssetKind.Texture,
+            [".tga"] = AssetKind.Texture, [".dds"] = AssetKind.Texture, [".bmp"] = AssetKind.Texture,
+            [".hdr"] = AssetKind.Texture,
+            [".wav"] = AssetKind.Audio, [".mp3"] = AssetKind.Audio, [".ogg"] = AssetKind.Audio,
+            [".flac"] = AssetKind.Audio, [".bank"] = AssetKind.Audio,
+            [".fx"] = AssetKind.Shader, [".fxh"] = AssetKind.Shader, [".hlsl"] = AssetKind.Shader,
+            [".spritefont"] = AssetKind.Font, [".ttf"] = AssetKind.Font, [".otf"] = AssetKind.Font,
+            [".mp4"] = AssetKind.Video, [".wmv"] = AssetKind.Video, [".avi"] = AssetKind.Video,
+            [".cs"] = AssetKind.Script, [".xml"] = AssetKind.Script, [".css"] = AssetKind.Script,
+            [".obsc"] = AssetKind.Scene,
+        };
+
+    // Folders the user has expanded, by relative path, so rebuilds keep the tree open.
+    private readonly HashSet<string> _expandedAssetPaths = new(StringComparer.OrdinalIgnoreCase);
+    private int _assetTreeModelCount = -1;
+    // Unfiltered tree; AssetTree shows it as-is or filtered by AssetsSearch.
+    private List<AssetNode> _assetRoots = new();
+    private System.IO.FileSystemWatcher? _contentWatcher;
+    private DispatcherTimer? _assetRefreshTimer;
+
+    private void RefreshAssetTree()
     {
         if (_bridge == null) return;
+        string root = _bridge.ContentSourceRoot;
+        if (string.IsNullOrEmpty(root) || !System.IO.Directory.Exists(root)) return;
 
-        if (_meshesFolder != null)
+        // Extensionless content path -> model key, so e.g. GameObjects/Test/cube.fbx
+        // becomes a draggable "Cube" mesh.
+        var modelKeysByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var keys = _bridge.AvailableModelKeys.ToArray();
+        foreach (var key in keys)
         {
-            _meshesFolder.Children.Clear();
-            foreach (var key in _bridge.AvailableModelKeys)
+            string? path = _bridge.GetModelAssetPath(key);
+            if (!string.IsNullOrEmpty(path)) modelKeysByPath.TryAdd(path.Replace('\\', '/'), key);
+        }
+        _assetTreeModelCount = keys.Length;
+
+        _assetRoots = BuildAssetNodes(root, root, modelKeysByPath);
+        ApplyAssetFilter();
+    }
+
+    private void ApplyAssetFilter()
+    {
+        AssetTree.Clear();
+        string query = AssetsSearch?.Trim() ?? string.Empty;
+        foreach (var node in _assetRoots)
+        {
+            var shown = query.Length == 0 ? node : FilterAssetNode(node, query);
+            if (shown != null) AssetTree.Add(shown);
+        }
+    }
+
+    // A node whose name matches is kept whole; a folder that only contains matches is
+    // shown as an expanded copy holding just those matches, so the user's own
+    // expansion state is left alone.
+    private static AssetNode? FilterAssetNode(AssetNode node, string query)
+    {
+        if (node.Name.Contains(query, StringComparison.OrdinalIgnoreCase)) return node;
+        if (node.Kind != AssetKind.Folder) return null;
+
+        AssetNode? copy = null;
+        foreach (var child in node.Children)
+        {
+            var match = FilterAssetNode(child, query);
+            if (match == null) continue;
+            copy ??= new AssetNode
             {
-                _meshesFolder.Children.Add(new AssetNode
-                {
-                    Id = "model:" + key,
-                    Name = key + ".fbx",
-                    Kind = AssetKind.Mesh,
-                });
-            }
+                Id = node.Id,
+                Name = node.Name,
+                Kind = node.Kind,
+                RelativePath = node.RelativePath,
+                ModelKey = node.ModelKey,
+                OwnerModelKey = node.OwnerModelKey,
+                IsExpanded = true,
+            };
+            copy.Children.Add(match);
+        }
+        return copy;
+    }
+
+    private List<AssetNode> BuildAssetNodes(string dir, string root, Dictionary<string, string> modelKeysByPath)
+    {
+        var nodes = new List<AssetNode>();
+        bool isRoot = string.Equals(dir, root, StringComparison.OrdinalIgnoreCase);
+        string[] subDirs, files;
+        try
+        {
+            subDirs = System.IO.Directory.GetDirectories(dir);
+            files = System.IO.Directory.GetFiles(dir);
+        }
+        catch { return nodes; }
+        Array.Sort(subDirs, StringComparer.OrdinalIgnoreCase);
+        Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+
+        foreach (string sub in subDirs)
+        {
+            string name = System.IO.Path.GetFileName(sub);
+            if (isRoot && HiddenContentEntries.Contains(name)) continue;
+            string rel = RelativeContentPath(root, sub);
+            var node = new AssetNode
+            {
+                Id = "dir:" + rel,
+                Name = name,
+                Kind = AssetKind.Folder,
+                RelativePath = rel,
+                OwnerModelKey = ImportedModelKeyFor(rel),
+                IsExpanded = _expandedAssetPaths.Contains(rel),
+            };
+            foreach (var child in BuildAssetNodes(sub, root, modelKeysByPath))
+                node.Children.Add(child);
+            node.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(AssetNode.IsExpanded)) return;
+                if (node.IsExpanded) _expandedAssetPaths.Add(node.RelativePath);
+                else _expandedAssetPaths.Remove(node.RelativePath);
+            };
+            nodes.Add(node);
         }
 
-        // Textures: one subfolder per imported model (built-ins aren't texture-drop
-        // targets), listing whatever the user has already dropped into it.
-        if (_texturesFolder != null)
+        foreach (string file in files)
         {
-            _texturesFolder.Children.Clear();
-            foreach (var key in _bridge.AvailableModelKeys)
+            string name = System.IO.Path.GetFileName(file);
+            if ((isRoot && HiddenContentEntries.Contains(name)) || IsHiddenContentFile(name)) continue;
+            string rel = RelativeContentPath(root, file);
+            string ext = System.IO.Path.GetExtension(name);
+            var kind = AssetKindsByExtension.TryGetValue(ext, out var k) ? k : AssetKind.File;
+            string? modelKey = null;
+            if (kind == AssetKind.Mesh)
+                modelKeysByPath.TryGetValue(rel.Substring(0, rel.Length - ext.Length), out modelKey);
+            nodes.Add(new AssetNode
             {
-                if (!_bridge.IsDeletableModel(key)) continue; // imported models only
-                var folder = new AssetNode { Id = "tex:" + key, Name = key, Kind = AssetKind.Folder, IsExpanded = false };
-                foreach (var file in _bridge.GetModelTextureFiles(key))
-                    folder.Children.Add(new AssetNode { Id = "texfile:" + key + ":" + file, Name = file, Kind = AssetKind.Texture });
-                _texturesFolder.Children.Add(folder);
+                Id = "file:" + rel,
+                Name = name,
+                Kind = kind,
+                RelativePath = rel,
+                ModelKey = modelKey,
+                OwnerModelKey = ImportedModelKeyFor(rel),
+                IsExpanded = false,
+            });
+        }
+        return nodes;
+    }
+
+    private static string RelativeContentPath(string root, string path) =>
+        System.IO.Path.GetRelativePath(root, path).Replace('\\', '/');
+
+    // Anything under GameObjects/Models/{key}/ belongs to that runtime-imported model
+    // (the AssetImporter layout), making it a texture-drop / delete target.
+    private string? ImportedModelKeyFor(string relPath)
+    {
+        var parts = relPath.Split('/');
+        if (parts.Length < 3) return null;
+        if (!parts[0].Equals("GameObjects", StringComparison.OrdinalIgnoreCase) ||
+            !parts[1].Equals("Models", StringComparison.OrdinalIgnoreCase)) return null;
+        return _bridge != null && _bridge.IsDeletableModel(parts[2]) ? parts[2] : null;
+    }
+
+    // Keeps the tree in sync with edits made outside the editor (Explorer, git, model
+    // imports). Events are debounced; bin/obj churn from content builds is ignored.
+    private void StartContentWatcher()
+    {
+        if (_contentWatcher != null || _bridge == null) return;
+        string root = _bridge.ContentSourceRoot;
+        if (string.IsNullOrEmpty(root) || !System.IO.Directory.Exists(root)) return;
+
+        _assetRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _assetRefreshTimer.Tick += (_, _) =>
+        {
+            _assetRefreshTimer.Stop();
+            ApplyPendingManifestChanges(root);
+            RefreshAssetTree();
+        };
+
+        try
+        {
+            _contentWatcher = new System.IO.FileSystemWatcher(root)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.DirectoryName,
+            };
+            _contentWatcher.Created += (_, e) => OnContentChanged(root, e.FullPath, null, deleted: false);
+            _contentWatcher.Deleted += (_, e) => OnContentChanged(root, e.FullPath, null, deleted: true);
+            _contentWatcher.Renamed += (_, e) => OnContentChanged(root, e.FullPath, e.OldFullPath, deleted: false);
+            _contentWatcher.EnableRaisingEvents = true;
+        }
+        catch
+        {
+            // Watching is a convenience; the tree still refreshes on model imports.
+            _contentWatcher = null;
+        }
+    }
+
+    // Deletes / renames seen by the watcher, applied to Content.mgcb on the next
+    // debounce tick. UI thread only.
+    private readonly List<string> _pendingManifestRemovals = new();
+    private readonly List<(string OldRel, string NewRel)> _pendingManifestRenames = new();
+
+    // Fires on a thread-pool thread.
+    private void OnContentChanged(string root, string fullPath, string? oldFullPath, bool deleted)
+    {
+        string rel = RelativeContentPath(root, fullPath);
+        string? oldRel = oldFullPath != null ? RelativeContentPath(root, oldFullPath) : null;
+        bool visible = !HiddenContentEntries.Contains(rel.Split('/')[0]) && !IsHiddenContentFile(fullPath);
+        bool oldVisible = oldRel != null && !HiddenContentEntries.Contains(oldRel.Split('/')[0]) && !IsHiddenContentFile(oldRel);
+        if (!visible && !oldVisible) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (deleted) _pendingManifestRemovals.Add(rel);
+            else if (oldRel != null) _pendingManifestRenames.Add((oldRel, rel));
+            _assetRefreshTimer?.Stop();
+            _assetRefreshTimer?.Start();
+        });
+    }
+
+    // Keeps Content.mgcb in step with files deleted or renamed on disk (in Explorer or
+    // the editor). Paths are re-checked first: editors that save by delete+rename, and
+    // git checkouts, briefly remove files that come straight back.
+    private void ApplyPendingManifestChanges(string root)
+    {
+        bool Exists(string rel)
+        {
+            string full = System.IO.Path.Combine(root, rel.Replace('/', System.IO.Path.DirectorySeparatorChar));
+            return System.IO.File.Exists(full) || System.IO.Directory.Exists(full);
+        }
+
+        try
+        {
+            foreach (var (oldRel, newRel) in _pendingManifestRenames)
+            {
+                if (Exists(oldRel) || !Exists(newRel)) continue;
+                int n = Engine.Recources.ContentManifest.Rename(oldRel, newRel);
+                if (n > 0) AddConsoleEntry(ConsoleLevel.Log, $"Content.mgcb: renamed {n} entr{(n == 1 ? "y" : "ies")} {oldRel} -> {newRel}", "Anvil:Assets");
             }
+            foreach (string rel in _pendingManifestRemovals)
+            {
+                if (Exists(rel)) continue;
+                var removed = Engine.Recources.ContentManifest.Unregister(rel);
+                if (removed.Count > 0) AddConsoleEntry(ConsoleLevel.Log, $"Content.mgcb: removed {string.Join(", ", removed)}", "Anvil:Assets");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't update Content.mgcb: " + ex.Message, "Anvil:Assets");
+        }
+        finally
+        {
+            _pendingManifestRenames.Clear();
+            _pendingManifestRemovals.Clear();
         }
     }
 
@@ -564,7 +814,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             RefreshAvailableModels();
-            RefreshMeshAssetsFolder();
+            RefreshAssetTree();
         });
     }
 
@@ -576,6 +826,139 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge == null || string.IsNullOrEmpty(path)) return;
         _bridge.EnqueueImportModel(path, _ => { /* refresh happens via ModelRegistryChanged */ });
+    }
+
+    /// <summary>
+    /// Copy dropped files / folders into Engine/Content: into the folder they were dropped
+    /// on, the folder containing the file they were dropped on, or the Content root. Name
+    /// clashes get a "_2", "_3", … suffix. Runs off the UI thread; the content watcher
+    /// refreshes the tree once the copies land. Files are copied as-is (no Content.mgcb
+    /// entry) — meshes go through <see cref="ImportFbxFromDisk"/> instead.
+    /// </summary>
+    public void CopyFilesIntoContent(AssetNode? target, IEnumerable<string> paths)
+    {
+        if (_bridge == null) return;
+        string root = _bridge.ContentSourceRoot;
+        if (string.IsNullOrEmpty(root) || !System.IO.Directory.Exists(root)) return;
+
+        string relDir = target == null ? string.Empty
+            : target.Kind == AssetKind.Folder ? target.RelativePath
+            : (System.IO.Path.GetDirectoryName(target.RelativePath) ?? string.Empty);
+        string destDir = System.IO.Path.Combine(root, relDir.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        var sources = paths.Where(p => !string.IsNullOrEmpty(p)).ToArray();
+        if (sources.Length == 0) return;
+
+        Task.Run(() =>
+        {
+            var copied = new List<string>();
+            foreach (string src in sources)
+            {
+                try
+                {
+                    if (System.IO.Directory.Exists(src))
+                    {
+                        string dest = UniqueContentPath(destDir, System.IO.Path.GetFileName(src.TrimEnd('\\', '/')));
+                        // Refuse to copy a folder into itself (e.g. dragging Content's own subfolder in).
+                        string full = System.IO.Path.GetFullPath(src).TrimEnd('\\') + "\\";
+                        if (System.IO.Path.GetFullPath(dest).StartsWith(full, StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("can't copy a folder into itself");
+                        CopyDirectory(src, dest);
+                        copied.AddRange(System.IO.Directory.GetFiles(dest, "*", System.IO.SearchOption.AllDirectories));
+                    }
+                    else if (System.IO.File.Exists(src))
+                    {
+                        System.IO.Directory.CreateDirectory(destDir);
+                        string dest = UniqueContentPath(destDir, System.IO.Path.GetFileName(src));
+                        System.IO.File.Copy(src, dest);
+                        copied.Add(dest);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    string msg = $"Couldn't copy \"{src}\" into Content: {ex.Message}";
+                    Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error, msg, "Anvil:Assets"));
+                }
+            }
+
+            // Pipeline assets (models, textures, effects, fonts) get a Content.mgcb entry
+            // so the next content build picks them up; loose files are left as-is.
+            try
+            {
+                var added = Engine.Recources.ContentManifest.Register(copied.Select(c => RelativeContentPath(root, c)));
+                if (added.Count > 0)
+                    Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Log,
+                        $"Content.mgcb: added {string.Join(", ", added)}", "Anvil:Assets"));
+            }
+            catch (Exception ex)
+            {
+                string msg = "Couldn't update Content.mgcb: " + ex.Message;
+                Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error, msg, "Anvil:Assets"));
+            }
+        });
+    }
+
+    /// <summary>
+    /// Imported model a Delete on this node should remove as a whole (with the engine
+    /// unregistering it): its mesh file or its GameObjects/Models/{key} folder. Other
+    /// nodes — including files inside that folder — are deleted as plain files.
+    /// </summary>
+    public string? ModelKeyToDeleteFor(AssetNode? node)
+    {
+        string? key = DeletableModelKeyFor(node);
+        if (key == null || node == null) return null;
+        bool isModelFolder = node.Kind == AssetKind.Folder &&
+            node.RelativePath.Equals("GameObjects/Models/" + key, StringComparison.OrdinalIgnoreCase);
+        bool isModelMesh = string.Equals(node.ModelKey, key, StringComparison.OrdinalIgnoreCase);
+        return isModelFolder || isModelMesh ? key : null;
+    }
+
+    /// <summary>
+    /// Moves a Content file or folder to the Recycle Bin and removes its Content.mgcb
+    /// entries (everything under it, for a folder).
+    /// </summary>
+    public void DeleteAssetFromDisk(AssetNode? node)
+    {
+        if (_bridge == null || node == null || string.IsNullOrEmpty(node.RelativePath)) return;
+        string full = System.IO.Path.Combine(_bridge.ContentSourceRoot,
+            node.RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        try
+        {
+            if (System.IO.Directory.Exists(full))
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(full,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            else if (System.IO.File.Exists(full))
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(full,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+
+            var removed = Engine.Recources.ContentManifest.Unregister(node.RelativePath);
+            if (removed.Count > 0)
+                AddConsoleEntry(ConsoleLevel.Log, $"Content.mgcb: removed {string.Join(", ", removed)}", "Anvil:Assets");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, $"Couldn't delete \"{node.RelativePath}\": {ex.Message}", "Anvil:Assets");
+        }
+    }
+
+    private static string UniqueContentPath(string dir, string name)
+    {
+        string path = System.IO.Path.Combine(dir, name);
+        string stem = System.IO.Path.GetFileNameWithoutExtension(name);
+        string ext = System.IO.Path.GetExtension(name);
+        for (int i = 2; System.IO.File.Exists(path) || System.IO.Directory.Exists(path); i++)
+            path = System.IO.Path.Combine(dir, $"{stem}_{i}{ext}");
+        return path;
+    }
+
+    private static void CopyDirectory(string src, string dest)
+    {
+        System.IO.Directory.CreateDirectory(dest);
+        foreach (string file in System.IO.Directory.GetFiles(src))
+            System.IO.File.Copy(file, System.IO.Path.Combine(dest, System.IO.Path.GetFileName(file)));
+        foreach (string sub in System.IO.Directory.GetDirectories(src))
+            CopyDirectory(sub, System.IO.Path.Combine(dest, System.IO.Path.GetFileName(sub)));
     }
 
     /// <summary>
@@ -612,25 +995,54 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Resolves an Assets-tree node to a deletable imported-model key, or null. Mesh nodes
-    /// use the id "model:{key}"; texture folders use "tex:{key}".
+    /// Resolves an Assets-tree node to a deletable imported-model key, or null: the mesh
+    /// itself, or anything inside its GameObjects/Models/{key} folder.
     /// </summary>
     public string? DeletableModelKeyFor(AssetNode? node)
     {
         if (_bridge == null || node == null) return null;
-        string id = node.Id ?? string.Empty;
-        string? key;
-        if (id.StartsWith("model:", StringComparison.Ordinal)) key = id.Substring("model:".Length);
-        else if (id.StartsWith("tex:", StringComparison.Ordinal)) key = id.Substring("tex:".Length);
-        else if (id.StartsWith("texfile:", StringComparison.Ordinal))
-        {
-            // "texfile:{key}:{file}" — take the segment between the two markers.
-            string rest = id.Substring("texfile:".Length);
-            int colon = rest.IndexOf(':');
-            key = colon > 0 ? rest.Substring(0, colon) : null;
-        }
-        else key = null;
+        string? key = node.OwnerModelKey ?? node.ModelKey;
         return !string.IsNullOrEmpty(key) && _bridge.IsDeletableModel(key) ? key : null;
+    }
+
+    // Assets opened in an external text editor on double-click.
+    private static readonly HashSet<string> TextAssetExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".fx", ".fxh", ".hlsl", ".xml", ".css", ".cs", ".spritefont",
+            ".mgcb", ".json", ".txt", ".md",
+        };
+
+    public static bool IsTextAsset(AssetNode? node) =>
+        node != null && node.Kind != AssetKind.Folder &&
+        TextAssetExtensions.Contains(System.IO.Path.GetExtension(node.Name));
+
+    /// <summary>
+    /// Opens a text asset (shader, UI XML/CSS, ...) from Engine/Content in VS Code,
+    /// or Notepad if VS Code isn't installed. Returns false if the node isn't a text asset.
+    /// </summary>
+    public bool OpenInTextEditor(AssetNode? node)
+    {
+        if (_bridge == null || !IsTextAsset(node)) return false;
+        string fullPath = System.IO.Path.Combine(_bridge.ContentSourceRoot,
+            node!.RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        if (!ExternalTextEditor.TryOpen(fullPath, out string error))
+            AddConsoleEntry(ConsoleLevel.Error, error, "Anvil:Assets");
+        return true;
+    }
+
+    private void AddConsoleEntry(ConsoleLevel level, string message, string source)
+    {
+        int id = ConsoleEntries.Count == 0 ? 1 : ConsoleEntries.Max(e => e.Id) + 1;
+        ConsoleEntries.Add(new ConsoleEntry
+        {
+            Id = id, Level = level, Message = message, Source = source,
+            Time = DateTime.Now.ToString("HH:mm:ss"),
+        });
+        OnPropertyChanged(nameof(FilteredConsole));
+        OnPropertyChanged(nameof(ConsoleLogCount));
+        OnPropertyChanged(nameof(ConsoleWarnCount));
+        OnPropertyChanged(nameof(ConsoleErrorCount));
     }
 
     private void BuildConsole()
