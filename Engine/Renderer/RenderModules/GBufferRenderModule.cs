@@ -34,6 +34,8 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _OverrideSurface;
         private EffectParameter _SurfaceTint;
         private EffectParameter _ComponentSurface;
+        private EffectParameter _ComponentRoughnessMap;
+        private EffectParameter _ComponentMetallicMap;
 
         private EffectTechnique _DrawTextureDisplacement;
         private EffectTechnique _DrawTextureSpecularNormalMask;
@@ -106,6 +108,8 @@ namespace Engine.Renderer.RenderModules
             _OverrideSurface = _gbufferShader.Parameters["OverrideSurface"];
             _SurfaceTint = _gbufferShader.Parameters["SurfaceTint"];
             _ComponentSurface = _gbufferShader.Parameters["ComponentSurface"];
+            _ComponentRoughnessMap = _gbufferShader.Parameters["ComponentRoughnessMap"];
+            _ComponentMetallicMap = _gbufferShader.Parameters["ComponentMetallicMap"];
 
             //Techniques
 
@@ -167,6 +171,14 @@ namespace Engine.Renderer.RenderModules
         {
             bool componentSurface = material.IsInstanceMaterial && !GameSettings.d_defaultmaterial;
             _OverrideSurface.SetValue(componentSurface);
+            _ComponentRoughnessMap.SetValue(componentSurface && material.UseComponentRoughnessMap);
+            _ComponentMetallicMap.SetValue(componentSurface && material.UseComponentMetallicMap &&
+                material.Type != MaterialEffect.MaterialTypes.Emissive);
+            if (componentSurface)
+            {
+                _Material_RoughnessMap.SetValue(material.RoughnessMap);
+                _Material_MetallicMap.SetValue(material.MetallicMap);
+            }
             _SurfaceTint.SetValue(material.HasDiffuse ? material.DiffuseColor : Vector3.One);
             _ComponentSurface.SetValue(new Vector2(material.Roughness,
                 material.Type == MaterialEffect.MaterialTypes.Emissive
@@ -183,7 +195,7 @@ namespace Engine.Renderer.RenderModules
             }
             else
             {
-                if (material.HasDisplacement)
+                if (material.HasDisplacement && material.HasDiffuse && material.HasNormalMap)
                 {
                     _Material_Texture.SetValue(material.AlbedoMap);
                     _Material_NormalMap.SetValue(material.NormalMap);
@@ -191,7 +203,7 @@ namespace Engine.Renderer.RenderModules
                     _gbufferShader.CurrentTechnique =
                         _DrawTextureDisplacement;
                 }
-                else if (material.HasMask) //Has diffuse for sure then
+                else if (material.HasMask && material.HasDiffuse)
                 {
                     if (material.HasNormalMap && material.HasRoughnessMap)
                     {
@@ -225,7 +237,7 @@ namespace Engine.Renderer.RenderModules
                         _Material_MaskMap.SetValue(material.Mask);
                         _Material_Texture.SetValue(material.AlbedoMap);
                         _gbufferShader.CurrentTechnique =
-                            _DrawTextureSpecularMask;
+                            _DrawTextureMask;
                     }
                 }
                 else
@@ -262,6 +274,7 @@ namespace Engine.Renderer.RenderModules
                     {
                         _Material_Texture.SetValue(material.AlbedoMap);
                         _Material_RoughnessMap.SetValue(material.RoughnessMap);
+                        _Material_MetallicMap.SetValue(material.MetallicMap);
                         _gbufferShader.CurrentTechnique =
                             _DrawTextureSpecularMetallic;
                     }

@@ -22,6 +22,7 @@ namespace Engine.Logic
         public readonly List<DirectionalLight> DirectionalLights = new List<DirectionalLight>();
 
         public EnvironmentSample EnvironmentSample;
+        public EnvironmentSettings Environment = new EnvironmentSettings();
 
         /// <summary>
         /// The scene's game camera. The editor camera lives on <see cref="MainSceneLogic"/>

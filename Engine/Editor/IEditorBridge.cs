@@ -104,6 +104,12 @@ namespace Engine.Editor
 
     public interface IEditorBridge
     {
+        InputDevices.InputDeviceSnapshot InputDevices { get; }
+        Steam.SteamConnectionStatus SteamStatus { get; }
+        void EnqueueSteamConnect();
+        void EnqueueSteamDisconnect();
+        void EnqueueSteamSettings(bool enabled, uint appId, Action onCompleted);
+
         /// <summary>
         /// True when the engine is embedded in an external editor (Anvil). Used to
         /// hide the legacy in-engine HelperSuite GUI and to switch input plumbing to
@@ -192,6 +198,11 @@ namespace Engine.Editor
 
         /// <summary>Copy of the active scene's lighting settings. Safe to call from the UI thread.</summary>
         LightingSettings GetLightingSettings();
+
+        Logic.EnvironmentSettings GetEnvironmentSettings();
+        void EnqueueMutateEnvironment(Action<Logic.EnvironmentSettings> mutate);
+        /// <summary>Import a PNG/JPEG panorama. Callback returns an error, or null on success.</summary>
+        void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted);
 
         /// <summary>Queue an edit of the active scene's lighting settings (marks the scene dirty).</summary>
         void EnqueueMutateLighting(Action<LightingSettings> mutate);

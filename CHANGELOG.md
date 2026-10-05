@@ -1,5 +1,55 @@
 # Changelog
 
+## Added: Input device overview and connected controller list
+
+- Added **Window > Input**, opening an Inspector section with current keyboard, mouse, controller, touch, and pen availability. Connected controllers show their player slot, name/type, and supported sticks, triggers, D-pad, and vibration.
+- Discover keyboard/mouse devices through Windows Raw Input, touch/pen readiness through Windows digitizer capabilities, and Xbox-compatible controllers through MonoGame's WindowsDX GamePad API. Poll twice per second on the game thread, including unfocused frames, and publish immutable snapshots through the editor bridge.
+- Update controller rows as devices connect, disconnect, or change; retain unchanged rows and show explicit waiting, empty, and detection-error states.
+- Verified the editor build and full component integration suite, including simulated controller connection/disconnection, snapshot independence, stable rows, detection errors/recovery, and a native Windows scan. The live scan found keyboard/mouse devices and no connected controller.
+
+- Codex
+
+## Updated: configurable Steam App ID and persistent enable preference
+
+- Added an editable App ID and Apply button to **Window > Steam**, plus an Enable Steam toggle. Steam now defaults to off, with Spacewar (480) as the initial test ID.
+- Save the App ID and enable preference to `Engine/Content/System/SteamSettings.json`. Reopening restores both settings and connects only when enabled; closing the editor keeps the saved preference. Connect/Disconnect also persist the enabled/disabled choice.
+- Applying an ID while enabled releases the current session and reconnects using the new ID, including updating the output development app ID file. Validate IDs, preserve unsaved input during status refreshes, and report save failures without changing the saved configuration.
+- Added checks for first launch without native initialization, custom IDs reaching initialization, enabled/disabled reopen behavior, queued controls, reconnects after ID changes, failed connections, invalid settings, and save errors.
+- Verified the editor build and complete component integration suite, including a live Spacewar connection; the project's saved default remains disabled.
+
+- Codex
+
+## Added: Steam connection panel using Spacewar (480)
+
+- Added **Window > Steam** to the Anvil editor. The Inspector section shows the Steam account, Steam ID, online/offline connection status, errors, and Connect/Disconnect controls.
+- Added an engine-owned Steam service that connects before renderer initialization, pumps callbacks every update even while unfocused, and shuts down with the engine. Editor connection requests run through the game-thread bridge and status uses immutable snapshots.
+- Included the pinned Steamworks.NET 2025.164.1 Windows x64 wrapper, native Steam API, license, and development app ID under `Engine/thirdparty/steam`. Shared reference imports register the wrapper in each executable's dependency manifest; builds copy the native DLL and app ID, while publishing excludes the development app ID file.
+- Documented the extension points for Steam achievements, matchmaking lobbies, and peer networking. This change establishes the connection; achievements and lobby gameplay remain future work.
+- Verified the editor build, existing component integration checks, Steam lifecycle/queued UI checks, and a live native Steam connection with app ID 480.
+
+- Codex
+
+## Added: Environment skybox and day/night controls
+
+- Replaced the viewport's inactive View label with an Environment button that opens an Inspector section. Choose a custom PNG/JPEG panorama, reset the default sky, or select a day/night cycle with a starting hour and duration.
+- Added a procedural sky with sunrise, sunset, stars, and a moving sun light in Edit and Play. Reflection captures refresh twice per second during the cycle; existing scene lights remain editable.
+- Saved environment settings with scenes, retained default skies for older scenes, and copied imported panoramas into Content so they survive rebuilds. Runtime textures are replaced and disposed on the game thread.
+- Verified editor/shader builds, scene persistence and legacy defaults, queued controls, panorama rendering, day/night output, reset, and texture disposal with integration and DirectX checks.
+
+## Added: texture slots and a separate Shader section in Material
+
+- Added a Textures section with Base Color, Normal, Roughness, Metallic, Mask, and Displacement slots. Choose Content images with the file picker or drag textures from Assets; Clear removes a map and Reset restores inheritance. Assignments persist in scenes and duplicate independently.
+- Moved shader selection, the water preset, and wave settings into a separate Shader section.
+- Applied maps to owned material instances through the game-thread component bridge, using shared content-managed textures. Assigned roughness/metallic maps now affect the G-buffer independently; clearing maps also resets their renderer flags.
+- Fixed mask technique selection without a roughness map and metallic texture binding without a normal map. Added persistence, drag/drop, cloning, texture-loading, removal, and G-buffer checks; documented texture workflow and shader choices.
+
+## Fixed: one addable Material inspector using the original controls
+
+- Converted the original `MaterialInfo` inspector into the registered Material component editor, reusing its color picker, roughness/metallic/emission/opacity sliders, transparency checkbox, and existing material-type selector. Water and its wave controls are part of this same component.
+- Removed the separate `MaterialComponentViewModel` and automatic base-material inspector. Selecting a mesh no longer shows two material sections; **Add Component > Material** adds the single section and copies the object's current material settings.
+- Preserved the original material types in component serialization and rendering, and retained compatibility with earlier water component records. Removing the component removes its inspector and restores the source surface.
+- Updated component documentation and integration checks for the reused editor, existing material settings/types, and older water records.
+
 ## Added: Material component with a water shader example
 
 - Added `MaterialComponent` and its Anvil inspector editor. **Add Component > Material** offers Standard/Water shader selection, color, roughness, metallic, emission, shadow settings, and water opacity/wave controls. **Apply Water Example** supplies a teal preset. Component settings save in scenes and clone independently.

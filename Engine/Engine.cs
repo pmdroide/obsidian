@@ -24,8 +24,11 @@ namespace Engine
         private readonly ScreenManager _screenManager;
 
         private readonly EditorBridge _bridge;
+        private readonly global::Engine.Steam.SteamService _steam;
+        private readonly global::Engine.InputDevices.InputDeviceMonitor _inputDevices;
 
         public IEditorBridge Bridge => _bridge;
+        public global::Engine.Steam.SteamService Steam => _steam;
 
         private readonly PhysicsSystem _physics;
 
@@ -72,6 +75,9 @@ namespace Engine
 
         public Engine()
         {
+            _steam = new global::Engine.Steam.SteamService();
+            _steam.Start();
+
             //Initialize graphics and content
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
@@ -79,6 +85,9 @@ namespace Engine
             //Bridge between the engine and an external editor (Anvil). The engine
             //works fine without an attached editor — the bridge just sits idle.
             _bridge = new EditorBridge();
+            _bridge.BindSteam(_steam);
+            _inputDevices = new global::Engine.InputDevices.InputDeviceMonitor();
+            _bridge.BindInputDevices(_inputDevices);
 
             //Initialize screen manager, which controls draw / logic for our screens
             _screenManager = new ScreenManager(_bridge);
@@ -186,6 +195,8 @@ namespace Engine
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            _steam.Update();
+            _inputDevices.Update(gameTime.ElapsedGameTime);
             //Apply any pending window resize here, on the game thread but OUTSIDE the
             //WinForms WndProc/OnResize callstack. Resetting the swap chain from inside
             //that callstack NREs on a reparented child window (the Anvil viewport). Done
@@ -235,6 +246,15 @@ namespace Engine
             // TODO: Add your drawing code here
 
             //base.Draw(gameTime);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing) _steam?.Dispose();
+            }
+            finally { base.Dispose(disposing); }
         }
 
         private void CheckFPSLimitChange()

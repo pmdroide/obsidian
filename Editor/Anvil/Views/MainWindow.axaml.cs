@@ -18,6 +18,19 @@ namespace Anvil.Views;
 
 public partial class MainWindow : Window
 {
+    private async void ChooseSkybox_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || !vm.Environment.CanChooseSkybox) return;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose a skybox panorama",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { new FilePickerFileType("Skybox panorama")
+                { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+        });
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) vm.Environment.ImportSkybox(path);
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -111,6 +124,45 @@ public partial class MainWindow : Window
         DataFormat.CreateInProcessFormat<string>("obsidian/modelKey");
     private static readonly DataFormat<string> AudioAssetFormat =
         DataFormat.CreateInProcessFormat<string>("obsidian/audioAsset");
+    private static readonly DataFormat<string> TextureAssetFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/textureAsset");
+
+    private void MaterialTexture_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = MaterialComponent.IsTextureAsset(e.DataTransfer.TryGetValue(TextureAssetFormat))
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void MaterialTexture_Drop(object? sender, DragEventArgs e)
+    {
+        var path = e.DataTransfer.TryGetValue(TextureAssetFormat);
+        if ((sender as Control)?.DataContext is MaterialTextureSlotViewModel slot &&
+            MaterialComponent.IsTextureAsset(path)) slot.Assign(path!);
+        e.Handled = true;
+    }
+
+    private async void MaterialTexture_Browse(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not MaterialTextureSlotViewModel slot ||
+            DataContext is not MainWindowViewModel vm || vm.SelectedObject?.Bridge is not { } bridge) return;
+        string root = bridge.ContentSourceRoot;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = $"Select {slot.Name} texture from Content",
+            SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(root),
+            FileTypeFilter = new[] { new FilePickerFileType("Textures")
+                { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.dds", "*.bmp" } } },
+        });
+        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } file) return;
+        string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+        if (relative.StartsWith("../", StringComparison.Ordinal) || Path.IsPathRooted(relative))
+        {
+            Engine.Editor.EditorBridge.Log("Choose a texture inside Content. Import external textures into Assets first.");
+            return;
+        }
+        slot.Assign(relative);
+    }
 
     private void AudioClip_DragOver(object? sender, DragEventArgs e)
     {
@@ -256,7 +308,7 @@ public partial class MainWindow : Window
         // Avalonia 12's DragDrop.DoDragDropAsync requires the original
         // PointerPressedEventArgs (the new API dropped the pre-12 move-threshold
         // helper), so we kick off the drag immediately on a left-click that
-        // lands on a mesh or playable audio AssetNode. Other clicks fall through to the TreeView's
+        // lands on a mesh, texture, or playable audio AssetNode. Other clicks fall through to the TreeView's
         // normal selection behaviour.
         var props = e.GetCurrentPoint(this).Properties;
         if (!props.IsLeftButtonPressed) return;
@@ -266,6 +318,8 @@ public partial class MainWindow : Window
         var dt = new DataTransfer();
         if (node?.Kind == AssetKind.Audio && AudioComponent.IsAudioAsset(node.RelativePath))
             dt.Add(DataTransferItem.Create(AudioAssetFormat, node.RelativePath));
+        else if (node?.Kind == AssetKind.Texture && MaterialComponent.IsTextureAsset(node.RelativePath))
+            dt.Add(DataTransferItem.Create(TextureAssetFormat, node.RelativePath));
         else if (ModelKeyFromVisual(v) is { } modelKey)
             dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
         else return;

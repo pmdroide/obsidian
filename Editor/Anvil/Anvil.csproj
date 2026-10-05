@@ -30,4 +30,5 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Engine\Engine.csproj" />
   </ItemGroup>
+  <Import Project="..\..\Engine\thirdparty\steam\Steamworks.props" />
 </Project>

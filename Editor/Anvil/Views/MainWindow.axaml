@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Anvil.ViewModels"
         xmlns:m="using:Anvil.Models"
+        xmlns:input="using:Engine.InputDevices"
         xmlns:controls="using:Anvil.Controls"
         xmlns:conv="using:Anvil.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -123,6 +124,23 @@
         <Style Selector="Button.iconButton controls|LucideIcon">
             <Setter Property="Width" Value="14" />
             <Setter Property="Height" Value="14" />
+        </Style>
+
+        <Style Selector="Button.environmentButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="MinHeight" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+        </Style>
+        <Style Selector="Button.environmentButton.active">
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.environmentButton.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
         </Style>
 
         <!-- Subtle row-level icon button (hierarchy lock/visible) -->
@@ -344,6 +362,12 @@
                               Command="{Binding OpenGameSettingsCommand}"
                               CommandParameter="{Binding $parent[Window]}" />
                     <MenuItem Header="Window">
+                        <MenuItem Header="Input"
+                                  Command="{Binding SetInspectorViewCommand}"
+                                  CommandParameter="Input" />
+                        <MenuItem Header="Steam"
+                                  Command="{Binding SetInspectorViewCommand}"
+                                  CommandParameter="Steam" />
                         <MenuItem Header="Hierarchy" />
                         <MenuItem Header="Inspector" />
                         <MenuItem Header="Console" />
@@ -463,16 +487,13 @@
                         Padding="12,6">
                     <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto">
 
-                        <TextBlock Grid.Column="0" Text="View" FontSize="11"
-                                   Foreground="{StaticResource AnvilTextMutedBrush}"
-                                   Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <Button Grid.Column="0" Content="Environment" Classes="environmentButton"
+                                Command="{Binding SetInspectorViewCommand}" CommandParameter="Environment"
+                                Classes.active="{Binding IsInspectorEnvironmentView}"
+                                ToolTip.Tip="Skybox and day / night cycle" VerticalAlignment="Center" />
 
                         <Rectangle Grid.Column="2" Width="1" Margin="10,4"
                                    Fill="{StaticResource AnvilBorderBrush}" />
-
-                        <TextBlock Grid.Column="3" Text="Shading" FontSize="11"
-                                   Foreground="{StaticResource AnvilTextMutedBrush}"
-                                   Margin="0,0,8,0" VerticalAlignment="Center" />
 
                         <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="2"
                                     VerticalAlignment="Center">
@@ -732,7 +753,95 @@
                             </Grid>
                         </Border>
 
-                        <!-- empty state — only when in Selection view AND nothing selected. -->
+                        <!-- Input devices section opened from Window > Input. -->
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsInspectorInputView}"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel DataContext="{Binding InputDevices}" x:DataType="m:InputDevicesViewModel"
+                                        Spacing="12" Margin="14,12">
+                                <TextBlock Text="Input" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="Available inputs" FontWeight="SemiBold" FontSize="11.5" />
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                                    <TextBlock Text="Keyboard" Margin="0,0,12,10" />
+                                    <TextBlock Grid.Column="1" Text="{Binding KeyboardStatus}" Classes="muted" />
+                                    <TextBlock Grid.Row="1" Text="Mouse" Margin="0,0,12,10" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MouseStatus}" Classes="muted" />
+                                    <TextBlock Grid.Row="2" Text="Controller" Margin="0,0,12,10" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ControllerStatus}" Classes="muted" />
+                                    <TextBlock Grid.Row="3" Text="Touch" Margin="0,0,12,10" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding TouchStatus}" Classes="muted" />
+                                    <TextBlock Grid.Row="4" Text="Pen" Margin="0,0,12,0" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding PenStatus}" Classes="muted" />
+                                </Grid>
+                                <Separator />
+                                <TextBlock Text="Connected controllers" FontWeight="SemiBold" FontSize="11.5" />
+                                <ItemsControl ItemsSource="{Binding Controllers}" IsVisible="{Binding HasControllers}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="input:ControllerDeviceSnapshot">
+                                            <Border Background="{StaticResource AnvilInputBackgroundBrush}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1"
+                                                    CornerRadius="4" Padding="10" Margin="0,0,0,8">
+                                                <StackPanel Spacing="5">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding PlayerLabel}"
+                                                                   Classes="muted" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Type}" Classes="muted" FontSize="11" />
+                                                    <TextBlock Text="{Binding Features}" Classes="subtle" TextWrapping="Wrap" FontSize="11" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding EmptyControllerMessage}" IsVisible="{Binding !HasControllers}"
+                                           TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                <TextBlock Text="Updates automatically as devices connect or disconnect. Controller detection supports Xbox-compatible controllers."
+                                           TextWrapping="Wrap" Classes="subtle" FontSize="11" />
+                                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Steam connection section opened from Window > Steam. -->
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsInspectorSteamView}"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel DataContext="{Binding Steam}" x:DataType="m:SteamViewModel"
+                                        Spacing="12" Margin="14,12">
+                                <TextBlock Text="Steam" FontSize="14" FontWeight="SemiBold" />
+                                <CheckBox Content="Enable Steam" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                          IsEnabled="{Binding CanToggleSteam}" />
+                                <TextBlock Text="App ID" Classes="muted" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <NumericUpDown Value="{Binding AppId, Mode=TwoWay}"
+                                                   Minimum="1" Maximum="4294967295" Increment="1" FormatString="0"
+                                                   IsEnabled="{Binding !IsBusy}" />
+                                    <Button Grid.Column="1" Content="Apply" Margin="8,0,0,0"
+                                            Command="{Binding ApplyAppIdCommand}" />
+                                </Grid>
+                                <TextBlock Text="480 is Spacewar. The enable preference is remembered. Apply saves the App ID and reconnects Steam when enabled."
+                                           Classes="muted" TextWrapping="Wrap" FontSize="11" />
+                                <TextBlock Text="Enter a whole App ID between 1 and 4294967295."
+                                           IsVisible="{Binding !IsValidAppId}" TextWrapping="Wrap" FontSize="11" />
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,4">
+                                    <TextBlock Text="Status" Classes="subtle" Margin="0,0,14,8" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ConnectionState}" />
+                                    <TextBlock Grid.Row="1" Text="Account" Classes="subtle" Margin="0,0,14,8" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PersonaName}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="2" Text="Steam ID" Classes="subtle" Margin="0,0,14,0" />
+                                    <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SteamId}" />
+                                </Grid>
+                                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Content="Connect" Command="{Binding ConnectCommand}" />
+                                    <Button Content="Disconnect" Command="{Binding DisconnectCommand}" />
+                                </StackPanel>
+                                <Separator />
+                                <TextBlock Text="Future Steam features" FontWeight="SemiBold" />
+                                <TextBlock Text="Achievements and peer-to-peer lobbies will use this Steam connection."
+                                           Classes="muted" TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Empty selection state. -->
                         <TextBlock Grid.Row="1"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    FontSize="11"
@@ -854,121 +963,6 @@
                                     </StackPanel>
                                 </Expander>
 
-                                <!-- Material -->
-                                <Expander IsExpanded="True"
-                                          IsVisible="{Binding Material, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                          IsEnabled="{Binding !HasMaterialComponent}">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Palette" />
-                                            <TextBlock Text="Material" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="8" Margin="12,8,12,12"
-                                                DataContext="{Binding Material}"
-                                                x:DataType="m:MaterialInfo">
-                                        <Grid ColumnDefinitions="60,*" RowDefinitions="Auto"
-                                              ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Color"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <Button Grid.Column="1" Background="Transparent"
-                                                    BorderThickness="0" Padding="0"
-                                                    HorizontalAlignment="Left">
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <Border Width="28" Height="20" CornerRadius="3"
-                                                            Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
-                                                            BorderBrush="{StaticResource AnvilBorderBrush}"
-                                                            BorderThickness="1" />
-                                                    <TextBlock Text="{Binding ColorHex}" FontSize="11"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                                <Button.Flyout>
-                                                    <!-- ColorPicker lives in a Flyout — DataContext
-                                                         doesn't flow through it reliably, so reach
-                                                         back through the Window to the live VM. -->
-                                                    <Flyout>
-                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Material.Color, Mode=TwoWay}" />
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                            </Button>
-                                        </Grid>
-
-                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Roughness"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <Slider Grid.Column="1" Minimum="0" Maximum="1"
-                                                    Value="{Binding Roughness, Mode=TwoWay}"
-                                                    MinHeight="18" />
-                                            <TextBlock Grid.Column="2" Text="{Binding Roughness, StringFormat={}{0:0.00}}"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Right" />
-                                        </Grid>
-
-                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Metallic"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <Slider Grid.Column="1" Minimum="0" Maximum="1"
-                                                    Value="{Binding Metallic, Mode=TwoWay}"
-                                                    MinHeight="18" />
-                                            <TextBlock Grid.Column="2" Text="{Binding Metallic, StringFormat={}{0:0.00}}"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Right" />
-                                        </Grid>
-
-                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Emissive"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <Slider Grid.Column="1" Minimum="0" Maximum="5"
-                                                    Value="{Binding EmissiveStrength, Mode=TwoWay}"
-                                                    MinHeight="18" />
-                                            <TextBlock Grid.Column="2" Text="{Binding EmissiveStrength, StringFormat={}{0:0.00}}"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Right" />
-                                        </Grid>
-
-                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Opacity"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <Slider Grid.Column="1" Minimum="0" Maximum="1"
-                                                    Value="{Binding Opacity, Mode=TwoWay}"
-                                                    MinHeight="18" />
-                                            <TextBlock Grid.Column="2" Text="{Binding Opacity, StringFormat={}{0:0.00}}"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Right" />
-                                        </Grid>
-
-                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Type"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <ComboBox Grid.Column="1" Classes="field"
-                                                      HorizontalAlignment="Stretch"
-                                                      SelectedIndex="{Binding MaterialType, Mode=TwoWay}">
-                                                <ComboBoxItem>Basic</ComboBoxItem>
-                                                <ComboBoxItem>Hologram</ComboBoxItem>
-                                                <ComboBoxItem>ProjectHologram</ComboBoxItem>
-                                                <ComboBoxItem>Emissive</ComboBoxItem>
-                                                <ComboBoxItem>SubsurfaceScattering</ComboBoxItem>
-                                                <ComboBoxItem>ForwardShaded</ComboBoxItem>
-                                            </ComboBox>
-                                        </Grid>
-
-                                        <CheckBox Content="Transparent"
-                                                  IsChecked="{Binding IsTransparent, Mode=TwoWay}"
-                                                  FontSize="11" />
-                                    </StackPanel>
-                                </Expander>
-
                                 <!-- Physics -->
                                 <Expander IsExpanded="True"
                                           IsVisible="{Binding Physics, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -1085,44 +1079,155 @@
                                 <!-- Components use typed templates so new editors can be added independently. -->
                                 <ItemsControl ItemsSource="{Binding Components}">
                                     <ItemsControl.DataTemplates>
-                                        <DataTemplate DataType="m:MaterialComponentViewModel" x:DataType="m:MaterialComponentViewModel">
+                                        <DataTemplate DataType="m:MaterialInfo" x:DataType="m:MaterialInfo">
                                             <Expander IsExpanded="True">
                                                 <Expander.Header>
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Palette" />
-                                                        <TextBlock Text="Material Component" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <TextBlock Text="Material" FontSize="11.5"
+                                                                   FontWeight="SemiBold" VerticalAlignment="Center" />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
                                                     <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
-                                                    <ComboBox ItemsSource="{Binding Shaders}" SelectedIndex="{Binding ShaderIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
-                                                    <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
-                                                    <TextBlock Text="Color (RGB)" Classes="muted" FontSize="11" />
-                                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
-                                                        <NumericUpDown Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Red, Mode=TwoWay}" FormatString="0.00" />
-                                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Green, Mode=TwoWay}" FormatString="0.00" />
-                                                        <NumericUpDown Grid.Column="2" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Blue, Mode=TwoWay}" FormatString="0.00" />
+
+                                                    <Grid ColumnDefinitions="60,*" RowDefinitions="Auto"
+                                                          ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Color"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent"
+                                                                BorderThickness="0" Padding="0"
+                                                                HorizontalAlignment="Left">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <Border Width="28" Height="20" CornerRadius="3"
+                                                                        Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                                                        BorderBrush="{StaticResource AnvilBorderBrush}"
+                                                                        BorderThickness="1" />
+                                                                <TextBlock Text="{Binding ColorHex}" FontSize="11"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                            <Button.Flyout>
+                                                                <!-- ColorPicker lives in a Flyout — DataContext
+                                                                     doesn't flow through it reliably, so reach
+                                                                     back through the Window to the live VM. -->
+                                                                <Flyout>
+                                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Material.Color, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
                                                     </Grid>
-                                                    <TextBlock Text="Roughness" Classes="muted" FontSize="11" />
-                                                    <Slider Minimum="0.001" Maximum="1" Value="{Binding Roughness, Mode=TwoWay}" />
-                                                    <StackPanel Spacing="8" IsVisible="{Binding !IsWater}">
-                                                        <TextBlock Text="Metallic" Classes="muted" FontSize="11" />
-                                                        <Slider Minimum="0" Maximum="1" Value="{Binding Metallic, Mode=TwoWay}" />
-                                                        <TextBlock Text="Emission" Classes="muted" FontSize="11" />
-                                                        <NumericUpDown Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding EmissiveStrength, Mode=TwoWay}" />
-                                                        <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" FontSize="11" />
-                                                    </StackPanel>
-                                                    <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
-                                                        <TextBlock Text="Opacity" Classes="muted" FontSize="11" />
-                                                        <Slider Minimum="0" Maximum="1" Value="{Binding Opacity, Mode=TwoWay}" />
-                                                        <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
-                                                        <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
-                                                        <TextBlock Text="Wave Speed" Classes="muted" FontSize="11" />
-                                                        <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveSpeed, Mode=TwoWay}" FormatString="0.00" />
-                                                        <TextBlock Text="Wave Strength" Classes="muted" FontSize="11" />
-                                                        <Slider Minimum="0" Maximum="2" Value="{Binding WaveStrength, Mode=TwoWay}" />
-                                                        <TextBlock Text="Apply to a flat mesh on the XY plane. Ripples animate in Edit and Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
-                                                    </StackPanel>
+
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Roughness"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                                Value="{Binding Roughness, Mode=TwoWay}"
+                                                                MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Roughness, StringFormat={}{0:0.00}}"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Right" />
+                                                    </Grid>
+
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Metallic"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                                Value="{Binding Metallic, Mode=TwoWay}"
+                                                                MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Metallic, StringFormat={}{0:0.00}}"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Right" />
+                                                    </Grid>
+
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Emissive"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="8"
+                                                                Value="{Binding EmissiveStrength, Mode=TwoWay}"
+                                                                MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding EmissiveStrength, StringFormat={}{0:0.00}}"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Right" />
+                                                    </Grid>
+
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Opacity"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                                Value="{Binding Opacity, Mode=TwoWay}"
+                                                                MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Opacity, StringFormat={}{0:0.00}}"
+                                                                   Classes="muted" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Right" />
+                                                    </Grid>
+
+                                                    <CheckBox Content="Transparent"
+                                                              IsChecked="{Binding IsTransparent, Mode=TwoWay}"
+                                                              FontSize="11" />
+                                                    <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" IsVisible="{Binding !IsWater}" FontSize="11" />
+
+                                                    <Expander Header="Textures" IsExpanded="True">
+                                                        <StackPanel Spacing="8" Margin="0,8,0,0">
+                                                            <TextBlock Text="Choose a texture or drag one from Assets." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                            <ItemsControl ItemsSource="{Binding TextureSlots}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="m:MaterialTextureSlotViewModel" x:DataType="m:MaterialTextureSlotViewModel">
+                                                                        <StackPanel Spacing="4" Margin="0,0,0,8">
+                                                                            <TextBlock Text="{Binding Name}" Classes="muted" FontSize="11" />
+                                                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                                                                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="MaterialTexture_Browse"
+                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="MaterialTexture_DragOver" DragDrop.Drop="MaterialTexture_Drop"
+                                                                                        ToolTip.Tip="{Binding Label}">
+                                                                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" FontSize="11" />
+                                                                                </Button>
+                                                                                <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" ToolTip.Tip="Remove this texture map" />
+                                                                                <Button Grid.Column="2" Content="Reset" Command="{Binding ResetCommand}" ToolTip.Tip="Use the model's texture map" />
+                                                                            </Grid>
+                                                                        </StackPanel>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander Header="Shader" IsExpanded="True">
+                                                        <StackPanel Spacing="8" Margin="0,8,0,0">
+                                                            <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Shader"
+                                                                           Classes="muted" FontSize="11"
+                                                                           VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field"
+                                                                          HorizontalAlignment="Stretch"
+                                                                          SelectedIndex="{Binding MaterialType, Mode=TwoWay}">
+                                                                    <ComboBoxItem>Basic</ComboBoxItem>
+                                                                    <ComboBoxItem>Hologram</ComboBoxItem>
+                                                                    <ComboBoxItem>ProjectHologram</ComboBoxItem>
+                                                                    <ComboBoxItem>Emissive</ComboBoxItem>
+                                                                    <ComboBoxItem>SubsurfaceScattering</ComboBoxItem>
+                                                                    <ComboBoxItem>ForwardShaded</ComboBoxItem>
+                                                                    <ComboBoxItem>Water</ComboBoxItem>
+                                                                </ComboBox>
+                                                            </Grid>
+                                                            <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
+                                                            <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
+                                                                <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
+                                                                <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
+                                                                <TextBlock Text="Wave Speed" Classes="muted" FontSize="11" />
+                                                                <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveSpeed, Mode=TwoWay}" FormatString="0.00" />
+                                                                <TextBlock Text="Wave Strength" Classes="muted" FontSize="11" />
+                                                                <Slider Minimum="0" Maximum="2" Value="{Binding WaveStrength, Mode=TwoWay}" />
+                                                                <TextBlock Text="Apply to a flat mesh on the XY plane. Ripples animate in Edit and Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Expander>
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -1549,6 +1654,43 @@
                                     </StackPanel>
                                 </Expander>
 
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      IsVisible="{Binding IsInspectorEnvironmentView}">
+                            <StackPanel Spacing="14" Margin="12" DataContext="{Binding Environment}"
+                                        x:DataType="m:EnvironmentViewModel" IsEnabled="{Binding IsReady}">
+                                <TextBlock Text="Environment" FontSize="13" FontWeight="SemiBold" />
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Sky mode" Classes="muted" FontSize="11" />
+                                    <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding SkyModes}"
+                                              SelectedIndex="{Binding SelectedSkyMode, Mode=TwoWay}"
+                                              IsEnabled="{Binding CanChooseSkybox}" />
+                                </StackPanel>
+                                <StackPanel Spacing="8" IsVisible="{Binding IsCustomSkybox}">
+                                    <TextBlock Text="{Binding SkyboxName}" TextWrapping="Wrap" FontSize="11" />
+                                    <TextBlock Text="Choose a 360° equirectangular panorama (PNG or JPEG, ideally 2:1)."
+                                               TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    <Button Content="Choose skybox…" Click="ChooseSkybox_Click"
+                                            IsEnabled="{Binding CanChooseSkybox}" HorizontalAlignment="Stretch" />
+                                    <Button Content="Reset to default" Command="{Binding ResetSkyboxCommand}"
+                                            HorizontalAlignment="Stretch" />
+                                </StackPanel>
+                                <StackPanel Spacing="8" IsVisible="{Binding IsDayNightCycle}">
+                                    <TextBlock Text="Animated sky and sun lighting. The cycle runs in both Edit and Play."
+                                               TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    <TextBlock Text="Starting hour (0–24)" Classes="muted" FontSize="11" />
+                                    <NumericUpDown Classes="field" Minimum="0" Maximum="23.99" Increment="0.25"
+                                                   Value="{Binding TimeOfDay, Mode=TwoWay}" FormatString="0.00" />
+                                    <TextBlock Text="Full cycle duration (minutes)" Classes="muted" FontSize="11" />
+                                    <NumericUpDown Classes="field" Minimum="0.1" Maximum="1440" Increment="0.5"
+                                                   Value="{Binding CycleDurationMinutes, Mode=TwoWay}" FormatString="0.0" />
+                                    <TextBlock Text="Changing the starting hour or duration restarts the cycle."
+                                               TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
                             </StackPanel>
                         </ScrollViewer>
 

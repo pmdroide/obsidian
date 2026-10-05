@@ -59,6 +59,8 @@ monodroid*.msi
 /CompiledContent/Windows/IgnoreMe.dll
 *.cachefile
 *.dll
+!Engine/thirdparty/steam/Steamworks.NET.dll
+!Engine/thirdparty/steam/steam_api64.dll
 *.VC.db
 *.VC.opendb
 

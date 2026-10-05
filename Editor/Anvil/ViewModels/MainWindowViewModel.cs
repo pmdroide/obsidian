@@ -97,6 +97,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the Inspector when <see cref="InspectorView"/> == "Lighting".
     /// </summary>
     public LightingViewModel Lighting { get; } = new();
+    public EnvironmentViewModel Environment { get; } = new();
+    public SteamViewModel Steam { get; } = new();
+    public InputDevicesViewModel InputDevices { get; } = new();
 
     /// <summary>
     /// Inspector content switch: "Selection" (default) shows the selected
@@ -106,12 +109,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
-        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView))]
+        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
+        nameof(IsInspectorSteamView), nameof(IsInspectorInputView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
     public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
     public bool IsInspectorLightingView => InspectorView == "Lighting";
+    public bool IsInspectorEnvironmentView => InspectorView == "Environment";
+    public bool IsInspectorSteamView => InspectorView == "Steam";
+    public bool IsInspectorInputView => InspectorView == "Input";
 
     [RelayCommand]
     private void SetInspectorView(string view) => InspectorView = view;
@@ -239,6 +246,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // Baked lighting tab: per-scene settings + bake progress; bake results go to the console.
         Lighting.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:Lighting");
         Lighting.AttachBridge(bridge);
+        Environment.AttachBridge(bridge);
+        Steam.AttachBridge(bridge);
+        InputDevices.AttachBridge(bridge);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).
@@ -275,6 +285,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             if (_bridge == null) return;
+            Steam.Refresh();
+            InputDevices.Refresh();
             ReconcilerActive = true;
             BridgeReconciler.SelectedEngineId = SelectedObject?.EngineId;
             try

@@ -44,7 +44,7 @@ public static class ComponentEditorRegistry
     static ComponentEditorRegistry()
     {
         Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
-        Register(MaterialComponent.TypeId, owner => new MaterialComponentViewModel(owner));
+        Register(MaterialComponent.TypeId, owner => new MaterialInfo(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

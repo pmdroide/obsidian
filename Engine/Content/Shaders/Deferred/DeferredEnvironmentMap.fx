@@ -64,6 +64,9 @@ SamplerState SkyMap2DSampler
     Mipfilter = LINEAR;
 };
 bool UseSkyMap2D;
+bool DayNightCycle;
+float3 SunDirection;
+float Daylight;
 
 //Baked probe volume (Engine/Renderer/Lighting). Each probe stores cosine-convolved L1 SH per colour
 //channel as (c0, cx, cy, cz): irradiance E(n) = c0 + dot(c.yzw, n), in deferred light units.
@@ -166,6 +169,22 @@ float GetLuma(float3 rgb)
 float3 SampleSky(float3 viewDir)
 {
 	float3 viewDirNorm = normalize(viewDir);
+	if (DayNightCycle)
+	{
+		float height = saturate(viewDirNorm.z);
+		float3 night = lerp(float3(0.012, 0.018, 0.04), float3(0.002, 0.004, 0.015), height);
+		float3 day = lerp(float3(0.65, 0.78, 0.95), float3(0.08, 0.3, 0.8), sqrt(height));
+		float sunset = (1 - saturate(abs(SunDirection.z) * 5)) * (1 - height) * Daylight;
+		float3 sky = lerp(night, day, Daylight);
+		sky = lerp(sky, float3(0.9, 0.25, 0.08), sunset * 0.7);
+		float sunDisc = smoothstep(0.9995, 0.9998, dot(viewDirNorm, SunDirection));
+		float sunGlow = pow(saturate(dot(viewDirNorm, SunDirection)), 64);
+		sky += (sunDisc * 3 + sunGlow * 0.2) * float3(1, 0.8, 0.5) * Daylight;
+		float3 starCell = floor(viewDirNorm * 700);
+		float star = frac(sin(dot(starCell, float3(12.9898, 78.233, 45.164))) * 43758.5453);
+		sky += step(0.998, star) * (1 - Daylight) * height * 0.3;
+		return sky;
+	}
 	float3 skyColor;
 
 	if (UseSkyMap2D)

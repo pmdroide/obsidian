@@ -161,21 +161,49 @@ bridge.EnqueueAddComponent(entity.Id, MaterialComponent.TypeId);
 Publish();
 BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
 var surface = entity.Components.OfType<MaterialComponent>().Single();
-var surfaceEditor = owner.Components.OfType<MaterialComponentViewModel>().Single();
-Check(owner.HasMaterialComponent && entity.Components.Count == 2,
+var surfaceEditor = owner.Components.OfType<MaterialInfo>().Single();
+var baseSlot = surfaceEditor.TextureSlots.Single(s => s.Name == "Base Color");
+var normalSlot = surfaceEditor.TextureSlots.Single(s => s.Name == "Normal");
+baseSlot.Assign("Textures/base.png");
+normalSlot.Assign("Textures/normal.PNG");
+normalSlot.Assign("Audio/loop.wav");
+surfaceEditor.TextureSlots.Single(s => s.Name == "Metallic").ClearCommand.Execute(null);
+Publish();
+Check(surface.BaseColorTexture == "Textures/base.png" && surface.NormalTexture == "Textures/normal.PNG" &&
+    surface.MetallicTexture == "" && surface.RoughnessTexture == null,
+    "texture assignment rejects non-images and preserves inherit versus clear");
+normalSlot.ResetCommand.Execute(null);
+Publish();
+Check(surface.NormalTexture == null, "reset restores model texture inheritance");
+// Texture drop handlers use the Assets panel's in-process image format.
+var textureFormat = (DataFormat<string>)typeof(MainWindow).GetField("TextureAssetFormat", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+var textureTarget = new Button { DataContext = normalSlot };
+var textureTransfer = new DataTransfer();
+textureTransfer.Add(DataTransferItem.Create(textureFormat, "Textures/normal.png"));
+var textureDrag = (DragEventArgs)Activator.CreateInstance(typeof(DragEventArgs),
+    DragDrop.DropEvent, textureTransfer, textureTarget, new Avalonia.Point(), KeyModifiers.None)!;
+Invoke(window, "MaterialTexture_DragOver", textureTarget, textureDrag);
+Invoke(window, "MaterialTexture_Drop", textureTarget, textureDrag);
+Publish();
+Check(textureDrag.DragEffects == DragDropEffects.Copy && surface.NormalTexture == "Textures/normal.png",
+    "texture drop assigns the selected material slot through the component bridge");
+Check(owner.HasMaterialComponent && entity.Components.Count == 2 && ReferenceEquals(owner.Material, surfaceEditor),
     "Material can coexist with Audio and cannot be added twice");
 surfaceEditor.WaterExampleCommand.Execute(null);
+surfaceEditor.Color = Avalonia.Media.Color.FromRgb(13, 89, 115);
 surfaceEditor.Opacity = 0.42;
 surfaceEditor.WaveSpeed = 1.7;
 surfaceEditor.WaveScale = 0.6;
 surfaceEditor.WaveStrength = 0.35;
 Publish();
-Check(surface.Shader == MaterialShader.Water && Math.Abs(surface.Red - 0.05f) < 0.0001 &&
+Check(surface.Shader == MaterialShader.Water && Math.Abs(surface.Red - 13 / 255f) < 0.0001 &&
     Math.Abs(surface.Opacity - 0.42f) < 0.0001 && Math.Abs(surface.WaveSpeed - 1.7f) < 0.0001,
     "water example and inspector controls reach the engine");
 var surfaceClone = ((BasicEntity)entity.Clone).Components.OfType<MaterialComponent>().Single();
 surfaceClone.WaveSpeed = 5;
+surfaceClone.BaseColorTexture = "Textures/other.png";
 Check(surface.WaveSpeed != surfaceClone.WaveSpeed, "cloned material settings are independent");
+Check(surface.BaseColorTexture == "Textures/base.png", "cloned texture assignments are independent");
 string materialScenePath = Path.Combine(Path.GetTempPath(), $"anvil-materials-{Guid.NewGuid():N}.obsc");
 try
 {
@@ -187,14 +215,16 @@ try
         restored.Roughness == surface.Roughness && restored.Metallic == surface.Metallic &&
         restored.EmissiveStrength == surface.EmissiveStrength && restored.CastShadows == surface.CastShadows &&
         restored.Opacity == surface.Opacity && restored.WaveScale == surface.WaveScale &&
-        restored.WaveSpeed == surface.WaveSpeed && restored.WaveStrength == surface.WaveStrength,
+        restored.WaveSpeed == surface.WaveSpeed && restored.WaveStrength == surface.WaveStrength &&
+        restored.BaseColorTexture == surface.BaseColorTexture && restored.NormalTexture == surface.NormalTexture &&
+        restored.RoughnessTexture == null && restored.MetallicTexture == "",
         "scene save/load preserves material and water parameters");
 }
 finally { File.Delete(materialScenePath); }
 BridgeReconciler.IsInspectorFocused = true;
 BridgeReconciler.SelectedEngineId = entity.Id;
 BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
-Check(ReferenceEquals(surfaceEditor, owner.Components.OfType<MaterialComponentViewModel>().Single()),
+Check(ReferenceEquals(surfaceEditor, owner.Components.OfType<MaterialInfo>().Single()),
     "focused reconciliation keeps the material editor stable");
 surfaceEditor.Enabled = false;
 Publish();
@@ -202,9 +232,30 @@ Check(!surface.Enabled, "material can be disabled through the inspector");
 surfaceEditor.RemoveCommand.Execute(null);
 Publish();
 BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
-Check(!owner.HasMaterialComponent && entity.Components.OfType<MaterialComponent>().Count() == 0 &&
+Check(!owner.HasMaterialComponent && owner.Material == null && entity.Components.OfType<MaterialComponent>().Count() == 0 &&
     owner.AddableComponents.Single(c => c.DisplayName == "Material").AddCommand.CanExecute(null),
-    "removing material restores the picker and base-material controls");
+    "removing material removes the single editor and restores the picker");
+var legacySnapshot = new EditorObjectSnapshot(entity.Id, entity.Name, EditorObjectKind.BasicEntity,
+    entity.Position, entity.RotationMatrix, entity.Scale, entity.IsEnabled, null,
+    new MaterialSnapshot(Vector3.One, 0.7f, 0.3f, 0, false, 0),
+    components: entity.Components.Select(ComponentRegistry.Capture).ToArray());
+BridgeReconciler.Apply(new[] { legacySnapshot }, objects, bridge);
+Check(owner.Material == null && owner.Components.OfType<MaterialInfo>().Count() == 0,
+    "base material metadata does not recreate an automatic Material inspector");
+var legacyWater = (MaterialComponent)ComponentRegistry.Restore(new ComponentRecord
+{
+    Type = MaterialComponent.TypeId,
+    Data = System.Text.Json.JsonSerializer.SerializeToElement(new { Shader = 1, Red = 0.12f, WaveSpeed = 2.4f }),
+});
+Check(legacyWater.MaterialType == MaterialEffect.MaterialTypes.Water && legacyWater.Red == 0.12f && legacyWater.WaveSpeed == 2.4f,
+    "earlier water component records remain compatible");
+foreach (var type in Enum.GetValues<MaterialEffect.MaterialTypes>())
+{
+    var authored = new MaterialComponent { MaterialType = type, IsTransparent = true, Opacity = 0.3f };
+    var restored = (MaterialComponent)ComponentRegistry.Copy(authored);
+    Check(restored.MaterialType == type && restored.IsTransparent && restored.Opacity == 0.3f,
+        $"existing material type {type} round-trips as a component");
+}
 BridgeReconciler.IsInspectorFocused = false;
 BridgeReconciler.SelectedEngineId = null;
 
@@ -298,6 +349,11 @@ if (args.Contains("--audio"))
     }
 }
 
+EnvironmentChecks.Run();
+SteamChecks.Run();
+InputDeviceChecks.Run();
+if (args.Contains("--input-native")) InputDeviceChecks.RunNative();
+if (args.Contains("--steam-native")) SteamChecks.RunNative();
 Console.WriteLine("All component checks passed.");
 if (args.Contains("--graphics")) MaterialGraphicsChecks.Run();
 

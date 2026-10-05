@@ -93,6 +93,13 @@ namespace Engine.Renderer.RenderModules
             }
         }
 
+        public void SetDayNightCycle(bool enabled, Vector3 sunDirection, float daylight)
+        {
+            _deferredEnvironmentShader.Parameters["DayNightCycle"]?.SetValue(enabled);
+            _deferredEnvironmentShader.Parameters["SunDirection"]?.SetValue(sunDirection);
+            _deferredEnvironmentShader.Parameters["Daylight"]?.SetValue(daylight);
+        }
+
         public Texture2D AlbedoMap
         {
             set { _paramAlbedoMap.SetValue(value); }

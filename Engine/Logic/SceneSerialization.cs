@@ -179,6 +179,8 @@ namespace Engine.Logic
 
             // Advance the global ID generator so newly-added objects can't collide.
             IdGenerator.Reseed(maxId);
+            scene.Environment = doc.Environment ?? new EnvironmentSettings();
+            scene.Environment.Normalize();
 
             EditorBridge.Log($"SceneSerialization.LoadFromFile: '{path}' loaded ({scene.BasicEntities.Count}/{scene.PointLights.Count}/{scene.DirectionalLights.Count}/{scene.Decals.Count})");
             return scene;
@@ -214,7 +216,7 @@ namespace Engine.Logic
 
         private static SceneDocument BuildDocument(Scene scene, Assets assets)
         {
-            var doc = new SceneDocument { Version = CurrentVersion, Name = scene.Name };
+            var doc = new SceneDocument { Version = CurrentVersion, Name = scene.Name, Environment = scene.Environment.Clone() };
 
             var modelReverse = BuildReverseLookup<ModelDefinition>(assets);
             var textureReverse = BuildReverseLookup<Texture2D>(assets);
@@ -407,6 +409,7 @@ namespace Engine.Logic
             public List<DirectionalLightRecord> DirectionalLights { get; set; } = new();
             public List<DecalRecord> Decals { get; set; } = new();
             public EnvironmentSampleRecord EnvironmentSample { get; set; }
+            public EnvironmentSettings Environment { get; set; }
             public CameraRecord MainCamera { get; set; }
             // Optional: older v1 files without it load with default lighting settings
             public LightingRecord Lighting { get; set; }

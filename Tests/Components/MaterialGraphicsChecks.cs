@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
+using System.Reflection;
 using Engine.Components;
+using Engine.Editor;
 using Engine.Entities;
+using Engine.Logic;
 using Engine.Recources;
 using Engine.Renderer.Helper;
 using Engine.Renderer.RenderModules;
@@ -26,6 +29,7 @@ internal static class MaterialGraphicsChecks
             services.AddService<IGraphicsDeviceService>(new DeviceService(graphics));
             using var content = new ContentManager(services,
                 Path.Combine(AppContext.BaseDirectory, "Content"));
+            EnvironmentChecks.RunGraphics(graphics, content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);
@@ -34,6 +38,28 @@ internal static class MaterialGraphicsChecks
             using var texture = new Texture2D(graphics, 1, 1);
             texture.SetData(new[] { Color.White });
             source.AlbedoMap = texture;
+            source.Type = MaterialEffect.MaterialTypes.SubsurfaceScattering;
+            source.IsTransparent = true;
+            source.HasShadow = false;
+            source.EmissiveStrength = 2;
+            var authored = new BasicEntity(definition, source, Vector3.Zero, Matrix.Identity, Vector3.One);
+            var scene = new MainSceneLogic();
+            scene.BasicEntities.Add(authored);
+            var bridge = new EditorBridge();
+            typeof(EditorBridge).GetMethod("Bind", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(bridge, new object[] { scene, new EditorLogic(), new Assets { Cube = definition } });
+            bridge.EnqueueAddComponent(authored.Id, MaterialComponent.TypeId);
+            for (int i = 0; i < 6; i++)
+                typeof(EditorBridge).GetMethod("DrainAndPublish", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(bridge, null);
+            var inherited = authored.Components.OfType<MaterialComponent>().Single();
+            Check(inherited.MaterialType == source.Type && inherited.IsTransparent && !inherited.CastShadows &&
+                inherited.Red == 1 && inherited.Green == 0 && inherited.Blue == 0 &&
+                inherited.Roughness == 0.6f && inherited.Metallic == 0.1f && inherited.EmissiveStrength == 2,
+                "adding Material copies the original surface settings and material type");
+            source.Type = MaterialEffect.MaterialTypes.Basic;
+            source.IsTransparent = false;
+            source.HasShadow = true;
+            source.EmissiveStrength = 0;
             var component = new MaterialComponent { Shader = MaterialShader.Water,
                 Red = 0.05f, Green = 0.35f, Blue = 0.45f, Roughness = 0.08f };
             var entity = new BasicEntity(definition, source, Vector3.Zero, Matrix.Identity,
@@ -118,6 +144,57 @@ internal static class MaterialGraphicsChecks
             normals.GetData(surfacePixels);
             Check(surfacePixels.Any(p => Math.Abs(p.A / 255f - component.Roughness) < 0.005f),
                 "Standard material writes the authored roughness to the G-buffer");
+            // Exercise compiled texture loading, independent scalar maps, and explicit removal.
+            using var mapped = source.Clone();
+            var maps = new MaterialComponent
+            {
+                BaseColorTexture = "GameObjects/Error/ERRORText_typeBlinn_BaseColor.jpg",
+                NormalTexture = "GameObjects/Error/ERRORText_typeBlinn_Normal.jpg",
+                RoughnessTexture = "GameObjects/Error/ERRORText_typeBlinn_Roughness.jpg",
+                MetallicTexture = "GameObjects/Error/ERRORText_typeBlinn_Metallic.jpg",
+                MaskTexture = "GameObjects/error.png",
+                DisplacementTexture = "GameObjects/Error/ERRORText_typeBlinn_Roughness.jpg",
+            };
+            maps.ApplyTo(mapped, content);
+            Check(mapped.HasDiffuse && mapped.HasNormalMap && mapped.HasRoughnessMap && mapped.HasMetallic &&
+                mapped.HasMask && mapped.HasDisplacement && mapped.UseComponentRoughnessMap && mapped.UseComponentMetallicMap &&
+                mapped.AlbedoMap != source.AlbedoMap && source.AlbedoMap == texture,
+                "all six texture slots load compiled maps without changing source assets");
+            // Bind only metallic, without normal/roughness/albedo, to exercise independent sampling.
+            using var grayscale = new Texture2D(graphics, 1, 1);
+            grayscale.SetData(new[] { new Color(200, 200, 200) });
+            instance.AlbedoMap = null;
+            instance.NormalMap = null;
+            instance.RoughnessMap = null;
+            instance.MetallicMap = grayscale;
+            instance.UseComponentMetallicMap = true;
+            gbuffer.Draw(graphics, new[] { new RenderTargetBinding(target), new RenderTargetBinding(normals),
+                new RenderTargetBinding(depth) }, meshes, vp, view);
+            graphics.SetRenderTarget(null);
+            normals.GetData(surfacePixels);
+            var encodedWithMap = surfacePixels.Select(p => p.B).ToArray();
+            instance.UseComponentMetallicMap = false;
+            gbuffer.Draw(graphics, new[] { new RenderTargetBinding(target), new RenderTargetBinding(normals),
+                new RenderTargetBinding(depth) }, meshes, vp, view);
+            graphics.SetRenderTarget(null);
+            normals.GetData(surfacePixels);
+            Check(surfacePixels.Where((p, i) => p.B != encodedWithMap[i]).Any(),
+                "metallic texture affects G-buffer even without other maps");
+            instance.RoughnessMap = grayscale;
+            instance.UseComponentRoughnessMap = true;
+            gbuffer.Draw(graphics, new[] { new RenderTargetBinding(target), new RenderTargetBinding(normals),
+                new RenderTargetBinding(depth) }, meshes, vp, view);
+            graphics.SetRenderTarget(null);
+            normals.GetData(surfacePixels);
+            Check(surfacePixels.Any(p => Math.Abs(p.A - 200) <= 1),
+                "roughness texture takes precedence over the component slider");
+            maps.BaseColorTexture = maps.NormalTexture = maps.RoughnessTexture = maps.MetallicTexture =
+                maps.MaskTexture = maps.DisplacementTexture = "";
+            var loadedMap = mapped.AlbedoMap;
+            maps.ApplyTo(mapped, content);
+            Check(!mapped.HasDiffuse && !mapped.HasNormalMap && !mapped.HasRoughnessMap && !mapped.HasMetallic &&
+                !mapped.HasMask && !mapped.HasDisplacement && !loadedMap.IsDisposed,
+                "clearing all texture maps resets flags without disposing shared textures");
             entity.Components.Remove(component);
             entity.RefreshMaterials();
             Check(instance.IsDisposed && ReferenceEquals(meshes.MaterialLib[0].GetMaterial(), source),

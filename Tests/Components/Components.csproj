@@ -8,4 +8,5 @@
   <ItemGroup>
     <ProjectReference Include="../../Editor/Anvil/Anvil.csproj" />
   </ItemGroup>
+  <Import Project="..\..\Engine\thirdparty\steam\Steamworks.props" />
 </Project>

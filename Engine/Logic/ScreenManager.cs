@@ -215,6 +215,7 @@ namespace Engine.Logic
         {
             _videoIntro.Unload();
             _audio?.Dispose();
+            _renderer?.UnloadEnvironment();
             _sceneLogic?.Lighting.Dispose();
             if (_sceneLogic?.MeshMaterialLibrary != null)
                 foreach (var entity in _sceneLogic.BasicEntities) entity.Dispose(_sceneLogic.MeshMaterialLibrary);
@@ -244,7 +245,8 @@ namespace Engine.Logic
                 editorData: _editorLogic.GetEditorData(),
                 gameTime: gameTime,
                 lighting: _sceneLogic.Lighting,
-                lightingSettings: _sceneLogic.ActiveScene.Lighting);
+                lightingSettings: _sceneLogic.ActiveScene.Lighting,
+                scene: _sceneLogic.ActiveScene);
 
             _debug.Draw(gameTime);
 

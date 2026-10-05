@@ -27,6 +27,7 @@ namespace Engine.Renderer
 {
     public class Renderer : IDisposable
     {
+        private readonly EnvironmentSky _environmentSky = new EnvironmentSky();
         #region VARIABLES
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  VARIABLES
@@ -319,8 +320,10 @@ namespace Engine.Renderer
         /// <param name="lighting">Baked lighting (probe volume GPU data); optional</param>
         /// <param name="lightingSettings">The active scene's lighting settings; optional</param>
         /// <returns></returns>
-        public EditorLogic.EditorReceivedData Draw(Camera camera, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities, EditorLogic.EditorSendData editorData, GameTime gameTime, LightingSystem lighting = null, LightingSettings lightingSettings = null)
+        public EditorLogic.EditorReceivedData Draw(Camera camera, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities, EditorLogic.EditorSendData editorData, GameTime gameTime, LightingSystem lighting = null, LightingSettings lightingSettings = null, Scene scene = null)
         {
+            if (scene != null)
+                directionalLights = _environmentSky.Apply(scene, gameTime, _graphicsDevice, _assets, _deferredEnvironmentMapRenderModule);
             _lighting = lighting;
             _lightingSettings = lightingSettings;
 
@@ -1841,8 +1844,11 @@ namespace Engine.Renderer
 
         #endregion
 
+        public void UnloadEnvironment() => _environmentSky.Dispose();
+
         public void Dispose()
         {
+            _environmentSky.Dispose();
             _graphicsDevice?.Dispose();
             _spriteBatch?.Dispose();
             _gaussianBlur?.Dispose();

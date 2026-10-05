@@ -1,0 +1,10 @@
+<Project>
+  <!-- Direct assembly references must be imported by each executable so .NET also
+       includes Steamworks.NET in that executable's runtime dependency manifest. -->
+  <ItemGroup>
+    <Reference Include="Steamworks.NET">
+      <HintPath>$(MSBuildThisFileDirectory)Steamworks.NET.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

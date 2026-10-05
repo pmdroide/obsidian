@@ -180,3 +180,4 @@ For game-ready meshes:
 
 ## In the end of the session
 Write what was changed, added or/and removed in the `CHANGELOG.md`.
+Also sign who did it in the changelog, for example: "- Claude", "- Codex" at the end of the text.

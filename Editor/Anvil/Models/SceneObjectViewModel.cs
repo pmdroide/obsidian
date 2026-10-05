@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Anvil.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Engine.Editor;
 using Engine.Components;
 using Engine.Entities;
@@ -28,7 +29,7 @@ public enum LightType
     Spot,
 }
 
-public partial class MaterialInfo : ObservableObject
+public partial class MaterialInfo : ComponentViewModel
 {
     [ObservableProperty] private Color _color = Color.Parse("#3D5AFA");
     [ObservableProperty] private double _roughness = 0.4;
@@ -36,52 +37,93 @@ public partial class MaterialInfo : ObservableObject
     [ObservableProperty] private double _opacity = 1.0;
     [ObservableProperty] private double _emissiveStrength;
     [ObservableProperty] private bool _isTransparent;
-    [ObservableProperty] private int _materialType;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWater))] private int _materialType;
+    [ObservableProperty] private bool _castShadows = true;
+    [ObservableProperty] private double _waveScale = 0.3;
+    [ObservableProperty] private double _waveSpeed = 1;
+    [ObservableProperty] private double _waveStrength = 0.2;
 
     public string ColorHex => $"#{Color.R:X2}{Color.G:X2}{Color.B:X2}";
+    public bool IsWater => MaterialType == (int)Engine.Recources.MaterialEffect.MaterialTypes.Water;
 
-    // Parent back-pointer so setters can find the EngineId + bridge to enqueue against.
-    private SceneObjectViewModel? _parent;
-    internal void AttachToParent(SceneObjectViewModel parent) => _parent = parent;
+    public MaterialTextureSlotViewModel[] TextureSlots { get; }
+
+    public MaterialInfo(SceneObjectViewModel owner) : base(owner, MaterialComponent.TypeId)
+    {
+        TextureSlots =
+        [
+            new("Base Color", c => c.BaseColorTexture, path => Push(c => ((MaterialComponent)c).BaseColorTexture = path)),
+            new("Normal", c => c.NormalTexture, path => Push(c => ((MaterialComponent)c).NormalTexture = path)),
+            new("Roughness", c => c.RoughnessTexture, path => Push(c => ((MaterialComponent)c).RoughnessTexture = path)),
+            new("Metallic", c => c.MetallicTexture, path => Push(c => ((MaterialComponent)c).MetallicTexture = path)),
+            new("Mask", c => c.MaskTexture, path => Push(c => ((MaterialComponent)c).MaskTexture = path)),
+            new("Displacement", c => c.DisplacementTexture, path => Push(c => ((MaterialComponent)c).DisplacementTexture = path)),
+        ];
+    }
 
     partial void OnColorChanged(Color value)
     {
         OnPropertyChanged(nameof(ColorHex));
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
+        var v = BridgeReconciler.ToVector3(value);
+        Push(c =>
         {
-            var v = BridgeReconciler.ToVector3(value);
-            bridge.EnqueueMutateMaterial(id, mat => mat.DiffuseColor = v);
-        }
+            var material = (MaterialComponent)c;
+            material.Red = v.X; material.Green = v.Y; material.Blue = v.Z;
+        });
     }
 
     partial void OnRoughnessChanged(double value)
     {
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
-            bridge.EnqueueMutateMaterial(id, mat => mat.Roughness = (float)value);
+        Push(c => ((MaterialComponent)c).Roughness = (float)value);
     }
 
     partial void OnMetallicChanged(double value)
     {
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
-            bridge.EnqueueMutateMaterial(id, mat => mat.Metallic = (float)value);
+        Push(c => ((MaterialComponent)c).Metallic = (float)value);
     }
 
     partial void OnEmissiveStrengthChanged(double value)
     {
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
-            bridge.EnqueueMutateMaterial(id, mat => mat.EmissiveStrength = (float)value);
+        Push(c => ((MaterialComponent)c).EmissiveStrength = (float)value);
     }
 
     partial void OnIsTransparentChanged(bool value)
     {
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
-            bridge.EnqueueMutateMaterial(id, mat => mat.IsTransparent = value);
+        Push(c => ((MaterialComponent)c).IsTransparent = value);
     }
 
     partial void OnMaterialTypeChanged(int value)
     {
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
-            bridge.EnqueueMutateMaterial(id, mat => mat.Type = (Engine.Recources.MaterialEffect.MaterialTypes)value);
+        Push(c => ((MaterialComponent)c).MaterialType = (Engine.Recources.MaterialEffect.MaterialTypes)value);
+    }
+
+    partial void OnOpacityChanged(double value) => Push(c => ((MaterialComponent)c).Opacity = (float)value);
+    partial void OnCastShadowsChanged(bool value) => Push(c => ((MaterialComponent)c).CastShadows = value);
+    partial void OnWaveScaleChanged(double value) => Push(c => ((MaterialComponent)c).WaveScale = (float)value);
+    partial void OnWaveSpeedChanged(double value) => Push(c => ((MaterialComponent)c).WaveSpeed = (float)value);
+    partial void OnWaveStrengthChanged(double value) => Push(c => ((MaterialComponent)c).WaveStrength = (float)value);
+
+    [RelayCommand]
+    private void WaterExample()
+    {
+        MaterialType = (int)Engine.Recources.MaterialEffect.MaterialTypes.Water;
+        Color = Color.FromRgb(13, 89, 115);
+        Roughness = 0.08; Opacity = 0.65;
+        WaveScale = 0.3; WaveSpeed = 1; WaveStrength = 0.2;
+    }
+
+    public override void Apply(GameComponent component, bool freezeFields)
+    {
+        base.Apply(component, freezeFields);
+        if (freezeFields) return;
+        var material = (MaterialComponent)component;
+        Color = BridgeReconciler.FromVector3(new XnaVector3(material.Red, material.Green, material.Blue));
+        Roughness = material.Roughness; Metallic = material.Metallic;
+        EmissiveStrength = material.EmissiveStrength; IsTransparent = material.IsTransparent;
+        MaterialType = (int)material.MaterialType; CastShadows = material.CastShadows;
+        Opacity = material.Opacity; WaveScale = material.WaveScale;
+        WaveSpeed = material.WaveSpeed; WaveStrength = material.WaveStrength;
+        foreach (var slot in TextureSlots) slot.Apply(material);
     }
 }
 
@@ -219,7 +261,8 @@ public partial class SceneObjectViewModel : ObservableObject
     [ObservableProperty] private double _scaleY = 1;
     [ObservableProperty] private double _scaleZ = 1;
 
-    [ObservableProperty] private MaterialInfo? _material;
+    // The ColorPicker flyout reaches the same addable component editor through this alias.
+    public MaterialInfo? Material => Components.OfType<MaterialInfo>().FirstOrDefault();
     [ObservableProperty] private LightInfo? _light;
     [ObservableProperty] private CameraInfo? _camera;
     [ObservableProperty] private PhysicsInfo? _physics;
@@ -235,6 +278,7 @@ public partial class SceneObjectViewModel : ObservableObject
         Components.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasMaterialComponent));
+            OnPropertyChanged(nameof(Material));
             foreach (var type in AddableComponents) type.AddCommand.NotifyCanExecuteChanged();
         };
     }

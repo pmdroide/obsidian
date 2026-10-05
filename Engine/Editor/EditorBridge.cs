@@ -22,6 +22,21 @@ namespace Engine.Editor
     public sealed class EditorBridge : IEditorBridge
     {
         private readonly ConcurrentQueue<Action> _pendingOps = new ConcurrentQueue<Action>();
+        private global::Engine.InputDevices.InputDeviceMonitor _inputDevices;
+        public global::Engine.InputDevices.InputDeviceSnapshot InputDevices => _inputDevices?.Snapshot ??
+            global::Engine.InputDevices.InputDeviceSnapshot.Waiting;
+        internal void BindInputDevices(global::Engine.InputDevices.InputDeviceMonitor inputDevices) => _inputDevices = inputDevices;
+        private Steam.SteamService _steam;
+        public Steam.SteamConnectionStatus SteamStatus => _steam?.Status ??
+            Steam.SteamConnectionStatus.Disconnected("Waiting for the engine Steam service.");
+        internal void BindSteam(Steam.SteamService steam) => _steam = steam;
+        public void EnqueueSteamConnect() => _pendingOps.Enqueue(() => _steam?.Connect());
+        public void EnqueueSteamDisconnect() => _pendingOps.Enqueue(() => _steam?.Disconnect());
+        public void EnqueueSteamSettings(bool enabled, uint appId, Action onCompleted) => _pendingOps.Enqueue(() =>
+        {
+            try { _steam?.Configure(enabled, appId); }
+            finally { onCompleted?.Invoke(); }
+        });
         private IReadOnlyList<EditorObjectSnapshot> _snapshot = Array.Empty<EditorObjectSnapshot>();
         private int? _selectedId;
         private Vector3 _spawnPoint;
@@ -304,7 +319,10 @@ namespace Engine.Editor
                 var definition = ComponentRegistry.Find(componentType);
                 if (entity == null || definition == null ||
                     entity.Components.Any(c => c.GetType() == definition.ComponentType)) return;
-                var component = definition.Create();
+                var component = componentType == MaterialComponent.TypeId
+                    ? MaterialComponent.FromMaterial(entity.Material ?? entity.Model?.Meshes
+                        .SelectMany(m => m.MeshParts).Select(p => p.Effect).OfType<MaterialEffect>().FirstOrDefault())
+                    : definition.Create();
                 entity.Components.Add(component);
                 component.OnChanged(entity);
                 _scene.ActiveScene.IsDirty = true;
@@ -592,6 +610,68 @@ namespace Engine.Editor
 
         public LightingSettings GetLightingSettings() =>
             _scene?.ActiveScene?.Lighting?.Clone() ?? new LightingSettings();
+
+        public EnvironmentSettings GetEnvironmentSettings() =>
+            _scene?.ActiveScene?.Environment?.Clone() ?? new EnvironmentSettings();
+
+        public void EnqueueMutateEnvironment(Action<EnvironmentSettings> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var active = _scene?.ActiveScene;
+                if (active == null) return;
+                var settings = active.Environment.Clone();
+                mutate(settings);
+                settings.Normalize();
+                active.Environment = settings;
+                active.IsDirty = true;
+                if (active.EnvironmentSample != null) active.EnvironmentSample.NeedsUpdate = true;
+            });
+        }
+
+        public void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted)
+        {
+            var requestedScene = _scene?.ActiveScene;
+            _pendingOps.Enqueue(() =>
+            {
+                string error = null;
+                try
+                {
+                    if (requestedScene == null || requestedScene != _scene?.ActiveScene)
+                        throw new InvalidOperationException("The scene changed. Select the skybox again.");
+                    string extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+                    if (extension != ".png" && extension != ".jpg" && extension != ".jpeg")
+                        throw new InvalidDataException("Select a PNG or JPEG panorama.");
+                    var service = (Microsoft.Xna.Framework.Graphics.IGraphicsDeviceService)
+                        Globals.content.ServiceProvider.GetService(typeof(Microsoft.Xna.Framework.Graphics.IGraphicsDeviceService));
+                    using (var stream = File.OpenRead(sourcePath))
+                    using (var image = Microsoft.Xna.Framework.Graphics.Texture2D.FromStream(service.GraphicsDevice, stream))
+                    {
+                        if (image.Width < 2 || image.Height < 2)
+                            throw new InvalidDataException("The skybox image is too small.");
+                    }
+                    string relative = "Environment/Skyboxes/" + Guid.NewGuid().ToString("N") + "/" + Path.GetFileName(sourcePath);
+                    string destination = Path.Combine(ContentSourceRoot, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination));
+                    File.Copy(sourcePath, destination);
+                    string runtimePath = Path.GetFullPath(Path.Combine(Globals.content.RootDirectory, relative));
+                    if (!string.Equals(runtimePath, Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(runtimePath));
+                        File.Copy(destination, runtimePath);
+                    }
+                    var settings = requestedScene.Environment.Clone();
+                    settings.SkyboxPath = relative;
+                    settings.DayNightCycle = false;
+                    requestedScene.Environment = settings;
+                    requestedScene.IsDirty = true;
+                    if (requestedScene.EnvironmentSample != null) requestedScene.EnvironmentSample.NeedsUpdate = true;
+                }
+                catch (Exception ex) { error = ex.Message; Log("Import skybox: " + ex); }
+                onCompleted?.Invoke(error);
+            });
+        }
 
         public void EnqueueMutateLighting(Action<LightingSettings> mutate)
         {

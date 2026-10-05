@@ -135,32 +135,6 @@ public static class BridgeReconciler
                 SetIfChanged(v => vm.ScaleZ = v, vm.ScaleZ, snap.Scale.Z);
             }
 
-            // Material — never replace an existing MaterialInfo instance for the
-            // currently selected object. Doing so collapses the bound Expander
-            // and closes any open ColorPicker flyout mid-edit.
-            if (snap.Material.HasValue)
-            {
-                var m = snap.Material.Value;
-                vm.Material ??= new MaterialInfo();
-                vm.Material.AttachToParent(vm);
-                if (!freezeFields)
-                {
-                    var newColor = FromVector3(m.DiffuseColor);
-                    if (vm.Material.Color != newColor) vm.Material.Color = newColor;
-                    SetIfChanged(v => vm.Material.Roughness = v, vm.Material.Roughness, m.Roughness);
-                    SetIfChanged(v => vm.Material.Metallic = v, vm.Material.Metallic, m.Metallic);
-                    SetIfChanged(v => vm.Material.EmissiveStrength = v, vm.Material.EmissiveStrength, m.EmissiveStrength);
-                    if (vm.Material.IsTransparent != m.IsTransparent) vm.Material.IsTransparent = m.IsTransparent;
-                    if (vm.Material.MaterialType != m.MaterialType) vm.Material.MaterialType = m.MaterialType;
-                    double newOpacity = m.IsTransparent ? 0.5 : 1.0;
-                    SetIfChanged(v => vm.Material.Opacity = v, vm.Material.Opacity, newOpacity);
-                }
-            }
-            else if (snap.Kind != EditorObjectKind.BasicEntity && !freezeFields)
-            {
-                vm.Material = null;
-            }
-
             // Light
             if (snap.Light.HasValue)
             {
@@ -227,7 +201,7 @@ public static class BridgeReconciler
         _ => SceneObjectType.Empty,
     };
 
-    private static Color FromVector3(Microsoft.Xna.Framework.Vector3 v)
+    internal static Color FromVector3(Microsoft.Xna.Framework.Vector3 v)
     {
         byte r = (byte)System.Math.Clamp((int)(v.X * 255f), 0, 255);
         byte g = (byte)System.Math.Clamp((int)(v.Y * 255f), 0, 255);
