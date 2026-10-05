@@ -17,7 +17,29 @@ components remain compatible. Audio assets anywhere under `Engine/Content` are
 copied into builds. Anvil also copies newly imported audio into its runtime
 content directory on first playback, so assigning a new asset needs no rebuild.
 
+## Roles and buoyancy
+
+Every mesh gameobject has a **Role** under its name in the Inspector. **Default**
+is an ordinary object. **Water** makes the object a water volume: the water fills
+its XY footprint, from the top of its bounds downward without a floor. A Water
+object builds no physics collider, so bodies can sink into it. With a Water
+material, the surface follows the visible waves. Roles save by name in scenes;
+older scenes load as Default. To add a role, add a value at the end of
+`Engine/Entities/GameObjectRole.cs` and handle it where it matters. The Inspector
+lists every value.
+
+On a **Dynamic** Physics component, tick **Buoyancy** to float in Water objects
+during Play. **Float** is the upward push when fully under water, relative to the
+body's weight: 2 floats half-submerged and below 1 sinks. **Drag** slows motion
+and spin in water. The body's bounds are sampled as a 3x3x3 grid, so a tilted body
+rights itself and rides the swell.
+
 ## Adding another component type
+
+**Script Behaviour** attaches a compiled C# behaviour with `Start()` and
+`Update()` hooks. Select **Add Component > Script Behaviour**, keep **Spin
+Example** selected, and press Play. See [Script behaviours](Script_Behaviours.md)
+for the example and instructions for writing and registering your own scripts.
 
 The **Material** component includes Standard and Water shaders. Select
 **Add Component > Material**, then **Apply Water Example** to try the animated
@@ -29,7 +51,10 @@ for surface controls and rendering details.
    `OnStart`, `OnUpdate`, `OnChanged`, and `OnStop` as needed.
 2. Register the type with a stable ID and display name in `ComponentRegistry`.
    The registry handles creation, snapshots, cloning, and JSON persistence.
-   Each gameobject supports one component of each registered type.
+   Each gameobject supports one component of each registered type by default.
+   Register with `allowMultiple: true` to support repeated attachments, as Script
+   Behaviour does. Each attachment has a saved identity so its editor can change
+   or remove it independently.
 3. Derive its editor from `Anvil.Models.ComponentViewModel`, implement `Apply`,
    and use `Push` for edits. Register its factory in `ComponentEditorRegistry`.
 4. Add a typed `DataTemplate` to the Inspector's component `ItemsControl` in

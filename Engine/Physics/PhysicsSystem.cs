@@ -5,6 +5,7 @@ using BepuPhysics;
 using BepuPhysics.Collidables;
 using BepuPhysics.CollisionDetection;
 using BepuPhysics.Constraints;
+using BepuPhysics.Trees;
 using BepuUtilities;
 using BepuUtilities.Memory;
 using Engine.Recources.Helper;
@@ -42,6 +43,8 @@ namespace Engine.Physics
     {
         public Simulation Simulation { get; private set; }
         public BufferPool BufferPool { get; private set; }
+        /// <summary>World-space gravity (Z-up), as passed to the constructor.</summary>
+        public XnaVector3 Gravity { get; }
 
         // Single-threaded to start: Timestep is given a null dispatcher. A real
         // IThreadDispatcher can be slotted in here later without touching callers.
@@ -50,6 +53,7 @@ namespace Engine.Physics
         /// <param name="gravity">World-space gravity in engine (Z-up) coordinates, e.g. (0,0,-9.81).</param>
         public PhysicsSystem(XnaVector3 gravity)
         {
+            Gravity = gravity;
             BufferPool = new BufferPool();
             Simulation = Simulation.Create(
                 BufferPool,
@@ -219,6 +223,97 @@ namespace Engine.Physics
             var pose = Simulation.Bodies[handle].Pose;
             position = MathConverter.ToXna(pose.Position);
             orientation = MathConverter.ToXna(pose.Orientation);
+        }
+
+        public void GetBodyState(BodyHandle handle, out XnaVector3 position, out XnaQuaternion orientation,
+            out XnaVector3 linearVelocity, out XnaVector3 angularVelocity)
+        {
+            var body = Simulation.Bodies[handle];
+            position = MathConverter.ToXna(body.Pose.Position);
+            orientation = MathConverter.ToXna(body.Pose.Orientation);
+            linearVelocity = MathConverter.ToXna(body.Velocity.Linear);
+            angularVelocity = MathConverter.ToXna(body.Velocity.Angular);
+        }
+
+        /// <summary>Wake a body and apply an impulse at <paramref name="offset"/> from its centre of mass (world-space).</summary>
+        public void ApplyImpulse(BodyHandle handle, XnaVector3 impulse, XnaVector3 offset)
+        {
+            var body = Simulation.Bodies[handle];
+            body.Awake = true;
+            body.ApplyImpulse(MathConverter.ToNumerics(impulse), MathConverter.ToNumerics(offset));
+        }
+
+        /// <summary>Wake a body and change its spin by a world-space angular impulse.</summary>
+        public void ApplyAngularImpulse(BodyHandle handle, XnaVector3 impulse)
+        {
+            var body = Simulation.Bodies[handle];
+            body.Awake = true;
+            body.ApplyAngularImpulse(MathConverter.ToNumerics(impulse));
+        }
+
+        /// <summary>Wake a body and overwrite its linear (units/s) and angular (radians/s) velocity.</summary>
+        public void SetBodyVelocity(BodyHandle handle, XnaVector3 linear, XnaVector3 angular)
+        {
+            var body = Simulation.Bodies[handle];
+            body.Velocity.Linear = MathConverter.ToNumerics(linear);
+            body.Velocity.Angular = MathConverter.ToNumerics(angular);
+            body.Awake = true;
+        }
+
+        /// <summary>
+        /// Closest hit along a ray against every body and static, skipping the ignored ones.
+        /// <paramref name="direction"/> need not be normalized; <paramref name="distance"/> is in world units.
+        /// </summary>
+        public bool RayCast(XnaVector3 origin, XnaVector3 direction, float maxDistance,
+            BodyHandle? ignoreBody, StaticHandle? ignoreStatic,
+            out float distance, out XnaVector3 normal, out BodyHandle? hitBody, out StaticHandle? hitStatic)
+        {
+            distance = 0;
+            normal = XnaVector3.Zero;
+            hitBody = null;
+            hitStatic = null;
+            if (direction == XnaVector3.Zero || !(maxDistance > 0)) return false;
+
+            var handler = new ClosestHitHandler { IgnoreBody = ignoreBody, IgnoreStatic = ignoreStatic };
+            Simulation.RayCast(MathConverter.ToNumerics(origin), MathConverter.ToNumerics(XnaVector3.Normalize(direction)),
+                maxDistance, ref handler);
+            if (!handler.HasHit) return false;
+
+            distance = handler.T;
+            normal = MathConverter.ToXna(handler.Normal);
+            if (normal != XnaVector3.Zero) normal.Normalize();
+            if (handler.Hit.Mobility == CollidableMobility.Static) hitStatic = handler.Hit.StaticHandle;
+            else hitBody = handler.Hit.BodyHandle;
+            return true;
+        }
+
+        private struct ClosestHitHandler : IRayHitHandler
+        {
+            public BodyHandle? IgnoreBody;
+            public StaticHandle? IgnoreStatic;
+            public bool HasHit;
+            public float T;
+            public Vector3 Normal;
+            public CollidableReference Hit;
+
+            public bool AllowTest(CollidableReference collidable) =>
+                collidable.Mobility == CollidableMobility.Static
+                    ? !(IgnoreStatic.HasValue && collidable.StaticHandle.Value == IgnoreStatic.Value.Value)
+                    : !(IgnoreBody.HasValue && collidable.BodyHandle.Value == IgnoreBody.Value.Value);
+
+            public bool AllowTest(CollidableReference collidable, int childIndex) => true;
+
+            public void OnRayHit(in RayData ray, ref float maximumT, float t, in Vector3 normal,
+                CollidableReference collidable, int childIndex)
+            {
+                if (t >= maximumT) return;
+                // Shrinking maximumT lets BEPU skip anything farther than the closest hit so far.
+                maximumT = t;
+                T = t;
+                Normal = normal;
+                Hit = collidable;
+                HasHit = true;
+            }
         }
 
         /// <summary>

@@ -13,6 +13,7 @@ public enum MaterialShader { Standard, Water }
 public sealed class MaterialComponent : GameComponent
 {
     public const string TypeId = "material";
+    public const float MaxWaveHeight = 10f;
     // Keep the initial water-example API; new records persist the existing material type enum.
     [JsonIgnore]
     public MaterialShader Shader
@@ -39,6 +40,12 @@ public sealed class MaterialComponent : GameComponent
     public float WaveScale { get; set; } = 0.3f;
     public float WaveSpeed { get; set; } = 1f;
     public float WaveStrength { get; set; } = 0.2f;
+    /// <summary>Water only: crest-to-trough height in metres of the swell that moves the surface mesh.</summary>
+    public float WaveHeight { get; set; } = 0.5f;
+    /// <summary>Water only: metres you can see into the water before it takes the surface colour.</summary>
+    public float Clarity { get; set; } = 4f;
+    /// <summary>Water only: shore and wave-crest foam amount, 0..1.</summary>
+    public float Foam { get; set; } = 0.5f;
 
     // null inherits the model's map; empty explicitly removes it.
     public string BaseColorTexture { get; set; }
@@ -53,6 +60,11 @@ public sealed class MaterialComponent : GameComponent
             is ".png" or ".jpg" or ".jpeg" or ".tga" or ".dds" or ".bmp";
 
     public override void OnChanged(BasicEntity owner) => owner.RefreshMaterials();
+    public override void OnRemoved(BasicEntity owner) => owner.RefreshMaterials();
+
+    /// <summary>A new Material component starts from the surface the gameobject already shows.</summary>
+    public static MaterialComponent FromOwner(BasicEntity owner) => FromMaterial(owner?.Material ??
+        owner?.Model?.Meshes.SelectMany(m => m.MeshParts).Select(p => p.Effect).OfType<MaterialEffect>().FirstOrDefault());
 
     public static MaterialComponent FromMaterial(MaterialEffect material) => material == null ? new() : new()
     {
@@ -69,6 +81,9 @@ public sealed class MaterialComponent : GameComponent
         WaveScale = material.WaveScale,
         WaveSpeed = material.WaveSpeed,
         WaveStrength = material.WaveStrength,
+        WaveHeight = material.WaveHeight,
+        Clarity = material.WaterClarity,
+        Foam = material.WaterFoam,
     };
 
     public void ApplyTo(MaterialEffect material, ContentManager content = null)
@@ -86,6 +101,9 @@ public sealed class MaterialComponent : GameComponent
         material.WaveScale = Limit(WaveScale, 0.001f, 10);
         material.WaveSpeed = Limit(WaveSpeed, 0, 10);
         material.WaveStrength = Limit(WaveStrength, 0, 2);
+        material.WaveHeight = Limit(WaveHeight, 0, MaxWaveHeight);
+        material.WaterClarity = Limit(Clarity, 0.05f, 50);
+        material.WaterFoam = Limit(Foam, 0, 1);
         content ??= Globals.content;
         ApplyTexture(BaseColorTexture, content, texture => material.AlbedoMap = texture);
         ApplyTexture(NormalTexture, content, texture => material.NormalMap = texture);
@@ -113,6 +131,6 @@ public sealed class MaterialComponent : GameComponent
         }
     }
 
-    private static float Limit(float value, float min, float max) =>
+    internal static float Limit(float value, float min, float max) =>
         float.IsFinite(value) ? Math.Clamp(value, min, max) : min;
 }

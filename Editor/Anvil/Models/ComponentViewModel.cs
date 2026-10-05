@@ -10,6 +10,7 @@ public abstract partial class ComponentViewModel : ObservableObject
 {
     protected SceneObjectViewModel Owner { get; }
     public string TypeId { get; }
+    public Guid InstanceId { get; private set; }
     public string DisplayName => ComponentRegistry.Find(TypeId).DisplayName;
     [ObservableProperty] private bool _enabled = true;
     public IRelayCommand RemoveCommand { get; }
@@ -20,19 +21,20 @@ public abstract partial class ComponentViewModel : ObservableObject
         TypeId = typeId;
         RemoveCommand = new RelayCommand(() =>
         {
-            if (Owner.EngineId is int id) Owner.Bridge?.EnqueueRemoveComponent(id, TypeId);
+            if (Owner.EngineId is int id) Owner.Bridge?.EnqueueRemoveComponent(id, TypeId, InstanceId);
         });
     }
 
     protected void Push(Action<GameComponent> mutate)
     {
         if (!Owner.SuppressPush && Owner.EngineId is int id)
-            Owner.Bridge?.EnqueueMutateComponent(id, TypeId, mutate);
+            Owner.Bridge?.EnqueueMutateComponent(id, TypeId, mutate, InstanceId);
     }
 
     partial void OnEnabledChanged(bool value) => Push(c => c.Enabled = value);
     public virtual void Apply(GameComponent component, bool freezeFields)
     {
+        InstanceId = component.InstanceId;
         if (!freezeFields) Enabled = component.Enabled;
     }
 }
@@ -43,8 +45,10 @@ public static class ComponentEditorRegistry
     private static readonly Dictionary<string, Func<SceneObjectViewModel, ComponentViewModel>> Editors = new();
     static ComponentEditorRegistry()
     {
-        Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
         Register(MaterialComponent.TypeId, owner => new MaterialInfo(owner));
+        Register(PhysicsComponent.TypeId, owner => new PhysicsComponentViewModel(owner));
+        Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
+        Register(ScriptBehaviourComponent.TypeId, owner => new ScriptBehaviourComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>
@@ -65,6 +69,7 @@ public sealed class AddableComponentType
         AddCommand = new RelayCommand(() =>
         {
             if (owner.EngineId is int id) owner.Bridge?.EnqueueAddComponent(id, definition.Id);
-        }, () => owner.CanAddComponents && !System.Linq.Enumerable.Any(owner.Components, c => c.TypeId == definition.Id));
+        }, () => owner.CanAddComponents && (definition.AllowMultiple ||
+            !System.Linq.Enumerable.Any(owner.Components, c => c.TypeId == definition.Id)));
     }
 }

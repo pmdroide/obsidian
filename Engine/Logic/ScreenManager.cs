@@ -127,10 +127,11 @@ namespace Engine.Logic
         }
 
         /// <summary>Sync + step scene physics (BEPU v2). Called by Engine after <see cref="Update"/>.</summary>
-        public void UpdatePhysics(float dt)
+        /// <param name="time">Total game time in seconds: the clock the water shader animates with.</param>
+        public void UpdatePhysics(float dt, float time = 0)
         {
             if (_currentState == GameState.VideoIntro) return;
-            _sceneLogic.UpdatePhysics(dt);
+            _sceneLogic.UpdatePhysics(dt, time);
         }
 
         // Update the Vista UI with performance metrics and other dynamic information.

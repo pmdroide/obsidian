@@ -43,6 +43,8 @@
 
   <ItemGroup>
     <MonoGameContentReference Include="Content\Content.mgcb" />
+    <!-- C# scripts compile normally and also remain editable assets in runtime Content. -->
+    <None Include="Content\Scripts\**\*.cs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

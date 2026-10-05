@@ -8,9 +8,12 @@ plane because the engine uses Z as up.
 The component controls color, roughness, metallic, emission (0–8), and shadow
 casting. Basic tints the imported albedo texture and overrides roughness and
 metallic while retaining the mesh's normal, mask, and displacement maps. Water
-controls opacity, wave scale, wave speed, and wave strength; its color sets the
-water's body tint. Set speed to zero to freeze the ripples, or strength to zero
-for a smooth surface. The example button resets tint, roughness, and water settings.
+controls opacity, wave scale, wave speed, wave height, and ripple strength; its
+color sets the water's body tint. **Wave Height** is the crest-to-trough height of
+the swell that moves the surface, in metres (0 keeps it flat). **Ripple Strength**
+adds finer waves to the shading only. Set speed to zero to freeze the waves. The
+example button resets tint, roughness, and water settings, and gives the object the
+**Water** role so Buoyancy bodies float on it.
 
 **Textures** provides Base Color, Normal, Roughness, Metallic, Mask, and
 Displacement slots. Click a slot to choose an image inside `Engine/Content`, or
@@ -27,16 +30,27 @@ leave the original map in place. Texture choices save in scenes and copy with ob
 Water. The water preset and wave controls live there. These are registered engine
 shaders; arbitrary `.fx` files need renderer integration before appearing as choices.
 
-Water uses procedural animated normals, dielectric Fresnel, the scene's existing
+Water moves its mesh with four Gerstner swell waves: the surface rises and falls,
+and crests sharpen and lean as points move sideways. Every water mesh part is
+subdivided once (up to about 131k triangles; a two-triangle plane becomes a
+256x256 grid), so even a flattened Cube deforms. Swell waves shorter than three
+grid cells fade out on very large meshes instead of aliasing. Eight shorter ripple
+waves only bend the normal. Squeezed crests and high crests gather foam, and
+sunlight shining through thin crests tints them turquoise.
+
+`Engine/Physics/WaterWaves.cs` repeats the swell formula on the CPU so buoyancy
+follows the visible surface. Change both files together.
+
+Water uses dielectric Fresnel, the scene's existing
 environment reflection cubemap, and a highlight from the first enabled
 directional light. It draws after opaque/forward geometry, before TAA and bloom,
 with alpha blending, depth testing, and no depth writes. Water instances draw
 from back to front by object origin. Intersecting transparent meshes and multiple
 transparent surfaces inside one mesh can still show ordering artifacts.
 
-This example animates shading without displacing vertices. It does not implement
-refraction, shoreline foam, water physics, or water shadows. It works without
-extra water textures and continues animating in Edit and Play modes.
+Water does not implement refraction or water shadows. Selection outlines and
+picking use the undeformed mesh. It works without extra water textures and keeps
+animating in Edit and Play modes.
 The existing lighting baker still estimates diffuse bounce colors from the
 source materials; component overrides are applied at render time.
 

@@ -299,8 +299,9 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
 
     if (UseDirectionalLight)
     {
-        float3 lightDir = normalize(-DirectionalLightDirectionVS);
-        float cosTheta = dot(lightDir, viewDir);
+        // Scattering angle between the light's travel direction and the direction to the camera:
+        // 1 when looking straight towards the sun, which is where the forward peak belongs.
+        float cosTheta = dot(normalize(DirectionalLightDirectionVS), viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
         float shadow = ComputeShadow(worldPos);
         scatter += DirectionalLightColor * LIGHT_OUTPUT_SCALE * phase * density * DirectionalScatter * shadow;
@@ -321,7 +322,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         falloff *= falloff;
         float attenuation = falloff / max(distToLight * distToLight, 0.01);
 
-        float cosTheta = dot(lightDirPt, viewDir);
+        float cosTheta = dot(-lightDirPt, viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
 
         float ptShadow = 1.0;

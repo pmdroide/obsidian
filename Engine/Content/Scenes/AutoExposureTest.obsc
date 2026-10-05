@@ -1,0 +1,214 @@
+{
+  "Version": 2,
+  "Name": "AutoExposureTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [0, 0, -0.25],
+      "Scale": [60, 60, 0.25],
+      "Material": { "DiffuseColor": [0.25, 0.42, 0.18], "Roughness": 0.95 }
+    },
+    {
+      "Id": 2,
+      "Name": "House Floor",
+      "ModelKey": "Cube",
+      "Position": [0, 0, 0.05],
+      "Scale": [4, 3, 0.05],
+      "Material": { "DiffuseColor": [0.45, 0.3, 0.18], "Roughness": 0.7 }
+    },
+    {
+      "Id": 3,
+      "Name": "Wall Back",
+      "ModelKey": "Cube",
+      "Position": [0, 3.15, 1.75],
+      "Scale": [4.3, 0.15, 1.75],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 4,
+      "Name": "Wall West",
+      "ModelKey": "Cube",
+      "Position": [-4.15, 0, 1.75],
+      "Scale": [0.15, 3.3, 1.75],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 5,
+      "Name": "Wall East Below Window",
+      "ModelKey": "Cube",
+      "Position": [4.15, 0, 0.6],
+      "Scale": [0.15, 3.3, 0.6],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 6,
+      "Name": "Wall East Above Window",
+      "ModelKey": "Cube",
+      "Position": [4.15, 0, 2.95],
+      "Scale": [0.15, 3.3, 0.55],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 7,
+      "Name": "Wall East Window South",
+      "ModelKey": "Cube",
+      "Position": [4.15, -2.15, 1.8],
+      "Scale": [0.15, 1.15, 0.6],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 8,
+      "Name": "Wall East Window North",
+      "ModelKey": "Cube",
+      "Position": [4.15, 2.15, 1.8],
+      "Scale": [0.15, 1.15, 0.6],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 9,
+      "Name": "Wall Front Left",
+      "ModelKey": "Cube",
+      "Position": [-2.525, -3.15, 1.75],
+      "Scale": [1.775, 0.15, 1.75],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 10,
+      "Name": "Wall Front Right",
+      "ModelKey": "Cube",
+      "Position": [2.525, -3.15, 1.75],
+      "Scale": [1.775, 0.15, 1.75],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 11,
+      "Name": "Door Lintel",
+      "ModelKey": "Cube",
+      "Position": [0, -3.15, 2.95],
+      "Scale": [0.75, 0.15, 0.55],
+      "Material": { "DiffuseColor": [0.85, 0.82, 0.76], "Roughness": 0.85 }
+    },
+    {
+      "Id": 12,
+      "Name": "Ceiling",
+      "ModelKey": "Cube",
+      "Position": [0, 0, 3.6],
+      "Scale": [4.3, 3.3, 0.1],
+      "Material": { "DiffuseColor": [0.8, 0.8, 0.8], "Roughness": 0.9 }
+    },
+    {
+      "Id": 13,
+      "Name": "Roof South",
+      "ModelKey": "Cube",
+      "Position": [0, -1.8, 4.74],
+      "Rotation": [0.258819, 0, 0, 0.965926],
+      "Scale": [4.6, 2.078, 0.12],
+      "Material": { "DiffuseColor": [0.5, 0.15, 0.1], "Roughness": 0.7 }
+    },
+    {
+      "Id": 14,
+      "Name": "Roof North",
+      "ModelKey": "Cube",
+      "Position": [0, 1.8, 4.74],
+      "Rotation": [-0.258819, 0, 0, 0.965926],
+      "Scale": [4.6, 2.078, 0.12],
+      "Material": { "DiffuseColor": [0.5, 0.15, 0.1], "Roughness": 0.7 }
+    },
+    {
+      "Id": 15,
+      "Name": "Table",
+      "ModelKey": "Cube",
+      "Position": [-1.5, 1, 0.5],
+      "Scale": [1, 0.6, 0.4],
+      "Material": { "DiffuseColor": [0.4, 0.25, 0.15], "Roughness": 0.6 }
+    },
+    {
+      "Id": 16,
+      "Name": "Ball",
+      "ModelKey": "IsoSphere",
+      "Position": [-1.5, 1, 1.25],
+      "Scale": [0.35, 0.35, 0.35],
+      "Material": { "DiffuseColor": [0.2, 0.4, 0.85], "Roughness": 0.3 }
+    },
+    {
+      "Id": 17,
+      "Name": "Crate",
+      "ModelKey": "Cube",
+      "Position": [2.6, 1.8, 0.5],
+      "Scale": [0.5, 0.5, 0.4],
+      "Material": { "DiffuseColor": [0.75, 0.55, 0.2], "Roughness": 0.8 }
+    },
+    {
+      "Id": 18,
+      "Name": "Outdoor Post",
+      "ModelKey": "Cube",
+      "Position": [-3, -7, 1],
+      "Scale": [0.2, 0.2, 1],
+      "Material": { "DiffuseColor": [0.9, 0.9, 0.9], "Roughness": 0.5 }
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 19,
+      "Name": "Interior Lamp",
+      "Position": [0, 0, 3],
+      "Radius": 7,
+      "Color": [255, 190, 130, 255],
+      "Intensity": 3
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 20,
+      "Name": "Sun",
+      "Direction": [-0.6, 0.6, -0.55],
+      "Position": [0, 0, 2],
+      "Color": [255, 250, 240, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 100,
+      "ShadowDepth": 180,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [0, -12, 2],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 13
+  },
+  "MainCamera": {
+    "Position": [0, -14, 1.7],
+    "Forward": [0, 1, -0.03],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "6f1c2b8e-3d4a-4e5f-9a7b-1c2d3e4f5a6b",
+        "Data": { "ScriptId": "freecam", "Enabled": true }
+      }
+    ]
+  },
+  "Lighting": {
+    "Settings": {
+      "ProbeVolumeEnabled": true,
+      "Intensity": 1,
+      "AutoBounds": false,
+      "BoundsMin": [-9.12, -15.39, -0.27],
+      "BoundsMax": [9.12, 7.98, 7.14],
+      "ProbeSpacing": 0.5701,
+      "MaxProbesPerAxis": 48,
+      "SamplesPerProbe": 1024,
+      "Bounces": 2
+    },
+    "ProbeDataFile": "AutoExposureTest.probes"
+  }
+}

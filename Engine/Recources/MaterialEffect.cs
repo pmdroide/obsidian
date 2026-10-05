@@ -29,6 +29,9 @@ namespace Engine.Recources
         public float WaveScale = 0.3f;
         public float WaveSpeed = 1f;
         public float WaveStrength = 0.2f;
+        public float WaveHeight = 0.5f;
+        public float WaterClarity = 4f;
+        public float WaterFoam = 0.5f;
 
         public bool HasDiffuse;
         public bool HasRoughnessMap;
@@ -181,7 +184,8 @@ namespace Engine.Recources
             if (IsInstanceMaterial || b.IsInstanceMaterial) return ReferenceEquals(this, b);
             if (Type == MaterialTypes.Water &&
                 (Opacity != b.Opacity || WaveScale != b.WaveScale ||
-                 WaveSpeed != b.WaveSpeed || WaveStrength != b.WaveStrength)) return false;
+                 WaveSpeed != b.WaveSpeed || WaveStrength != b.WaveStrength || WaveHeight != b.WaveHeight ||
+                 WaterClarity != b.WaterClarity || WaterFoam != b.WaterFoam)) return false;
 
             if (HasDiffuse != b.HasDiffuse) return false;
 
@@ -235,6 +239,9 @@ namespace Engine.Recources
                 WaveScale = WaveScale,
                 WaveSpeed = WaveSpeed,
                 WaveStrength = WaveStrength,
+                WaveHeight = WaveHeight,
+                WaterClarity = WaterClarity,
+                WaterFoam = WaterFoam,
                 HasDiffuse = HasDiffuse,
                 HasRoughnessMap = HasRoughnessMap,
                 HasMask = HasMask,

@@ -259,6 +259,125 @@ foreach (var type in Enum.GetValues<MaterialEffect.MaterialTypes>())
 BridgeReconciler.IsInspectorFocused = false;
 BridgeReconciler.SelectedEngineId = null;
 
+// Spawned entities must be enabled, or audio and Play-mode components silently skip them.
+var spawned = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One);
+Check(spawned.IsEnabled && new BasicEntity(assets.Cube, null, Vector3.Zero, 0, 0, 0, Vector3.One).IsEnabled,
+    "new gameobjects start enabled");
+string enabledScenePath = Path.Combine(Path.GetTempPath(), $"anvil-enabled-{Guid.NewGuid():N}.obsc");
+try
+{
+    SceneSerialization.SaveToFile(logic.ActiveScene, enabledScenePath, assets);
+    var json = JsonNode.Parse(File.ReadAllText(enabledScenePath))!;
+    json["Entities"]![0]!["IsEnabled"] = false;
+    File.WriteAllText(enabledScenePath, json.ToJsonString());
+    Check(!SceneSerialization.LoadFromFile(enabledScenePath, assets).BasicEntities.Single().IsEnabled,
+        "current scenes keep deliberately disabled gameobjects");
+    json["Version"] = 1;
+    File.WriteAllText(enabledScenePath, json.ToJsonString());
+    Check(SceneSerialization.LoadFromFile(enabledScenePath, assets).BasicEntities.Single().IsEnabled,
+        "version 1 scenes enable gameobjects saved with the old stuck default");
+}
+finally { File.Delete(enabledScenePath); }
+var audioEditor = owner.Components.OfType<AudioComponentViewModel>().Single();
+audioEditor.MinDistance = 25;
+audioEditor.MaxDistance = 400;
+Publish();
+Check(audio.MinDistance == 25 && audio.MaxDistance == 400 &&
+    ((AudioComponent)ComponentRegistry.Copy(audio)).MinDistance == 25, "audio falloff distances reach the engine and persist");
+Check(new AudioComponent().MinDistance == 10, "3D audio plays at full volume within 10 units by default");
+
+// Physics is a regular component: bridge add/edit/remove, cloning, persistence, legacy records.
+Check(entity.Physics == null && entity.PhysicsType == Engine.Physics.PhysicsBodyType.None, "entities start without physics");
+bridge.EnqueueAddComponent(entity.Id, PhysicsComponent.TypeId);
+bridge.EnqueueAddComponent(entity.Id, PhysicsComponent.TypeId);
+Publish();
+BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
+var physics = entity.GetComponent<PhysicsComponent>();
+var physicsEditor = owner.Components.OfType<PhysicsComponentViewModel>().Single();
+Check(entity.Components.OfType<PhysicsComponent>().Count() == 1 && entity.PhysicsType == Engine.Physics.PhysicsBodyType.Dynamic &&
+    physicsEditor.IsDynamic && !owner.AddableComponents.Single(c => c.DisplayName == "Physics").AddCommand.CanExecute(null),
+    "physics adds once as a dynamic body and disables its picker entry");
+physicsEditor.BodyType = Engine.Physics.PhysicsBodyType.Static;
+physicsEditor.Mass = 3.5;
+Publish();
+Check(physics.BodyType == Engine.Physics.PhysicsBodyType.Static && physics.Mass == 3.5f && entity.PhysicsType == Engine.Physics.PhysicsBodyType.Static,
+    "physics inspector edits reach the engine component");
+physicsEditor.Mass = 0;
+Publish();
+Check(physics.Mass == PhysicsComponent.MinMass, "physics mass is clamped above zero");
+physicsEditor.Enabled = false;
+Publish();
+Check(entity.PhysicsType == Engine.Physics.PhysicsBodyType.None, "disabled physics component builds no body");
+physicsEditor.Enabled = true;
+physicsEditor.Mass = 2;
+Publish();
+var physicsClone = ((BasicEntity)entity.Clone).GetComponent<PhysicsComponent>();
+physicsClone.Mass = 9;
+Check(physics.Mass == 2 && physicsClone.BodyType == physics.BodyType, "cloned physics settings are independent");
+string physicsScenePath = Path.Combine(Path.GetTempPath(), $"anvil-physics-{Guid.NewGuid():N}.obsc");
+try
+{
+    SceneSerialization.SaveToFile(logic.ActiveScene, physicsScenePath, assets);
+    var json = JsonNode.Parse(File.ReadAllText(physicsScenePath))!;
+    var savedEntity = json["Entities"]![0]!.AsObject();
+    Check(savedEntity["Physics"] == null && savedEntity["Components"]!.AsArray()
+        .Any(c => (string?)c!["Type"] == PhysicsComponent.TypeId && (string?)c["Data"]!["BodyType"] == "Static"),
+        "physics saves as a component record with a readable body type");
+    var restored = SceneSerialization.LoadFromFile(physicsScenePath, assets).BasicEntities.Single().GetComponent<PhysicsComponent>();
+    Check(restored.BodyType == Engine.Physics.PhysicsBodyType.Static && restored.Mass == 2 && restored.Enabled,
+        "scene save/load preserves physics settings");
+
+    var components = savedEntity["Components"]!.AsArray();
+    components.Remove(components.First(c => (string?)c!["Type"] == PhysicsComponent.TypeId));
+    savedEntity["Physics"] = new JsonObject { ["Type"] = "Dynamic", ["Mass"] = 2.5 };
+    File.WriteAllText(physicsScenePath, json.ToJsonString());
+    var migrated = SceneSerialization.LoadFromFile(physicsScenePath, assets).BasicEntities.Single().GetComponent<PhysicsComponent>();
+    Check(migrated is { BodyType: Engine.Physics.PhysicsBodyType.Dynamic, Mass: 2.5f }, "older scene physics records load as a Physics component");
+}
+finally { File.Delete(physicsScenePath); }
+physicsEditor.RemoveCommand.Execute(null);
+Publish();
+BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
+Check(entity.Physics == null && !owner.Components.OfType<PhysicsComponentViewModel>().Any() &&
+    owner.AddableComponents.Single(c => c.DisplayName == "Physics").AddCommand.CanExecute(null),
+    "removing physics removes the body settings and restores the picker");
+
+// Loaded scenes keep their saved IDs. Viewport picking reads WorldTransform.Id, so it must
+// match too; otherwise clicking one object selects (and adds components to) another.
+var neighbour = new BasicEntity(assets.Cube, null, Vector3.One, Matrix.Identity, Vector3.One) { IsEnabled = true, Name = "Neighbour" };
+logic.BasicEntities.Add(neighbour);
+string idScenePath = Path.Combine(Path.GetTempPath(), $"anvil-ids-{Guid.NewGuid():N}.obsc");
+try
+{
+    SceneSerialization.SaveToFile(logic.ActiveScene, idScenePath, assets);
+    var loaded = SceneSerialization.LoadFromFile(idScenePath, assets).BasicEntities;
+    Check(loaded.Select(e => e.Id).SequenceEqual(new[] { entity.Id, neighbour.Id }) &&
+        loaded.All(e => e.WorldTransform.Id == e.Id), "loaded entities pick with their persisted IDs");
+    var json = JsonNode.Parse(File.ReadAllText(idScenePath))!;
+    json["Entities"]![1]!["Id"] = entity.Id;
+    File.WriteAllText(idScenePath, json.ToJsonString());
+    loaded = SceneSerialization.LoadFromFile(idScenePath, assets).BasicEntities;
+    Check(loaded[0].Id == entity.Id && loaded[1].Id != entity.Id && loaded[1].WorldTransform.Id == loaded[1].Id,
+        "duplicate saved IDs are reassigned instead of aliasing two objects");
+}
+finally { File.Delete(idScenePath); }
+bridge.EnqueueAddComponent(neighbour.Id, PhysicsComponent.TypeId);
+Publish();
+BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
+var neighbourVm = objects.Single(o => o.EngineId == neighbour.Id);
+Check(neighbour.Physics != null && entity.Physics == null &&
+    neighbourVm.Components.OfType<PhysicsComponentViewModel>().Count() == 1 && !owner.Components.OfType<PhysicsComponentViewModel>().Any(),
+    "a component added to one gameobject never appears on another");
+var swapped = new EditorObjectSnapshot(neighbour.Id, "Light", EditorObjectKind.PointLight, Vector3.Zero,
+    Matrix.Identity, Vector3.One, true, null, null);
+BridgeReconciler.Apply(new[] { bridge.Snapshot.First(s => s.Id == entity.Id), swapped }, objects, bridge);
+Check(!ReferenceEquals(neighbourVm, objects.Single(o => o.EngineId == neighbour.Id)) &&
+    objects.Single(o => o.EngineId == neighbour.Id).Components.Count == 0,
+    "an ID reused by a different kind of object gets fresh editors");
+logic.BasicEntities.Remove(neighbour);
+Publish();
+BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
+
 ComponentRegistry.Register<LifecycleComponent>("test-lifecycle", "Test lifecycle");
 var behaviour = new LifecycleComponent { Value = 42 };
 entity.Components.Add(behaviour);
@@ -316,6 +435,18 @@ if (args.Contains("--audio"))
     playMode.Stop();
     Check(!audio.IsPlaying, "Stop ends component playback");
 
+    // Same setup as the editor: an object spawned 5 units in front of the camera.
+    manager.MasterVolume = 1; // set to 0 above; audibility includes the master bus
+    var spawnedAudio = new AudioComponent { ClipPath = "Audio/loop3d.wav", Loop = true };
+    spawned.Position = new Vector3(5, 0, 0);
+    spawned.AddComponent(spawnedAudio);
+    manager.UpdateListener(new Camera(Vector3.Zero, new Vector3(1, 0, -0.3f)));
+    spawnedAudio.Play(spawned);
+    for (int i = 0; i < 5; i++) { manager.UpdateListener(new Camera(Vector3.Zero, new Vector3(1, 0, -0.3f))); manager.SystemUpdate(); }
+    Channel(spawnedAudio).Native.getAudibility(out float audibility);
+    Check(spawnedAudio.IsPlaying && audibility > 0.99f, "a freshly spawned gameobject's 3D audio plays at full volume nearby");
+    spawnedAudio.OnStop();
+
     string unique = "anvil-audio-" + Guid.NewGuid().ToString("N");
     string sourceRoot = Path.Combine(Path.GetTempPath(), unique);
     string clip = unique + "/live.wav";
@@ -349,7 +480,12 @@ if (args.Contains("--audio"))
     }
 }
 
+ScriptBehaviourChecks.Run();
+GameObjectMenuChecks.Run();
+SampleSceneChecks.Run();
+FreecamChecks.Run();
 EnvironmentChecks.Run();
+WaterChecks.Run();
 SteamChecks.Run();
 InputDeviceChecks.Run();
 if (args.Contains("--input-native")) InputDeviceChecks.RunNative();

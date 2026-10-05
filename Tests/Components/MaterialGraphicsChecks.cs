@@ -30,6 +30,7 @@ internal static class MaterialGraphicsChecks
             using var content = new ContentManager(services,
                 Path.Combine(AppContext.BaseDirectory, "Content"));
             EnvironmentChecks.RunGraphics(graphics, content);
+            AutoExposureChecks.RunGraphics(graphics, content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);
@@ -111,6 +112,63 @@ internal static class MaterialGraphicsChecks
             var reflected = new Color[96 * 96];
             target.GetData(reflected);
             Check(first.Where((p, i) => p != reflected[i]).Any(), "water samples the supplied environment cubemap");
+            Color[] RenderWith(TextureCube env, List<DirectionalLight> withLights, Texture2D? depthMap = null)
+            {
+                meshes.FrustumCulling(new List<BasicEntity> { entity }, new BoundingFrustum(vp), true, camera.Position);
+                graphics.SetRenderTarget(target);
+                graphics.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1, 0);
+                water.Draw(graphics, meshes, vp, camera, env, withLights, new GameTime(), depthMap, view, radius * 20);
+                graphics.SetRenderTarget(null);
+                var pixels = new Color[96 * 96];
+                target.GetData(pixels);
+                return pixels;
+            }
+            static long Sum(Color[] pixels) => pixels.Sum(p => (long)p.R + p.G + p.B);
+            using var nightSky = new TextureCube(graphics, 1, false, SurfaceFormat.Color);
+            using var daySky = new TextureCube(graphics, 1, false, SurfaceFormat.Color);
+            foreach (var face in Enum.GetValues<CubeMapFace>())
+            {
+                nightSky.SetData(face, new[] { new Color(3, 4, 8) });
+                daySky.SetData(face, new[] { new Color(150, 190, 240) });
+            }
+            var day = RenderWith(daySky, lights);
+            var night = RenderWith(nightSky, new List<DirectionalLight> { new(new Color(170, 190, 255), 0.8f, -Vector3.UnitZ) });
+            Check(Sum(night) * 4 < Sum(day), "night water follows the dark sky and moonlight instead of staying lit");
+            float waterDepth = Vector3.Distance(camera.Position, Vector3.Zero);
+            using var depthMap = new Texture2D(graphics, 96, 96, false, SurfaceFormat.Single);
+            void SetDepth(float metres) => depthMap.SetData(Enumerable.Repeat(metres / (radius * 20), 96 * 96).ToArray());
+            var foamy = RenderWith(daySky, lights, SetDepthAnd(waterDepth + radius * 0.05f));
+            component.Foam = 0;
+            component.OnChanged(entity);
+            var shallow = RenderWith(daySky, lights, SetDepthAnd(waterDepth + radius * 0.05f));
+            var deep = RenderWith(daySky, lights, SetDepthAnd(radius * 20));
+            Texture2D SetDepthAnd(float metres) { SetDepth(metres); return depthMap; }
+            Check(Sum(shallow) < Sum(deep) && shallow.Any(p => p.R + p.G + p.B > 0),
+                "shallow water shows more of the scene behind it than deep water");
+            Check(Sum(foamy) > Sum(shallow), "shore foam brightens shallow water");
+            component.Clarity = 9;
+            component.Foam = 0.2f;
+            component.OnChanged(entity);
+            instance = meshes.MaterialLib[0].GetMaterial();
+            var roundTrip = MaterialComponent.FromMaterial(instance);
+            Check(instance.WaterClarity == 9 && instance.WaterFoam == 0.2f && roundTrip.Clarity == 9 && roundTrip.Foam == 0.2f,
+                "water clarity and foam reach the material and round-trip");
+            var waterPart = meshes.MaterialLib[0].GetMeshLibrary()[0].GetMesh();
+            Check(water.BindMesh(graphics, waterPart, out int waterTriangles) && waterTriangles > waterPart.PrimitiveCount * 100,
+                "water meshes are subdivided so the swell can move their vertices");
+            static int Covered(Color[] pixels) => pixels.Count(p => p != Color.Black);
+            component.WaveHeight = 0;
+            component.OnChanged(entity);
+            var still = Render(1);
+            component.WaveHeight = 1.5f;
+            component.WaveScale = 3;
+            component.OnChanged(entity);
+            var swollen = Render(1);
+            Check(Covered(still) != Covered(swollen), "the swell moves the water surface geometry, not just its lighting");
+            component.WaveHeight = 0.5f;
+            component.WaveScale = 0.3f;
+            component.OnChanged(entity);
+            instance = meshes.MaterialLib[0].GetMaterial();
             Check(Render(0, 0).All(p => p == Color.Black), "opaque foreground depth occludes water");
             component.Opacity = 0;
             component.OnChanged(entity);

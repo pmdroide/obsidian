@@ -440,12 +440,23 @@ namespace Engine.Renderer.Helper
                     MeshLibrary meshLib = matLib.GetMeshLibrary()[i];
 
                     //Initialize the mesh VB and IB
-                    graphicsDevice.SetVertexBuffer(meshLib.GetMesh().VertexBuffer);
-                    graphicsDevice.Indices = (meshLib.GetMesh().IndexBuffer);
                     int primitiveCount = meshLib.GetMesh().PrimitiveCount;
                     int vertexOffset = meshLib.GetMesh().VertexOffset;
                     //int vCount = meshLib.GetMesh().NumVertices;
                     int startIndex = meshLib.GetMesh().StartIndex;
+                    // Water draws a subdivided copy of the mesh so the waves can move its vertices.
+                    if (renderType == RenderType.Water && renderModule is WaterRenderModule water &&
+                        water.BindMesh(graphicsDevice, meshLib.GetMesh(), out primitiveCount))
+                    {
+                        vertexOffset = 0;
+                        startIndex = 0;
+                    }
+                    else
+                    {
+                        graphicsDevice.SetVertexBuffer(meshLib.GetMesh().VertexBuffer);
+                        graphicsDevice.Indices = (meshLib.GetMesh().IndexBuffer);
+                        primitiveCount = meshLib.GetMesh().PrimitiveCount;
+                    }
 
                     //Now draw the local meshes!
                     for (int index = 0; index < meshLib.Index; index++)

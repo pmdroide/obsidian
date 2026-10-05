@@ -14,6 +14,10 @@ public sealed class AudioComponent : GameComponent
     public bool Loop { get; set; }
     public bool PlayOnStart { get; set; } = true;
     public bool Spatial { get; set; } = true;
+    /// <summary>3D only: full volume within this many units, then inverse falloff (half at 2x).</summary>
+    public float MinDistance { get; set; } = 10f;
+    /// <summary>3D only: no further attenuation beyond this distance.</summary>
+    public float MaxDistance { get; set; } = 1000f;
 
     private Channel? _channel;
     private string _playingClipPath;
@@ -30,7 +34,8 @@ public sealed class AudioComponent : GameComponent
         if (!Enabled || !owner.IsEnabled || !IsAudioAsset(ClipPath)) return;
         float volume = Math.Clamp(Volume, 0f, 1f);
         _channel = Spatial
-            ? Audio.Instance?.PlaySound3D(ClipPath, () => owner.Position, volume, Loop, contentRelativePath: true)
+            ? Audio.Instance?.PlaySound3D(ClipPath, () => owner.Position, volume, Loop,
+                ClampedMinDistance, ClampedMaxDistance, contentRelativePath: true)
             : Audio.Instance?.PlaySound(ClipPath, volume, loop: Loop, contentRelativePath: true);
         _playingClipPath = ClipPath;
         _playingSpatial = Spatial;
@@ -56,8 +61,16 @@ public sealed class AudioComponent : GameComponent
         {
             channel.Volume = Math.Clamp(Volume, 0f, 1f);
             channel.Looping = Loop;
+            if (Spatial)
+            {
+                channel.MinDistance3D = ClampedMinDistance;
+                channel.MaxDistance3D = ClampedMaxDistance;
+            }
         }
     }
+
+    private float ClampedMinDistance => float.IsFinite(MinDistance) ? Math.Max(MinDistance, 0.01f) : 10f;
+    private float ClampedMaxDistance => float.IsFinite(MaxDistance) ? Math.Max(MaxDistance, ClampedMinDistance) : 1000f;
 
     public override void OnStop()
     {

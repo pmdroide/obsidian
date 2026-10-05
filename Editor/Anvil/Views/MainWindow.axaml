@@ -3,6 +3,7 @@
         xmlns:vm="using:Anvil.ViewModels"
         xmlns:m="using:Anvil.Models"
         xmlns:input="using:Engine.InputDevices"
+        xmlns:scripting="using:Engine.Scripting"
         xmlns:controls="using:Anvil.Controls"
         xmlns:conv="using:Anvil.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -346,16 +347,23 @@
                         <Separator />
                         <MenuItem Header="Preferences..." />
                     </MenuItem>
+                    <!-- Spawns at the camera focus (IEditorBridge.SpawnPoint). The parameter is an
+                         Assets model field name. Every gameobject needs a mesh, so there is no
+                         Create Empty, and there is no capsule mesh in Content yet. -->
                     <MenuItem Header="GameObject">
-                        <MenuItem Header="Create Empty" />
                         <MenuItem Header="3D Object">
-                            <MenuItem Header="Cube" />
-                            <MenuItem Header="Sphere" />
-                            <MenuItem Header="Capsule" />
+                            <MenuItem Header="Cube"
+                                      Command="{Binding AddEntityCommand}"
+                                      CommandParameter="Cube" />
+                            <MenuItem Header="Sphere"
+                                      Command="{Binding AddEntityCommand}"
+                                      CommandParameter="IsoSphere" />
                         </MenuItem>
                         <MenuItem Header="Light">
-                            <MenuItem Header="Directional Light" />
-                            <MenuItem Header="Point Light" />
+                            <MenuItem Header="Directional Light"
+                                      Command="{Binding AddDirectionalLightCommand}" />
+                            <MenuItem Header="Point Light"
+                                      Command="{Binding AddPointLightCommand}" />
                         </MenuItem>
                     </MenuItem>
                     <MenuItem Header="Game Settings"
@@ -725,31 +733,38 @@
                     <Grid RowDefinitions="33,*">
 
                         <Border Grid.Row="0" Classes="panelHeader">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <StackPanel Grid.Column="0" Orientation="Horizontal"
-                                            Spacing="6" VerticalAlignment="Center">
-                                    <controls:LucideIcon Icon="Settings" />
-                                    <TextBlock Text="Inspector" Classes="panelTitle" />
-                                </StackPanel>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <controls:LucideIcon Grid.Column="0" Icon="Settings"
+                                                     VerticalAlignment="Center"
+                                                     ToolTip.Tip="Inspector" />
 
                                 <!-- Inspector view switch — Selection vs Post Processing.
                                      Replaces the legacy HelperSuite right-side options panel;
-                                     the Window > Post Processing menu entry also flips this. -->
-                                <StackPanel Grid.Column="2" Orientation="Horizontal"
-                                            Spacing="2" VerticalAlignment="Center">
-                                    <Button Content="Selection" Classes="toolbarChip"
+                                     the Window > Post Processing menu entry also flips this.
+                                     The tabs are the header title: the 260px column has no room
+                                     for an "Inspector" label beside three tabs. -->
+                                <UniformGrid Grid.Column="1" Rows="1" Columns="3"
+                                             VerticalAlignment="Center">
+                                    <UniformGrid.Styles>
+                                        <Style Selector="Button.pill">
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                            <Setter Property="Margin" Value="1,0" />
+                                        </Style>
+                                    </UniformGrid.Styles>
+                                    <Button Content="Selection" Classes="pill"
                                             Command="{Binding SetInspectorViewCommand}"
                                             CommandParameter="Selection"
                                             Classes.active="{Binding IsInspectorSelectionView}" />
-                                    <Button Content="Post FX" Classes="toolbarChip"
+                                    <Button Content="Post FX" Classes="pill"
                                             Command="{Binding SetInspectorViewCommand}"
                                             CommandParameter="PostProcessing"
                                             Classes.active="{Binding IsInspectorPostProcessingView}" />
-                                    <Button Content="Lighting" Classes="toolbarChip"
+                                    <Button Content="Lighting" Classes="pill"
                                             Command="{Binding SetInspectorViewCommand}"
                                             CommandParameter="Lighting"
                                             Classes.active="{Binding IsInspectorLightingView}" />
-                                </StackPanel>
+                                </UniformGrid>
                             </Grid>
                         </Border>
 
@@ -897,6 +912,14 @@
                                                 <ComboBoxItem>IgnoreRaycast</ComboBoxItem>
                                             </ComboBox>
                                         </Grid>
+                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8" IsVisible="{Binding HasRole}">
+                                            <TextBlock Grid.Column="0" Text="Role" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                      ItemsSource="{x:Static m:SceneObjectViewModel.Roles}"
+                                                      SelectedItem="{Binding Role, Mode=TwoWay}" />
+                                        </Grid>
+                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsWaterRole}"
+                                                   Text="Water volume: bodies with Buoyancy float below its top surface, riding its waves. It builds no collider." />
                                     </StackPanel>
                                 </Border>
 
@@ -963,51 +986,6 @@
                                     </StackPanel>
                                 </Expander>
 
-                                <!-- Physics -->
-                                <Expander IsExpanded="True"
-                                          IsVisible="{Binding Physics, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Atom" />
-                                            <TextBlock Text="Physics" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="8" Margin="12,8,12,12"
-                                                DataContext="{Binding Physics}"
-                                                x:DataType="m:PhysicsInfo">
-                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="Body"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <!-- Order must match Engine.Physics.PhysicsBodyType -->
-                                            <ComboBox Grid.Column="1" Classes="field"
-                                                      HorizontalAlignment="Stretch"
-                                                      SelectedIndex="{Binding BodyType, Mode=TwoWay}">
-                                                <ComboBoxItem>None</ComboBoxItem>
-                                                <ComboBoxItem>Static</ComboBoxItem>
-                                                <ComboBoxItem>Dynamic</ComboBoxItem>
-                                            </ComboBox>
-                                        </Grid>
-                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
-                                              IsVisible="{Binding IsDynamic}">
-                                            <TextBlock Grid.Column="0" Text="Mass"
-                                                       Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Column="1" Classes="field"
-                                                           Value="{Binding Mass, Mode=TwoWay}"
-                                                           Minimum="0.001"
-                                                           ShowButtonSpinner="False" FormatString="0.###" />
-                                        </Grid>
-                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                   IsVisible="{Binding IsStatic}"
-                                                   Text="Immovable mesh collider. Other bodies collide with it." />
-                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                   IsVisible="{Binding IsDynamic}"
-                                                   Text="Falls with gravity and collides (convex hull). Simulated in Play mode." />
-                                    </StackPanel>
-                                </Expander>
-
                                 <!-- Light -->
                                 <Expander IsExpanded="True"
                                           IsVisible="{Binding Light, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -1047,8 +1025,8 @@
                                                         BorderBrush="{StaticResource AnvilBorderBrush}"
                                                         BorderThickness="1" />
                                                 <Button.Flyout>
-                                                    <Flyout>
-                                                        <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Light.Color, Mode=TwoWay}" />
+                                                    <Flyout Opening="OwnedFlyout_Opening">
+                                                        <ColorPicker x:DataType="m:LightInfo" Color="{Binding Color, Mode=TwoWay}" />
                                                     </Flyout>
                                                 </Button.Flyout>
                                             </Button>
@@ -1108,11 +1086,10 @@
                                                                            VerticalAlignment="Center" />
                                                             </StackPanel>
                                                             <Button.Flyout>
-                                                                <!-- ColorPicker lives in a Flyout — DataContext
-                                                                     doesn't flow through it reliably, so reach
-                                                                     back through the Window to the live VM. -->
-                                                                <Flyout>
-                                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.Material.Color, Mode=TwoWay}" />
+                                                                <!-- Flyout content is outside the template tree; OwnedFlyout_Opening
+                                                                     pins it to this component so it never edits another object. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:MaterialInfo" Color="{Binding Color, Mode=TwoWay}" />
                                                                 </Flyout>
                                                             </Button.Flyout>
                                                         </Button>
@@ -1222,12 +1199,85 @@
                                                                 <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
                                                                 <TextBlock Text="Wave Speed" Classes="muted" FontSize="11" />
                                                                 <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveSpeed, Mode=TwoWay}" FormatString="0.00" />
-                                                                <TextBlock Text="Wave Strength" Classes="muted" FontSize="11" />
+                                                                <TextBlock Text="Wave Height (swell, m)" Classes="muted" FontSize="11" />
+                                                                <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveHeight, Mode=TwoWay}" FormatString="0.00" />
+                                                                <TextBlock Text="Ripple Strength" Classes="muted" FontSize="11" />
                                                                 <Slider Minimum="0" Maximum="2" Value="{Binding WaveStrength, Mode=TwoWay}" />
-                                                                <TextBlock Text="Apply to a flat mesh on the XY plane. Ripples animate in Edit and Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                                <TextBlock Text="Clarity (visible depth, m)" Classes="muted" FontSize="11" />
+                                                                <NumericUpDown Classes="field" Minimum="0.05" Maximum="50" Increment="0.5" Value="{Binding Clarity, Mode=TwoWay}" FormatString="0.00" />
+                                                                <TextBlock Text="Foam" Classes="muted" FontSize="11" />
+                                                                <Slider Minimum="0" Maximum="1" Value="{Binding Foam, Mode=TwoWay}" />
+                                                                <TextBlock Text="Apply to a flat mesh on the XY plane; it is subdivided so the swell moves the surface. Waves animate in Edit and Play mode; shore foam and depth colour appear where geometry sits below or through the surface. Give the gameobject the Water role to float Buoyancy bodies on it." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </Expander>
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:PhysicsComponentViewModel" x:DataType="m:PhysicsComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Atom" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Body" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:PhysicsComponentViewModel.BodyTypes}"
+                                                                  SelectedItem="{Binding BodyType, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8" IsVisible="{Binding IsDynamic}">
+                                                        <TextBlock Grid.Column="0" Text="Mass" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Mass, Mode=TwoWay}"
+                                                                       Minimum="0.001" ShowButtonSpinner="False" FormatString="0.###" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsStatic}"
+                                                               Text="Immovable mesh collider. Other bodies collide with it." />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsDynamic}"
+                                                               Text="Falls with gravity and collides (convex hull). Simulated in Play mode." />
+                                                    <CheckBox Content="Buoyancy" IsChecked="{Binding Buoyancy, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
+                                                    <StackPanel Spacing="8" IsVisible="{Binding IsDynamic}">
+                                                        <StackPanel Spacing="8" IsVisible="{Binding Buoyancy}">
+                                                            <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Float" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BuoyancyStrength, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="20" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Drag" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WaterDrag, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="20" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Floats in gameobjects with the Water role. Float is the push when fully under water relative to weight: 2 floats half-submerged, below 1 sinks. Drag slows motion and spin in water." />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:ScriptBehaviourComponentViewModel" x:DataType="m:ScriptBehaviourComponentViewModel">
+                                            <Expander IsExpanded="True" Header="{Binding DisplayName}">
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Text="Script" Classes="muted" FontSize="11" />
+                                                    <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                                              ItemsSource="{Binding AvailableScripts}"
+                                                              SelectedItem="{Binding SelectedScript, Mode=TwoWay}">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="scripting:ScriptDefinition">
+                                                                <TextBlock Text="{Binding DisplayName}" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                    <TextBlock Text="{Binding ScriptId}" Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                    <TextBlock Text="Start runs once; Update runs each frame in Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                    <TextBlock Text="Add another Script Behaviour to run more scripts on this object." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -1261,6 +1311,15 @@
                                                     <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
                                                     <CheckBox Content="Play on Start" IsChecked="{Binding PlayOnStart, Mode=TwoWay}" FontSize="11" />
                                                     <CheckBox Content="3D Spatial Audio" IsChecked="{Binding Spatial, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*,60,*" ColumnSpacing="6" IsVisible="{Binding Spatial}"
+                                                          ToolTip.Tip="Full volume within Min distance, quieter with distance up to Max">
+                                                        <TextBlock Text="Min Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MinDistance, Mode=TwoWay}"
+                                                                       Minimum="0.01" ShowButtonSpinner="False" FormatString="0.##" />
+                                                        <TextBlock Grid.Column="2" Text="Max Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding MaxDistance, Mode=TwoWay}"
+                                                                       Minimum="0.01" ShowButtonSpinner="False" FormatString="0.#" />
+                                                    </Grid>
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <Button Content="Play" Command="{Binding PlayCommand}" />
                                                         <Button Content="Stop" Command="{Binding StopCommand}" />
@@ -1273,19 +1332,11 @@
                                     </ItemsControl.DataTemplates>
                                 </ItemsControl>
 
+                                <!-- AddComponentButton_Click builds a fresh menu for the shown gameobject on every
+                                     click; a reused MenuFlyout kept running the first gameobject's commands. -->
                                 <Button Content="Add Component" Margin="12" HorizontalAlignment="Stretch"
-                                        IsVisible="{Binding CanAddComponents}">
-                                    <Button.Flyout>
-                                        <MenuFlyout ItemsSource="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectedObject.AddableComponents}">
-                                            <MenuFlyout.ItemContainerTheme>
-                                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="m:AddableComponentType">
-                                                    <Setter Property="Header" Value="{Binding DisplayName}" />
-                                                    <Setter Property="Command" Value="{Binding AddCommand}" />
-                                                </ControlTheme>
-                                            </MenuFlyout.ItemContainerTheme>
-                                        </MenuFlyout>
-                                    </Button.Flyout>
-                                </Button>
+                                        IsVisible="{Binding CanAddComponents}"
+                                        Click="AddComponentButton_Click" />
 
                                 <!-- Camera -->
                                 <Expander IsExpanded="True"
@@ -1383,6 +1434,60 @@
                                                            Minimum="0" Maximum="1" Increment="0.005"
                                                            Value="{Binding ChromaticAberration, Mode=TwoWay}"
                                                            ShowButtonSpinner="False" FormatString="0.000" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Eye adaptation / auto exposure: EV on top of the Exposure above -->
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Eye" />
+                                            <TextBlock Text="Eye Adaptation" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <CheckBox Content="Auto Exposure"
+                                                  IsChecked="{Binding AutoExposure, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                                              RowSpacing="6" IsEnabled="{Binding AutoExposure}">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Key Value"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                           Minimum="0.01" Maximum="1" Increment="0.01"
+                                                           Value="{Binding AutoExposureKey, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Min EV"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                           Minimum="-10" Maximum="10" Increment="0.25"
+                                                           Value="{Binding AutoExposureMin, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Max EV"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                           Minimum="-10" Maximum="10" Increment="0.25"
+                                                           Value="{Binding AutoExposureMax, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Dark → Light"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="20" Increment="0.1"
+                                                           Value="{Binding AutoExposureSpeedDarkToLight, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Light → Dark"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="20" Increment="0.1"
+                                                           Value="{Binding AutoExposureSpeedLightToDark, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.0" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Center Weight"
+                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
+                                                           Minimum="0" Maximum="1" Increment="0.05"
+                                                           Value="{Binding AutoExposureCenterWeight, Mode=TwoWay}"
+                                                           ShowButtonSpinner="False" FormatString="0.00" />
                                         </Grid>
                                     </StackPanel>
                                 </Expander>
@@ -1688,6 +1793,131 @@
                                     <NumericUpDown Classes="field" Minimum="0.1" Maximum="1440" Increment="0.5"
                                                    Value="{Binding CycleDurationMinutes, Mode=TwoWay}" FormatString="0.0" />
                                     <TextBlock Text="Changing the starting hour or duration restarts the cycle."
+                                               TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    <TextBlock Text="Sky" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Day sky" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                    Background="{Binding DaySkyColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).Environment.DaySkyColor, Mode=TwoWay}" />
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Day horizon" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                    Background="{Binding DayHorizonColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).Environment.DayHorizonColor, Mode=TwoWay}" />
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Sunset" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                    Background="{Binding SunsetColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).Environment.SunsetColor, Mode=TwoWay}" />
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Night sky" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                    Background="{Binding NightSkyColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).Environment.NightSkyColor, Mode=TwoWay}" />
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Night horizon" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                    Background="{Binding NightHorizonColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <ColorPicker Color="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).Environment.NightHorizonColor, Mode=TwoWay}" />
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="Sun, moon and stars" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Sun brightness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="5" Value="{Binding SunBrightness, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding SunBrightness, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Sun size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0.25" Maximum="4" Value="{Binding SunSize, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding SunSize, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Moon brightness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="5" Value="{Binding MoonBrightness, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding MoonBrightness, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Moon size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0.25" Maximum="4" Value="{Binding MoonSize, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding MoonSize, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Stars" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="3" Value="{Binding StarBrightness, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding StarBrightness, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="Exposure" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Day (EV)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="-4" Maximum="4" Value="{Binding DayExposure, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding DayExposure, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Night (EV)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="-4" Maximum="4" Value="{Binding NightExposure, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding NightExposure, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="Added to the Post FX exposure and blended by daylight. Lower night values make nights darker."
+                                               TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    <Button Content="Reset sky look" Command="{Binding ResetSkyLookCommand}" HorizontalAlignment="Stretch" />
+                                    <TextBlock Text="Clouds" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Coverage" Classes="muted" FontSize="11"
+                                                   VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                                Value="{Binding CloudCoverage, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding CloudCoverage, StringFormat={}{0:0.00}}"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Speed" Classes="muted" FontSize="11"
+                                                   VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="10"
+                                                Value="{Binding CloudSpeed, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding CloudSpeed, StringFormat={}{0:0.00}}"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="Coverage 0 is a clear sky, 1 is overcast. Heavy cover also dims the sun."
                                                TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                 </StackPanel>
                                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />

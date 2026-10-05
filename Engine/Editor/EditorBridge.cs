@@ -7,7 +7,6 @@ using Engine.Entities;
 using Engine.Components;
 using GameComponent = Engine.Components.GameComponent;
 using Engine.Logic;
-using Engine.Physics;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -315,47 +314,71 @@ namespace Engine.Editor
         {
             _pendingOps.Enqueue(() =>
             {
-                var entity = LookupEntityById(entityId);
                 var definition = ComponentRegistry.Find(componentType);
-                if (entity == null || definition == null ||
-                    entity.Components.Any(c => c.GetType() == definition.ComponentType)) return;
-                var component = componentType == MaterialComponent.TypeId
-                    ? MaterialComponent.FromMaterial(entity.Material ?? entity.Model?.Meshes
-                        .SelectMany(m => m.MeshParts).Select(p => p.Effect).OfType<MaterialEffect>().FirstOrDefault())
-                    : definition.Create();
-                entity.Components.Add(component);
-                component.OnChanged(entity);
-                _scene.ActiveScene.IsDirty = true;
+                if (definition == null) return;
+                if (entityId == MainCameraId)
+                {
+                    var camera = _scene.ActiveScene?.MainCamera;
+                    if (camera == null || !Camera.SupportsComponent(componentType)) return;
+                    var component = definition.Create();
+                    // The usual default (Spin Example) would spin the view; a camera wants Freecam.
+                    if (component is ScriptBehaviourComponent script) script.ScriptId = Scripting.FreecamScript.ScriptId;
+                    if (camera.AddComponent(component)) _scene.ActiveScene.IsDirty = true;
+                    return;
+                }
+                var entity = LookupEntityById(entityId);
+                if (entity == null) return;
+                if (entity.AddComponent(definition.Create(entity))) _scene.ActiveScene.IsDirty = true;
             });
         }
 
-        private GameComponent FindComponent(int entityId, string componentType)
+        // Entity ids are positive; the Main Camera's hierarchy entry uses this id.
+        public const int MainCameraId = -1;
+
+        private List<GameComponent> ComponentsOf(int entityId) =>
+            entityId == MainCameraId ? _scene.ActiveScene?.MainCamera?.Components : LookupEntityById(entityId)?.Components;
+
+        private GameComponent FindComponent(int entityId, string componentType, Guid? instanceId = null)
         {
             var type = ComponentRegistry.Find(componentType)?.ComponentType;
-            return LookupEntityById(entityId)?.Components.FirstOrDefault(c => c.GetType() == type);
+            return ComponentsOf(entityId)?.FirstOrDefault(c => c.GetType() == type &&
+                (!instanceId.HasValue || c.InstanceId == instanceId.Value));
         }
 
-        public void EnqueueRemoveComponent(int entityId, string componentType)
+        public void EnqueueRemoveComponent(int entityId, string componentType, Guid? instanceId = null)
         {
             _pendingOps.Enqueue(() =>
             {
-                var component = FindComponent(entityId, componentType);
+                var component = FindComponent(entityId, componentType, instanceId);
                 if (component == null) return;
-                component.OnStop();
-                LookupEntityById(entityId).Components.Remove(component);
-                if (component is MaterialComponent) LookupEntityById(entityId).RefreshMaterials();
+                bool removed = entityId == MainCameraId
+                    ? _scene.ActiveScene.MainCamera.RemoveComponent(component)
+                    : LookupEntityById(entityId).RemoveComponent(component);
+                if (removed) _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        public void EnqueueSetRole(int entityId, GameObjectRole role)
+        {
+            if (!Enum.IsDefined(role)) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = LookupEntityById(entityId);
+                if (entity == null || entity.Role == role) return;
+                entity.Role = role;
                 _scene.ActiveScene.IsDirty = true;
             });
         }
 
-        public void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate)
+        public void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null)
         {
             if (mutate == null) return;
             _pendingOps.Enqueue(() =>
             {
-                var component = FindComponent(entityId, componentType);
+                var component = FindComponent(entityId, componentType, instanceId);
                 if (component == null) return;
                 mutate(component);
+                // Camera-hosted components get a null owner (see ScriptBehaviourComponent.HostCamera).
                 component.OnChanged(LookupEntityById(entityId));
                 _scene.ActiveScene.IsDirty = true;
             });
@@ -855,7 +878,7 @@ namespace Engine.Editor
             if (_scene.Camera != null)
             {
                 list.Add(new EditorObjectSnapshot(
-                    id: -1,
+                    id: MainCameraId,
                     name: "Main Camera",
                     kind: EditorObjectKind.Camera,
                     position: _scene.Camera.Position,
@@ -863,7 +886,8 @@ namespace Engine.Editor
                     scale: Vector3.One,
                     isEnabled: true,
                     light: null,
-                    material: null));
+                    material: null,
+                    components: _scene.ActiveScene?.MainCamera?.Components.Select(ComponentRegistry.Capture).ToArray()));
             }
 
             for (int i = 0; i < _scene.BasicEntities.Count; i++)
@@ -890,8 +914,8 @@ namespace Engine.Editor
                     isEnabled: be.IsEnabled,
                     light: null,
                     material: matSnap,
-                    physics: new PhysicsSnapshot(be.PhysicsType, be.Mass),
-                    components: be.Components.Select(ComponentRegistry.Capture).ToArray()));
+                    components: be.Components.Select(ComponentRegistry.Capture).ToArray(),
+                    role: be.Role));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)

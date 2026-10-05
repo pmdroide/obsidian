@@ -49,9 +49,10 @@ namespace Engine.Logic
 
             // Editor camera gets the full DCC-style control set (RMB orbit, MMB pan,
             // scroll zoom, WASD only while RMB is held). The legacy free-flight code
-            // path stays for the game camera so Play mode keeps working unchanged.
+            // path stays for the game camera so Play mode keeps working unchanged,
+            // unless a Script Behaviour on the camera (e.g. Freecam) drives it instead.
             if (camera is EditorCamera ec) EditorCameraEvents(gameTime, ec);
-            else
+            else if (camera != null && !camera.HasActiveScript)
             {
                 KeyboardEvents(gameTime, camera);
                 MouseEvents(camera);

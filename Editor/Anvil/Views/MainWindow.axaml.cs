@@ -164,6 +164,26 @@ public partial class MainWindow : Window
         slot.Assign(relative);
     }
 
+    // Flyout content joins the tree only when shown. Pin it to the control that opened it so a
+    // picker left open keeps editing that component, never whatever is selected afterwards.
+    private void OwnedFlyout_Opening(object? sender, EventArgs e)
+    {
+        if (sender is Flyout { Target: { } target, Content: Control content })
+            content.DataContext = target.DataContext;
+    }
+
+    // Add Component builds a new menu on every click from the gameobject the inspector shows.
+    // A reused MenuFlyout kept its first MenuItems bound to the first gameobject's commands,
+    // so every component landed on that object.
+    private void AddComponentButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SceneObjectViewModel owner } button) return;
+        var menu = new MenuFlyout();
+        foreach (var type in owner.AddableComponents)
+            menu.Items.Add(new MenuItem { Header = type.DisplayName, Command = type.AddCommand });
+        menu.ShowAt(button);
+    }
+
     private void AudioClip_DragOver(object? sender, DragEventArgs e)
     {
         e.DragEffects = AudioComponent.IsAudioAsset(e.DataTransfer.TryGetValue(AudioAssetFormat))
@@ -339,7 +359,7 @@ public partial class MainWindow : Window
     private void AssetsTree_DoubleTapped(object? sender, TappedEventArgs e)
     {
         // Reliable, drag-free path to add a mesh to the scene: double-click it.
-        // Text assets (shaders, UI XML/CSS) open in an external editor instead.
+        // Scenes open in the viewport; text assets (shaders, UI XML/CSS) open in an external editor.
         if (DataContext is not MainWindowViewModel vm) return;
         if (e.Source is not Visual v) return;
         string? modelKey = ModelKeyFromVisual(v);
@@ -349,7 +369,8 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        if (vm.OpenInTextEditor(FindDataContext<AssetNode>(v)))
+        var node = FindDataContext<AssetNode>(v);
+        if (vm.OpenSceneAsset(node) || vm.OpenInTextEditor(node))
             e.Handled = true;
     }
 

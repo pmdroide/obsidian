@@ -217,7 +217,8 @@ namespace Engine
 
             //BEPU Physics v2 — bodies follow entities while editing; gravity/collisions
             //only step outside editor mode (Play). Gated in MainSceneLogic.UpdatePhysics.
-            _screenManager.UpdatePhysics((float)gameTime.ElapsedGameTime.TotalSeconds);
+            _screenManager.UpdatePhysics((float)gameTime.ElapsedGameTime.TotalSeconds,
+                (float)gameTime.TotalGameTime.TotalSeconds);
 
             // TODO: Add your update logic here
 

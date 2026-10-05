@@ -370,6 +370,12 @@
 /processorParam:TextureFormat=Color
 /build:Shaders/noise_blur.png
 
+#begin Shaders/PostProcessing/AutoExposure.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/PostProcessing/AutoExposure.fx
+
 #begin Shaders/PostProcessing/ColorGrading.fx
 /importer:EffectImporter
 /processor:EffectProcessor

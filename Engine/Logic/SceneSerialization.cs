@@ -25,7 +25,8 @@ namespace Engine.Logic
     /// </summary>
     public static class SceneSerialization
     {
-        public const int CurrentVersion = 1;
+        // 2: BasicEntity.IsEnabled is meaningful (version 1 saved a stuck false default).
+        public const int CurrentVersion = 2;
         public const string Extension = ".obsc";
 
         private static readonly JsonSerializerOptions Options = new JsonSerializerOptions
@@ -70,7 +71,7 @@ namespace Engine.Logic
             try { doc = JsonSerializer.Deserialize<SceneDocument>(json, Options); }
             catch (JsonException ex) { throw new InvalidDataException("Invalid .obsc JSON: " + ex.Message, ex); }
             if (doc == null) throw new InvalidDataException("Empty scene document");
-            if (doc.Version != CurrentVersion)
+            if (doc.Version < 1 || doc.Version > CurrentVersion)
                 throw new InvalidDataException($"Unsupported .obsc version {doc.Version} (this build expects {CurrentVersion})");
 
             Scene scene = new Scene
@@ -85,7 +86,20 @@ namespace Engine.Logic
             var textureLookup = BuildAssetLookup<Texture2D>(assets);
             var materialLookup = BuildAssetLookup<MaterialEffect>(assets);
 
+            // Persisted IDs are what selection, picking and the editor bridge address objects by.
+            // A missing or duplicate ID gets a fresh one once the generator is past every saved ID.
             int maxId = 0;
+            var usedIds = new HashSet<int>();
+            var needsNewId = new List<TransformableObject>();
+            void ClaimId(TransformableObject obj, int persistedId)
+            {
+                if (persistedId > 0 && usedIds.Add(persistedId))
+                {
+                    obj.Id = persistedId;
+                    maxId = Math.Max(maxId, persistedId);
+                }
+                else needsNewId.Add(obj);
+            }
 
             foreach (var rec in doc.Entities)
             {
@@ -98,19 +112,21 @@ namespace Engine.Logic
                 Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
                 var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
                 be.Name = rec.Name ?? be.Name;
-                be.IsEnabled = rec.IsEnabled;
+                // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
+                be.IsEnabled = rec.IsEnabled || doc.Version < 2;
+                be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
                 foreach (var record in rec.Components ?? new())
                 {
                     var component = ComponentRegistry.Restore(record);
-                    if (component != null) be.Components.Add(component);
-                    else EditorBridge.Log($"LoadScene: unknown component '{record.Type}' on '{be.Name}'");
+                    if (component == null)
+                        EditorBridge.Log($"LoadScene: unknown component '{record.Type}' on '{be.Name}'");
+                    else if (!be.AddComponent(component))
+                        EditorBridge.Log($"LoadScene: duplicate component '{record.Type}' on '{be.Name}' ignored");
                 }
-                if (rec.Physics != null)
-                {
-                    be.PhysicsType = rec.Physics.Type;
-                    be.Mass = rec.Physics.Mass;
-                }
-                if (rec.Id > 0) { be.Id = rec.Id; if (rec.Id > maxId) maxId = rec.Id; }
+                // Scenes saved before Physics became a component stored it as its own record.
+                if (rec.Physics != null && rec.Physics.Type != PhysicsBodyType.None && be.Physics == null)
+                    be.AddComponent(new PhysicsComponent { BodyType = rec.Physics.Type, Mass = rec.Physics.Mass });
+                ClaimId(be, rec.Id);
                 scene.BasicEntities.Add(be);
             }
 
@@ -122,7 +138,7 @@ namespace Engine.Logic
                     staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
                 pl.Name = rec.Name ?? pl.Name;
                 pl.IsEnabled = rec.IsEnabled;
-                if (rec.Id > 0) { pl.Id = rec.Id; if (rec.Id > maxId) maxId = rec.Id; }
+                ClaimId(pl, rec.Id);
                 scene.PointLights.Add(pl);
             }
 
@@ -135,7 +151,7 @@ namespace Engine.Logic
                     screenspaceshadowblur: rec.ScreenSpaceShadowBlur);
                 dl.Name = rec.Name ?? dl.Name;
                 dl.IsEnabled = rec.IsEnabled;
-                if (rec.Id > 0) { dl.Id = rec.Id; if (rec.Id > maxId) maxId = rec.Id; }
+                ClaimId(dl, rec.Id);
                 scene.DirectionalLights.Add(dl);
             }
 
@@ -152,7 +168,7 @@ namespace Engine.Logic
                 var dc = new Decal(tex, rec.Position, rot, rec.Scale);
                 dc.Name = rec.Name ?? dc.Name;
                 dc.IsEnabled = rec.IsEnabled;
-                if (rec.Id > 0) { dc.Id = rec.Id; if (rec.Id > maxId) maxId = rec.Id; }
+                ClaimId(dc, rec.Id);
                 scene.Decals.Add(dc);
             }
 
@@ -169,6 +185,12 @@ namespace Engine.Logic
             {
                 scene.MainCamera = new Camera(doc.MainCamera.Position, doc.MainCamera.Position + doc.MainCamera.Forward);
                 scene.MainCamera.FieldOfView = doc.MainCamera.FieldOfView;
+                foreach (var record in doc.MainCamera.Components ?? new())
+                {
+                    var component = ComponentRegistry.Restore(record);
+                    if (component == null || !scene.MainCamera.AddComponent(component))
+                        EditorBridge.Log($"LoadScene: main camera can't use component '{record.Type}'");
+                }
             }
 
             if (doc.Lighting != null)
@@ -179,6 +201,9 @@ namespace Engine.Logic
 
             // Advance the global ID generator so newly-added objects can't collide.
             IdGenerator.Reseed(maxId);
+            // The probe is not saved with an ID, so its constructor ID may equal a loaded one.
+            if (scene.EnvironmentSample != null) needsNewId.Add(scene.EnvironmentSample);
+            foreach (var obj in needsNewId) obj.Id = IdGenerator.GetNewId();
             scene.Environment = doc.Environment ?? new EnvironmentSettings();
             scene.Environment.Normalize();
 
@@ -233,6 +258,7 @@ namespace Engine.Logic
                     Id = be.Id,
                     Name = be.Name,
                     IsEnabled = be.IsEnabled,
+                    Role = be.Role,
                     ModelKey = modelKey,
                     Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
                     Position = be.Position,
@@ -255,11 +281,6 @@ namespace Engine.Logic
                         RoughnessKey = LookupKey(textureReverse, be.Material.RoughnessMap),
                         MetallicKey = LookupKey(textureReverse, be.Material.MetallicMap),
                         MaskKey = LookupKey(textureReverse, be.Material.Mask),
-                    },
-                    Physics = be.PhysicsType == PhysicsBodyType.None ? null : new PhysicsRecord
-                    {
-                        Type = be.PhysicsType,
-                        Mass = be.Mass,
                     },
                 });
             }
@@ -325,6 +346,7 @@ namespace Engine.Logic
                     Position = scene.MainCamera.Position,
                     Forward = scene.MainCamera.Forward,
                     FieldOfView = scene.MainCamera.FieldOfView,
+                    Components = scene.MainCamera.Components.Select(ComponentRegistry.Capture).ToList(),
                 };
             }
 
@@ -427,12 +449,15 @@ namespace Engine.Logic
             public int Id { get; set; }
             public string Name { get; set; }
             public bool IsEnabled { get; set; } = true;
+            // Missing in older scenes, which load as Default.
+            [JsonConverter(typeof(JsonStringEnumConverter))]
+            public GameObjectRole Role { get; set; } = GameObjectRole.Default;
             public string ModelKey { get; set; }
             public Vector3 Position { get; set; }
             public Quaternion Rotation { get; set; } = Quaternion.Identity;
             public Vector3 Scale { get; set; } = Vector3.One;
             public MaterialRecord Material { get; set; }
-            // Optional: omitted when the entity has no physics component
+            // Legacy (read-only): physics is saved as a PhysicsComponent in Components now.
             public PhysicsRecord Physics { get; set; }
             public List<ComponentRecord> Components { get; set; } = new();
         }
@@ -521,6 +546,8 @@ namespace Engine.Logic
             public Vector3 Position { get; set; }
             public Vector3 Forward { get; set; } = Vector3.UnitX;
             public float FieldOfView { get; set; } = (float)(System.Math.PI / 4);
+            // Script Behaviours on the main camera. Missing in older scenes.
+            public List<ComponentRecord> Components { get; set; } = new();
         }
 
         // --------------------------------------------------------------------

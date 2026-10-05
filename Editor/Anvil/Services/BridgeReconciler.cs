@@ -54,7 +54,14 @@ public static class BridgeReconciler
         {
             var snap = snapshot[i];
             seenIds.Add(snap.Id);
-            if (!byId.TryGetValue(snap.Id, out var vm))
+            if (byId.TryGetValue(snap.Id, out var vm) && vm.Kind != snap.Kind)
+            {
+                // Same id now names a different object (scene swap): drop the old editors so
+                // nothing bound to them can push into the new object.
+                target.Remove(vm);
+                vm = null;
+            }
+            if (vm == null)
             {
                 vm = new SceneObjectViewModel { Id = "engine-" + snap.Id };
                 vm.AttachBridge(bridge, snap.Id, snap.Kind);
@@ -100,14 +107,15 @@ public static class BridgeReconciler
             var newObjectType = MapKindToType(snap.Kind);
             if (vm.Type != newObjectType) vm.Type = newObjectType;
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
+            if (vm.Role != snap.Role) vm.Role = snap.Role;
 
             // Structural changes must reconcile even while the Add Component menu has focus.
-            var componentIds = snap.Components.Select(c => c.Type).ToHashSet();
+            var componentIds = snap.Components.Select(c => (c.Type, c.InstanceId)).ToHashSet();
             for (int i = vm.Components.Count - 1; i >= 0; i--)
-                if (!componentIds.Contains(vm.Components[i].TypeId)) vm.Components.RemoveAt(i);
+                if (!componentIds.Contains((vm.Components[i].TypeId, vm.Components[i].InstanceId))) vm.Components.RemoveAt(i);
             foreach (var record in snap.Components)
             {
-                var editor = vm.Components.FirstOrDefault(c => c.TypeId == record.Type);
+                var editor = vm.Components.FirstOrDefault(c => c.TypeId == record.Type && c.InstanceId == record.InstanceId);
                 bool added = editor == null;
                 if (added)
                 {
@@ -155,24 +163,6 @@ public static class BridgeReconciler
             else if (!freezeFields)
             {
                 vm.Light = null;
-            }
-
-            // Physics — BasicEntity only. Same keep-the-instance rule as Material.
-            if (snap.Physics.HasValue)
-            {
-                var ph = snap.Physics.Value;
-                vm.Physics ??= new PhysicsInfo();
-                vm.Physics.AttachToParent(vm);
-                if (!freezeFields)
-                {
-                    int bodyType = (int)ph.BodyType;
-                    if (vm.Physics.BodyType != bodyType) vm.Physics.BodyType = bodyType;
-                    SetIfChanged(v => vm.Physics.Mass = v, vm.Physics.Mass, ph.Mass);
-                }
-            }
-            else if (!freezeFields)
-            {
-                vm.Physics = null;
             }
 
             // Camera info — only Camera kind shows the camera expander.

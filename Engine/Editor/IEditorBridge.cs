@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Engine.Entities;
 using Engine.Components;
 using GameComponent = Engine.Components.GameComponent;
-using Engine.Physics;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -59,18 +58,6 @@ namespace Engine.Editor
         }
     }
 
-    public readonly struct PhysicsSnapshot
-    {
-        public readonly PhysicsBodyType BodyType;
-        public readonly float Mass;
-
-        public PhysicsSnapshot(PhysicsBodyType bodyType, float mass)
-        {
-            BodyType = bodyType;
-            Mass = mass;
-        }
-    }
-
     public readonly struct EditorObjectSnapshot
     {
         public readonly int Id;
@@ -82,14 +69,15 @@ namespace Engine.Editor
         public readonly bool IsEnabled;
         public readonly LightSnapshot? Light;
         public readonly MaterialSnapshot? Material;
-        // BasicEntity only — drives the Inspector's Physics section.
-        public readonly PhysicsSnapshot? Physics;
+        // BasicEntity only — every attached component, including Physics, as registry records.
         public readonly IReadOnlyList<ComponentRecord> Components;
+        // BasicEntity only.
+        public readonly GameObjectRole Role;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, PhysicsSnapshot? physics = null, IReadOnlyList<ComponentRecord> components = null)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default)
         {
             Components = components ?? Array.Empty<ComponentRecord>();
-            Physics = physics;
+            Role = role;
             Id = id;
             Name = name;
             Kind = kind;
@@ -163,8 +151,10 @@ namespace Engine.Editor
         void EnqueueMutate(int id, Action<TransformableObject> mutate);
         void EnqueueMutateMaterial(int entityId, Action<MaterialEffect> mutate);
         void EnqueueAddComponent(int entityId, string componentType);
-        void EnqueueRemoveComponent(int entityId, string componentType);
-        void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate);
+        void EnqueueRemoveComponent(int entityId, string componentType, Guid? instanceId = null);
+        void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null);
+        /// <summary>Set a gameobject's <see cref="GameObjectRole"/> and mark the scene dirty.</summary>
+        void EnqueueSetRole(int entityId, GameObjectRole role);
         void EnqueuePlayAudio(int entityId, bool play);
         /// <summary>Enable or mute the engine's output, including editor audio previews.</summary>
         void EnqueueSetAudioEnabled(bool enabled);

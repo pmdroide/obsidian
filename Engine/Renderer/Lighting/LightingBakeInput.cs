@@ -71,8 +71,8 @@ namespace Engine.Renderer.Lighting
 
             foreach (BasicEntity entity in scene.BasicEntities)
             {
-                //IsEnabled is not consulted: the renderer draws BasicEntities regardless of it (and
-                //editor-spawned entities leave it false), so bake exactly what is drawn.
+                //IsEnabled is not consulted: the renderer draws BasicEntities regardless of it,
+                //so bake exactly what is drawn.
                 if (entity == null || entity.Model == null) continue;
 
                 if (!geometryCache.TryGetValue(entity.Model, out List<MeshPartGeometry> parts))

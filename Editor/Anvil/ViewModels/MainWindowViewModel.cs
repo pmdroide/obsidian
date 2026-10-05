@@ -228,16 +228,12 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshAssetTree();
         StartContentWatcher();
 
-        // Build the "+" add-object catalog. Point Light only for now; the bridge already exposes
-        // EnqueueAddDirectionalLight / EnqueueAddBasicEntity, so re-enabling a type is one line here.
-        AddableObjects.Add(new AddableObjectType(
-            "Point Light",
-            b => b.EnqueueAddPointLight(b.SpawnPoint, radius: 25f, color: XnaColor.White, intensity: 20f),
-            _bridge));
-        // AddableObjects.Add(new AddableObjectType("Directional Light",
-        //     b => b.EnqueueAddDirectionalLight(new XnaVector3(0.3f, 0.2f, -1f), XnaColor.White, intensity: 1f), _bridge));
-        // AddableObjects.Add(new AddableObjectType("Basic Mesh (Cube)",
-        //     b => b.EnqueueAddBasicEntity("Cube", b.SpawnPoint), _bridge));
+        // Build the "+" add-object catalog. It runs the same commands as the title bar's
+        // GameObject menu, so both menus create identical objects.
+        AddableObjects.Add(new AddableObjectType("Cube", _ => AddEntity("Cube"), _bridge));
+        AddableObjects.Add(new AddableObjectType("Sphere", _ => AddEntity("IsoSphere"), _bridge));
+        AddableObjects.Add(new AddableObjectType("Directional Light", _ => AddDirectionalLight(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -429,9 +425,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private void AddDirectionalLight()
     {
         if (_bridge == null) return;
-        // Default sun-ish direction pointing into the ground (engine convention: -Z is down)
+        // Default sun-ish direction pointing into the ground (engine convention: -Z is down).
+        // Intensity matches the starter scene's sun; 1 was too dim to notice.
         var dir = new XnaVector3(0.3f, 0.2f, -1f);
-        _bridge.EnqueueAddDirectionalLight(dir, XnaColor.White, intensity: 1f);
+        _bridge.EnqueueAddDirectionalLight(dir, XnaColor.White, intensity: 100f);
     }
 
     [RelayCommand]
@@ -1047,6 +1044,17 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Opens a text asset (shader, UI XML/CSS, ...) from Engine/Content in VS Code,
     /// or Notepad if VS Code isn't installed. Returns false if the node isn't a text asset.
     /// </summary>
+    /// <summary>Opens a .obsc from the Assets panel as the active scene (e.g. Scenes/AutoExposureTest.obsc).</summary>
+    public bool OpenSceneAsset(AssetNode? node)
+    {
+        if (_bridge == null || node?.Kind != AssetKind.Scene) return false;
+        string fullPath = System.IO.Path.Combine(_bridge.ContentSourceRoot,
+            node.RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        _lastSceneFolder = System.IO.Path.GetDirectoryName(fullPath);
+        _bridge.EnqueueLoadScene(fullPath);
+        return true;
+    }
+
     public bool OpenInTextEditor(AssetNode? node)
     {
         if (_bridge == null || !IsTextAsset(node)) return false;

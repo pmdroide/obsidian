@@ -215,6 +215,15 @@ namespace Engine.Recources
 
         public static bool g_ColorGrading = true;
 
+        // Eye adaptation / auto exposure. The adapted EV is added on top of Exposure (and the day/night offset).
+        public static bool g_AutoExposure = true;
+        public static float g_AutoExposureKey = 0.18f; //The average scene luminance is exposed to this value
+        public static float g_AutoExposureMin = -3f; //EV clamp
+        public static float g_AutoExposureMax = 3f;
+        public static float g_AutoExposureSpeedDarkToLight = 3f; //Adaptation per second when the scene gets brighter
+        public static float g_AutoExposureSpeedLightToDark = 1f; //... and when it gets darker
+        public static float g_AutoExposureCenterWeight = 0.5f; //0 = whole frame, 1 = favour the screen center
+
         // SSR
 
         private static bool _g_SSReflection = true;

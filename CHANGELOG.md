@@ -1,5 +1,274 @@
 # Changelog
 
+## Fixed: probe light leaking through walls, and backwards fog scattering
+
+**Why:** The house interior looked odd: corners and wall edges glowed, there was a bright smear under the ceiling, and walls were blotchy. All of it was baked probe light leaking through geometry thinner than the 0.57 m probe spacing:
+- the 0.2 m ceiling let in light from the open attic,
+- the 0.3 m walls let in light from the sunlit yard.
+
+Normal-offset sampling only helped along a surface's own axis, not in corners. Separately, there were no sun shafts through the window, for two reasons:
+- The sun didn't shine through it.
+- The froxel fog's phase function was backwards: looking towards the sun gave the back-scatter minimum (about 18× too dim), and looking away gave the peak.
+
+- **Probe visibility** (a simplified DDGI visibility test):
+  - `ProbeVolumeBaker` records each probe's mean free distance along ±X/±Y/±Z from the rays it already traces. Each is cos⁴-weighted and capped at 4 cells.
+  - `ProbeVolumeData` has new `DistPos`/`DistNeg` fields. The `.probes` format is now version 2; version-1 files still load and behave as before (unlimited distances).
+  - `DeferredEnvironmentMap.fx` `SampleProbeVolume` now blends the 8 surrounding probes by hand. Each probe is weighted by `ProbeVisibility`: a harmonic blend of the axis distances, falling off with (free/d)⁴ once the shaded point lies beyond a wall. It is also weighted by DDGI's smooth backface term. If every neighbour is blocked, it falls back to plain trilinear.
+  - `ProbeVolumeData.EvaluateIrradiance` does the same on the CPU, including the half-cell normal offset, so later bake bounces don't leak either. `SampleSH` stays plain trilinear (used for the open-air capture point).
+  - `LightingSystem` uploads the distances as `ProbeDistPos`/`ProbeDistNeg`, and `DeferredEnvironmentMapRenderModule` binds them.
+  - Measured on the rebaked scene: the south-west corner leak dropped from 0.40 to 0.050, and the top of the east wall from 0.74 to 0.069. Mid-wall is 0.045.
+- **Froxel fog phase** (`Froxel.fx`): the Henyey-Greenstein angle now uses the light's travel direction against the direction to the camera, for both the sun and point lights. Looking towards the sun now gets the forward-scatter peak. **This changes every scene's fog:** the glow is now around the sun instead of opposite it.
+- `Scenes/AutoExposureTest.obsc`: the sun now comes from the south-east, (-0.6, 0.6, -0.55), so it shines through the east window as well as the doorway. Probes were rebaked with distances and 1024 rays per probe (was 256; the blotches were sampling noise from the small openings), which takes about 15 s.
+- **Still open:** with the default fog (density 0.03, which only starts 30 m from the camera), shafts indoors are faint. Fog density is a global Post Processing setting, so fog dense enough for clear indoor beams would also haze the outdoors. That needs a local or per-scene fog, which is not decided yet. At high density the froxel fog also shows sparkle noise on walls (an existing issue).
+- `Tests/Components/SampleSceneChecks.cs`: added checks that the bake stores distances, that the corner and ceiling-seam leaks stay under 25% of plain trilinear, that `Visibility` blocks straight and diagonal views through a wall, that distances survive save/load, and that open-air lookups still match plain SH.
+- Validation: all component and `--graphics` checks pass (233). Rendered and measured in a hidden engine instance from the reported viewpoint and three others. Not yet looked at in Anvil.
+
+- Claude
+
+## Fixed: house interior in the auto exposure scene was lit like the outdoors
+
+**Why:** Auto exposure was working, but the room was only about 1 stop darker than the sunny outside, so it barely changed. Measured in the running engine:
+- Turning off environment mapping made the interior about 7 stops darker. The outdoor reflection cubemap (captured at y = -12) was being applied inside the closed room with nothing blocking it.
+- Most of that light was the cubemap's **specular** term: a flat, view-dependent reflection of the bright outdoors on every wall. That caused the milky haze.
+- The scene also had no baked probes, so the diffuse ambient was unoccluded too.
+
+- `DeferredEnvironmentMap.fx`: inside a baked probe volume, cubemap reflections are now scaled by *probe irradiance here ÷ probe irradiance at the cubemap's capture point* (luminance, clamped to 1, faded out with the volume's border weight). A closed room no longer reflects the sunny outdoors. SSR is not scaled, because it shows real on-screen geometry.
+- `DeferredEnvironmentMap.fx`: probes are sampled half a cell out along the surface normal. A wall's inner face now reads the probes in the room it faces instead of blending in the sunlit ones on the other side, which reduces light leaking through walls.
+- `DeferredEnvironmentMapRenderModule.SetProbeVolume(...)` takes the capture position and uploads the probe SH there (`CaptureSHR/G/B`). `Renderer` passes `EnvironmentSample.Position`.
+- `ProbeVolumeData.SampleSH(...)`: new method that returns the trilinear SH coefficients at a point. `EvaluateIrradiance` now uses it.
+- `Scenes/AutoExposureTest.obsc`: now has a `Lighting` section and a baked `AutoExposureTest.probes` (33×42×14 probes at 0.57 m spacing, about 3 s to bake). The grid is placed so that no probe row falls inside the 0.3 m walls. To rebake, use Inspector > Lighting > Bake. Manual bounds are saved in the scene.
+- Result in the running engine (scene HDR log-average luminance and adapted EV, with defaults Min -3 / Max +3):
+
+  | View | Before | After |
+  | --- | --- | --- |
+  | Outside | -1.8 log2, EV -1.8 | -1.6 log2, EV -2.0 |
+  | Inside, facing the back wall | -2.8 log2, EV -0.65 | -4.3 log2, EV +1.2 |
+  | Inside, facing the doorway | -2.6 log2, EV -0.9 | -4.8 log2, EV +1.7, doorway blows out |
+
+- Scenes without a probe bake are unchanged. Interiors in other scenes need a bake to get this occlusion.
+- `Tests/Components/SampleSceneChecks.cs`: added checks that the scene ships probes covering the house and the capture point, that `SampleSH` matches `EvaluateIrradiance`, and that the room's probes see under 25% of the capture point's light towards the back and west walls.
+- Validation: all component and `--graphics` checks pass (229). The scene was rendered and measured in a hidden engine instance. It has not been looked at in Anvil itself.
+
+- Claude
+
+## Added: Freecam script and Script Behaviours on the Main Camera
+
+- New `Engine/Content/Scripts/FreecamScript.cs`, registered as **Freecam** (`freecam`). In Play mode: hold right mouse to look, W/A/S/D to move, E/Q for up/down, Shift for 4× speed, and scroll while holding right mouse to change speed. Movement eases in and out, pitch stops short of vertical, and it starts from the camera's saved view.
+- The Main Camera can now hold Script Behaviours. Select **Main Camera** in the Hierarchy, then **Add Component > Script Behaviour**; on the camera it defaults to Freecam. Only Script Behaviours are offered, because other components need a gameobject.
+  - `Camera`: `Components`, `AddComponent`/`RemoveComponent`/`GetComponent(s)`, `SupportsComponent` and `HasActiveScript`.
+  - `ScriptBehaviourComponent.HostCamera`: camera-hosted scripts get a `null` owner.
+  - `ScriptBehaviour.Camera`: on a camera, the transform helpers (`Position`, `Rotation`, `Forward`, `LookAt`, ...) move and turn the camera. `Raycast` and sounds work; physics-body and Audio-component helpers do nothing there.
+  - `EditorBridge`: id -1 (`MainCameraId`) routes component add/edit/remove to the main camera, and the camera's snapshot carries its components.
+  - `SceneSerialization`: `MainCamera.Components` is saved and loaded. Older scenes load with none.
+  - `PlayModeController` starts, updates and stops camera scripts. **Stop now restores the main camera's position and direction.** Before, anything that moved the game camera in Play also changed the saved camera.
+  - `Input`: the built-in Play camera controls are skipped while an enabled script is on the camera, so the two don't fight.
+  - Anvil: the Main Camera shows **Add Component** (Script Behaviour only) and no Role.
+- `Scenes/AutoExposureTest.obsc`: Freecam is attached to the camera, so Play flies in and out of the house.
+- Docs: "Scripts on the Main Camera" section in `Docs/markdown/Script_Behaviours.md` (Freecam controls, helpers on a camera), plus a note in `CLAUDE.md`.
+- Added `Tests/Components/FreecamChecks.cs`:
+  - Add via the Inspector, defaulting to Freecam, and refusal of non-script components.
+  - Flying forward, Shift speed, rising with E, easing to a stop, mouse look without roll, and the pitch limit.
+  - Enable/disable from the Inspector, and Stop restoring the camera.
+  - Save/load and removal.
+- Validation: the solution builds, and all component checks pass. Not yet flown in the running editor.
+
+- Claude
+
+## Added: auto exposure sample scene
+
+- New `Engine/Content/Scenes/AutoExposureTest.obsc` for testing eye adaptation by walking between bright sunlight and a dark interior. It is built from the built-in `Cube` and `IsoSphere` meshes:
+  - A 120 m grass ground, and a plaster house with an 8 x 6 m room and 3.5 m walls.
+  - A doorway in the south wall (1.5 x 2.4 m) and a window in the east wall, so you can look out from inside and in from outside.
+  - A ceiling slab sealing the room, with a pitched red roof on top.
+  - A table, ball and crate inside, and a white post outside.
+  - A bright shadow-casting sun (intensity 100), and a dim warm interior lamp (intensity 3, radius 7).
+  - The day/night cycle is off at 13:00. The game camera stands 14 m south, facing the doorway.
+- Anvil: double-clicking a `.obsc` file in the Assets panel now opens that scene (`MainWindowViewModel.OpenSceneAsset`). Before, it did nothing.
+- Added `Tests/Components/SampleSceneChecks.cs`. It checks that the scene loads every object, the sun is bright and the lamp dim, the room is closed apart from the door and window, and double-clicking a scene asset queues it to load.
+- Validation: all component checks pass. Not yet opened in Anvil, so the look and the amount of exposure change are untested.
+
+- Claude
+
+## Fixed: GameObject menu in the Anvil title bar did nothing
+
+**Why:** The **GameObject** menu items had no commands. `MainWindowViewModel` already had `AddEntity`, `AddDirectionalLight` and `AddPointLight` commands, but nothing used them.
+
+- `MainWindow.axaml`: **GameObject > 3D Object > Cube / Sphere** and **GameObject > Light > Directional Light / Point Light** now create the object at the camera focus through the editor bridge. Sphere uses the built-in `IsoSphere` mesh.
+- Removed **Create Empty** and **Capsule**. Every gameobject needs a mesh, so the engine has no empty gameobject, and there is no capsule mesh in Content.
+- `MainWindowViewModel`: the Hierarchy **+** menu now runs the same commands and lists the same four objects. It used to offer only Point Light. New directional lights use intensity 100, which matches the starter scene's sun; the old value of 1 was too dim to see.
+- Added `Tests/Components/GameObjectMenuChecks.cs`: the menu commands queue on the game thread and create a cube, a sphere and both light types, and the **+** menu matches.
+- Validation: Anvil builds, and all component checks pass. Not yet clicked through in the running editor.
+
+- Claude
+
+## Added: built-in transform, physics and audio helpers for Script Behaviours
+
+- `ScriptBehaviour` (`Engine/Scripting/ScriptBehaviour.cs`) now has helpers for the gameobject it runs on:
+  - **Transform:** `Position`, `Rotation`, `Scale`, `Right`/`Forward`/`Up` (local +X/+Y/+Z), `Translate`, `Rotate` (degrees, world or local axis), `SetRotation`, `LookAt`, `TransformPoint`, `TransformDirection`.
+  - **Physics:** `Physics`, `HasRigidbody`, `Velocity`, `AngularVelocity`, `AddForce`, `AddForceAtPosition`, `AddImpulse`, `AddTorque`, `AddAngularImpulse`, `Raycast` (ignores the caster and returns a `RaycastHit` with gameobject, point, normal and distance). Without a Dynamic body these do nothing and getters return zero.
+  - **Audio:** `PlayAudio`/`StopAudio`/`IsAudioPlaying` for the gameobject's Audio component. `PlaySound` (2D), `PlaySound3D` (follows the object) and `PlaySoundAt` (fixed point) return a new `ScriptSound` handle (`Volume`, `Pitch`, `Loop`, `Paused`, `Stop`). `StopAllSounds` stops them. Sounds a script starts stop automatically when the script stops.
+  - `GetComponent<T>()` and `Log(message)`.
+- `PhysicsSystem`: added `ApplyAngularImpulse`, `SetBodyVelocity` and a closest-hit `RayCast`.
+- `ScenePhysics`: maps BEPU handles back to gameobjects for raycasts. Added per-entity `TryGetVelocity`/`SetVelocity`/`ApplyImpulse`/`ApplyAngularImpulse`, a static `Current` and the `RaycastHit` struct. `BasicEntity.PhysicsScene` records which `ScenePhysics` owns its body.
+- `ScriptBehaviourComponent` stops a script through `ScriptBehaviour.Shutdown()`, which runs `Stop()` and then releases the script's sounds.
+- `Docs/markdown/Script_Behaviours.md`: new "Built-in helpers" section with reference tables, units, and hover and engine-sound example scripts. Both examples compile against the engine.
+- `Tests/Components/ScriptBehaviourChecks.cs`: 16 new checks covering transform math, physics on a real BEPU body (velocity, impulse, force × DeltaTime, torque, off-centre force, raycast hit and miss), and audio/physics helpers being safe to call without a body or audio device.
+- Validation: the engine builds, and all component checks pass. Not tried in a running Play session, and audio playback was not tested with FMOD installed.
+
+- Claude
+
+## Fixed: clipped Inspector header tabs
+
+**Why:** The Inspector's **Selection / Post FX / Lighting** buttons used a `toolbarChip` class that had no style. They rendered as full-size default buttons (32px minimum height) in the 20px header row, so they were cut off top and bottom and ran past the right edge of the 260px column. The active tab was not highlighted.
+
+- `MainWindow.axaml`: the tabs now use the existing compact `pill` style, which highlights the active view. They share the header width equally (`UniformGrid`) beside the gear icon.
+- The "Inspector" label is removed from this header because the column cannot fit it beside three readable tabs. The gear icon keeps an "Inspector" tooltip.
+- Validation: Anvil compiles (built to a scratch folder, because the running Anvil locked its output). Not yet checked by eye in Anvil.
+
+- Claude
+
+## Added: eye adaptation / auto exposure
+
+- New post-processing effect: the image's exposure now follows how bright the scene is, so the view brightens slowly after moving into a dark area and darkens quickly when stepping into light.
+- `Shaders/PostProcessing/AutoExposure.fx` + `AutoExposureFilter` (`RenderModules/PostProcessingFilters`): each frame the HDR image is metered at 256x256 as a center-weighted average of log2 luminance. That average is reduced to 1x1 (256 -> 64 -> 16 -> 4 -> 1), and a 1x1 EV value moves toward the target that maps it to the key value. The value stays on the GPU (no readback stall). NaN/Inf pixels are ignored, and the first frame (or re-enabling) snaps instead of fading.
+- `PostProcessing.fx` multiplies its exposure by `exp2` of the adapted EV. The manual **Exposure** and the day/night exposure offset still apply on top as compensation, so nights still read as night.
+- `Renderer.Draw` meters once per frame after bloom (`UpdateAutoExposure`). `RenderMode` runs twice per frame, so metering there would adapt twice.
+- New `GameSettings`: `g_AutoExposure` (on by default), `g_AutoExposureKey` (0.18), `g_AutoExposureMin`/`Max` (-3/+3 EV), `g_AutoExposureSpeedDarkToLight` (3/s), `g_AutoExposureSpeedLightToDark` (1/s), `g_AutoExposureCenterWeight` (0.5).
+- Anvil: new **Eye Adaptation** section in the Post Processing inspector with all of the above.
+- Added `Tests/Components/AutoExposureChecks.cs` (`--graphics`). It checks the first-frame snap, gradual adaptation both ways at the right speeds, settling, the EV clamp, and that NaN/Inf pixels are ignored.
+- Note: the bloom threshold is still applied before exposure, so it does not follow the adapted exposure.
+- Validation: solution build passes, and all component checks pass including `--graphics`. The standalone engine ran for 25 s without errors. Not yet checked by eye in the running engine or Anvil.
+
+- Claude
+
+## Fixed: Add Component adding to the wrong gameobject
+
+**Why:** The Inspector's **Add Component** button reused one `MenuFlyout`. Its menu items kept running the first gameobject's add commands after the selection changed. The engine, bridge and reconciler addressed the right object; the wrong id came from the stale menu items.
+
+- `MainWindow.axaml`: the Add Component button no longer has a `Button.Flyout`. It uses `Click="AddComponentButton_Click"`.
+- `MainWindow.axaml.cs`: new `AddComponentButton_Click` builds a new `MenuFlyout` on every click from the `AddableComponents` of the gameobject shown in the Inspector, and shows it at the button.
+- Two earlier tries in this session did not fix it: rebinding the flyout's items when it opened (the menu then stayed closed, because a `MenuFlyout` with no items never opens), and when the selection changed (the old items still ran).
+- Validation: Anvil compiles (built to a scratch folder, because the running Anvil locked its output). All component checks pass. Not yet checked by eye in Anvil.
+
+- Claude
+
+## Added: deforming water, buoyancy, and gameobject roles
+
+- **Water deforms:** four Gerstner swell waves now move the mesh in `Water.fx`. The surface rises and falls, and crests sharpen as points move sideways. `WaterRenderModule` subdivides each water mesh part once (up to about 131k triangles) and `MeshMaterialLibrary` draws that copy, so a flattened Cube or plane has vertices to move. Swell waves shorter than three grid cells fade out on very large meshes. Eight shorter ripple waves still shape the normal only.
+- Squeezed and high crests gather foam, and sunlight through thin crests tints them turquoise. Foam, depth colour and shore effects follow the moving surface.
+- New material setting **Wave Height** (crest-to-trough swell in metres, default 0.5, max 10). It saves with the Material component, is shown in the inspector, and is set by the water example. Existing water picks up the default swell. **Wave Strength** is now labelled **Ripple Strength**.
+- **Roles:** every gameobject has a `Role` (`Default` or `Water`), chosen in the Inspector under the name. It saves by name in scenes, and older scenes load as Default. Copies keep it, and it travels through the editor snapshot. New `IEditorBridge.EnqueueSetRole` marks the scene dirty. **Apply Water Example** also sets the Water role.
+- A Water-role object is a water volume: its XY footprint, from the top of its bounds downward. It builds no physics collider. With a Water material, its surface follows the same waves the shader draws (`WaterWaves.cs` mirrors the shader's swell).
+- **Buoyancy:** the Physics component has a **Buoyancy** option for Dynamic bodies, with **Float** (push when submerged relative to weight, default 2 = floats half-submerged) and **Drag** (default 3). `ScenePhysics` samples each buoyant body's bounds as a 3x3x3 grid before each Play step. It pushes up the submerged cells at their own positions and slows them, so bodies right themselves and ride the swell. Physics now receives the game clock so it matches the shader.
+- Added `Tests/Components/WaterChecks.cs`. It covers wave height lookup, settling half-submerged, sinking, riding the swell, and role and buoyancy editing, cloning and save/load, including older scenes. GPU checks now confirm water meshes are subdivided and that the swell moves the geometry.
+- Updated `Material_Component.md`, `Gameobject_Components.md` and the CLAUDE.md recipes.
+- Validation: solution build passes. All 182 component checks pass, including `--graphics`. Not yet checked by eye in the running engine or Anvil.
+
+- Claude
+
+## Fixed: ghosting trails behind meshes when the camera moves
+
+**Why:** The TAA pass blended 93.75% of the reprojected previous frame into every pixel and never rejected history that no longer matched. Background that an object edge had just uncovered kept the object's old colour for about 16 frames, which left an afterimage.
+
+- `TemporalAntiAliasing.fx` now clips the history colour to the current frame's 3x3 neighbourhood (variance clipping in YCoCg, bounded by the min/max box) before blending. Stale history is pulled back into the colour range that is visible now.
+- Reprojection uses the closest depth in the 3x3 neighbourhood, so silhouette pixels move with the foreground object instead of the background.
+- Neighbourhood loads are clamped to the screen edge. Removed the commented-out legacy overlap/depth-rejection experiments.
+- Validation: the engine build compiles the shader. Not yet checked in the running engine.
+
+- Claude
+
+## Updated: script assets and multiple scripts per gameobject
+
+- Moved the compiled example source to `Engine/Content/Scripts/SpinExampleScript.cs`. It now appears in Anvil's Assets > Scripts folder and uses the existing `.cs` double-click editor launcher (VS Code, with Notepad fallback). Script sources are copied into build and publish Content folders.
+- Gameobjects can now attach multiple Script Behaviour components, including multiple independent instances of the same script. Each attachment has its own script selection, Enabled checkbox, and removal command; Add Component remains available for adding more scripts.
+- Added generic repeatable component registration and persisted attachment IDs. Inspector reconciliation and bridge mutations target each attachment by ID, so removing a middle script or receiving a stale editor event cannot edit a neighbouring script. Cloning gives every copied attachment a fresh ID. Other component types retain their single-attachment limit; scenes without attachment IDs still load.
+- Updated script authoring and component documentation. Added integration checks for asset visibility and editor routing, copied script source, multiple script instances on one gameobject, independent edits/disable/removal, error isolation, focused inspector stability, cloning, scene persistence and older records.
+- Validation: engine and editor builds and the full component integration suite pass. Existing build warnings remain.
+
+- Codex
+
+## Added: attachable C# Script Behaviour component
+
+- Added **Inspector > Add Component > Script Behaviour** with an Enabled checkbox, script picker, and removal. Script IDs and Enabled settings save in scenes and clone independently through the existing component registry and editor bridge.
+- Added `ScriptBehaviour` with `GameObject`, frame delta in seconds (`DeltaTime`), and `Start()`, `Update()`, and optional `Stop()` hooks. `ScriptRegistry` maps stable scene IDs to compiled C# behaviours; each object and Play session receives a fresh instance. Scripts added or re-enabled during Play start before updating. Script changes, disabling, removal and stopping release the old instance. Missing script IDs and hook exceptions are logged and prevent repeated failing updates.
+- Added `SpinExampleScript`: `Start` captures the initial rotation; `Update` rotates around Z at 45 degrees per second using delta time. Stop restores the editor transform through the existing Play snapshot.
+- Play-mode component iteration now tolerates scripts removing components during hooks.
+- Added script authoring and attachment documentation in `Docs/markdown/Script_Behaviours.md`, linked from the gameobject component guide.
+- Verified the solution build and full component integration suite, including the editor build, script picker edits, clone independence, scene save/load, Play lifecycle, runtime attachment, example rotation, error isolation, and self-removal. Existing build warnings remain.
+
+- Codex
+
+## Fixed: Audio components were silent in the editor
+
+**Why:** `BasicEntity.IsEnabled` defaulted to `false` and nothing ever set it to `true`. The renderer ignores the flag, so objects looked normal. But `AudioComponent.Play`, Play-mode component start/update and ray picking all skip disabled entities, so the inspector's Play button and Play on Start did nothing. FMOD itself was fine (the log shows 2.02.37, matched). A second problem: 3D audio used a 1-unit minimum distance, so even playing sounds were −14 dB at the 5 units where new objects spawn and −26 dB at 20 units (measured with FMOD's channel audibility).
+
+- `BasicEntity.IsEnabled` now defaults to `true`.
+- Scene format is now version 2. Version-1 scenes load their entities as enabled, because the saved `false` was the stuck default. Version-1 files still load; version-2 files keep deliberately disabled objects.
+- Audio component: new **Min Dist** (default 10, full volume inside it) and **Max Dist** (default 1000) settings, shown in the inspector when 3D Spatial is on. They apply live to a playing sound and save with the scene.
+- Added checks for new entities starting enabled, version-1 migration versus deliberate disable, falloff distance edits/persistence, and (with `--audio`) real FMOD playback at full volume from a freshly spawned object 5 units from the listener. The solution build and the full suite pass, with `--audio` and `--graphics`.
+
+- Claude
+
+## Added: Physics component; fixed components landing on the wrong gameobject
+
+**Why components went to the wrong object:** loading a scene gave each entity its saved ID, but the viewport's ID/picking pass kept the temporary ID the entity got on construction (`WorldTransform.Id`). After loading a saved scene, clicking one object could select a different one, so **Add Component** and inspector edits went to that other object.
+
+- Fixed: `BasicEntity.Id` now updates `WorldTransform.Id`, so picking, outlines and selection use the saved ID. Scene load also gives a new ID to entities with a missing or duplicate saved ID, and to the environment probe, so two objects never share one.
+- Fixed: the Material and Light color pickers bound to "whatever is selected now". With a picker open, selecting another object sent color edits to it. Pickers now stay attached to the component that opened them (`OwnedFlyout_Opening`).
+- Fixed: the Material shader ComboBox could send an invalid `-1` type while its template switched, which reset the material to Basic.
+- Fixed: when a saved ID is reused by a different kind of object after a scene swap, the inspector now creates new editors for it instead of reusing the old object's.
+- **Physics is now a component** (`Engine/Components/PhysicsComponent.cs`): Inspector > Add Component > Physics, with Enabled, Body (Static/Dynamic, default Dynamic) and Mass. The old fixed Physics section, `PhysicsInfo` and `PhysicsSnapshot` were removed. `BasicEntity.PhysicsType`/`Mass` are now read-only values taken from the component, and a disabled component means no body. Scenes save physics in `Components`; older scenes with an entity-level `Physics` record load it as the component.
+- Component system cleanup: `BasicEntity.GetComponent<T>()`, `AddComponent` (rejects duplicates) and `RemoveComponent`; `GameComponent.OnAdded`/`OnRemoved` hooks; registry definitions can take a per-gameobject factory (Material uses `MaterialComponent.FromOwner`). The Material special cases in `EditorBridge` are gone. The registry also rejects duplicate IDs and looks up types directly. Add Component order: Material, Physics, Audio.
+- Documented how to add a component in `CLAUDE.md` ("Adding a Gameobject Component").
+- Added checks for physics (add once, inspector edits, mass clamp, disable, clone, save/load, legacy record migration, remove), persisted IDs matching picking IDs, duplicate ID reassignment, components staying on their own gameobject, and editor reset on ID reuse. The solution build and the full component suite pass, including `--graphics`.
+
+- Claude
+
+## Added: day/night sky settings; reworked water that darkens at night
+
+Why night still looked lit: offscreen captures of the real engine showed night values in the HDR buffer were already dark (night water was about 0.04 in blue). The tonemapper then lifted them a lot (to 118/255), because the Hejl filmic curve already returns display-ready values and the shader applies gamma 2.2 again. Water also added a fixed ambient term, and it sampled the reflection cubemap upside down: the capture stores Z flipped and the deferred shader corrects for that, but the water shader did not. So the water reflected the ground under the probe instead of the sky.
+
+**Sky settings** (Environment inspector, day/night mode; saved with the scene, older scenes get the defaults):
+- **Sky** colors: day sky, day horizon, sunset, night sky, night horizon. They drive the procedural sky in [DeferredEnvironmentMap.fx](Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx).
+- **Sun, moon and stars:** sun brightness and size, moon brightness and size, and star brightness. Sun and moon brightness also scale the cycle's sun and moon light.
+- **Exposure:** day (default −1 EV) and night (default −2.5 EV) offsets, blended by daylight and added to the Post FX exposure (`EnvironmentSky.ExposureOffset`, applied each frame in `Renderer.Draw`). Nights now look dark and noon is less washed out. The offset is zero when the cycle is off.
+- **Reset sky look** restores colors, sun/moon/stars and exposure, and keeps the time and cloud settings.
+- The reflection capture now stores the procedural sky at the brightness the main view shows it (half of what it was), so reflections are never brighter than the sky. Static skybox scenes are unchanged.
+
+**Water** ([Water.fx](Engine/Content/Shaders/Forward/Water.fx), [WaterRenderModule.cs](Engine/Renderer/RenderModules/WaterRenderModule.cs)):
+- Lighting now comes only from the cycle's light and the captured sky. The fixed ambient term is gone, so water follows the time of day. Cubemap lookups are flipped to match the capture, and reflections stay above the horizon.
+- Eight directional waves that move at real deep-water speeds. Short waves fade out with distance to avoid shimmer.
+- Depth-aware: the renderer passes the G-buffer depth, so shallow water lets the scene show through and turns turquoise (red light is absorbed first), while deep water takes the surface color. Edges where geometry meets the surface are softened.
+- Shore foam and wave-crest foam, lit like a white surface, so it dims at night. A sun/moon highlight, and a backlit glow on wave crests.
+- New material parameters: **Clarity** (visible depth in metres, default 4) and **Foam** (0–1, default 0.5), in `MaterialComponent`/`MaterialEffect` and in the water section of the Material inspector. The water example sets both.
+- Added checks for sky settings (inspector, save/load, defaults, normalization, reset), day and night exposure, moon brightness, sky color, night water versus day water, shallow versus deep water, shore foam, and the Clarity/Foam round trip. The solution build and the full component suite pass, including `--graphics`. Noon, dawn, dusk and midnight were also checked in renders of the real engine with water, a ground slab and objects crossing the surface.
+
+- Claude
+
+## Added: procedural clouds for the day/night sky
+
+- New shader include [clouds.fx](Engine/Content/Shaders/Common/clouds.fx), used by the day/night sky in [DeferredEnvironmentMap.fx](Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx). It draws one cloud layer from distorted value noise projected onto a flat plane above the camera. Clouds fade out toward the horizon and are drawn last, so they cover the sun, moon and stars.
+- Lighting follows the cycle. Clouds are white at noon, warm at sunrise and sunset, and dark blue-grey at night with faint moonlight. They darken where more cloud lies toward the light, have darker cores, and get a bright edge when you look toward the sun or moon. Full overcast keeps visible structure instead of a flat grey sheet.
+- Added **Cloud coverage** (0 clear to 1 overcast, default 0.45) and **Cloud speed** (0–10, default 1) to `EnvironmentSettings`. They save with the scene, older scenes load with the defaults, and they appear as sliders in the Environment inspector's day/night section. Heavy cover also dims the cycle's sun and moon light, down to 50% at full overcast.
+- Cloud drift builds up in `EnvironmentSky` and wraps at the noise's 256-cell repeat period, so it never loses precision or jumps. The drift is passed to the shader through `DeferredEnvironmentMapRenderModule.SetClouds`.
+- Only changing the cycle toggle, starting hour or duration restarts the cycle. Before, any environment edit (including the new cloud sliders) reset the time of day.
+- Added checks for cloud settings in the inspector, save/load, older-scene defaults and invalid values. Rendering checks cover clouds drifting without restarting the cycle, overcast covering the noon sky, overcast halving sunlight, and night clouds staying dark and cool. Noon, sunrise, dusk, midnight and four coverage levels were also checked visually in offscreen renders.
+
+- Claude
+
+## Fixed: day/night cycle nights stayed lit and warm
+
+Nights stayed bright because the scene's own sun (intensity 100, white, shadowed) was still rendered next to the cycle's sun. The cycle's sun only reached intensity 3, so the fixed scene sun did nearly all of the lighting at every hour. The baked probe ambient also kept the daytime bounce light at night.
+
+- While the cycle is on, its light replaces the scene's directional lights for rendering ([EnvironmentSky.cs](Engine/Renderer/EnvironmentSky.cs)). The saved lights are not changed and still show as editor gizmos. The cycle light takes its peak intensity and shadow settings from the brightest enabled scene directional light. With no scene light, it falls back to intensity 100 with the default shadow settings.
+- Added a moon opposite the sun (`EnvironmentSettings.MoonDirection`). Below the horizon the same shadowed light becomes cool blue moonlight at 8% of the sun's peak intensity. The sun fades to zero at the horizon, so the switch from sun to moon is not visible.
+- Baked probe ambient is scaled from 100% at day down to 8% at night (`EnvironmentSky.AmbientScale`, applied in `Renderer.DrawEnvironmentMap`).
+- The procedural sky now draws a faint moon disc and glow ([DeferredEnvironmentMap.fx](Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx)).
+- Fixed directional lights without shadows not updating their view-space direction while the camera was still. A moving sun now changes the lighting even when the camera does not move ([LightAccumulationModule.cs](Engine/Renderer/RenderModules/DeferredLighting/LightAccumulationModule.cs)).
+- Added checks for the moon direction, scene-sun replacement, moonlight intensity/colour/shadows, night ambient and noon intensity. The solution build and the component suite pass, including `--graphics`.
+
+- Claude
+
 ## Added: Input device overview and connected controller list
 
 - Added **Window > Input**, opening an Inspector section with current keyboard, mouse, controller, touch, and pen availability. Connected controllers show their player slot, name/type, and supported sticks, triggers, D-pad, and vibration.

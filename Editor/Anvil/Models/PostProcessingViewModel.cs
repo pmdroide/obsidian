@@ -25,6 +25,15 @@ public partial class PostProcessingViewModel : ObservableObject
     [ObservableProperty] private double _chromaticAberration;
     [ObservableProperty] private bool _colorGrading;
 
+    // --------- Eye Adaptation (auto exposure) ---------
+    [ObservableProperty] private bool _autoExposure;
+    [ObservableProperty] private double _autoExposureKey;
+    [ObservableProperty] private double _autoExposureMin;
+    [ObservableProperty] private double _autoExposureMax;
+    [ObservableProperty] private double _autoExposureSpeedDarkToLight;
+    [ObservableProperty] private double _autoExposureSpeedLightToDark;
+    [ObservableProperty] private double _autoExposureCenterWeight;
+
     // --------- Screen-Space Reflections ---------
     [ObservableProperty] private bool _ssrEnabled;
     [ObservableProperty] private bool _ssrStochastic;
@@ -97,6 +106,14 @@ public partial class PostProcessingViewModel : ObservableObject
             ChromaticAberration  = GameSettings.ChromaticAbberationStrength;
             ColorGrading         = GameSettings.g_ColorGrading;
 
+            AutoExposure         = GameSettings.g_AutoExposure;
+            AutoExposureKey      = GameSettings.g_AutoExposureKey;
+            AutoExposureMin      = GameSettings.g_AutoExposureMin;
+            AutoExposureMax      = GameSettings.g_AutoExposureMax;
+            AutoExposureSpeedDarkToLight = GameSettings.g_AutoExposureSpeedDarkToLight;
+            AutoExposureSpeedLightToDark = GameSettings.g_AutoExposureSpeedLightToDark;
+            AutoExposureCenterWeight     = GameSettings.g_AutoExposureCenterWeight;
+
             SsrEnabled           = GameSettings.g_SSReflection;
             SsrStochastic        = GameSettings.g_SSReflectionTaa;
             SsrTemporalNoise     = GameSettings.g_SSReflectionNoise;
@@ -160,6 +177,14 @@ public partial class PostProcessingViewModel : ObservableObject
     partial void OnSCurveStrengthChanged(double value)     => Push(() => GameSettings.SCurveStrength = (float)value);
     partial void OnChromaticAberrationChanged(double value)=> Push(() => GameSettings.ChromaticAbberationStrength = (float)value);
     partial void OnColorGradingChanged(bool value)         => Push(() => GameSettings.g_ColorGrading = value);
+
+    partial void OnAutoExposureChanged(bool value)         => Push(() => GameSettings.g_AutoExposure = value);
+    partial void OnAutoExposureKeyChanged(double value)    => Push(() => GameSettings.g_AutoExposureKey = (float)value);
+    partial void OnAutoExposureMinChanged(double value)    => Push(() => GameSettings.g_AutoExposureMin = (float)value);
+    partial void OnAutoExposureMaxChanged(double value)    => Push(() => GameSettings.g_AutoExposureMax = (float)value);
+    partial void OnAutoExposureSpeedDarkToLightChanged(double value) => Push(() => GameSettings.g_AutoExposureSpeedDarkToLight = (float)value);
+    partial void OnAutoExposureSpeedLightToDarkChanged(double value) => Push(() => GameSettings.g_AutoExposureSpeedLightToDark = (float)value);
+    partial void OnAutoExposureCenterWeightChanged(double value)     => Push(() => GameSettings.g_AutoExposureCenterWeight = (float)value);
 
     partial void OnSsrEnabledChanged(bool value)           => Push(() => GameSettings.g_SSReflection = value);
     partial void OnSsrStochasticChanged(bool value)        => Push(() => GameSettings.g_SSReflectionTaa = value);

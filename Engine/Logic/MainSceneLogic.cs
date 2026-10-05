@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Physics;
@@ -285,10 +286,11 @@ namespace Engine.Logic
         /// Syncs physics bodies with the scene's entities and, outside editor mode
         /// (i.e. in Play), steps gravity/collisions. Called once per Update.
         /// </summary>
-        public void UpdatePhysics(float dt)
+        /// <param name="time">Total game time in seconds, so buoyancy follows the waves the water shader draws.</param>
+        public void UpdatePhysics(float dt, float time = 0)
         {
             bool simulate = !GameSettings.e_enableeditor && GameSettings.p_physics;
-            _scenePhysics?.Update(BasicEntities, dt, simulate);
+            _scenePhysics?.Update(BasicEntities, dt, simulate, time);
         }
 
 
@@ -424,7 +426,7 @@ namespace Engine.Logic
         /// <param name="entity"></param>
         private void AddStaticPhysics(BasicEntity entity)
         {
-            entity.PhysicsType = PhysicsBodyType.Static;
+            entity.AddComponent(new PhysicsComponent { BodyType = PhysicsBodyType.Static });
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
