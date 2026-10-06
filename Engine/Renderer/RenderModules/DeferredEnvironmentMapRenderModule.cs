@@ -1,5 +1,6 @@
 using System;
 using Engine.Entities;
+using Engine.Logic;
 using Engine.Renderer.Helper;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -52,6 +53,11 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _paramProbeSHR;
         private EffectParameter _paramProbeSHG;
         private EffectParameter _paramProbeSHB;
+        private EffectParameter _paramProbeDistPos;
+        private EffectParameter _paramProbeDistNeg;
+        private EffectParameter _paramCaptureSHR;
+        private EffectParameter _paramCaptureSHG;
+        private EffectParameter _paramCaptureSHB;
 
 
         private EffectPass _passBasic;
@@ -91,6 +97,41 @@ namespace Engine.Renderer.RenderModules
                 if (_paramSkyMap2D != null) _paramSkyMap2D.SetValue(value);
                 if (_paramUseSkyMap2D != null) _paramUseSkyMap2D.SetValue(value != null);
             }
+        }
+
+        public void SetDayNightCycle(bool enabled, Vector3 sunDirection, float daylight)
+        {
+            _deferredEnvironmentShader.Parameters["DayNightCycle"]?.SetValue(enabled);
+            _deferredEnvironmentShader.Parameters["SunDirection"]?.SetValue(sunDirection);
+            _deferredEnvironmentShader.Parameters["Daylight"]?.SetValue(daylight);
+        }
+
+        public void SetSkyLook(EnvironmentSettings settings)
+        {
+            var p = _deferredEnvironmentShader.Parameters;
+            p["DaySkyZenith"]?.SetValue(ToLinear(settings.DaySkyColor));
+            p["DaySkyHorizon"]?.SetValue(ToLinear(settings.DayHorizonColor));
+            p["SunsetColor"]?.SetValue(ToLinear(settings.SunsetColor));
+            p["NightSkyZenith"]?.SetValue(ToLinear(settings.NightSkyColor));
+            p["NightSkyHorizon"]?.SetValue(ToLinear(settings.NightHorizonColor));
+            // Disc edges as cosines of the default angular radii scaled by the size setting
+            p["SunDisc"]?.SetValue(DiscEdges(0.0316f, 0.0200f, settings.SunSize));
+            p["MoonDisc"]?.SetValue(DiscEdges(0.0283f, 0.0200f, settings.MoonSize));
+            p["SunBrightness"]?.SetValue(settings.SunBrightness);
+            p["MoonBrightness"]?.SetValue(settings.MoonBrightness);
+            p["StarBrightness"]?.SetValue(settings.StarBrightness);
+        }
+
+        private static Vector3 ToLinear(Color c) =>
+            new Vector3(MathF.Pow(c.R / 255f, 2.2f), MathF.Pow(c.G / 255f, 2.2f), MathF.Pow(c.B / 255f, 2.2f));
+
+        private static Vector2 DiscEdges(float outer, float inner, float size) =>
+            new Vector2(MathF.Cos(outer * size), MathF.Cos(inner * size));
+
+        public void SetClouds(float coverage, Vector2 offset)
+        {
+            _deferredEnvironmentShader.Parameters["CloudCoverage"]?.SetValue(coverage);
+            _deferredEnvironmentShader.Parameters["CloudOffset"]?.SetValue(offset);
         }
 
         public Texture2D AlbedoMap
@@ -236,6 +277,11 @@ namespace Engine.Renderer.RenderModules
             _paramProbeSHR = _deferredEnvironmentShader.Parameters["ProbeSHR"];
             _paramProbeSHG = _deferredEnvironmentShader.Parameters["ProbeSHG"];
             _paramProbeSHB = _deferredEnvironmentShader.Parameters["ProbeSHB"];
+            _paramProbeDistPos = _deferredEnvironmentShader.Parameters["ProbeDistPos"];
+            _paramProbeDistNeg = _deferredEnvironmentShader.Parameters["ProbeDistNeg"];
+            _paramCaptureSHR = _deferredEnvironmentShader.Parameters["CaptureSHR"];
+            _paramCaptureSHG = _deferredEnvironmentShader.Parameters["CaptureSHG"];
+            _paramCaptureSHB = _deferredEnvironmentShader.Parameters["CaptureSHB"];
 
             _passSky = _deferredEnvironmentShader.Techniques["Sky"].Passes[0];
             _passBasic = _deferredEnvironmentShader.Techniques["Basic"].Passes[0];
@@ -265,8 +311,10 @@ namespace Engine.Renderer.RenderModules
         /// <summary>
         /// Bind the baked probe volume for the next DrawEnvironmentMap, or disable it (null).
         /// Parameters may be missing while an older compiled shader is loaded; that just disables it.
+        /// <paramref name="capturePosition"/> is where the reflection cubemap was rendered: the shader
+        /// darkens cubemap reflections where the probes see less light than they do there.
         /// </summary>
-        public void SetProbeVolume(LightingSystem lighting, float intensity)
+        public void SetProbeVolume(LightingSystem lighting, float intensity, Vector3 capturePosition)
         {
             if (_paramUseProbeVolume == null) return;
 
@@ -286,6 +334,13 @@ namespace Engine.Renderer.RenderModules
             _paramProbeSHR.SetValue(lighting.ProbeSHR);
             _paramProbeSHG?.SetValue(lighting.ProbeSHG);
             _paramProbeSHB?.SetValue(lighting.ProbeSHB);
+            _paramProbeDistPos?.SetValue(lighting.ProbeDistPos);
+            _paramProbeDistNeg?.SetValue(lighting.ProbeDistNeg);
+
+            data.SampleSH(capturePosition, out Vector4 captureR, out Vector4 captureG, out Vector4 captureB);
+            _paramCaptureSHR?.SetValue(captureR);
+            _paramCaptureSHG?.SetValue(captureG);
+            _paramCaptureSHB?.SetValue(captureB);
         }
 
         public void DrawEnvironmentMap(GraphicsDevice graphicsDevice, Camera camera, Matrix view, FullScreenTriangle fullScreenTriangle, EnvironmentSample envSample, GameTime gameTime, bool fireflyReduction, float ffThreshold)

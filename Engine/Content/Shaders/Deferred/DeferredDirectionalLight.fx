@@ -36,6 +36,7 @@ Texture2D SSShadowMap;
 int ShadowFiltering = 0; //PCF, PCF(3), PCF(7), Poisson, VSM
 
 float ShadowMapSize = 2048;
+float ShadowSize = 100; //World width of the orthographic shadow box
 float DepthBias = 0.02;
 
        
@@ -122,6 +123,16 @@ float GetVariableBias(float nDotL)
 	return clamp(0.001 * sqrt(1 - nDotL * nDotL) / nDotL, 0, DepthBias);
 }
 
+// Receiver bias for a kernel reaching `texels` shadow texels: a surface tilted from the light changes depth by
+// tan(angle) per unit across the map. The shadow map's own bias is ~0 for surfaces facing the light, so without
+// this an overhead sun makes flat ground shadow itself in a noisy pattern that TAA jitter turns into flicker.
+float GetSlopeBias(float ndotl, float texels)
+{
+	float texelDepth = ShadowSize / ShadowMapSize / LightFarClip;
+	float tanAngle = min(sqrt(saturate(1 - ndotl * ndotl)) / max(ndotl, 1e-3), 4);
+	return texelDepth * (0.5 + texels * tanAngle);
+}
+
 // Calculates the shadow term using PCF with edge tap smoothing
 float CalcShadowTermSoftPCF(float fLightDepth, float ndotl, float2 vTexCoord, int iSqrtSamples)
 {
@@ -138,6 +149,7 @@ float CalcShadowTermSoftPCF(float fLightDepth, float ndotl, float2 vTexCoord, in
 	float2 complFractionals = float2(1, 1) - fractionals;
 
 	float fRadius = iSqrtSamples - 1;
+	fLightDepth -= GetSlopeBias(ndotl, fRadius + 1);
 
 	[unroll]
 	for (float y = -fRadius; y <= fRadius; y++)

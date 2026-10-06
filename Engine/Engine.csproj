@@ -21,19 +21,43 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Components" />
     <ProjectReference Include="..\Vista\Vista.csproj" />
+  </ItemGroup>
+
+  <Import Project="thirdparty\steam\Steamworks.props" />
+
+  <!-- Steamworks.NET and the matching Windows x64 Steam API live in thirdparty/steam. -->
+  <ItemGroup>
+    <None Update="thirdparty\steam\steam_api64.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Link>steam_api64.dll</Link>
+    </None>
+    <None Update="thirdparty\steam\steam_appid.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+      <Link>steam_appid.txt</Link>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
     <MonoGameContentReference Include="Content\Content.mgcb" />
+    <!-- C# scripts compile normally and also remain editable assets in runtime Content. -->
+    <None Include="Content\Scripts\**\*.cs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Loose files read at runtime (NOT via the MGCB pipeline): Vista UI documents (the debug overlay
+       and GameUI layers) and scenes, which the standalone game opens through the scene list
+       (Content/System/SceneList.json, below). Dev runs read the source copies directly. -->
   <ItemGroup>
-    <None Update="Content\UI\debug.xml">
+    <None Update="Content\UI\**\*.xml;Content\UI\**\*.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <None Update="Content\UI\debug.css">
+    <None Update="Content\Scenes\**\*.obsc;Content\Scenes\**\*.probes">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 
@@ -50,9 +74,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>fmodL.dll</Link>
     </None>
-    <None Include="Content\Audio\**\*.*">
+    <None Update="Content\Audio\**\*.*;Content\**\*.wav;Content\**\*.mp3;Content\**\*.ogg;Content\**\*.flac">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>Content\Audio\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
 
@@ -63,8 +86,16 @@
     <None Update="Content\System\GameInfo.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Content\System\SteamSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
     <None Update="Content\System\GameIcon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\System\SceneList.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
   <PropertyGroup Condition="Exists('Content\System\GameIcon.ico')">
@@ -75,6 +106,9 @@
        VideoIntroLogic reads it from <output>/Content/intro.mp4, so the Link
        flattens it out of the Content\Video source folder. -->
   <ItemGroup>
+    <None Update="Content\Environment\Skyboxes\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Content\Video\intro.mp4">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>Content\intro.mp4</Link>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Physics;
@@ -112,8 +113,82 @@ namespace Engine.Logic
             SceneManager.SceneChanged += OnSceneChanged;
 
             PlayMode = new PlayModeController(this);
+            PlayMode.ModeChanged += OnPlayModeChanged;
+            GameFlow.SceneLogic = this;
 
             SetUpEmptyEditorScene(graphicsDevice);
+        }
+
+        // Set while ApplyPendingSceneLoad swaps scenes inside one Play session.
+        private bool _switchingScene;
+        // Anvil only: the scene being edited when a script first switched scenes during Play.
+        // Stop returns to it, so playing through a menu never replaces the user's scene.
+        private Scene _editScene;
+
+        /// <summary>
+        /// Standalone start: loads entry 0 of the scene list (Anvil > Game Settings > Scenes) and
+        /// starts Play. Returns false (keeping the empty scene) when the list is empty or the file
+        /// can't be loaded.
+        /// </summary>
+        public bool StartFirstScene()
+        {
+            if (SceneList.Scenes.Count == 0)
+            {
+                EditorBridge.Log("StartFirstScene: the scene list is empty (Anvil > Game Settings > Scenes)");
+                return false;
+            }
+            string path = SceneList.ResolvePath(SceneList.Scenes[0]);
+            if (SceneManager.LoadScene(path) == null) return false;
+            PlayMode.Play();
+            return true;
+        }
+
+        /// <summary>Applies a scene load queued with <see cref="GameFlow.LoadScene(int)"/>, keeping Play running.</summary>
+        private void ApplyPendingSceneLoad()
+        {
+            string path = GameFlow.TakePendingScene();
+            if (path == null) return;
+
+            Scene loaded;
+            try { loaded = SceneSerialization.LoadFromFile(path, _assets); }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"GameFlow: couldn't load '{path}': {ex.Message}");
+                return;
+            }
+
+            bool playing = PlayMode.Mode == GameMode.Play;
+            _switchingScene = true;
+            try
+            {
+                if (playing)
+                {
+                    if (GameFlow.IsEditor && _editScene == null) _editScene = ActiveScene;
+                    // Stops the departing scene's scripts and rewinds its transforms.
+                    PlayMode.Stop();
+                }
+                SceneManager.SetActiveScene(loaded);
+                if (playing) PlayMode.Play();
+            }
+            finally { _switchingScene = false; }
+        }
+
+        private void OnPlayModeChanged(GameMode mode)
+        {
+            if (mode != GameMode.Edit || _switchingScene) return;
+
+            GameUI.CloseAll();
+            GameFlow.EscapeQuits = true;
+            GameFlow.TakePendingScene();
+            GameFlow.RaisePlayStopped();
+
+            Scene editScene = _editScene;
+            _editScene = null;
+            if (editScene != null && !ReferenceEquals(editScene, ActiveScene))
+            {
+                EditorBridge.Log($"GameFlow: Play stopped, returning to '{editScene.Name}'");
+                SceneManager.SetActiveScene(editScene);
+            }
         }
 
         /// <summary>
@@ -124,6 +199,15 @@ namespace Engine.Logic
         /// </summary>
         private void OnSceneChanged(Scene oldScene, Scene newScene)
         {
+            // A load from outside the game (Anvil's Open Scene) replaces the scene for good.
+            if (!_switchingScene) _editScene = null;
+
+            if (oldScene != null)
+                foreach (var entity in oldScene.BasicEntities)
+                {
+                    foreach (var component in entity.Components) component.OnStop();
+                    if (MeshMaterialLibrary != null) entity.Dispose(MeshMaterialLibrary);
+                }
             EditorBridge.Log($"MainSceneLogic.OnSceneChanged: '{oldScene?.Name}' -> '{newScene?.Name}'");
 
             // Detach the old scene's physics bodies; the new scene's entities get
@@ -165,6 +249,9 @@ namespace Engine.Logic
             // departed entities. Reset to Edit mode unconditionally.
             try { PlayMode?.Stop(); }
             catch (Exception ex) { EditorBridge.Log("PlayMode.Stop on scene change threw: " + ex); }
+
+            // Layers belong to the departed scene's scripts (which closed theirs in Stop).
+            GameUI.CloseAll();
         }
 
         // Boots an empty scene: just a camera, environment sample, and one sun-like
@@ -210,8 +297,12 @@ namespace Engine.Logic
         {
             if (!isActive) return;
 
+            // Scene switches requested by scripts last frame (GameFlow.LoadScene).
+            ApplyPendingSceneLoad();
+
             //Upd
             Input.Update(gameTime, Camera);
+            GameInput.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
 
             // Scripts tick only in Play mode.
             PlayMode?.UpdateScripts(gameTime);
@@ -232,14 +323,27 @@ namespace Engine.Logic
             //If we are currently typing stuff into the console we should ignore the following keyboard inputs
             if (DebugScreen.ConsoleOpen) return;
 
+            //Switch which rendertargets we show
+            if (Input.WasKeyPressed(Keys.F1))
+            {
+                _renderModeCycle++;
+                if (_renderModeCycle > Enum.GetNames(typeof(Renderer.Renderer.RenderModes)).Length - 1) _renderModeCycle = 0;
+
+                GameSettings.g_rendermode = (Renderer.Renderer.RenderModes) _renderModeCycle;
+            }
+
+            // The remaining dev hotkeys would fight the game's own controls (Space confirms in
+            // menus), so they only work outside Play.
+            if (PlayMode?.Mode == GameMode.Play) return;
+
             //Starts the "editor mode" where we can manipulate objects
             if (Input.WasKeyPressed(Keys.Space))
             {
                 GameSettings.e_enableeditor = !GameSettings.e_enableeditor;
             }
 
-            
-            
+
+
             //Spawns a new light on the ground
             if (Input.keyboardState.IsKeyDown(Keys.L))
             {
@@ -249,15 +353,6 @@ namespace Engine.Logic
                     intensity: 40, 
                     castShadows: false,
                     isVolumetric: true);
-            }
-            
-            //Switch which rendertargets we show
-            if (Input.WasKeyPressed(Keys.F1))
-            {
-                _renderModeCycle++;
-                if (_renderModeCycle > Enum.GetNames(typeof(Renderer.Renderer.RenderModes)).Length - 1) _renderModeCycle = 0;
-
-                GameSettings.g_rendermode = (Renderer.Renderer.RenderModes) _renderModeCycle;
             }
 
             //Plays a one-shot 2D test sound (temporary audio test hook — remove/gate after verification)
@@ -279,10 +374,11 @@ namespace Engine.Logic
         /// Syncs physics bodies with the scene's entities and, outside editor mode
         /// (i.e. in Play), steps gravity/collisions. Called once per Update.
         /// </summary>
-        public void UpdatePhysics(float dt)
+        /// <param name="time">Total game time in seconds, so buoyancy follows the waves the water shader draws.</param>
+        public void UpdatePhysics(float dt, float time = 0)
         {
             bool simulate = !GameSettings.e_enableeditor && GameSettings.p_physics;
-            _scenePhysics?.Update(BasicEntities, dt, simulate);
+            _scenePhysics?.Update(BasicEntities, dt, simulate, time);
         }
 
 
@@ -418,7 +514,7 @@ namespace Engine.Logic
         /// <param name="entity"></param>
         private void AddStaticPhysics(BasicEntity entity)
         {
-            entity.PhysicsType = PhysicsBodyType.Static;
+            entity.AddComponent(new PhysicsComponent { BodyType = PhysicsBodyType.Static });
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +545,8 @@ namespace Engine.Logic
             {
                 if (BasicEntities[i].Id != id) continue;
                 BasicEntity entity = BasicEntities[i];
-                MeshMaterialLibrary?.DeleteFromRegistry(entity);
+                foreach (var component in entity.Components) component.OnStop();
+                if (MeshMaterialLibrary != null) entity.Dispose(MeshMaterialLibrary);
                 _scenePhysics?.Detach(entity);
                 BasicEntities.RemoveAt(i);
                 return true;

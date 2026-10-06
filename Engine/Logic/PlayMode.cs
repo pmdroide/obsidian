@@ -30,6 +30,9 @@ namespace Engine.Logic
         private readonly List<TransformSnap> _decalSnap = new();
         private readonly List<TransformSnap> _pointLightSnap = new();
         private readonly List<TransformSnap> _dirLightSnap = new();
+        // The main camera's pose, so a camera script (e.g. Freecam) can't move the saved camera.
+        private Vector3 _cameraPosition, _cameraForward, _cameraUp;
+        private Camera _snappedCamera;
 
         // Cached editor-mode value so Stop() can restore whatever the user had set.
         private bool _editorFlagBeforePlay;
@@ -57,8 +60,17 @@ namespace Engine.Logic
             if (s != null)
             {
                 var ctx = new ScriptContext { Scene = s };
-                foreach (var e in s.BasicEntities)
+                foreach (var e in s.BasicEntities.ToArray())
                 {
+                    if (!s.BasicEntities.Contains(e)) continue;
+                    foreach (var component in e.Components.ToArray())
+                    {
+                        if (!e.Components.Contains(component)) continue;
+                        component.OnStop();
+                        if (!e.IsEnabled || !component.Enabled) continue;
+                        try { component.OnStart(e); }
+                        catch (Exception ex) { EditorBridge.Log("Component.OnStart threw: " + ex); }
+                    }
                     if (e.Scripts.Count == 0) continue;
                     ctx.Owner = e;
                     for (int i = 0; i < e.Scripts.Count; i++)
@@ -67,6 +79,15 @@ namespace Engine.Logic
                         catch (Exception ex) { EditorBridge.Log("Script.OnStart threw: " + ex); }
                     }
                 }
+                // Scripts on the main camera start after the gameobjects' (their hooks get a null owner).
+                if (s.MainCamera is { } camera)
+                    foreach (var component in camera.Components.ToArray())
+                    {
+                        component.OnStop();
+                        if (!component.Enabled) continue;
+                        try { component.OnStart(null); }
+                        catch (Exception ex) { EditorBridge.Log("Camera component OnStart threw: " + ex); }
+                    }
             }
 
             try { ModeChanged?.Invoke(Mode); }
@@ -84,8 +105,19 @@ namespace Engine.Logic
             Scene s = _sceneLogic.ActiveScene;
             if (s == null) return;
             var ctx = new ScriptContext { Scene = s };
-            foreach (var e in s.BasicEntities)
+            foreach (var e in s.BasicEntities.ToArray())
             {
+                if (!s.BasicEntities.Contains(e)) continue;
+                foreach (var component in e.Components.ToArray())
+                {
+                    if (!e.Components.Contains(component)) continue;
+                    try
+                    {
+                        if (e.IsEnabled && component.Enabled) component.OnUpdate(e, gameTime);
+                        else component.OnStop();
+                    }
+                    catch (Exception ex) { EditorBridge.Log("Component.OnUpdate threw: " + ex); }
+                }
                 if (e.Scripts.Count == 0) continue;
                 ctx.Owner = e;
                 for (int i = 0; i < e.Scripts.Count; i++)
@@ -94,10 +126,27 @@ namespace Engine.Logic
                     catch (Exception ex) { EditorBridge.Log("Script.OnUpdate threw: " + ex); }
                 }
             }
+            if (s.MainCamera is { } camera)
+                foreach (var component in camera.Components.ToArray())
+                {
+                    if (!camera.Components.Contains(component)) continue;
+                    try
+                    {
+                        if (component.Enabled) component.OnUpdate(null, gameTime);
+                        else component.OnStop();
+                    }
+                    catch (Exception ex) { EditorBridge.Log("Camera component OnUpdate threw: " + ex); }
+                }
         }
 
         public void Stop()
         {
+            // Also stop inspector previews when leaving a scene in edit mode.
+            if (_sceneLogic.ActiveScene is { } scene)
+                foreach (var entity in scene.BasicEntities.ToArray())
+                    foreach (var component in entity.Components.ToArray()) component.OnStop();
+            if (_sceneLogic.ActiveScene?.MainCamera is { } mainCamera)
+                foreach (var component in mainCamera.Components.ToArray()) component.OnStop();
             if (Mode == GameMode.Edit) return;
             EditorBridge.Log("PlayModeController.Stop");
 
@@ -124,6 +173,13 @@ namespace Engine.Logic
                 _pointLightSnap.Add(new TransformSnap(pl.Id, pl.Position, Matrix.Identity, Vector3.One));
             foreach (var dl in s.DirectionalLights)
                 _dirLightSnap.Add(new TransformSnap(dl.Id, dl.Position, dl.RotationMatrix, Vector3.One));
+            _snappedCamera = s.MainCamera;
+            if (_snappedCamera != null)
+            {
+                _cameraPosition = _snappedCamera.Position;
+                _cameraForward = _snappedCamera.Forward;
+                _cameraUp = _snappedCamera.Up;
+            }
         }
 
         private void RestoreSnapshot()
@@ -134,6 +190,13 @@ namespace Engine.Logic
             ApplyById(_decalSnap, s.Decals);
             ApplyById(_pointLightSnap, s.PointLights);
             ApplyById(_dirLightSnap, s.DirectionalLights);
+            if (_snappedCamera != null && ReferenceEquals(_snappedCamera, s.MainCamera))
+            {
+                _snappedCamera.Position = _cameraPosition;
+                _snappedCamera.Forward = _cameraForward;
+                _snappedCamera.Up = _cameraUp;
+            }
+            _snappedCamera = null;
         }
 
         private static void ApplyById<T>(List<TransformSnap> snaps, List<T> live)

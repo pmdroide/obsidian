@@ -21,6 +21,18 @@ namespace Engine.Recources
 
         public bool HasShadow = true;
 
+        // Owned by one entity; never batch with independently editable material instances.
+        public bool IsInstanceMaterial;
+        public bool UseComponentRoughnessMap;
+        public bool UseComponentMetallicMap;
+        public float Opacity = 0.65f;
+        public float WaveScale = 0.3f;
+        public float WaveSpeed = 1f;
+        public float WaveStrength = 0.2f;
+        public float WaveHeight = 0.5f;
+        public float WaterClarity = 4f;
+        public float WaterFoam = 0.5f;
+
         public bool HasDiffuse;
         public bool HasRoughnessMap;
         public bool HasMask;
@@ -43,9 +55,8 @@ namespace Engine.Recources
             get { return _albedoMap; }
             set
             {
-                if (value == null) return; 
                 _albedoMap = value;
-                HasDiffuse = true;
+                HasDiffuse = value != null;
             }
         }
 
@@ -54,9 +65,8 @@ namespace Engine.Recources
             get { return _roughnessMap; }
             set
             {
-                if (value == null) return; 
                 _roughnessMap = value;
-                HasRoughnessMap = true;
+                HasRoughnessMap = value != null;
             }
         }
 
@@ -65,9 +75,8 @@ namespace Engine.Recources
             get { return _metallicMap; }
             set
             {
-                if (value == null) return; 
                 _metallicMap = value;
-                HasMetallic = true;
+                HasMetallic = value != null;
             }
         }
 
@@ -76,9 +85,8 @@ namespace Engine.Recources
             get { return _normalMap; }
             set
             {
-                if (value == null) return; 
                 _normalMap = value;
-                HasNormalMap = true;
+                HasNormalMap = value != null;
             }
         }
 
@@ -87,9 +95,8 @@ namespace Engine.Recources
             get { return _displacementMap; }
             set
             {
-                if (value == null) return;
                 _displacementMap = value;
-                HasDisplacement = true;
+                HasDisplacement = value != null;
             }
         }
 
@@ -98,9 +105,8 @@ namespace Engine.Recources
             get { return _mask; }
             set
             {
-                if (value == null) return; 
                 _mask = value;
-                HasMask = true;
+                HasMask = value != null;
             }
         }
         
@@ -116,6 +122,7 @@ namespace Engine.Recources
             ProjectHologram = 2,
             SubsurfaceScattering = 4,
             ForwardShaded = 5,
+            Water = 6,
         }
 
         public MaterialTypes Type
@@ -174,6 +181,11 @@ namespace Engine.Recources
         public bool Equals(MaterialEffect b)
         {
             if (b==null) return false;
+            if (IsInstanceMaterial || b.IsInstanceMaterial) return ReferenceEquals(this, b);
+            if (Type == MaterialTypes.Water &&
+                (Opacity != b.Opacity || WaveScale != b.WaveScale ||
+                 WaveSpeed != b.WaveSpeed || WaveStrength != b.WaveStrength || WaveHeight != b.WaveHeight ||
+                 WaterClarity != b.WaterClarity || WaterFoam != b.WaterFoam)) return false;
 
             if (HasDiffuse != b.HasDiffuse) return false;
 
@@ -220,6 +232,16 @@ namespace Engine.Recources
                 _displacementMap = _displacementMap,
                 IsTransparent = IsTransparent,
                 HasShadow = HasShadow,
+                IsInstanceMaterial = IsInstanceMaterial,
+                UseComponentRoughnessMap = UseComponentRoughnessMap,
+                UseComponentMetallicMap = UseComponentMetallicMap,
+                Opacity = Opacity,
+                WaveScale = WaveScale,
+                WaveSpeed = WaveSpeed,
+                WaveStrength = WaveStrength,
+                WaveHeight = WaveHeight,
+                WaterClarity = WaterClarity,
+                WaterFoam = WaterFoam,
                 HasDiffuse = HasDiffuse,
                 HasRoughnessMap = HasRoughnessMap,
                 HasMask = HasMask,

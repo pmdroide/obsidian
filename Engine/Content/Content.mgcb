@@ -220,6 +220,34 @@
 /processorParam:TextureFormat=Compressed
 /build:Fonts/monospace.spritefont
 
+#begin Fonts/UI/Body.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Color
+/build:Fonts/UI/Body.spritefont
+
+#begin Fonts/UI/Caption.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Color
+/build:Fonts/UI/Caption.spritefont
+
+#begin Fonts/UI/Display.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Color
+/build:Fonts/UI/Display.spritefont
+
+#begin Fonts/UI/Heading.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Color
+/build:Fonts/UI/Heading.spritefont
+
 #begin Graphical User Interface/colorpickerbig.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -322,6 +350,12 @@
 /processorParam:DebugMode=Auto
 /build:Shaders/Forward/Forward.fx
 
+#begin Shaders/Forward/Water.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Forward/Water.fx
+
 #begin Shaders/GBufferSetup/ClearGBuffer.fx
 /importer:EffectImporter
 /processor:EffectProcessor
@@ -363,6 +397,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Shaders/noise_blur.png
+
+#begin Shaders/PostProcessing/AutoExposure.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/PostProcessing/AutoExposure.fx
 
 #begin Shaders/PostProcessing/ColorGrading.fx
 /importer:EffectImporter

@@ -145,179 +145,102 @@ float4 InverseToneMapPixelShader(VertexShaderOutput input) : SV_Target
 }
 
 
+float3 RGBToYCoCg(float3 rgb)
+{
+	return float3(dot(rgb, float3(0.25, 0.5, 0.25)), dot(rgb, float3(0.5, 0, -0.5)), dot(rgb, float3(-0.25, 0.5, -0.25)));
+}
+
+float3 YCoCgToRGB(float3 ycocg)
+{
+	return float3(ycocg.x + ycocg.y - ycocg.z, ycocg.x + ycocg.z, ycocg.x - ycocg.y - ycocg.z);
+}
+
+//Pull the history colour towards the box centre until it lies inside the box
+float3 ClipToBox(float3 history, float3 boxMin, float3 boxMax)
+{
+	float3 center = 0.5 * (boxMax + boxMin);
+	float3 extents = 0.5 * (boxMax - boxMin) + 0.0001;
+	float3 offset = history - center;
+	float3 units = abs(offset / extents);
+	float maxUnit = max(units.x, max(units.y, units.z));
+	return maxUnit > 1 ? center + offset / maxUnit : history;
+}
+
 PixelShaderOutput PixelShaderFunction(VertexShaderOutput input) : SV_Target
 {
 	PixelShaderOutput output;
-    float2 texCoord = float2(input.TexCoord);
-	float3 texCoordInt = int3(input.Position.xy, 0);
-    
-    float linearDepth = DepthMap.Load(texCoordInt).r;
+	int2 pixel = int2(input.Position.xy);
+	int2 maxPixel = int2(Resolution) - 1;
 
-	float3 positionVS = input.ViewRay * linearDepth;
+	//Gather the 3x3 neighbourhood of the current frame: colour statistics for history rejection
+	//and the closest depth, so edges reproject with the foreground object instead of leaving a trail
+	float4 updatedColorSample = 0;
+	float3 m1 = 0;
+	float3 m2 = 0;
+	float3 boxMin = 100000;
+	float3 boxMax = -100000;
+	float closestDepth = 1;
 
-    float4 previousPositionVS = mul(float4(positionVS,1), CurrentToPrevious);
-    previousPositionVS /= previousPositionVS.w;
-
-    float2 sampleTexCoord = 0.5f * (float2(previousPositionVS.x, -previousPositionVS.y) + 1);
-
-    //Check how much they match
-	float4 updatedColorSample = UpdateMap.Load(texCoordInt);
-
-	//HDR -> LDR!
-
-	[branch]
-	if (UseTonemap)
-		updatedColorSample.rgb = ReinhardTonemap(updatedColorSample.rgb);
-
-    int3 sampleTexCoordInt = int3(sampleTexCoord * Resolution, 0);
-
-    float4 accumulationColorSample = AccumulationMap.Load(sampleTexCoordInt);
-
-    float alpha = accumulationColorSample.a;
-
- //   float3 baseColorYUV = ToYUV(updatedColorSample.rgb);
-
-	////overlap
- //   float overlap = overlapFunction(ToYUV(accumulationColorSample.rgb), baseColorYUV);
-
- //   float overlapThreshold = Threshold; //+ 0.0000000000005f;
-
- //   bool foundOverlap = overlap > overlapThreshold;
-
-	//////////////////////////////////////////////////// NEIGHBORHOOD CLAMPING /////////////////
-	////float neighborOverlap = 0;
-
- //   if(!foundOverlap)
- //   [branch]
-	//for (int x = -1; x <= 1; x++)
-	//{
-	//	[branch]
-	//	for (int y = -1; y <= 1; y++)
-	//	{
-
-	//		if (x == 0 && y == 0)
-	//		{
-	//			continue;
-	//		}
-
-	//		float4 accumulationColorSampleNeighbour = AccumulationMap.Load(sampleTexCoordInt + int3(x, y, 0));
-
-	//		float neighborOverlapTest = overlapFunction(ToYUV(accumulationColorSampleNeighbour.rgb), baseColorYUV);
-
-	//		if (neighborOverlapTest > overlapThreshold)
-	//		{
-	//			foundOverlap = true;
-	//			break;
-	//		}
-	//	}
-
-	//	if (foundOverlap)
-	//		break;
-	//}
-
-	//float coherence = neighborOverlap;
-	//float3 coh = float3(coherence, coherence, coherence);
-
-	////Red if pixel is good
-	//if (overlap > overlapThreshold)
-	//	coh = float3(0, 1, 0);
-	//else
-	//{
-	//	if (foundOverlap)
-	//		coh = float3(1, 0, 0);
-	//	else
-	//		coh = float3(0, 0, 1);
-	//}
-
-	/////////////////////////////////////////////////////////////////
-
-
-	//////////////////////// DEPTH CLAMPING
-	/*float alpha = 0.9375;
-
-    bool foundOverlap = abs(previousDepth - linearDepth) < Threshold;
-	
-	if (!foundOverlap)
+	[unroll]
+	for (int y = -1; y <= 1; y++)
 	{
-		[branch]
+		[unroll]
 		for (int x = -1; x <= 1; x++)
-		    {
-		        [branch]
-		        for (int y = -1; y <= 1; y++)
-		        {
-		           
-		            if (x == 0 && y == 0)
-		            {
-		                continue;
-		            }
+		{
+			int3 samplePixel = int3(clamp(pixel + int2(x, y), 0, maxPixel), 0);
+			float4 neighbour = UpdateMap.Load(samplePixel);
 
-		            previousDepth = AccumulationMap.Load(sampleTexCoordInt + int3(x, y, 0)).a;
+			//HDR -> LDR!
+			[branch]
+			if (UseTonemap)
+				neighbour.rgb = ReinhardTonemap(neighbour.rgb);
 
-		            if (abs(previousDepth - linearDepth) < Threshold)
-		            {
-		                foundOverlap = true;
-		                break;
-		            }
-		        }
+			if (x == 0 && y == 0)
+				updatedColorSample = neighbour;
 
-		        if (foundOverlap)
-		            break;
-		    }
+			float3 ycocg = RGBToYCoCg(neighbour.rgb);
+			m1 += ycocg;
+			m2 += ycocg * ycocg;
+			boxMin = min(boxMin, ycocg);
+			boxMax = max(boxMax, ycocg);
+
+			closestDepth = min(closestDepth, DepthMap.Load(samplePixel).r);
+		}
 	}
 
-	if (!foundOverlap) alpha = 0;*/
+	//Reproject into the previous frame
+	float3 positionVS = input.ViewRay * closestDepth;
 
- //   //alpha = 1 - 0.1f;
+	float4 previousPositionVS = mul(float4(positionVS, 1), CurrentToPrevious);
+	previousPositionVS /= previousPositionVS.w;
+
+	float2 sampleTexCoord = 0.5f * (float2(previousPositionVS.x, -previousPositionVS.y) + 1);
+
+	int3 sampleTexCoordInt = int3(sampleTexCoord * Resolution, 0);
+
+	float4 accumulationColorSample = AccumulationMap.Load(sampleTexCoordInt);
+
+	//Variance clipping: history that does not match anything around this pixel now (disocclusion,
+	//moving objects, lighting changes) is pulled into the current colour range instead of ghosting
+	float3 mean = m1 / 9;
+	float3 sigma = sqrt(max(m2 / 9 - mean * mean, 0));
+	float3 varianceMin = max(boxMin, mean - sigma);
+	float3 varianceMax = min(boxMax, mean + sigma);
+
+	accumulationColorSample.rgb = YCoCgToRGB(ClipToBox(RGBToYCoCg(accumulationColorSample.rgb), varianceMin, varianceMax));
+
+	float alpha = accumulationColorSample.a;
 	alpha = min(1 - 1 / (1 / (1 - alpha) + 1), 0.9375);
-/*
-	if (Threshold > 0) alpha = 0.6f;*/
-	//if (linearDepth >= 0.999999) alpha = 0.5f;
-
-	/*float2 diff = texCoord - sampleTexCoord;
-	output.Coherence = float4(alpha, 0, 0, 0);*/
-/*
-	if (!foundOverlap)
-		alpha = 0;*/
-
-    /*if (abs(previousPositionVS.z - depthVal) > 0.00001 || depthVal >= 0.999999f)
-        alpha = 0;*/
 
 	//Out of bounds, no info
 	if (sampleTexCoord.x > 1 || sampleTexCoord.x < 0 || sampleTexCoord.y > 1 || sampleTexCoord.y < 0)
 		alpha = 0;
 
-	//output.Combine = float4(lerp(updatedColorSample.rgb, accumulationColorSample.rgb, alpha), linearDepth);
-	//float depthOutput = alpha > 0 ? lerp(linearDepth, previousDepth, alpha) : linearDepth;
-
 	float3 rgbout = lerp(updatedColorSample.rgb, accumulationColorSample.rgb, alpha);
-
-	/*float3 colorDiff = abs(accumulationColorSample.rgb - updatedColorSample.rgb);
-
-	if (rgbout.r < Threshold / 255)
-	{
-		rgbout.r = updatedColorSample.r;
-	}
-	if (rgbout.g < Threshold / 255)
-	{
-		rgbout.g = updatedColorSample.g;
-	}
-	if (rgbout.b < Threshold / 255)
-	{
-		rgbout.b = updatedColorSample.b;
-	}*/
-
-	/*
-	if (texCoord.x < texCoord.y)
-		output.Combine = float4(updatedColorSample.rgb, alpha);
-*/
-	//output.Coherence = float4(sampleTexCoord, 0, 0);
 
 	output.Combine = float4(rgbout, 1);
 
 	return output;
-
-    //return float4(lerp(updatedColorSample.rgb, accumulationColorSample.rgb, alpha), alpha);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////

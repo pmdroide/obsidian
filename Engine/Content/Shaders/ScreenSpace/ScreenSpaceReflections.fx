@@ -322,7 +322,8 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
 			//Fade out to the front
 			
 			float fade = saturate(1 - reflectVector.z);
-			output.a *= (1 - roughness) * fade;
+			//Coverage only: DeferredEnvironmentMap weights the reflection by roughness and fresnel, like the cubemap
+			output.a *= fade;
 			//output.rgb *= output.a;
 
 			break;
@@ -399,7 +400,9 @@ float4 PixelShaderFunctionTAA(VertexShaderOutput input) : COLOR0
 			randNor *= -1;
 
 	//Jitter the normal based on roughness to simulate microfacets. This should be updated to correctly map to lobes with some BRDF.
-	normal = normalize(lerp(normal, randNor, roughness));
+	//roughness^2 (the GGX lobe width) rather than roughness: a 0.4 surface otherwise scatters its rays over a
+	//cone so wide that every pixel hits something different, which reads as blotches
+	normal = normalize(lerp(normal, randNor, roughness * roughness));
 
 	float3 reflectVector = reflect(incident, normal);
 
@@ -555,7 +558,8 @@ float4 PixelShaderFunctionTAA(VertexShaderOutput input) : COLOR0
 			//Fade out to the front
 
 			float fade = saturate(1 - reflectVector.z);
-			output.a *= (1 - roughness) * fade;
+			//Coverage only: DeferredEnvironmentMap weights the reflection by roughness and fresnel, like the cubemap
+			output.a *= fade;
 			//output.rgb *= output.a;
 
 			break;

@@ -52,6 +52,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _shadingMode = "Solid";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AudioIcon), nameof(AudioToggleTip))]
+    private bool _isAudioEnabled = true;
+
+    public string AudioIcon => IsAudioEnabled ? "Volume2" : "VolumeX";
+    public string AudioToggleTip => IsAudioEnabled ? "Mute game audio" : "Enable game audio";
+    partial void OnIsAudioEnabledChanged(bool value) => _bridge?.EnqueueSetAudioEnabled(value);
+
+    [RelayCommand]
+    private void ToggleAudio() => IsAudioEnabled = !IsAudioEnabled;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilteredConsole))]
     private string _consoleFilter = "All";
 
@@ -86,6 +97,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the Inspector when <see cref="InspectorView"/> == "Lighting".
     /// </summary>
     public LightingViewModel Lighting { get; } = new();
+    public EnvironmentViewModel Environment { get; } = new();
+    public SteamViewModel Steam { get; } = new();
+    public InputDevicesViewModel InputDevices { get; } = new();
 
     /// <summary>
     /// Inspector content switch: "Selection" (default) shows the selected
@@ -95,12 +109,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
-        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView))]
+        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
+        nameof(IsInspectorSteamView), nameof(IsInspectorInputView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
     public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
     public bool IsInspectorLightingView => InspectorView == "Lighting";
+    public bool IsInspectorEnvironmentView => InspectorView == "Environment";
+    public bool IsInspectorSteamView => InspectorView == "Steam";
+    public bool IsInspectorInputView => InspectorView == "Input";
 
     [RelayCommand]
     private void SetInspectorView(string view) => InspectorView = view;
@@ -198,6 +216,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge != null) return;
         _bridge = bridge;
+        bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
@@ -209,16 +228,12 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshAssetTree();
         StartContentWatcher();
 
-        // Build the "+" add-object catalog. Point Light only for now; the bridge already exposes
-        // EnqueueAddDirectionalLight / EnqueueAddBasicEntity, so re-enabling a type is one line here.
-        AddableObjects.Add(new AddableObjectType(
-            "Point Light",
-            b => b.EnqueueAddPointLight(b.SpawnPoint, radius: 25f, color: XnaColor.White, intensity: 20f),
-            _bridge));
-        // AddableObjects.Add(new AddableObjectType("Directional Light",
-        //     b => b.EnqueueAddDirectionalLight(new XnaVector3(0.3f, 0.2f, -1f), XnaColor.White, intensity: 1f), _bridge));
-        // AddableObjects.Add(new AddableObjectType("Basic Mesh (Cube)",
-        //     b => b.EnqueueAddBasicEntity("Cube", b.SpawnPoint), _bridge));
+        // Build the "+" add-object catalog. It runs the same commands as the title bar's
+        // GameObject menu, so both menus create identical objects.
+        AddableObjects.Add(new AddableObjectType("Cube", _ => AddEntity("Cube"), _bridge));
+        AddableObjects.Add(new AddableObjectType("Sphere", _ => AddEntity("IsoSphere"), _bridge));
+        AddableObjects.Add(new AddableObjectType("Directional Light", _ => AddDirectionalLight(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -227,6 +242,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // Baked lighting tab: per-scene settings + bake progress; bake results go to the console.
         Lighting.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:Lighting");
         Lighting.AttachBridge(bridge);
+        Environment.AttachBridge(bridge);
+        Steam.AttachBridge(bridge);
+        InputDevices.AttachBridge(bridge);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).
@@ -263,6 +281,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             if (_bridge == null) return;
+            Steam.Refresh();
+            InputDevices.Refresh();
             ReconcilerActive = true;
             BridgeReconciler.SelectedEngineId = SelectedObject?.EngineId;
             try
@@ -319,6 +339,8 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // -------- Commands --------
+
+    public void SetAssetDragActive(bool active) => _bridge?.SetHostDragDropActive(active);
 
     [RelayCommand]
     private void SetActiveTool(string tool) => ActiveTool = tool;
@@ -403,9 +425,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private void AddDirectionalLight()
     {
         if (_bridge == null) return;
-        // Default sun-ish direction pointing into the ground (engine convention: -Z is down)
+        // Default sun-ish direction pointing into the ground (engine convention: -Z is down).
+        // Intensity matches the starter scene's sun; 1 was too dim to notice.
         var dir = new XnaVector3(0.3f, 0.2f, -1f);
-        _bridge.EnqueueAddDirectionalLight(dir, XnaColor.White, intensity: 1f);
+        _bridge.EnqueueAddDirectionalLight(dir, XnaColor.White, intensity: 100f);
     }
 
     [RelayCommand]
@@ -513,7 +536,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ProjectName = vm.Apply();
             AddConsoleEntry(ConsoleLevel.Log,
-                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\")",
+                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\") " +
+                $"and {Engine.Recources.SceneList.FileName} ({vm.Scenes.Count} scenes)",
                 "Anvil:GameSettings");
         }
         catch (Exception ex)
@@ -1021,6 +1045,17 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Opens a text asset (shader, UI XML/CSS, ...) from Engine/Content in VS Code,
     /// or Notepad if VS Code isn't installed. Returns false if the node isn't a text asset.
     /// </summary>
+    /// <summary>Opens a .obsc from the Assets panel as the active scene (e.g. Scenes/AutoExposureTest.obsc).</summary>
+    public bool OpenSceneAsset(AssetNode? node)
+    {
+        if (_bridge == null || node?.Kind != AssetKind.Scene) return false;
+        string fullPath = System.IO.Path.Combine(_bridge.ContentSourceRoot,
+            node.RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        _lastSceneFolder = System.IO.Path.GetDirectoryName(fullPath);
+        _bridge.EnqueueLoadScene(fullPath);
+        return true;
+    }
+
     public bool OpenInTextEditor(AssetNode? node)
     {
         if (_bridge == null || !IsTextAsset(node)) return false;

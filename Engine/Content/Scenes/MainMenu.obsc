@@ -1,0 +1,218 @@
+{
+  "Version": 2,
+  "Name": "MainMenu",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [0, 0, -0.5],
+      "Scale": [300, 300, 0.5],
+      "Material": {
+        "DiffuseColor": [0.07, 0.068, 0.075],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 2,
+      "Name": "Dais",
+      "ModelKey": "Cube",
+      "Position": [0, 0, 0.15],
+      "Scale": [15, 15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.03, 0.029, 0.033],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 3,
+      "Name": "Pedestal",
+      "ModelKey": "Cube",
+      "Position": [0, 0, 0.9],
+      "Scale": [2.6, 2.6, 0.6],
+      "Material": {
+        "DiffuseColor": [0.025, 0.024, 0.028],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 4,
+      "Name": "Ember Core",
+      "ModelKey": "IsoSphere",
+      "Position": [0, 0, 6.5],
+      "Scale": [1.8, 1.8, 1.8],
+      "Material": {
+        "DiffuseColor": [1.0, 0.24, 0.05],
+        "Roughness": 0.3,
+        "EmissiveStrength": 1.8,
+        "MaterialType": 3
+      }
+    },
+    {
+      "Id": 5,
+      "Name": "Monolith 01",
+      "ModelKey": "Cube",
+      "Position": [20.1854, 2.4173, 11.7],
+      "Rotation": [-0.0009, 0.0158, 0.0596, 0.9981],
+      "Scale": [0.929, 2.7502, 12.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 6,
+      "Name": "Monolith 02",
+      "ModelKey": "Cube",
+      "Position": [16.5539, 14.9282, 6.7],
+      "Rotation": [0.0174, -0.0452, 0.3583, 0.9323],
+      "Scale": [1.0735, 2.0978, 7.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 7,
+      "Name": "Monolith 03",
+      "ModelKey": "Cube",
+      "Position": [0.5702, 24.0409, 9.2],
+      "Rotation": [0.0275, -0.0282, 0.6981, 0.7149],
+      "Scale": [0.9893, 2.8784, 9.5],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 8,
+      "Name": "Monolith 04",
+      "ModelKey": "Cube",
+      "Position": [-14.3349, 16.2668, 4.7],
+      "Rotation": [-0.0454, 0.0205, 0.9102, 0.4111],
+      "Scale": [0.9186, 3.2019, 5.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 9,
+      "Name": "Monolith 05",
+      "ModelKey": "Cube",
+      "Position": [-19.3278, 5.6897, 10.7],
+      "Rotation": [0.0198, -0.0029, 0.9896, 0.1426],
+      "Scale": [1.2265, 2.253, 11.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 10,
+      "Name": "Monolith 06",
+      "ModelKey": "Cube",
+      "Position": [-18.1735, -11.578, 7.7],
+      "Rotation": [-0.0048, -0.0014, 0.96, -0.2798],
+      "Scale": [0.9251, 2.0834, 8.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 11,
+      "Name": "Monolith 07",
+      "ModelKey": "Cube",
+      "Position": [-6.2986, -20.9243, 5.7],
+      "Rotation": [0.0156, 0.0116, 0.8024, -0.5964],
+      "Scale": [1.1342, 2.6345, 6.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 12,
+      "Name": "Monolith 08",
+      "ModelKey": "Cube",
+      "Position": [9.976, -21.1055, 9.7],
+      "Rotation": [0.0143, 0.0226, 0.5349, -0.8445],
+      "Scale": [1.1298, 2.7353, 10.0],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 13,
+      "Name": "Monolith 09",
+      "ModelKey": "Cube",
+      "Position": [18.9708, -9.1994, 7.2],
+      "Rotation": [-0.0113, -0.049, 0.2236, -0.9734],
+      "Scale": [0.9472, 2.5854, 7.5],
+      "Material": {
+        "DiffuseColor": [0.022, 0.021, 0.026],
+        "Roughness": 0.9
+      }
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 14,
+      "Name": "Core Light",
+      "Position": [0, 0, 6.5],
+      "Radius": 34,
+      "Color": [255, 140, 62, 255],
+      "Intensity": 8,
+      "CastShadows": false,
+      "IsVolumetric": true,
+      "ShadowResolution": 256,
+      "VolumetricDensity": 1
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 15,
+      "Name": "Sun",
+      "Direction": [0.95, -0.12, -0.28],
+      "Position": [0, 0, 12],
+      "Color": [255, 236, 214, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 180,
+      "ShadowDepth": 320,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [30, -34, 6],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 17.6,
+    "CycleDurationMinutes": 1440,
+    "CloudCoverage": 0.35,
+    "CloudSpeed": 0.5
+  },
+  "MainCamera": {
+    "Position": [53.53, -59.45, 6.0],
+    "Forward": [-0.6691, 0.7431, 0.0],
+    "FieldOfView": 0.7,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "6c1f3a52-8e0d-4b7a-9f21-3d5e7b9a0c44",
+        "Data": {
+          "ScriptId": "main-menu",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

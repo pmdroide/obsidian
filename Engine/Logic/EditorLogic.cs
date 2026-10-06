@@ -82,6 +82,14 @@ namespace Engine.Logic
         {
             if (!GameSettings.e_enableeditor) return;
 
+            // EditorLogic runs before Input.Update, so the last frame's mouse state
+            // can still contain a press when Avalonia starts a native asset drag.
+            if (Input.HostBridge?.IsHostedByEditor == true && Input.HostBridge.IsHostDragDropActive)
+            {
+                _gizmoTransformationMode = false;
+                return;
+            }
+
             if (!DebugScreen.ConsoleOpen)
             {
                 if (Input.WasKeyPressed(Keys.R)) GameStats.e_gizmoMode = GizmoModes.Rotation;
@@ -203,7 +211,7 @@ namespace Engine.Logic
                 if (SelectedObject is BasicEntity)
                 {
                     entities.Remove((BasicEntity) SelectedObject);
-                    meshMaterialLibrary.DeleteFromRegistry((BasicEntity) SelectedObject);
+                    ((BasicEntity) SelectedObject).Dispose(meshMaterialLibrary);
 
                     SelectedObject = null;
                 }

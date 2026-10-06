@@ -162,7 +162,7 @@ namespace Engine.Recources
 
         // PostProcessing
 
-        private static float _chromaticAbberationStrength = 0.035f;
+        private static float _chromaticAbberationStrength = 0f; //Off by default: even 0.01 leaves a red line on bright/dark edges
         public static float ChromaticAbberationStrength
         {
             get { return _chromaticAbberationStrength; }
@@ -171,12 +171,8 @@ namespace Engine.Recources
                 _chromaticAbberationStrength = value;
                 Shaders.PostProcessingParameter_ChromaticAbberationStrength.SetValue(_chromaticAbberationStrength);
 
-                if(_chromaticAbberationStrength<=0)
-                Shaders.PostProcessing.CurrentTechnique = Shaders.PostProcessingTechnique_Base;
-                else
-                {
-                    Shaders.PostProcessing.CurrentTechnique = Shaders.PostProcessingTechnique_VignetteChroma;
-                }
+                //The vignette lives in the same technique; it stays on when the fringe is turned off
+                Shaders.PostProcessing.CurrentTechnique = Shaders.PostProcessingTechnique_VignetteChroma;
             }
         }
 
@@ -214,6 +210,15 @@ namespace Engine.Recources
         }
 
         public static bool g_ColorGrading = true;
+
+        // Eye adaptation / auto exposure. The adapted EV is added on top of Exposure (and the day/night offset).
+        public static bool g_AutoExposure = true;
+        public static float g_AutoExposureKey = 0.18f; //The average scene luminance is exposed to this value
+        public static float g_AutoExposureMin = -3f; //EV clamp
+        public static float g_AutoExposureMax = 3f;
+        public static float g_AutoExposureSpeedDarkToLight = 3f; //Adaptation per second when the scene gets brighter
+        public static float g_AutoExposureSpeedLightToDark = 1f; //... and when it gets darker
+        public static float g_AutoExposureCenterWeight = 0.5f; //0 = whole frame, 1 = favour the screen center
 
         // SSR
 
@@ -427,11 +432,13 @@ namespace Engine.Recources
         public static float g_BloomRadius4 = 3.0f;
         public static float g_BloomRadius5 = 4.0f;
 
-        public static float g_BloomStrength1 = 0.5f;
-        public static float g_BloomStrength2 = 1;
-        public static float g_BloomStrength3 = 1;
-        public static float g_BloomStrength4 = 1.0f;
-        public static float g_BloomStrength5 = 1.0f;
+        //Each upsample blends a mip over the next one up, so these mainly set how wide the glow spreads.
+        //At 1.0 the widest mips dominate and, with a threshold of 0, the whole frame is smeared and loses contrast.
+        public static float g_BloomStrength1 = 0.25f;
+        public static float g_BloomStrength2 = 0.5f;
+        public static float g_BloomStrength3 = 0.5f;
+        public static float g_BloomStrength4 = 0.5f;
+        public static float g_BloomStrength5 = 0.5f;
 
         
         public static float ShadowBias = 0.005f;

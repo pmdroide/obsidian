@@ -90,6 +90,12 @@ namespace Engine.Renderer.Lighting
             ProbeVolumeData current = null;
             int probeCount = cx * cy * cz;
 
+            //Free distances are only needed out to a few probes: a wall further away than that
+            //can't sit between a probe and the points it is blended into.
+            Vector3 extent = max - min;
+            float cellSize = Math.Max(extent.X / Math.Max(1, cx - 1), Math.Max(extent.Y / Math.Max(1, cy - 1), extent.Z / Math.Max(1, cz - 1)));
+            float distanceCap = cellSize * 4;
+
             for (int pass = 0; pass < passes; pass++)
             {
                 current = ProbeVolumeData.Create(cx, cy, cz, min, max);
@@ -107,13 +113,18 @@ namespace Engine.Renderer.Lighting
 
                     Vector3 sum = Vector3.Zero, sumX = Vector3.Zero, sumY = Vector3.Zero, sumZ = Vector3.Zero;
                     int backFaces = 0;
+                    Vector3 distPos = Vector3.Zero, distNeg = Vector3.Zero, weightPos = Vector3.Zero, weightNeg = Vector3.Zero;
 
                     foreach (Vector3 baseDir in directions)
                     {
                         Vector3 dir = Vector3.TransformNormal(baseDir, rotation);
                         Vector3 radiance;
 
-                        if (!bvh.Intersect(origin, dir, maxDistance, out float t, out int tri))
+                        bool hit = bvh.Intersect(origin, dir, maxDistance, out float t, out int tri);
+                        AccumulateDistance(dir, hit ? Math.Min(t, distanceCap) : distanceCap,
+                            ref distPos, ref distNeg, ref weightPos, ref weightNeg);
+
+                        if (!hit)
                         {
                             radiance = sky;
                         }
@@ -141,6 +152,8 @@ namespace Engine.Renderer.Lighting
                     //  c0 = mean(L),  c1 = (2/N) Σ L·dir
                     float invN = 1f / directions.Length;
                     StoreProbe(current, i, sum * invN, sumX * (2 * invN), sumY * (2 * invN), sumZ * (2 * invN));
+                    current.DistPos[i] = new Vector4(distPos / Vector3.Max(weightPos, new Vector3(1e-6f)), 0);
+                    current.DistNeg[i] = new Vector4(distNeg / Vector3.Max(weightNeg, new Vector3(1e-6f)), 0);
                     current.Valid[i] = (byte)(backFaces <= s.ValidityThreshold * directions.Length ? 1 : 0);
 
                     int finished = Interlocked.Increment(ref done);
@@ -197,6 +210,21 @@ namespace Engine.Renderer.Lighting
             }
 
             return result * LightOutputScale;
+        }
+
+        /// <summary>
+        /// Adds a ray's hit distance to the probe's six axis distances, weighted by cos⁴ to the axis so
+        /// each one is the mean free distance in a ~35° cone around it.
+        /// </summary>
+        private static void AccumulateDistance(Vector3 dir, float distance,
+            ref Vector3 distPos, ref Vector3 distNeg, ref Vector3 weightPos, ref Vector3 weightNeg)
+        {
+            Vector3 w = dir * dir;
+            w *= w;
+            Vector3 positive = new Vector3(dir.X > 0 ? 1 : 0, dir.Y > 0 ? 1 : 0, dir.Z > 0 ? 1 : 0);
+            Vector3 negative = Vector3.One - positive;
+            weightPos += w * positive; distPos += w * positive * distance;
+            weightNeg += w * negative; distNeg += w * negative * distance;
         }
 
         private static void StoreProbe(ProbeVolumeData data, int i, Vector3 c0, Vector3 cx, Vector3 cy, Vector3 cz)

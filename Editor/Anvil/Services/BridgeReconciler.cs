@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using Anvil.Models;
 using Avalonia.Media;
 using Engine.Editor;
+using Engine.Components;
+using System.Linq;
 using XnaColor = Microsoft.Xna.Framework.Color;
 
 namespace Anvil.Services;
@@ -52,7 +54,14 @@ public static class BridgeReconciler
         {
             var snap = snapshot[i];
             seenIds.Add(snap.Id);
-            if (!byId.TryGetValue(snap.Id, out var vm))
+            if (byId.TryGetValue(snap.Id, out var vm) && vm.Kind != snap.Kind)
+            {
+                // Same id now names a different object (scene swap): drop the old editors so
+                // nothing bound to them can push into the new object.
+                target.Remove(vm);
+                vm = null;
+            }
+            if (vm == null)
             {
                 vm = new SceneObjectViewModel { Id = "engine-" + snap.Id };
                 vm.AttachBridge(bridge, snap.Id, snap.Kind);
@@ -98,6 +107,25 @@ public static class BridgeReconciler
             var newObjectType = MapKindToType(snap.Kind);
             if (vm.Type != newObjectType) vm.Type = newObjectType;
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
+            if (vm.Role != snap.Role) vm.Role = snap.Role;
+
+            // Structural changes must reconcile even while the Add Component menu has focus.
+            var componentIds = snap.Components.Select(c => (c.Type, c.InstanceId)).ToHashSet();
+            for (int i = vm.Components.Count - 1; i >= 0; i--)
+                if (!componentIds.Contains((vm.Components[i].TypeId, vm.Components[i].InstanceId))) vm.Components.RemoveAt(i);
+            foreach (var record in snap.Components)
+            {
+                var editor = vm.Components.FirstOrDefault(c => c.TypeId == record.Type && c.InstanceId == record.InstanceId);
+                bool added = editor == null;
+                if (added)
+                {
+                    editor = ComponentEditorRegistry.Create(record.Type, vm);
+                    if (editor == null) continue;
+                    vm.Components.Add(editor);
+                }
+                var component = ComponentRegistry.Restore(record);
+                if (component != null) editor!.Apply(component, freezeFields && !added);
+            }
 
             if (!freezeFields)
             {
@@ -113,32 +141,6 @@ public static class BridgeReconciler
                 SetIfChanged(v => vm.ScaleX = v, vm.ScaleX, snap.Scale.X);
                 SetIfChanged(v => vm.ScaleY = v, vm.ScaleY, snap.Scale.Y);
                 SetIfChanged(v => vm.ScaleZ = v, vm.ScaleZ, snap.Scale.Z);
-            }
-
-            // Material — never replace an existing MaterialInfo instance for the
-            // currently selected object. Doing so collapses the bound Expander
-            // and closes any open ColorPicker flyout mid-edit.
-            if (snap.Material.HasValue)
-            {
-                var m = snap.Material.Value;
-                vm.Material ??= new MaterialInfo();
-                vm.Material.AttachToParent(vm);
-                if (!freezeFields)
-                {
-                    var newColor = FromVector3(m.DiffuseColor);
-                    if (vm.Material.Color != newColor) vm.Material.Color = newColor;
-                    SetIfChanged(v => vm.Material.Roughness = v, vm.Material.Roughness, m.Roughness);
-                    SetIfChanged(v => vm.Material.Metallic = v, vm.Material.Metallic, m.Metallic);
-                    SetIfChanged(v => vm.Material.EmissiveStrength = v, vm.Material.EmissiveStrength, m.EmissiveStrength);
-                    if (vm.Material.IsTransparent != m.IsTransparent) vm.Material.IsTransparent = m.IsTransparent;
-                    if (vm.Material.MaterialType != m.MaterialType) vm.Material.MaterialType = m.MaterialType;
-                    double newOpacity = m.IsTransparent ? 0.5 : 1.0;
-                    SetIfChanged(v => vm.Material.Opacity = v, vm.Material.Opacity, newOpacity);
-                }
-            }
-            else if (snap.Kind != EditorObjectKind.BasicEntity && !freezeFields)
-            {
-                vm.Material = null;
             }
 
             // Light
@@ -161,24 +163,6 @@ public static class BridgeReconciler
             else if (!freezeFields)
             {
                 vm.Light = null;
-            }
-
-            // Physics — BasicEntity only. Same keep-the-instance rule as Material.
-            if (snap.Physics.HasValue)
-            {
-                var ph = snap.Physics.Value;
-                vm.Physics ??= new PhysicsInfo();
-                vm.Physics.AttachToParent(vm);
-                if (!freezeFields)
-                {
-                    int bodyType = (int)ph.BodyType;
-                    if (vm.Physics.BodyType != bodyType) vm.Physics.BodyType = bodyType;
-                    SetIfChanged(v => vm.Physics.Mass = v, vm.Physics.Mass, ph.Mass);
-                }
-            }
-            else if (!freezeFields)
-            {
-                vm.Physics = null;
             }
 
             // Camera info — only Camera kind shows the camera expander.
@@ -207,7 +191,7 @@ public static class BridgeReconciler
         _ => SceneObjectType.Empty,
     };
 
-    private static Color FromVector3(Microsoft.Xna.Framework.Vector3 v)
+    internal static Color FromVector3(Microsoft.Xna.Framework.Vector3 v)
     {
         byte r = (byte)System.Math.Clamp((int)(v.X * 255f), 0, 255);
         byte g = (byte)System.Math.Clamp((int)(v.Y * 255f), 0, 255);

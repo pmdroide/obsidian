@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  GBuffer creation
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,6 +24,12 @@ int MaterialType = 0;
 const float CLIP_VALUE = 0.49;
 
 float4 DiffuseColor = float4(0.8f, 0.8f, 0.8f, 1);
+// Component instances tint imported albedo and override scalar surface values.
+bool OverrideSurface = false;
+float3 SurfaceTint = float3(1, 1, 1);
+float2 ComponentSurface;
+bool ComponentRoughnessMap = false;
+bool ComponentMetallicMap = false;
 
 Texture2D<float4> Texture;
 
@@ -145,8 +151,14 @@ float3 GetNormalMap(float2 TexCoord)
 }
 
 //See BufferSetup.dgml for overview
-PixelShaderOutput WriteBuffers(Render_IN input)
+PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
 {       
+    if (OverrideSurface)
+    {
+        input.Color.rgb *= SurfaceTint;
+        input.roughness = ComponentRoughnessMap ? RoughnessMap.Sample(TextureSampler, texCoord).r : ComponentSurface.x;
+        input.Metallic = ComponentMetallicMap ? MetallicMap.Sample(TextureSampler, texCoord).r : ComponentSurface.y;
+    }
     float4 finalValue = input.Color;
 
     //Deferred MRT
@@ -201,7 +213,7 @@ PixelShaderOutput DrawTexture_PixelShader(DrawBasic_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = Roughness;
     
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 [earlydepthstencil]      //experimental
@@ -221,7 +233,7 @@ PixelShaderOutput DrawTextureSpecular_PixelShader(DrawBasic_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = RoughnessTexture;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 [earlydepthstencil]      //experimental
@@ -242,7 +254,7 @@ PixelShaderOutput DrawTextureSpecularMetallic_PixelShader(DrawBasic_VSOut input)
     renderParams.Metallic = metallicTexture;
     renderParams.roughness = RoughnessTexture;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 [earlydepthstencil]      //experimental
@@ -268,7 +280,7 @@ PixelShaderOutput DrawTextureSpecularNormal_PixelShader(DrawNormals_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = RoughnessTexture;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 [earlydepthstencil]      //experimental
@@ -294,7 +306,7 @@ PixelShaderOutput DrawTextureSpecularNormalMetallic_PixelShader(DrawNormals_VSOu
     renderParams.Metallic = metallicTexture;
     renderParams.roughness = RoughnessTexture;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 
@@ -320,7 +332,7 @@ PixelShaderOutput DrawTextureNormal_PixelShader(DrawNormals_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = Roughness;
     
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 [earlydepthstencil]      //experimental
@@ -342,7 +354,7 @@ PixelShaderOutput DrawNormal_PixelShader(DrawNormals_VSOut input)
 	renderParams.Metallic = Metallic;
 	renderParams.roughness = Roughness;
 
-	return WriteBuffers(renderParams);
+	return WriteBuffers(renderParams, input.TexCoord);
 }
 
       //experimental
@@ -364,7 +376,7 @@ PixelShaderOutput DrawTextureMask_PixelShader(DrawBasic_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = Roughness;
     
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 
@@ -388,7 +400,7 @@ PixelShaderOutput DrawTextureSpecularMask_PixelShader(DrawBasic_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = RoughnessTexture; // 1 - (RoughnessTexture.r+RoughnessTexture.b+RoughnessTexture.g) / 3;
     
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
       //experimental
@@ -419,7 +431,7 @@ PixelShaderOutput DrawTextureSpecularNormalMask_PixelShader(DrawNormals_VSOut in
     renderParams.Metallic = Metallic;
     renderParams.roughness = RoughnessTexture;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
     //experimental
@@ -452,7 +464,7 @@ PixelShaderOutput DrawTextureNormalMask_PixelShader(DrawNormals_VSOut input)
 	renderParams.Metallic = Metallic;
 	renderParams.roughness = Roughness;
 
-	return WriteBuffers(renderParams);
+	return WriteBuffers(renderParams, input.TexCoord);
 }
 
 PixelShaderOutput DrawBasic_PixelShader(DrawBasic_VSOut input)
@@ -469,7 +481,7 @@ PixelShaderOutput DrawBasic_PixelShader(DrawBasic_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = Roughness;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, input.TexCoord);
 }
 
 
@@ -508,7 +520,7 @@ PixelShaderOutput DrawTextureDisplacement_PixelShader(DrawNormals_VSOut input)
     renderParams.Metallic = Metallic;
     renderParams.roughness = Roughness;
 
-    return WriteBuffers(renderParams);
+    return WriteBuffers(renderParams, texCoordPOM);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////

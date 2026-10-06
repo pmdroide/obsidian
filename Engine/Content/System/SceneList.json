@@ -1,0 +1,7 @@
+{
+  "Scenes": [
+    "Scenes/MainMenu.obsc",
+    "Scenes/GodRayTest.obsc",
+    "Scenes/AutoExposureTest.obsc"
+  ]
+}

@@ -1,10 +1,10 @@
 # Thirdparty software
 
-Git doesnt detect this folder because its empty so this readme file serves as a folder structure.
+Native libraries and managed bindings used by the engine live here.
 
 ## Directory
 
 Root folder of the engine folder
 
 thirdparty/fmod
-thirdparty/steam
+thirdparty/steam - Steamworks.NET and the matching Windows x64 Steam API; see steam/README.md.

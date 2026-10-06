@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Engine.Components;
+using GameComponent = Engine.Components.GameComponent;
 using BepuPhysics;
 using Engine.Physics;
 using Engine.Recources;
@@ -22,15 +24,18 @@ namespace Engine.Entities
         public readonly Vector3 BoundingBoxOffset;
         public readonly SignedDistanceField SignedDistanceField;
         public readonly MaterialEffect Material;
+        private MeshMaterialLibrary _materialLibrary;
+        private readonly List<MaterialEffect> _materialInstances = new();
 
         private int _id;
 
         private Vector3 _position;
 
-        // Physics component — authored in Anvil's Inspector > Physics and saved with the
-        // scene. ScenePhysics creates/rebuilds the actual BEPU body to match these.
-        public PhysicsBodyType PhysicsType = PhysicsBodyType.None;
-        public float Mass = 1f;
+        // Read from the Physics component (Inspector > Add Component > Physics). ScenePhysics
+        // creates/rebuilds the actual BEPU body to match these.
+        public PhysicsComponent Physics => GetComponent<PhysicsComponent>();
+        public PhysicsBodyType PhysicsType => Physics?.ActiveBodyType ?? PhysicsBodyType.None;
+        public float Mass => Physics?.ClampedMass ?? 1f;
 
         // BEPUphysics v2 runtime state, owned by ScenePhysics. Handles are value-type
         // indices into the simulation; null when the entity has no body of that kind.
@@ -44,6 +49,8 @@ namespace Engine.Entities
         // Transform last exchanged with the body, used to detect editor/script moves.
         internal Vector3 SyncedPosition;
         internal Matrix SyncedRotation;
+        // The ScenePhysics that owns this entity's body; null without one.
+        internal ScenePhysics PhysicsScene;
         internal int PhysicsFrame;
 
         public override Vector3 Position
@@ -73,9 +80,16 @@ namespace Engine.Entities
             }
         }
 
-        public override int Id {
+        public override int Id
+        {
             get { return _id; }
-            set { _id = value; } }
+            set
+            {
+                _id = value;
+                // The ID/picking pass draws WorldTransform.Id; it must follow persisted scene IDs.
+                if (WorldTransform != null) WorldTransform.Id = value;
+            }
+        }
 
         public Matrix _rotationMatrix;
 
@@ -89,7 +103,11 @@ namespace Engine.Entities
             }
         }
         
-        public override bool IsEnabled { get; set; }
+        // Components (audio, Play-mode lifecycle) and picking skip disabled entities.
+        public override bool IsEnabled { get; set; } = true;
+
+        /// <summary>What this gameobject is for (Inspector > Role); e.g. Water makes it a volume to float in.</summary>
+        public GameObjectRole Role { get; set; } = GameObjectRole.Default;
 
         public override TransformableObject Clone {
             get
@@ -97,8 +115,8 @@ namespace Engine.Entities
                 //Not very clean...
                 return new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
                 {
-                    PhysicsType = PhysicsType,
-                    Mass = Mass,
+                    Components = Components.Select(ComponentRegistry.Copy).ToList(),
+                    Role = Role,
                 };
             }  
         }
@@ -111,6 +129,36 @@ namespace Engine.Entities
         /// every Play-mode frame. Empty in edit mode.
         /// </summary>
         public readonly List<IScript> Scripts = new List<IScript>();
+
+        /// <summary>Script behaviours allow multiple attachments; other types are unique by default.</summary>
+        public List<GameComponent> Components { get; private set; } = new();
+
+        public T GetComponent<T>() where T : GameComponent
+        {
+            for (int i = 0; i < Components.Count; i++)
+                if (Components[i] is T match) return match;
+            return null;
+        }
+
+        public IEnumerable<T> GetComponents<T>() where T : GameComponent => Components.OfType<T>();
+
+        /// <summary>Attach a component, enforcing its registry's multiplicity and unique attachment identity.</summary>
+        public bool AddComponent(GameComponent component)
+        {
+            if (component == null || Components.Any(c => c.InstanceId == component.InstanceId)) return false;
+            if (ComponentRegistry.Find(component.GetType())?.AllowMultiple != true &&
+                Components.Any(c => c.GetType() == component.GetType())) return false;
+            Components.Add(component);
+            component.OnAdded(this);
+            return true;
+        }
+
+        public bool RemoveComponent(GameComponent component)
+        {
+            if (component == null || !Components.Remove(component)) return false;
+            component.OnRemoved(this);
+            return true;
+        }
 
 
         public readonly TransformMatrix WorldTransform;
@@ -166,12 +214,40 @@ namespace Engine.Entities
 
         public void RegisterInLibrary(MeshMaterialLibrary library)
         {
-            library.Register(Material, Model, WorldTransform);
+            _materialLibrary = library;
+            var component = Components.OfType<MaterialComponent>().FirstOrDefault(c => c.Enabled);
+            if (component == null)
+            {
+                library.Register(Material, Model, WorldTransform);
+                return;
+            }
+            if (Model == null) return;
+            foreach (var mesh in Model.Meshes)
+                foreach (var part in mesh.MeshParts)
+                {
+                    var source = Material ?? part.Effect as MaterialEffect;
+                    var instance = source != null ? source.Clone() : new MaterialEffect(part.Effect);
+                    component.ApplyTo(instance);
+                    _materialInstances.Add(instance);
+                    library.Register(instance, part, WorldTransform, mesh.BoundingSphere);
+                }
+        }
+
+        public void RefreshMaterials()
+        {
+            if (_materialLibrary == null) return;
+            var library = _materialLibrary;
+            Dispose(library);
+            RegisterInLibrary(library);
+            WorldTransform.HasChanged = true;
         }
 
         public void Dispose(MeshMaterialLibrary library)
         {
             library.DeleteFromRegistry(this);
+            foreach (var instance in _materialInstances) instance.Dispose();
+            _materialInstances.Clear();
+            _materialLibrary = null;
         }
 
         public void ApplyTransformation()
@@ -193,7 +269,8 @@ namespace Engine.Entities
         public Matrix InverseWorld;
         public bool Rendered = true;
         public bool HasChanged = true;
-        public readonly int Id;
+        // Kept equal to the owning entity's Id (BasicEntity.Id setter).
+        public int Id { get; internal set; }
 
         public Vector3 Scale;
 

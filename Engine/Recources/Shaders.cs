@@ -59,6 +59,8 @@ namespace Engine.Recources
         public static readonly EffectParameter PostProcessingParameter_SCurveStrength = PostProcessing.Parameters["SCurveStrength"];
         public static readonly EffectParameter PostProcessingParameter_WhitePoint = PostProcessing.Parameters["WhitePoint"];
         public static readonly EffectParameter PostProcessingParameter_PowExposure = PostProcessing.Parameters["PowExposure"];
+        public static readonly EffectParameter PostProcessingParameter_AutoExposureTexture = PostProcessing.Parameters["AutoExposureTexture"];
+        public static readonly EffectParameter PostProcessingParameter_AutoExposureEnabled = PostProcessing.Parameters["AutoExposureEnabled"];
         public static readonly EffectTechnique PostProcessingTechnique_VignetteChroma = PostProcessing.Techniques["VignetteChroma"];
         public static readonly EffectTechnique PostProcessingTechnique_Base = PostProcessing.Techniques["Base"];
 
@@ -207,6 +209,7 @@ namespace Engine.Recources
         public static readonly EffectParameter deferredDirectionalLightParameter_LightDirection = deferredDirectionalLight.Parameters["LightVector"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowFiltering = deferredDirectionalLight.Parameters["ShadowFiltering"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowMapSize = deferredDirectionalLight.Parameters["ShadowMapSize"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_ShadowSize = deferredDirectionalLight.Parameters["ShadowSize"];
 
         public static readonly EffectParameter deferredDirectionalLightParameter_AlbedoMap = deferredDirectionalLight.Parameters["AlbedoMap"];
         public static readonly EffectParameter deferredDirectionalLightParameter_NormalMap = deferredDirectionalLight.Parameters["NormalMap"];

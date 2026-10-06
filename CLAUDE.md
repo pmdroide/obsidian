@@ -39,9 +39,14 @@ Notes:
 - `Engine/Logic/ScreenManager.cs` - central coordinator for load/init/update/draw across renderer, scene logic, GUI, editor logic, debug screen, intro video, and Vista UI.
 - `Engine/Logic/MainSceneLogic.cs` - owns the live scene lists: entities, decals, lights, debug entities, camera, environment sample, and editor-side add/delete helpers.
 - `Engine/Logic/EditorLogic.cs` - in-engine editor mode, selection, gizmos, delete/copy behavior.
+- `Engine/Logic/GameFlow.cs` - script API for the scene list: queued `LoadScene(index/name)`, `Quit`, `EscapeQuits`, `PlayStopped`.
+- `Engine/Logic/GameInput.cs` - script input merging keyboard (native + Anvil-forwarded), mouse and gamepads; menu navigation with key repeat.
+- `Engine/Logic/GameUI.cs` - Vista layers opened by scripts (menus/HUDs), scaled from a 1080p canvas, hot-reloaded from source Content.
+- `Engine/Recources/SceneList.cs` - build order of scenes (`Content/System/SceneList.json`); index 0 boots the standalone game.
 - `Engine/Renderer/Renderer.cs` - main render pipeline and render target ownership.
 - `Engine/Renderer/RenderModules/` - individual rendering modules: G-buffer, deferred lighting, froxels, shadows, TAA, bloom, decals, SDFs, forward pass, editor outlines.
 - `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type.
+- `Engine/Components/` - gameobject components (`GameComponent`, `ComponentRegistry`, Material, Physics, Audio). See "Adding a Gameobject Component".
 - `Engine/Recources/` - asset, shader, settings, stats, materials, model wrappers. Keep the existing `Recources` spelling.
 - `Engine/Content/Content.mgcb` - MonoGame content manifest.
 - `Engine/Content/` - models, textures, shaders, fonts, video, Sponza assets, UI XML/CSS.
@@ -53,7 +58,8 @@ Notes:
 - `Editor/Anvil/Models/SceneObjectViewModel.cs` - inspector/hierarchy models; property setters enqueue engine mutations.
 - `Editor/Anvil/Services/BridgeReconciler.cs` - reconciles engine snapshots into stable Avalonia view models.
 - `Vista/UI/UIManager.cs` - loads XML/CSS, builds UI tree, updates layout, draws via SpriteBatch.
-- `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic.
+- `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic (absolute layout, gradients, borders, text, transitions, hit testing).
+- `Docs/markdown/Scenes_and_Game_Flow.md`, `Docs/markdown/VistaUI_Architecture.md` - scene list/GameFlow/GameInput/GameUI and the supported Vista CSS.
 
 ## Runtime Flow
 
@@ -63,8 +69,9 @@ Standalone engine:
 2. `Engine.Engine` sets content root to `Content`, creates `EditorBridge`, `ScreenManager`, graphics, and BEPU physics.
 3. `ScreenManager.Load()` loads `Globals.content`, `Shaders`, `ShaderManager`, `Assets`, renderer modules, scene/debug/gui/video content, and Vista UI.
 4. `ScreenManager.Initialize()` initializes renderer, scene, GUI, editor logic, debug UI, and binds the bridge to scene/editor/assets.
-5. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene, renderer SDFs, debug screen, Vista UI, then drains bridge operations and publishes snapshots.
-6. `ScreenManager.Draw()` draws intro video or the main renderer, legacy GUI, debug overlay, and Vista UI.
+5. When the intro video ends, `MainSceneLogic.StartFirstScene()` loads scene list entry 0 (`Content/System/SceneList.json`, the MainMenu sample) and starts Play. Anvil skips this.
+6. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene (queued `GameFlow` scene loads apply first, then `Input`/`GameInput`, then scripts), renderer SDFs, debug screen, `GameUI` layers, Vista debug UI, then drains bridge operations and publishes snapshots.
+7. `ScreenManager.Draw()` draws intro video or the main renderer, `GameUI` layers, legacy GUI, debug overlay, and Vista UI.
 
 Anvil editor:
 
@@ -118,14 +125,51 @@ Important types:
 
 ## Common Change Recipes
 
-- Change startup/demo scene: edit `MainSceneLogic.SetUpEditorScene(...)`.
+- Change the startup scene or build order: Anvil > Game Settings > Scenes, or `Engine/Content/System/SceneList.json` (index 0 boots the standalone game). Scripts switch scenes with `GameFlow.LoadScene(...)`; in Anvil, Stop returns to the edited scene.
+- Add a game menu or HUD: a Vista document in `Engine/Content/UI/<Name>.xml` + `.css`, opened with `GameUI.Open("UI/<Name>")` from a script behaviour (reference: `Engine/Content/Scripts/MainMenuScript.cs`). The document is parsed as HTML (always close `div`s); layout is absolute.
 - Add an engine asset: update `Content.mgcb`, then add a load/register field in `Assets.cs`.
+- Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
+- Add a gameobject role: append a value to `Engine/Entities/GameObjectRole.cs` (saved by name, so never rename one) and handle it where it matters; `ScenePhysics`/`WaterVolume` handle `Water`.
+- Change water waves: the swell lives in both `Engine/Content/Shaders/Forward/Water.fx` (`Swell`) and `Engine/Physics/WaterWaves.cs` (buoyancy); keep them identical.
 - Add an editor-backed scene property: extend snapshot/mutation structs in `IEditorBridge.cs`, populate it in `EditorBridge.BuildSnapshot()`, reconcile it in `BridgeReconciler`, and expose it through `SceneObjectViewModel`/XAML.
 - Add an Anvil command: add command in `MainWindowViewModel`, bind it from `MainWindow.axaml`, and route engine work through `IEditorBridge`.
 - Fix Anvil selection/focus problems: inspect `BridgeReconciler`, `SceneObjectViewModel.SuppressPush`, `MainWindowViewModel.ReconcilerActive`, and `EditorBridge.PublishEveryNFrames`.
 - Change embedded viewport behavior: inspect `MonoGameHost.cs`, especially HWND reparenting, resize debounce, and `RunOneFrame()` loop.
 - Change in-engine editor gizmos/selection: inspect `EditorLogic.cs`, `EditorRender`, and ID/outline render modules.
 - Change Vista overlay UI: edit `Engine/Content/UI/debug.xml`, `Engine/Content/UI/debug.css`, and `ScreenManager.UpdateVistaUI(...)`.
+
+## Adding a Gameobject Component
+
+Components live on `BasicEntity.Components` (at most one per type by default; Script Behaviour allows multiple), show in Anvil's Inspector component list and **Add Component** menu, and save inside the scene's `Components` records. Each attachment has an `InstanceId` persisted in its record; cloning assigns fresh IDs. The bridge and reconciler use these IDs to edit/remove individual attachments. The bridge, snapshots, cloning and scene format are generic, so a new component needs only these steps:
+
+The scene's main camera also holds components (`Camera.Components`, bridge id `EditorBridge.MainCameraId` = -1), but only types allowed by `Camera.SupportsComponent` (Script Behaviour). Their hooks get a `null` owner; `ScriptBehaviourComponent.HostCamera` points at the camera.
+
+1. **Engine type** - add `Engine/Components/<Name>Component.cs`:
+   ```csharp
+   public sealed class FooComponent : GameComponent
+   {
+       public const string TypeId = "foo";        // saved in scene files: never rename
+       public float Speed { get; set; } = 1f;     // public get/set = persisted + sent to the editor
+       [JsonIgnore] public bool IsRunning { get; private set; } // runtime-only state
+       public override void OnStart(BasicEntity owner) { }                 // Play pressed
+       public override void OnUpdate(BasicEntity owner, GameTime time) { } // each Play frame
+       public override void OnChanged(BasicEntity owner) { }  // after an inspector edit
+       public override void OnRemoved(BasicEntity owner) { }  // after removal (default: OnStop)
+       public override void OnStop() { }                      // Play stopped / disabled
+   }
+   ```
+   Hooks run on the game thread. Respect `Enabled` (the inspector's Enabled checkbox). Persisted properties must round-trip through `System.Text.Json`; add `[JsonConverter(typeof(JsonStringEnumConverter))]` to enums.
+2. **Register it** in the static constructor of `Engine/Components/ComponentRegistry.cs`: `Register<FooComponent>(FooComponent.TypeId, "Foo");`. Registration order is the Add Component menu order. Pass `allowMultiple: true` for repeatable components. Pass a factory (`owner => ...`) when defaults depend on the gameobject; Material uses `MaterialComponent.FromOwner`. Do not add per-component special cases to `EditorBridge`.
+3. **Editor view model** - add `Editor/Anvil/Models/FooComponentViewModel.cs` deriving `ComponentViewModel` (copy `PhysicsComponentViewModel`):
+   - one `[ObservableProperty]` per field, and `partial void OnSpeedChanged(double v) => Push(c => ((FooComponent)c).Speed = (float)v);`. `Push` routes through the bridge to this view model's own gameobject and does nothing during reconciliation.
+   - override `Apply(GameComponent component, bool freezeFields)`: call `base.Apply`, return if `freezeFields`, then copy each field from the engine component.
+   - ignore transient values from controls (for example a ComboBox `SelectedIndex` of `-1`).
+4. **Register the editor** in `ComponentEditorRegistry` (`Editor/Anvil/Models/ComponentViewModel.cs`): `Register(FooComponent.TypeId, owner => new FooComponentViewModel(owner));`. Components without an editor are not offered in Add Component.
+5. **Inspector template** - add `<DataTemplate DataType="m:FooComponentViewModel" x:DataType="m:FooComponentViewModel">` to the Components `ItemsControl.DataTemplates` in `Editor/Anvil/Views/MainWindow.axaml`. Include the `Enabled` checkbox and a `Remove Component` button bound to `RemoveCommand`. Bind only to the template's own view model, never to `SelectedObject...`. A `Flyout` must use `Opening="OwnedFlyout_Opening"` so it stays attached to its component.
+6. **Engine use** - read the first with `entity.GetComponent<FooComponent>()`, or all attachments with `entity.GetComponents<FooComponent>()`. Add or remove from code with `entity.AddComponent(...)` / `entity.RemoveComponent(...)`, not `Components.Add`, so hooks run and registry multiplicity is enforced.
+7. **Checks** - extend `Tests/Components/Program.cs` (add via bridge, inspector edit reaches the engine, clone independence, save/load), then run `dotnet run --project Tests\Components\Components.csproj`.
+
+Physics is the reference for a component that another system reads: `ScenePhysics` rebuilds BEPU bodies each update from `BasicEntity.PhysicsType` / `Mass`, which come from `PhysicsComponent`. Older scenes with an entity-level `Physics` record are converted to the component on load.
 
 ## Project-Specific Rules
 
@@ -140,12 +184,45 @@ Important types:
 
 ## Testing Status
 
-No test project is present. For code changes, use targeted builds/runs:
+`Tests/Components` is a framework-free integration check app (not in `Engine.slnx`) covering components, the editor bridge/reconciler, environment, Steam and input. Add `--graphics` for GPU material checks. Otherwise use targeted builds/runs:
 
 ```powershell
 dotnet build Engine.slnx /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
+dotnet run --project Tests\Components\Components.csproj
 dotnet run --project Engine\Engine.csproj
 dotnet run --project Editor\Anvil\Anvil.csproj
 ```
+
+# Blender
+
+Blender is available through the Blender MCP server.
+
+When performing Blender work:
+
+1. Inspect the current scene before making changes.
+2. Use Blender MCP instead of generating scripts for me to manually run.
+3. Do not delete or modify unrelated objects.
+4. Make changes incrementally.
+5. Inspect the result after major changes.
+6. Use viewport screenshots when useful.
+7. Preserve existing object names unless renaming is necessary.
+8. Save the Blender file only when explicitly requested.
+
+# Game Assets
+
+Assets are intended for Unity.
+
+For game-ready meshes:
+
+- Keep topology reasonably efficient.
+- Apply transforms before export.
+- Check normals.
+- Check for non-manifold geometry.
+- UV unwrap meshes when appropriate.
+- Use sensible real-world scale.
+- Set sensible object origins.
+- Avoid unnecessary modifiers before export.
+
 ## In the end of the session
 Write what was changed, added or/and removed in the `CHANGELOG.md`.
+Also sign who did it in the changelog, for example: "- Claude", "- Codex" at the end of the text.

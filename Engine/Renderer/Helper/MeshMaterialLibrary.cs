@@ -113,6 +113,7 @@ namespace Engine.Renderer.Helper
                 MaterialLib[Index] = new MaterialLibrary();
                 MaterialLib[Index].SetMaterial(ref mat);
                 MaterialLib[Index].Register(mesh, worldMatrix, boundingSphere);
+                MaterialLibPointer[Index] = Index;
                 Index++;
             }
 
@@ -161,7 +162,7 @@ namespace Engine.Renderer.Helper
         public void Clear()
         {
             for (int i = 0; i < MaterialLib.Length; i++) MaterialLib[i] = null;
-            for (int i = 0; i < MaterialLibPointer.Length; i++) MaterialLibPointer[i] = 0;
+            for (int i = 0; i < MaterialLibPointer.Length; i++) MaterialLibPointer[i] = i;
             Index = 0;
         }
 
@@ -197,6 +198,8 @@ namespace Engine.Renderer.Helper
 
                         }
                         Index--;
+                        MaterialLib[Index] = null;
+                        for (int j = 0; j < Index; j++) MaterialLibPointer[j] = j;
 
                         break;
                     }
@@ -351,6 +354,7 @@ namespace Engine.Renderer.Helper
             IdOutline,
             SubsurfaceScattering,
             Forward,
+            Water,
         }
 
         public void Draw(RenderType renderType, Matrix viewProjection, bool lightViewPointChanged = false, bool hasAnyObjectMoved = false, bool outlined = false, int outlineId = 0, Matrix? view = null, IRenderModule renderModule = null)
@@ -364,7 +368,10 @@ namespace Engine.Renderer.Helper
                     return;
             }
             
-            for (int index1 = 0; index1 < Index; index1++)
+            var drawOrder = Enumerable.Range(0, Index);
+            if (renderType == RenderType.Water)
+                drawOrder = drawOrder.OrderByDescending(i => MaterialLib[i].DistanceSquared);
+            foreach (int index1 in drawOrder)
             {
                 MaterialLibrary matLib = MaterialLib[index1];
 
@@ -399,6 +406,10 @@ namespace Engine.Renderer.Helper
 
                 MaterialEffect material = matLib.GetMaterial();
 
+                if (renderType == RenderType.Water && material.Type != MaterialEffect.MaterialTypes.Water) continue;
+                if (renderType != RenderType.Water && renderType != RenderType.IdRender &&
+                    renderType != RenderType.IdOutline && material.Type == MaterialEffect.MaterialTypes.Water) continue;
+
                 //Check if alpha or opaque!
                 if (renderType == RenderType.Opaque && material.IsTransparent || renderType == RenderType.Opaque && material.Type == MaterialEffect.MaterialTypes.ForwardShaded) continue;
                 if(renderType == RenderType.Hologram && material.Type != MaterialEffect.MaterialTypes.Hologram)
@@ -429,12 +440,23 @@ namespace Engine.Renderer.Helper
                     MeshLibrary meshLib = matLib.GetMeshLibrary()[i];
 
                     //Initialize the mesh VB and IB
-                    graphicsDevice.SetVertexBuffer(meshLib.GetMesh().VertexBuffer);
-                    graphicsDevice.Indices = (meshLib.GetMesh().IndexBuffer);
                     int primitiveCount = meshLib.GetMesh().PrimitiveCount;
                     int vertexOffset = meshLib.GetMesh().VertexOffset;
                     //int vCount = meshLib.GetMesh().NumVertices;
                     int startIndex = meshLib.GetMesh().StartIndex;
+                    // Water draws a subdivided copy of the mesh so the waves can move its vertices.
+                    if (renderType == RenderType.Water && renderModule is WaterRenderModule water &&
+                        water.BindMesh(graphicsDevice, meshLib.GetMesh(), out primitiveCount))
+                    {
+                        vertexOffset = 0;
+                        startIndex = 0;
+                    }
+                    else
+                    {
+                        graphicsDevice.SetVertexBuffer(meshLib.GetMesh().VertexBuffer);
+                        graphicsDevice.Indices = (meshLib.GetMesh().IndexBuffer);
+                        primitiveCount = meshLib.GetMesh().PrimitiveCount;
+                    }
 
                     //Now draw the local meshes!
                     for (int index = 0; index < meshLib.Index; index++)
@@ -456,7 +478,7 @@ namespace Engine.Renderer.Helper
                 }
 
                 //Reset to 
-                if (material.RenderCClockwise)
+                if (material.RenderCClockwise && renderType != RenderType.Water)
                     graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
             }
         }
@@ -519,6 +541,13 @@ namespace Engine.Renderer.Helper
 
         private void SetBlendAndRasterizerState(RenderType renderType)
         {
+            if (renderType == RenderType.Water)
+            {
+                graphicsDevice.BlendState = BlendState.NonPremultiplied;
+                graphicsDevice.DepthStencilState = DepthStencilState.DepthRead;
+                graphicsDevice.RasterizerState = RasterizerState.CullNone;
+                return;
+            }
             //Default, Opaque!
             if (renderType != RenderType.Forward)
             {
@@ -548,7 +577,8 @@ namespace Engine.Renderer.Helper
                 || renderType == RenderType.ShadowLinear 
                 || renderType == RenderType.ShadowOmnidirectional 
                 || renderType == RenderType.SubsurfaceScattering 
-                || renderType == RenderType.Forward)
+                || renderType == RenderType.Forward
+                || renderType == RenderType.Water)
             {
                 renderModule.Apply(localWorldMatrix, view, viewProjection);
             }
@@ -601,11 +631,16 @@ namespace Engine.Renderer.Helper
 
         private void PerMaterialSettings(RenderType renderType, MaterialEffect material, IRenderModule renderModule)
         {
+            if (renderType == RenderType.Water)
+            {
+                ((WaterRenderModule)renderModule).SetMaterialSettings(material);
+                return;
+            }
             if (material.RenderCClockwise)
             {
                 graphicsDevice.RasterizerState = RasterizerState.CullClockwise;
             }
-            else if (renderType == RenderType.ShadowOmnidirectional)
+            if (renderType == RenderType.ShadowOmnidirectional)
             {
                 ((ShadowMapRenderModule)renderModule).SetMaterialSettings(material, renderType);
             }

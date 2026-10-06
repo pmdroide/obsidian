@@ -198,7 +198,8 @@ namespace Engine.Renderer.RenderModules
         {
             if (!light.IsEnabled) return;
 
-            if (_viewProjectionHasChanged)
+            //Unshadowed lights keep HasChanged set, so a moving light (day/night sun) updates under a still camera
+            if (_viewProjectionHasChanged || light.HasChanged)
             {
                 light.DirectionViewSpace = Vector3.Transform(light.Direction, _viewIT);
                 light.LightViewProjection_ViewSpace = _inverseView * light.LightViewProjection;

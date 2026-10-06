@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Engine.Entities;
+using Engine.Components;
+using GameComponent = Engine.Components.GameComponent;
 using Engine.Logic;
-using Engine.Physics;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -20,6 +21,21 @@ namespace Engine.Editor
     public sealed class EditorBridge : IEditorBridge
     {
         private readonly ConcurrentQueue<Action> _pendingOps = new ConcurrentQueue<Action>();
+        private global::Engine.InputDevices.InputDeviceMonitor _inputDevices;
+        public global::Engine.InputDevices.InputDeviceSnapshot InputDevices => _inputDevices?.Snapshot ??
+            global::Engine.InputDevices.InputDeviceSnapshot.Waiting;
+        internal void BindInputDevices(global::Engine.InputDevices.InputDeviceMonitor inputDevices) => _inputDevices = inputDevices;
+        private Steam.SteamService _steam;
+        public Steam.SteamConnectionStatus SteamStatus => _steam?.Status ??
+            Steam.SteamConnectionStatus.Disconnected("Waiting for the engine Steam service.");
+        internal void BindSteam(Steam.SteamService steam) => _steam = steam;
+        public void EnqueueSteamConnect() => _pendingOps.Enqueue(() => _steam?.Connect());
+        public void EnqueueSteamDisconnect() => _pendingOps.Enqueue(() => _steam?.Disconnect());
+        public void EnqueueSteamSettings(bool enabled, uint appId, Action onCompleted) => _pendingOps.Enqueue(() =>
+        {
+            try { _steam?.Configure(enabled, appId); }
+            finally { onCompleted?.Invoke(); }
+        });
         private IReadOnlyList<EditorObjectSnapshot> _snapshot = Array.Empty<EditorObjectSnapshot>();
         private int? _selectedId;
         private Vector3 _spawnPoint;
@@ -97,6 +113,9 @@ namespace Engine.Editor
         // host flips it false when the pointer leaves the viewport so the engine
         // ignores Win32's globally-visible mouse state during that interval.
         private volatile bool _hostPointerOverViewport = true;
+        private volatile bool _hostDragDropActive;
+        public bool IsHostDragDropActive => _hostDragDropActive;
+        public void SetHostDragDropActive(bool active) => _hostDragDropActive = active;
         public bool IsHostPointerOverViewport => _hostPointerOverViewport;
         public void SetHostPointerOverViewport(bool inside)
         {
@@ -288,6 +307,93 @@ namespace Engine.Editor
                 TransformableObject obj = LookupById(id);
                 if (obj == null) return;
                 try { mutate(obj); } catch { /* swallow per-op errors */ }
+            });
+        }
+
+        public void EnqueueAddComponent(int entityId, string componentType)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var definition = ComponentRegistry.Find(componentType);
+                if (definition == null) return;
+                if (entityId == MainCameraId)
+                {
+                    var camera = _scene.ActiveScene?.MainCamera;
+                    if (camera == null || !Camera.SupportsComponent(componentType)) return;
+                    var component = definition.Create();
+                    // The usual default (Spin Example) would spin the view; a camera wants Freecam.
+                    if (component is ScriptBehaviourComponent script) script.ScriptId = Scripting.FreecamScript.ScriptId;
+                    if (camera.AddComponent(component)) _scene.ActiveScene.IsDirty = true;
+                    return;
+                }
+                var entity = LookupEntityById(entityId);
+                if (entity == null) return;
+                if (entity.AddComponent(definition.Create(entity))) _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        // Entity ids are positive; the Main Camera's hierarchy entry uses this id.
+        public const int MainCameraId = -1;
+
+        private List<GameComponent> ComponentsOf(int entityId) =>
+            entityId == MainCameraId ? _scene.ActiveScene?.MainCamera?.Components : LookupEntityById(entityId)?.Components;
+
+        private GameComponent FindComponent(int entityId, string componentType, Guid? instanceId = null)
+        {
+            var type = ComponentRegistry.Find(componentType)?.ComponentType;
+            return ComponentsOf(entityId)?.FirstOrDefault(c => c.GetType() == type &&
+                (!instanceId.HasValue || c.InstanceId == instanceId.Value));
+        }
+
+        public void EnqueueRemoveComponent(int entityId, string componentType, Guid? instanceId = null)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var component = FindComponent(entityId, componentType, instanceId);
+                if (component == null) return;
+                bool removed = entityId == MainCameraId
+                    ? _scene.ActiveScene.MainCamera.RemoveComponent(component)
+                    : LookupEntityById(entityId).RemoveComponent(component);
+                if (removed) _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        public void EnqueueSetRole(int entityId, GameObjectRole role)
+        {
+            if (!Enum.IsDefined(role)) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = LookupEntityById(entityId);
+                if (entity == null || entity.Role == role) return;
+                entity.Role = role;
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        public void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var component = FindComponent(entityId, componentType, instanceId);
+                if (component == null) return;
+                mutate(component);
+                // Camera-hosted components get a null owner (see ScriptBehaviourComponent.HostCamera).
+                component.OnChanged(LookupEntityById(entityId));
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
+        public void EnqueueSetAudioEnabled(bool enabled) =>
+            _pendingOps.Enqueue(() => Audio.IsMuted = !enabled);
+
+        public void EnqueuePlayAudio(int entityId, bool play)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (FindComponent(entityId, AudioComponent.TypeId) is not AudioComponent audio) return;
+                if (play) audio.Play(LookupEntityById(entityId));
+                else audio.OnStop();
             });
         }
 
@@ -528,6 +634,68 @@ namespace Engine.Editor
         public LightingSettings GetLightingSettings() =>
             _scene?.ActiveScene?.Lighting?.Clone() ?? new LightingSettings();
 
+        public EnvironmentSettings GetEnvironmentSettings() =>
+            _scene?.ActiveScene?.Environment?.Clone() ?? new EnvironmentSettings();
+
+        public void EnqueueMutateEnvironment(Action<EnvironmentSettings> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var active = _scene?.ActiveScene;
+                if (active == null) return;
+                var settings = active.Environment.Clone();
+                mutate(settings);
+                settings.Normalize();
+                active.Environment = settings;
+                active.IsDirty = true;
+                if (active.EnvironmentSample != null) active.EnvironmentSample.NeedsUpdate = true;
+            });
+        }
+
+        public void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted)
+        {
+            var requestedScene = _scene?.ActiveScene;
+            _pendingOps.Enqueue(() =>
+            {
+                string error = null;
+                try
+                {
+                    if (requestedScene == null || requestedScene != _scene?.ActiveScene)
+                        throw new InvalidOperationException("The scene changed. Select the skybox again.");
+                    string extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+                    if (extension != ".png" && extension != ".jpg" && extension != ".jpeg")
+                        throw new InvalidDataException("Select a PNG or JPEG panorama.");
+                    var service = (Microsoft.Xna.Framework.Graphics.IGraphicsDeviceService)
+                        Globals.content.ServiceProvider.GetService(typeof(Microsoft.Xna.Framework.Graphics.IGraphicsDeviceService));
+                    using (var stream = File.OpenRead(sourcePath))
+                    using (var image = Microsoft.Xna.Framework.Graphics.Texture2D.FromStream(service.GraphicsDevice, stream))
+                    {
+                        if (image.Width < 2 || image.Height < 2)
+                            throw new InvalidDataException("The skybox image is too small.");
+                    }
+                    string relative = "Environment/Skyboxes/" + Guid.NewGuid().ToString("N") + "/" + Path.GetFileName(sourcePath);
+                    string destination = Path.Combine(ContentSourceRoot, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination));
+                    File.Copy(sourcePath, destination);
+                    string runtimePath = Path.GetFullPath(Path.Combine(Globals.content.RootDirectory, relative));
+                    if (!string.Equals(runtimePath, Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(runtimePath));
+                        File.Copy(destination, runtimePath);
+                    }
+                    var settings = requestedScene.Environment.Clone();
+                    settings.SkyboxPath = relative;
+                    settings.DayNightCycle = false;
+                    requestedScene.Environment = settings;
+                    requestedScene.IsDirty = true;
+                    if (requestedScene.EnvironmentSample != null) requestedScene.EnvironmentSample.NeedsUpdate = true;
+                }
+                catch (Exception ex) { error = ex.Message; Log("Import skybox: " + ex); }
+                onCompleted?.Invoke(error);
+            });
+        }
+
         public void EnqueueMutateLighting(Action<LightingSettings> mutate)
         {
             if (mutate == null) return;
@@ -710,7 +878,7 @@ namespace Engine.Editor
             if (_scene.Camera != null)
             {
                 list.Add(new EditorObjectSnapshot(
-                    id: -1,
+                    id: MainCameraId,
                     name: "Main Camera",
                     kind: EditorObjectKind.Camera,
                     position: _scene.Camera.Position,
@@ -718,7 +886,8 @@ namespace Engine.Editor
                     scale: Vector3.One,
                     isEnabled: true,
                     light: null,
-                    material: null));
+                    material: null,
+                    components: _scene.ActiveScene?.MainCamera?.Components.Select(ComponentRegistry.Capture).ToArray()));
             }
 
             for (int i = 0; i < _scene.BasicEntities.Count; i++)
@@ -745,7 +914,8 @@ namespace Engine.Editor
                     isEnabled: be.IsEnabled,
                     light: null,
                     material: matSnap,
-                    physics: new PhysicsSnapshot(be.PhysicsType, be.Mass)));
+                    components: be.Components.Select(ComponentRegistry.Capture).ToArray(),
+                    role: be.Role));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)

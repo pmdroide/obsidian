@@ -27,6 +27,7 @@ namespace Engine.Renderer
 {
     public class Renderer : IDisposable
     {
+        private readonly EnvironmentSky _environmentSky = new EnvironmentSky();
         #region VARIABLES
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  VARIABLES
@@ -54,11 +55,13 @@ namespace Engine.Renderer
         private DecalRenderModule _decalRenderModule;
         private SubsurfaceScatterRenderModule _subsurfaceScatterRenderModule;
         private ForwardRenderModule _forwardRenderModule;
+        private WaterRenderModule _waterRenderModule;
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
         private BloomFilter _bloomFilter;
         private ColorGradingFilter _colorGradingFilter;
+        private AutoExposureFilter _autoExposureFilter;
 
         //Assets
         private Assets _assets;
@@ -208,6 +211,7 @@ namespace Engine.Renderer
             _decalRenderModule = new DecalRenderModule(shaderManager, "Shaders/Deferred/DeferredDecal");
             _subsurfaceScatterRenderModule = new SubsurfaceScatterRenderModule(content, "Shaders/SubsurfaceScattering/SubsurfaceScattering");
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
+            _waterRenderModule = new WaterRenderModule(content);
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
             _froxelRenderModule = new FroxelRenderModule(shaderManager, "Shaders/Deferred/Froxel");
@@ -215,6 +219,7 @@ namespace Engine.Renderer
             _inverseResolution = new Vector3(1.0f / GameSettings.g_screenwidth, 1.0f / GameSettings.g_screenheight, 0);
             
             _colorGradingFilter = new ColorGradingFilter(content, "Shaders/PostProcessing/ColorGrading");
+            _autoExposureFilter = new AutoExposureFilter(content, "Shaders/PostProcessing/AutoExposure");
 
             _lut = content.Load<Texture2D>("Shaders/PostProcessing/lut");
         }
@@ -242,6 +247,7 @@ namespace Engine.Renderer
             _bloomFilter.Initialize(_graphicsDevice, GameSettings.g_screenwidth, GameSettings.g_screenheight, _fullScreenTriangle);
 
             _colorGradingFilter.Initialize(graphicsDevice);
+            _autoExposureFilter.Initialize(graphicsDevice, _fullScreenTriangle);
 
             _lightAccumulationModule.Initialize(graphicsDevice, _fullScreenTriangle, assets);
 
@@ -317,8 +323,15 @@ namespace Engine.Renderer
         /// <param name="lighting">Baked lighting (probe volume GPU data); optional</param>
         /// <param name="lightingSettings">The active scene's lighting settings; optional</param>
         /// <returns></returns>
-        public EditorLogic.EditorReceivedData Draw(Camera camera, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities, EditorLogic.EditorSendData editorData, GameTime gameTime, LightingSystem lighting = null, LightingSettings lightingSettings = null)
+        public EditorLogic.EditorReceivedData Draw(Camera camera, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities, EditorLogic.EditorSendData editorData, GameTime gameTime, LightingSystem lighting = null, LightingSettings lightingSettings = null, Scene scene = null)
         {
+            // The day/night cycle swaps in its own sun/moon; editor gizmos keep showing the scene's lights.
+            List<DirectionalLight> sceneDirectionalLights = directionalLights;
+            if (scene != null)
+                directionalLights = _environmentSky.Apply(scene, gameTime, _graphicsDevice, _assets, _deferredEnvironmentMapRenderModule);
+            // Set every frame: GameSettings.Exposure writes the base value whenever it is edited.
+            Shaders.PostProcessingParameter_PowExposure.SetValue(
+                (float)Math.Pow(2, GameSettings.Exposure + (scene != null ? _environmentSky.ExposureOffset : 0)));
             _lighting = lighting;
             _lightingSettings = lightingSettings;
 
@@ -433,12 +446,23 @@ namespace Engine.Renderer
 
                 //Forward
                 _currentOutput = DrawForward(_currentOutput, meshMaterialLibrary, camera, pointLights);
+                // The opaque depth is reconstructed for both forward passes.
+                if (!GameSettings.g_forwardenable)
+                {
+                    _graphicsDevice.SetRenderTarget(_currentOutput);
+                    ReconstructDepth();
+                }
+                _waterRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, _viewProjection,
+                    camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
                 
                 //Compose the image and add information from previous frames to apply temporal super sampling
                 _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
 
                 //Do Bloom
                 _currentOutput = DrawBloom(_currentOutput); // -> output: _renderTargetBloom
+
+                //Eye adaptation: meter the final HDR image here, once per frame (RenderMode runs twice)
+                UpdateAutoExposure(_currentOutput, gameTime);
             }
             finally
             {
@@ -458,7 +482,7 @@ namespace Engine.Renderer
             
             //Draw the elements that we are hovering over with outlines
             if(GameSettings.e_enableeditor && GameStats.e_EnableSelection)
-                _editorRender.DrawIds(meshMaterialLibrary, decals, pointLights, directionalLights, envSample, debugEntities, _staticViewProjection, _view, editorData);
+                _editorRender.DrawIds(meshMaterialLibrary, decals, pointLights, sceneDirectionalLights, envSample, debugEntities, _staticViewProjection, _view, editorData);
 
             //Draw the final rendered image, change the output based on user input to show individual buffers/rendertargets
             RenderMode(_currentOutput);
@@ -468,7 +492,7 @@ namespace Engine.Renderer
             
             //Additional editor elements that overlay our screen
             
-            RenderEditorOverlays(editorData, meshMaterialLibrary, decals, pointLights, directionalLights, envSample, debugEntities);
+            RenderEditorOverlays(editorData, meshMaterialLibrary, decals, pointLights, sceneDirectionalLights, envSample, debugEntities);
             
 
             //Debug ray marching
@@ -1260,7 +1284,7 @@ namespace Engine.Renderer
             bool useProbes = _lighting?.GpuData != null && _lighting.ProbeSHR != null &&
                              _lightingSettings != null && _lightingSettings.ProbeVolumeEnabled;
             _deferredEnvironmentMapRenderModule.SetProbeVolume(useProbes ? _lighting : null,
-                _lightingSettings?.Intensity ?? 1f);
+                (_lightingSettings?.Intensity ?? 1f) * _environmentSky.AmbientScale, envSample.Position);
 
             _deferredEnvironmentMapRenderModule.DrawEnvironmentMap(_graphicsDevice, camera, _view, _fullScreenTriangle, envSample, gameTime, GameSettings.g_SSReflection_FireflyReduction, GameSettings.g_SSReflection_FireflyThreshold);
 
@@ -1420,6 +1444,24 @@ namespace Engine.Renderer
                 //_spriteBatch.End();
                 return input;
             }
+        }
+
+        /// <summary>
+        /// Meter the HDR image and adapt the exposure that the post processing tonemapper applies
+        /// </summary>
+        private void UpdateAutoExposure(RenderTarget2D input, GameTime gameTime)
+        {
+            if (!GameSettings.g_AutoExposure)
+            {
+                // Snap to the current scene instead of fading from a stale value when re-enabled.
+                _autoExposureFilter.Reset();
+                Shaders.PostProcessingParameter_AutoExposureEnabled.SetValue(0f);
+                return;
+            }
+
+            Texture2D exposure = _autoExposureFilter.Draw(_graphicsDevice, input, (float)gameTime.ElapsedGameTime.TotalSeconds);
+            Shaders.PostProcessingParameter_AutoExposureTexture.SetValue(exposure);
+            Shaders.PostProcessingParameter_AutoExposureEnabled.SetValue(1f);
         }
 
         /// <summary>
@@ -1831,18 +1873,23 @@ namespace Engine.Renderer
 
         #endregion
 
+        public void UnloadEnvironment() => _environmentSky.Dispose();
+
         public void Dispose()
         {
+            _environmentSky.Dispose();
             _graphicsDevice?.Dispose();
             _spriteBatch?.Dispose();
             _gaussianBlur?.Dispose();
             _bloomFilter?.Dispose();
+            _autoExposureFilter?.Dispose();
             _lightAccumulationModule?.Dispose();
             _froxelRenderModule?.Dispose();
             _gBufferRenderModule?.Dispose();
             _temporalAntialiasingRenderModule?.Dispose();
             _deferredEnvironmentMapRenderModule?.Dispose();
             _decalRenderModule?.Dispose();
+            _waterRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();

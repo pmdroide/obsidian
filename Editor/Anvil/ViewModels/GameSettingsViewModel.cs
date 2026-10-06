@@ -1,5 +1,7 @@
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Anvil.Services;
 using Avalonia.Controls;
@@ -11,9 +13,33 @@ using Engine.Recources;
 
 namespace Anvil.ViewModels;
 
+/// <summary>One row of Game Settings > Scenes: a Content-relative .obsc in build order.</summary>
+public partial class SceneListEntryViewModel : ObservableObject
+{
+    [ObservableProperty] private int _index;
+    public string Entry { get; }
+    public string Name => SceneList.DisplayName(Entry);
+    public bool Exists { get; }
+    public string IndexLabel => Index.ToString("00");
+    public string Note => !Exists ? "Missing" : Index == 0 ? "Loads first" : "";
+
+    public SceneListEntryViewModel(string entry, int index)
+    {
+        Entry = entry;
+        _index = index;
+        Exists = File.Exists(SceneList.ResolvePath(entry));
+    }
+
+    partial void OnIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IndexLabel));
+        OnPropertyChanged(nameof(Note));
+    }
+}
+
 /// <summary>
 /// Backs the Game Settings dialog: the standalone game's window title, icon, size,
-/// resizability, fullscreen, VSync and FPS cap.
+/// resizability, fullscreen, VSync and FPS cap, and the scene list (build order).
 /// Nothing is written until <see cref="Apply"/> runs (dialog confirmed); the picked image
 /// is only decoded for the preview until then.
 /// </summary>
@@ -49,8 +75,29 @@ public partial class GameSettingsViewModel : ViewModelBase
     private bool _iconCleared;
     private string? _existingIconPath;
 
+    // -------- Scenes (Content/System/SceneList.json) --------
+
+    /// <summary>Scenes in build order. Entry 0 is the one the standalone game loads first.</summary>
+    public ObservableCollection<SceneListEntryViewModel> Scenes { get; } = new();
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSceneCommand), nameof(MoveSceneUpCommand), nameof(MoveSceneDownCommand))]
+    private SceneListEntryViewModel? _selectedScene;
+
+    [ObservableProperty] private string _sceneListMessage = "";
+
+    public bool HasNoScenes => Scenes.Count == 0;
+
     public GameSettingsViewModel()
     {
+        foreach (string entry in SceneList.Read().Scenes)
+            Scenes.Add(new SceneListEntryViewModel(entry, Scenes.Count));
+        Scenes.CollectionChanged += (_, _) =>
+        {
+            for (int i = 0; i < Scenes.Count; i++) Scenes[i].Index = i;
+            OnPropertyChanged(nameof(HasNoScenes));
+        };
+
         GameInfo.Data data = GameInfo.Read();
         WindowTitle = data.WindowTitle ?? "Engine";
         WindowWidth = data.WindowWidth > 0 ? data.WindowWidth : 1280;
@@ -104,6 +151,64 @@ public partial class GameSettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task AddScenesAsync(Window? window)
+    {
+        if (window?.StorageProvider is not { } sp) return;
+        IStorageFolder? start = null;
+        try { start = await sp.TryGetFolderFromPathAsync(new Uri(Path.Combine(GameInfo.SourceContentRoot, "Scenes"))); }
+        catch { /* no Scenes folder yet */ }
+        var files = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Add Scenes",
+            AllowMultiple = true,
+            SuggestedStartLocation = start,
+            FileTypeFilter = new[] { new FilePickerFileType("Obsidian Scene") { Patterns = new[] { "*.obsc" } } },
+        });
+
+        var outside = new System.Collections.Generic.List<string>();
+        foreach (var file in files)
+        {
+            string? entry = SceneList.ToEntry(file.Path.LocalPath);
+            if (entry == null) { outside.Add(Path.GetFileName(file.Path.LocalPath)); continue; }
+            if (Scenes.Any(s => string.Equals(s.Entry, entry, StringComparison.OrdinalIgnoreCase))) continue;
+            Scenes.Add(new SceneListEntryViewModel(entry, Scenes.Count));
+            SelectedScene = Scenes[^1];
+        }
+        SceneListMessage = outside.Count == 0 ? ""
+            : $"Not added (outside Engine/Content): {string.Join(", ", outside)}. Save scenes under Content/Scenes.";
+    }
+
+    private bool HasSelectedScene => SelectedScene != null;
+
+    [RelayCommand(CanExecute = nameof(HasSelectedScene))]
+    private void RemoveScene()
+    {
+        if (SelectedScene is not { } scene) return;
+        int index = Scenes.IndexOf(scene);
+        Scenes.Remove(scene);
+        SelectedScene = Scenes.Count == 0 ? null : Scenes[Math.Min(index, Scenes.Count - 1)];
+    }
+
+    private bool CanMoveSceneUp => SelectedScene != null && Scenes.IndexOf(SelectedScene) > 0;
+    private bool CanMoveSceneDown => SelectedScene != null && Scenes.IndexOf(SelectedScene) < Scenes.Count - 1;
+
+    [RelayCommand(CanExecute = nameof(CanMoveSceneUp))]
+    private void MoveSceneUp() => MoveSelectedScene(-1);
+
+    [RelayCommand(CanExecute = nameof(CanMoveSceneDown))]
+    private void MoveSceneDown() => MoveSelectedScene(1);
+
+    private void MoveSelectedScene(int delta)
+    {
+        if (SelectedScene is not { } scene) return;
+        int index = Scenes.IndexOf(scene);
+        Scenes.Move(index, index + delta);
+        SelectedScene = scene;
+        MoveSceneUpCommand.NotifyCanExecuteChanged();
+        MoveSceneDownCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
     private void ClearIcon()
     {
         _pendingIcon = null;
@@ -113,8 +218,9 @@ public partial class GameSettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Writes GameInfo.json (and the converted .ico when a new image was picked) into
-    /// Engine/Content. Returns the saved title. Must run on the UI thread.
+    /// Writes GameInfo.json (and the converted .ico when a new image was picked) and
+    /// SceneList.json into Engine/Content. Returns the saved title. Must run on the UI thread.
+    /// The running engine picks up the new scene list immediately (same process).
     /// </summary>
     public string Apply()
     {
@@ -139,6 +245,7 @@ public partial class GameSettingsViewModel : ViewModelBase
             VSync = VSync,
             FpsCap = Math.Max(0, (int)FpsCap),
         });
+        SceneList.Save(new SceneList.Data { Scenes = Scenes.Select(s => s.Entry).ToList() });
         return title;
     }
 

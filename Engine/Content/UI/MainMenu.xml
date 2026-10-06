@@ -1,0 +1,101 @@
+<!--
+  MainMenu scene UI (Vista). Driven by Engine/Content/Scripts/MainMenuScript.cs, which toggles the
+  classes below (.active screens, .selected rows, #quit-dialog.open, #root.in-menu) and fills the
+  scene list and setting values. Layout is designed on a 1920x1080 canvas and scaled to the window.
+  Every element needs an explicit closing tag (the document is parsed as HTML).
+-->
+<div id="root">
+
+    <!-- Backdrop shading over the 3D scene -->
+    <div id="vignette"></div>
+    <div id="shade-bottom"></div>
+    <div id="shade-left"></div>
+
+    <!-- ===== Title: "Press any button" ===== -->
+    <div id="title-screen" class="screen active">
+        <div id="wordmark">OBSIDIAN</div>
+        <div id="wordmark-rule"></div>
+        <div id="tagline">Deferred rendering engine</div>
+        <div id="press">Press any button</div>
+        <div id="title-version">Vista UI sample scene</div>
+    </div>
+
+    <!-- ===== Main menu ===== -->
+    <div id="main-screen" class="screen">
+        <div class="eyebrow">Obsidian Engine</div>
+        <div class="screen-title">Main Menu</div>
+        <div class="title-rule"></div>
+        <div id="main-list" class="options">
+            <div class="option" data-action="play"><div class="hl"></div><div class="bar"></div><div class="label">Play</div><div class="meta" id="play-meta"></div></div>
+            <div class="option" data-action="scenes"><div class="hl"></div><div class="bar"></div><div class="label">Scenes</div><div class="meta" id="scenes-meta"></div></div>
+            <div class="option" data-action="settings"><div class="hl"></div><div class="bar"></div><div class="label">Settings</div><div class="meta"></div></div>
+            <div class="option" data-action="credits"><div class="hl"></div><div class="bar"></div><div class="label">Credits</div><div class="meta"></div></div>
+            <div class="option" data-action="quit"><div class="hl"></div><div class="bar"></div><div class="label">Quit</div><div class="meta"></div></div>
+        </div>
+        <div id="main-desc" class="desc"></div>
+    </div>
+
+    <!-- ===== Scene list (rows are generated from Content/System/SceneList.json) ===== -->
+    <div id="scenes-screen" class="screen">
+        <div class="eyebrow">Main Menu</div>
+        <div class="screen-title">Scenes</div>
+        <div class="title-rule"></div>
+        <div class="screen-sub">Build order. Index 0 loads first.</div>
+        <div id="scene-list" class="options"></div>
+        <div id="scene-scroll-up" class="scroll-hint">&#8249; more</div>
+        <div id="scene-scroll-down" class="scroll-hint">more &#8250;</div>
+        <div id="scenes-desc" class="desc"></div>
+    </div>
+
+    <!-- ===== Settings (values are filled in by the script) ===== -->
+    <div id="settings-screen" class="screen">
+        <div class="eyebrow">Main Menu</div>
+        <div class="screen-title">Settings</div>
+        <div class="title-rule"></div>
+        <div class="screen-sub">Applies immediately. Not saved.</div>
+        <div id="settings-list" class="options"></div>
+        <div id="settings-desc" class="desc"></div>
+    </div>
+
+    <!-- ===== Credits ===== -->
+    <div id="credits-screen" class="screen">
+        <div class="eyebrow">Main Menu</div>
+        <div class="screen-title">Credits</div>
+        <div class="title-rule"></div>
+        <div id="credits-list">
+            <div class="credit"><div class="role">Engine</div><div class="who">Obsidian &#8212; MonoGame WindowsDX deferred renderer</div></div>
+            <div class="credit"><div class="role">Editor</div><div class="who">Anvil &#8212; Avalonia desktop app</div></div>
+            <div class="credit"><div class="role">Interface</div><div class="who">Vista &#8212; XML and CSS on AngleSharp</div></div>
+            <div class="credit"><div class="role">Physics</div><div class="who">BEPUphysics v2</div></div>
+            <div class="credit"><div class="role">Audio</div><div class="who">FMOD via FmodForFoxes</div></div>
+            <div class="credit"><div class="role">Video</div><div class="who">LibVLCSharp</div></div>
+            <div class="credit"><div class="role">Platform</div><div class="who">Steamworks.NET</div></div>
+        </div>
+        <div id="credits-note">This screen is also a Vista test: long text wraps to its box, letter spacing, gradients, borders, transitions, mouse hit testing and keyboard or gamepad navigation, all laid out on a 1080p canvas and scaled to the window.</div>
+    </div>
+
+    <!-- ===== Footer: input hints (switch between keyboard, mouse and gamepad) ===== -->
+    <div id="footer">
+        <div id="footer-rule"></div>
+        <div class="hint" id="hint-1"><div class="key" id="key-1"></div><div class="hint-label" id="label-1"></div></div>
+        <div class="hint" id="hint-2"><div class="key" id="key-2"></div><div class="hint-label" id="label-2"></div></div>
+        <div class="hint" id="hint-3"><div class="key" id="key-3"></div><div class="hint-label" id="label-3"></div></div>
+        <div class="hint" id="hint-4"><div class="key" id="key-4"></div><div class="hint-label" id="label-4"></div></div>
+        <div id="version">Obsidian Engine &#183; Vista UI</div>
+    </div>
+
+    <!-- ===== Quit confirmation ===== -->
+    <div id="quit-dialog">
+        <div class="dialog-panel">
+            <div class="dialog-title">Quit to desktop?</div>
+            <div class="dialog-text" id="quit-text"></div>
+            <div class="dialog-button" id="quit-cancel">Cancel</div>
+            <div class="dialog-button" id="quit-confirm">Quit</div>
+        </div>
+    </div>
+
+    <div id="editor-badge">Anvil &#183; Play mode</div>
+
+    <!-- Fade from/to black (scene start, scene load, quit) -->
+    <div id="fade"></div>
+</div>

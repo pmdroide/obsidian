@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Engine.Entities;
-using Engine.Physics;
+using Engine.Components;
+using GameComponent = Engine.Components.GameComponent;
 using Engine.Recources;
 using Engine.Renderer.Lighting;
 using Microsoft.Xna.Framework;
@@ -57,18 +58,6 @@ namespace Engine.Editor
         }
     }
 
-    public readonly struct PhysicsSnapshot
-    {
-        public readonly PhysicsBodyType BodyType;
-        public readonly float Mass;
-
-        public PhysicsSnapshot(PhysicsBodyType bodyType, float mass)
-        {
-            BodyType = bodyType;
-            Mass = mass;
-        }
-    }
-
     public readonly struct EditorObjectSnapshot
     {
         public readonly int Id;
@@ -80,12 +69,15 @@ namespace Engine.Editor
         public readonly bool IsEnabled;
         public readonly LightSnapshot? Light;
         public readonly MaterialSnapshot? Material;
-        // BasicEntity only — drives the Inspector's Physics section.
-        public readonly PhysicsSnapshot? Physics;
+        // BasicEntity only — every attached component, including Physics, as registry records.
+        public readonly IReadOnlyList<ComponentRecord> Components;
+        // BasicEntity only.
+        public readonly GameObjectRole Role;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, PhysicsSnapshot? physics = null)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default)
         {
-            Physics = physics;
+            Components = components ?? Array.Empty<ComponentRecord>();
+            Role = role;
             Id = id;
             Name = name;
             Kind = kind;
@@ -100,6 +92,12 @@ namespace Engine.Editor
 
     public interface IEditorBridge
     {
+        InputDevices.InputDeviceSnapshot InputDevices { get; }
+        Steam.SteamConnectionStatus SteamStatus { get; }
+        void EnqueueSteamConnect();
+        void EnqueueSteamDisconnect();
+        void EnqueueSteamSettings(bool enabled, uint appId, Action onCompleted);
+
         /// <summary>
         /// True when the engine is embedded in an external editor (Anvil). Used to
         /// hide the legacy in-engine HelperSuite GUI and to switch input plumbing to
@@ -126,6 +124,10 @@ namespace Engine.Editor
         bool IsHostPointerOverViewport { get; }
         void SetHostPointerOverViewport(bool inside);
 
+        /// <summary>True during an editor asset drag; viewport input must not consume it.</summary>
+        bool IsHostDragDropActive { get; }
+        void SetHostDragDropActive(bool active);
+
         IReadOnlyList<EditorObjectSnapshot> Snapshot { get; }
         event Action<IReadOnlyList<EditorObjectSnapshot>> SnapshotUpdated;
 
@@ -148,6 +150,14 @@ namespace Engine.Editor
 
         void EnqueueMutate(int id, Action<TransformableObject> mutate);
         void EnqueueMutateMaterial(int entityId, Action<MaterialEffect> mutate);
+        void EnqueueAddComponent(int entityId, string componentType);
+        void EnqueueRemoveComponent(int entityId, string componentType, Guid? instanceId = null);
+        void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null);
+        /// <summary>Set a gameobject's <see cref="GameObjectRole"/> and mark the scene dirty.</summary>
+        void EnqueueSetRole(int entityId, GameObjectRole role);
+        void EnqueuePlayAudio(int entityId, bool play);
+        /// <summary>Enable or mute the engine's output, including editor audio previews.</summary>
+        void EnqueueSetAudioEnabled(bool enabled);
         void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity);
         void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity);
         void EnqueueAddBasicEntity(string modelKey, Vector3 position);
@@ -178,6 +188,11 @@ namespace Engine.Editor
 
         /// <summary>Copy of the active scene's lighting settings. Safe to call from the UI thread.</summary>
         LightingSettings GetLightingSettings();
+
+        Logic.EnvironmentSettings GetEnvironmentSettings();
+        void EnqueueMutateEnvironment(Action<Logic.EnvironmentSettings> mutate);
+        /// <summary>Import a PNG/JPEG panorama. Callback returns an error, or null on success.</summary>
+        void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted);
 
         /// <summary>Queue an edit of the active scene's lighting settings (marks the scene dirty).</summary>
         void EnqueueMutateLighting(Action<LightingSettings> mutate);

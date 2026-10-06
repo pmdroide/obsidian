@@ -12,11 +12,25 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Engine.Components;
 
 namespace Anvil.Views;
 
 public partial class MainWindow : Window
 {
+    private async void ChooseSkybox_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || !vm.Environment.CanChooseSkybox) return;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose a skybox panorama",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { new FilePickerFileType("Skybox panorama")
+                { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+        });
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) vm.Environment.ImportSkybox(path);
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -108,6 +122,82 @@ public partial class MainWindow : Window
     // Assets panel to the Hierarchy TreeView.
     private static readonly DataFormat<string> ModelKeyFormat =
         DataFormat.CreateInProcessFormat<string>("obsidian/modelKey");
+    private static readonly DataFormat<string> AudioAssetFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/audioAsset");
+    private static readonly DataFormat<string> TextureAssetFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/textureAsset");
+
+    private void MaterialTexture_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = MaterialComponent.IsTextureAsset(e.DataTransfer.TryGetValue(TextureAssetFormat))
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void MaterialTexture_Drop(object? sender, DragEventArgs e)
+    {
+        var path = e.DataTransfer.TryGetValue(TextureAssetFormat);
+        if ((sender as Control)?.DataContext is MaterialTextureSlotViewModel slot &&
+            MaterialComponent.IsTextureAsset(path)) slot.Assign(path!);
+        e.Handled = true;
+    }
+
+    private async void MaterialTexture_Browse(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not MaterialTextureSlotViewModel slot ||
+            DataContext is not MainWindowViewModel vm || vm.SelectedObject?.Bridge is not { } bridge) return;
+        string root = bridge.ContentSourceRoot;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = $"Select {slot.Name} texture from Content",
+            SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(root),
+            FileTypeFilter = new[] { new FilePickerFileType("Textures")
+                { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.dds", "*.bmp" } } },
+        });
+        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } file) return;
+        string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+        if (relative.StartsWith("../", StringComparison.Ordinal) || Path.IsPathRooted(relative))
+        {
+            Engine.Editor.EditorBridge.Log("Choose a texture inside Content. Import external textures into Assets first.");
+            return;
+        }
+        slot.Assign(relative);
+    }
+
+    // Flyout content joins the tree only when shown. Pin it to the control that opened it so a
+    // picker left open keeps editing that component, never whatever is selected afterwards.
+    private void OwnedFlyout_Opening(object? sender, EventArgs e)
+    {
+        if (sender is Flyout { Target: { } target, Content: Control content })
+            content.DataContext = target.DataContext;
+    }
+
+    // Add Component builds a new menu on every click from the gameobject the inspector shows.
+    // A reused MenuFlyout kept its first MenuItems bound to the first gameobject's commands,
+    // so every component landed on that object.
+    private void AddComponentButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SceneObjectViewModel owner } button) return;
+        var menu = new MenuFlyout();
+        foreach (var type in owner.AddableComponents)
+            menu.Items.Add(new MenuItem { Header = type.DisplayName, Command = type.AddCommand });
+        menu.ShowAt(button);
+    }
+
+    private void AudioClip_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = AudioComponent.IsAudioAsset(e.DataTransfer.TryGetValue(AudioAssetFormat))
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void AudioClip_Drop(object? sender, DragEventArgs e)
+    {
+        var path = e.DataTransfer.TryGetValue(AudioAssetFormat);
+        if ((sender as Control)?.DataContext is AudioComponentViewModel audio &&
+            AudioComponent.IsAudioAsset(path)) audio.AssignClip(path!);
+        e.Handled = true;
+    }
 
     private void AssetsPanel_DragOver(object? sender, DragEventArgs e)
     {
@@ -238,24 +328,38 @@ public partial class MainWindow : Window
         // Avalonia 12's DragDrop.DoDragDropAsync requires the original
         // PointerPressedEventArgs (the new API dropped the pre-12 move-threshold
         // helper), so we kick off the drag immediately on a left-click that
-        // lands on a Mesh AssetNode. Other clicks fall through to the TreeView's
+        // lands on a mesh, texture, or playable audio AssetNode. Other clicks fall through to the TreeView's
         // normal selection behaviour.
         var props = e.GetCurrentPoint(this).Properties;
         if (!props.IsLeftButtonPressed) return;
 
         if (e.Source is not Visual v) return;
-        string? modelKey = ModelKeyFromVisual(v);
-        if (string.IsNullOrEmpty(modelKey)) return;
-
+        var node = FindDataContext<AssetNode>(v);
         var dt = new DataTransfer();
-        dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
-        await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+        if (node?.Kind == AssetKind.Audio && AudioComponent.IsAudioAsset(node.RelativePath))
+            dt.Add(DataTransferItem.Create(AudioAssetFormat, node.RelativePath));
+        else if (node?.Kind == AssetKind.Texture && MaterialComponent.IsTextureAsset(node.RelativePath))
+            dt.Add(DataTransferItem.Create(TextureAssetFormat, node.RelativePath));
+        else if (ModelKeyFromVisual(v) is { } modelKey)
+            dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
+        else return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        vm.SetAssetDragActive(true);
+        try
+        {
+            await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+        }
+        finally
+        {
+            // Cancel, drop, and failures must all release the viewport input guard.
+            vm.SetAssetDragActive(false);
+        }
     }
 
     private void AssetsTree_DoubleTapped(object? sender, TappedEventArgs e)
     {
         // Reliable, drag-free path to add a mesh to the scene: double-click it.
-        // Text assets (shaders, UI XML/CSS) open in an external editor instead.
+        // Scenes open in the viewport; text assets (shaders, UI XML/CSS) open in an external editor.
         if (DataContext is not MainWindowViewModel vm) return;
         if (e.Source is not Visual v) return;
         string? modelKey = ModelKeyFromVisual(v);
@@ -265,7 +369,8 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        if (vm.OpenInTextEditor(FindDataContext<AssetNode>(v)))
+        var node = FindDataContext<AssetNode>(v);
+        if (vm.OpenSceneAsset(node) || vm.OpenInTextEditor(node))
             e.Handled = true;
     }
 

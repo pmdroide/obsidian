@@ -1,10 +1,45 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using Engine.Components;
 using Microsoft.Xna.Framework;
+using GameComponent = Engine.Components.GameComponent;
 
 namespace Engine.Entities
 {
     public class Camera
     {
+        /// <summary>
+        /// Script Behaviours attached to the scene's main camera (Inspector > Main Camera >
+        /// Add Component). They run in Play mode and are saved with the scene. Other
+        /// component types need a gameobject, so the camera accepts only Script Behaviours.
+        /// </summary>
+        public List<GameComponent> Components { get; } = new();
+
+        public static bool SupportsComponent(string typeId) => typeId == ScriptBehaviourComponent.TypeId;
+
+        public T GetComponent<T>() where T : GameComponent => Components.OfType<T>().FirstOrDefault();
+        public IEnumerable<T> GetComponents<T>() where T : GameComponent => Components.OfType<T>();
+        /// <summary>True while an enabled script drives this camera, which turns off the built-in Play controls.</summary>
+        public bool HasActiveScript => Components.Any(c => c.Enabled);
+
+        public bool AddComponent(GameComponent component)
+        {
+            if (component is not ScriptBehaviourComponent script || Components.Contains(component)) return false;
+            script.HostCamera = this;
+            Components.Add(component);
+            component.OnAdded(null);
+            return true;
+        }
+
+        public bool RemoveComponent(GameComponent component)
+        {
+            if (!Components.Remove(component)) return false;
+            component.OnRemoved(null);
+            if (component is ScriptBehaviourComponent script) script.HostCamera = null;
+            return true;
+        }
+
         private Vector3 _position;
         private Vector3 _up = Vector3.UnitZ;
         private Vector3 _forward = Vector3.Up;

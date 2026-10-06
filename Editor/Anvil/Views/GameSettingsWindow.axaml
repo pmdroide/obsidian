@@ -66,6 +66,10 @@
             <Setter Property="MinWidth" Value="80" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
+        <Style Selector="ListBox.scenes ListBoxItem">
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="MinHeight" Value="26" />
+        </Style>
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="{StaticResource AnvilPrimaryBrush}" />
             <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
@@ -152,6 +156,52 @@
                 </StackPanel>
             </Grid>
             <TextBlock Text="PNG, JPG, BMP or ICO. Converted to a multi-size .ico; the executable icon updates on the next build."
+                       Classes="hint" />
+        </StackPanel>
+
+        <Border Classes="divider" />
+
+        <!-- Scenes (build order) -->
+        <StackPanel Spacing="8">
+            <TextBlock Text="Scenes" Classes="section" />
+            <Border Height="118" CornerRadius="3" BorderThickness="1"
+                    Background="{StaticResource AnvilInputBackgroundBrush}"
+                    BorderBrush="{StaticResource AnvilBorderBrush}">
+                <Grid>
+                    <ListBox Classes="scenes" Background="Transparent"
+                             ItemsSource="{Binding Scenes}"
+                             SelectedItem="{Binding SelectedScene}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SceneListEntryViewModel">
+                                <Grid ColumnDefinitions="30,*,Auto" ToolTip.Tip="{Binding Entry}">
+                                    <TextBlock Grid.Column="0" Text="{Binding IndexLabel}" FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource AnvilTextMutedBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Note}" FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource AnvilTextSubtleBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="No scenes: the standalone game starts in an empty scene."
+                               Classes="hint" IsVisible="{Binding HasNoScenes}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="Add Scenes..."
+                        Command="{Binding AddScenesCommand}"
+                        CommandParameter="{Binding $parent[Window]}" />
+                <Button Content="Remove" Command="{Binding RemoveSceneCommand}" />
+                <Button Content="Move Up" Command="{Binding MoveSceneUpCommand}" />
+                <Button Content="Move Down" Command="{Binding MoveSceneDownCommand}" />
+            </StackPanel>
+            <TextBlock Text="{Binding SceneListMessage}" Classes="hint"
+                       IsVisible="{Binding SceneListMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Text="Build order. Index 0 loads first when the game starts; scripts load the others with GameFlow.LoadScene. Saved to System/SceneList.json."
                        Classes="hint" />
         </StackPanel>
 

@@ -36,6 +36,9 @@ namespace Engine.Renderer.Lighting
         public Texture3D ProbeSHR { get; private set; }
         public Texture3D ProbeSHG { get; private set; }
         public Texture3D ProbeSHB { get; private set; }
+        //Per-probe free distances (+X/+Y/+Z and -X/-Y/-Z), see ProbeVolumeData.DistPos
+        public Texture3D ProbeDistPos { get; private set; }
+        public Texture3D ProbeDistNeg { get; private set; }
 
         /// <summary>Probe data currently on the GPU (null when nothing is baked).</summary>
         public ProbeVolumeData GpuData => _uploaded;
@@ -169,6 +172,8 @@ namespace Engine.Renderer.Lighting
                 ProbeSHR = CreateTexture(graphicsDevice, data, data.SHR);
                 ProbeSHG = CreateTexture(graphicsDevice, data, data.SHG);
                 ProbeSHB = CreateTexture(graphicsDevice, data, data.SHB);
+                ProbeDistPos = CreateTexture(graphicsDevice, data, data.DistPos);
+                ProbeDistNeg = CreateTexture(graphicsDevice, data, data.DistNeg);
             }
             catch (Exception e)
             {
@@ -237,6 +242,8 @@ namespace Engine.Renderer.Lighting
             ProbeSHR?.Dispose(); ProbeSHR = null;
             ProbeSHG?.Dispose(); ProbeSHG = null;
             ProbeSHB?.Dispose(); ProbeSHB = null;
+            ProbeDistPos?.Dispose(); ProbeDistPos = null;
+            ProbeDistNeg?.Dispose(); ProbeDistNeg = null;
         }
 
         public void Dispose()

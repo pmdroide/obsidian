@@ -27,6 +27,10 @@ float WhitePoint = 1.1f;
 //Note this should be computed as Pow(2, Exposure) as an input. I do not compute the power in this shader
 float PowExposure = 2;
 
+// Eye adaptation: 1x1 EV written by AutoExposure.fx, multiplied on top of PowExposure when enabled
+Texture2D AutoExposureTexture;
+float AutoExposureEnabled = 0;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +114,15 @@ float3 ToneMapFilmic_Hejl2015(float3 hdr, float whitePt)
 	return vf.rgb / vf.www;
 }
 
+float GetExposure()
+{
+	float autoExposure = 0;
+	[branch]
+	if (AutoExposureEnabled > 0.5f)
+		autoExposure = AutoExposureTexture.Load(int3(0, 0, 0)).r;
+	return PowExposure * exp2(autoExposure);
+}
+
 float GetLuma(float3 rgb)
 {
 	return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
@@ -167,7 +180,7 @@ float4 VignetteChromaShiftPixelShaderFunction(float4 pos : SV_POSITION, float2 t
 	float dist = distance(texCoord, float2(0.5.xx));
 
 	//Chroma shift / fringe effect
-	if (dist > 0.1)
+	if (dist > 0.1 && ChromaticAbberationStrength > 0)
 	{
 		//Depending on distance to center, we substitute our red channel for another pixel from a slight offset
 		float2 distcr = (texCoord - float2(0.5, 0.5)) ;
@@ -183,7 +196,7 @@ float4 VignetteChromaShiftPixelShaderFunction(float4 pos : SV_POSITION, float2 t
 	//base.rgb = base.rgb * PowExposure;
 	//base.rgb = //ReinhardTonemap(base.rgb * PowExposure, WhitePoint);
 	//		   //Uncharted2Tonemap(base.rgb * PowExposure) / Uncharted2Tonemap(WhitePoint.xxx);
-	base.rgb = ToneMapFilmic_Hejl2015(base.rgb * PowExposure, WhitePoint);
+	base.rgb = ToneMapFilmic_Hejl2015(base.rgb * GetExposure(), WhitePoint);
 
 	//Convert back to 2.2 Gamma!
 
@@ -211,7 +224,7 @@ float4 BasePixelShaderFunction(float4 pos : SV_POSITION, float2 texCoord : TEXCO
 
 	base.rgb = //ReinhardTonemap(base.rgb * PowExposure, WhitePoint);
 		//Uncharted2Tonemap(base.rgb * PowExposure) / Uncharted2Tonemap(WhitePoint.xxx);
-		ToneMapFilmic_Hejl2015(base.rgb * PowExposure, WhitePoint);
+		ToneMapFilmic_Hejl2015(base.rgb * GetExposure(), WhitePoint);
 
 	base = pow(abs(base), 0.4545454545f);
 

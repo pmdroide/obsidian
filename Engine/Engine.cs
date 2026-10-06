@@ -24,8 +24,11 @@ namespace Engine
         private readonly ScreenManager _screenManager;
 
         private readonly EditorBridge _bridge;
+        private readonly global::Engine.Steam.SteamService _steam;
+        private readonly global::Engine.InputDevices.InputDeviceMonitor _inputDevices;
 
         public IEditorBridge Bridge => _bridge;
+        public global::Engine.Steam.SteamService Steam => _steam;
 
         private readonly PhysicsSystem _physics;
 
@@ -72,6 +75,9 @@ namespace Engine
 
         public Engine()
         {
+            _steam = new global::Engine.Steam.SteamService();
+            _steam.Start();
+
             //Initialize graphics and content
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
@@ -79,9 +85,15 @@ namespace Engine
             //Bridge between the engine and an external editor (Anvil). The engine
             //works fine without an attached editor — the bridge just sits idle.
             _bridge = new EditorBridge();
+            _bridge.BindSteam(_steam);
+            _inputDevices = new global::Engine.InputDevices.InputDeviceMonitor();
+            _bridge.BindInputDevices(_inputDevices);
 
             //Initialize screen manager, which controls draw / logic for our screens
             _screenManager = new ScreenManager(_bridge);
+
+            //Scripts close the standalone game through GameFlow.Quit (ignored inside Anvil)
+            GameFlow.QuitHandler = Exit;
 
             //Initialize our physics (BEPUphysics v2) and give it gravity. Z is up in
             //this engine, so gravity points down the negative Z axis.
@@ -186,6 +198,8 @@ namespace Engine
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            _steam.Update();
+            _inputDevices.Update(gameTime.ElapsedGameTime);
             //Apply any pending window resize here, on the game thread but OUTSIDE the
             //WinForms WndProc/OnResize callstack. Resetting the swap chain from inside
             //that callstack NREs on a reparented child window (the Anvil viewport). Done
@@ -193,17 +207,21 @@ namespace Engine
             //window is not the active window.
             ApplyPendingResize();
 
-            if (!_isActive) return;
+            // Avalonia owns focus in Anvil. The child game window's activation
+            // events must not stop FMOD, Play-mode scripts, or queued editor actions.
+            bool active = _isActive || _bridge.IsHostedByEditor;
+            if (!active) return;
 
-            //Exit the game when pressing escape
-            if (Input.WasKeyPressed(Keys.Escape))
+            //Exit the game when pressing escape (unless a menu uses Escape for Back)
+            if (Input.WasKeyPressed(Keys.Escape) && GameFlow.EscapeQuits)
                 Exit();
 
-            _screenManager.Update(gameTime, _isActive);
+            _screenManager.Update(gameTime, active);
 
             //BEPU Physics v2 — bodies follow entities while editing; gravity/collisions
             //only step outside editor mode (Play). Gated in MainSceneLogic.UpdatePhysics.
-            _screenManager.UpdatePhysics((float)gameTime.ElapsedGameTime.TotalSeconds);
+            _screenManager.UpdatePhysics((float)gameTime.ElapsedGameTime.TotalSeconds,
+                (float)gameTime.TotalGameTime.TotalSeconds);
 
             // TODO: Add your update logic here
 
@@ -217,7 +235,7 @@ namespace Engine
         protected override void Draw(GameTime gameTime)
         {
             //Don't draw when the game is not running
-            if (!_isActive)
+            if (!_isActive && !_bridge.IsHostedByEditor)
             {
                 Thread.Sleep(20);
                 return;
@@ -232,6 +250,15 @@ namespace Engine
             // TODO: Add your drawing code here
 
             //base.Draw(gameTime);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing) _steam?.Dispose();
+            }
+            finally { base.Dispose(disposing); }
         }
 
         private void CheckFPSLimitChange()
