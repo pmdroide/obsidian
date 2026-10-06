@@ -1,0 +1,282 @@
+{
+  "Version": 2,
+  "Name": "GodRayTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [0, 0, -0.5],
+      "Scale": [300, 300, 0.5],
+      "Material": { "DiffuseColor": [0.3, 0.32, 0.26], "Roughness": 0.95 }
+    },
+    {
+      "Id": 2,
+      "Name": "Roof Slat 01",
+      "ModelKey": "Cube",
+      "Position": [-54, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 3,
+      "Name": "Roof Slat 02",
+      "ModelKey": "Cube",
+      "Position": [-42, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 4,
+      "Name": "Roof Slat 03",
+      "ModelKey": "Cube",
+      "Position": [-30, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 5,
+      "Name": "Roof Slat 04",
+      "ModelKey": "Cube",
+      "Position": [-18, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 6,
+      "Name": "Roof Slat 05",
+      "ModelKey": "Cube",
+      "Position": [-6, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 7,
+      "Name": "Roof Slat 06",
+      "ModelKey": "Cube",
+      "Position": [6, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 8,
+      "Name": "Roof Slat 07",
+      "ModelKey": "Cube",
+      "Position": [18, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 9,
+      "Name": "Roof Slat 08",
+      "ModelKey": "Cube",
+      "Position": [30, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 10,
+      "Name": "Roof Slat 09",
+      "ModelKey": "Cube",
+      "Position": [42, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 11,
+      "Name": "Roof Slat 10",
+      "ModelKey": "Cube",
+      "Position": [54, 0, 40.5],
+      "Scale": [3, 60, 0.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 12,
+      "Name": "East Louvre 1",
+      "ModelKey": "Cube",
+      "Position": [60, 0, 3],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 13,
+      "Name": "East Louvre 2",
+      "ModelKey": "Cube",
+      "Position": [60, 0, 9],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 14,
+      "Name": "East Louvre 3",
+      "ModelKey": "Cube",
+      "Position": [60, 0, 15],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 15,
+      "Name": "East Louvre 4",
+      "ModelKey": "Cube",
+      "Position": [60, 0, 21],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 16,
+      "Name": "East Louvre 5",
+      "ModelKey": "Cube",
+      "Position": [60, 0, 27],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 17,
+      "Name": "East Louvre 6",
+      "ModelKey": "Cube",
+      "Position": [60, 0, 33],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 18,
+      "Name": "West Louvre 1",
+      "ModelKey": "Cube",
+      "Position": [-60, 0, 3],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 19,
+      "Name": "West Louvre 2",
+      "ModelKey": "Cube",
+      "Position": [-60, 0, 9],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 20,
+      "Name": "West Louvre 3",
+      "ModelKey": "Cube",
+      "Position": [-60, 0, 15],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 21,
+      "Name": "West Louvre 4",
+      "ModelKey": "Cube",
+      "Position": [-60, 0, 21],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 22,
+      "Name": "West Louvre 5",
+      "ModelKey": "Cube",
+      "Position": [-60, 0, 27],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 23,
+      "Name": "West Louvre 6",
+      "ModelKey": "Cube",
+      "Position": [-60, 0, 33],
+      "Scale": [0.5, 60, 1.5],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 24,
+      "Name": "Column NE",
+      "ModelKey": "Cube",
+      "Position": [61.5, 61.5, 20],
+      "Scale": [1.5, 1.5, 20],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 25,
+      "Name": "Column NW",
+      "ModelKey": "Cube",
+      "Position": [-61.5, 61.5, 20],
+      "Scale": [1.5, 1.5, 20],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 26,
+      "Name": "Column SE",
+      "ModelKey": "Cube",
+      "Position": [61.5, -61.5, 20],
+      "Scale": [1.5, 1.5, 20],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 27,
+      "Name": "Column SW",
+      "ModelKey": "Cube",
+      "Position": [-61.5, -61.5, 20],
+      "Scale": [1.5, 1.5, 20],
+      "Material": { "DiffuseColor": [0.55, 0.53, 0.5], "Roughness": 0.9 }
+    },
+    {
+      "Id": 28,
+      "Name": "Backdrop Wall",
+      "ModelKey": "Cube",
+      "Position": [0, 100, 25],
+      "Scale": [150, 1, 25],
+      "Material": { "DiffuseColor": [0.05, 0.05, 0.06], "Roughness": 1.0 }
+    },
+    {
+      "Id": 29,
+      "Name": "Reference Sphere",
+      "ModelKey": "IsoSphere",
+      "Position": [0, 0, 4],
+      "Scale": [4, 4, 4],
+      "Material": { "DiffuseColor": [0.9, 0.9, 0.9], "Roughness": 0.4 }
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 30,
+      "Name": "Sun",
+      "Direction": [-0.6, 0.1, -0.8],
+      "Position": [0, 0, 20],
+      "Color": [255, 250, 240, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 260,
+      "ShadowDepth": 300,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [0, -120, 5],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 7,
+    "CycleDurationMinutes": 4,
+    "CloudCoverage": 0.2
+  },
+  "MainCamera": {
+    "Position": [0, -170, 12],
+    "Forward": [0.0, 0.99827, 0.05872],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "2b7d4f0e-91c3-4a6e-8d5b-6f0a3c9e1d27",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

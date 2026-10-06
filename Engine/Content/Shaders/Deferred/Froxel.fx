@@ -249,11 +249,33 @@ float ComputePointLightShadow(int lightIndex, float3 worldPos, float3 lightPosWS
     return (testDepth - bias < occluderDist) ? 1.0 : 0.0;
 }
 
-float2 GetBlueNoiseJitter(float2 atlasUV)
+// Per-froxel jitter in [-0.5, 0.5]^3. noise.png is greyscale (r = g = b), so each axis reads it at a
+// different offset; reading one texel for both x and y only ever jittered along the diagonal.
+float3 GetBlueNoiseJitter(float2 atlasUV)
 {
-    float2 noiseUV = frac(atlasUV * float2(32.0, 32.0) + float2(Time * 0.1312, Time * 0.7134));
-    float4 noise = NoiseMap.SampleLevel(PointSampler, noiseUV, 0);
-    return (noise.rg * 2.0 - 1.0) * 0.5;
+    float2 noiseUV = atlasUV * float2(32.0, 32.0) + float2(Time * 0.1312, Time * 0.7134);
+    float x = NoiseMap.SampleLevel(PointSampler, frac(noiseUV), 0).r;
+    float y = NoiseMap.SampleLevel(PointSampler, frac(noiseUV + float2(0.371, 0.613)), 0).r;
+    float z = NoiseMap.SampleLevel(PointSampler, frac(noiseUV + float2(0.719, 0.257)), 0).r;
+    return float3(x, y, z) - 0.5;
+}
+
+// Directional shadow averaged over the froxel's depth range. Distant slices are many metres deep
+// (exponential slicing), so one shadow test per froxel aliases against repeating occluders such as
+// roof slats and turns the shafts into blotches. Stratified samples give the lit fraction instead.
+#define FROXEL_SHADOW_SAMPLES 6
+float ComputeShadowAlongSlice(float3 dirVS, int fz, float nz, float jitter)
+{
+    float shadow = 0;
+    [unroll]
+    for (int i = 0; i < FROXEL_SHADOW_SAMPLES; i++)
+    {
+        float t = (fz + (i + 0.5 + jitter) / FROXEL_SHADOW_SAMPLES) / nz;
+        float d = NearClip * pow(FarClip / NearClip, t);
+        float4 worldH = mul(float4(dirVS * d, 1.0), InverseView);
+        shadow += ComputeShadow(worldH.xyz / worldH.w);
+    }
+    return shadow / FROXEL_SHADOW_SAMPLES;
 }
 
 VertexShaderOutput FullscreenVS(VertexShaderInput input)
@@ -279,7 +301,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
     float dist = NearClip * pow(FarClip / NearClip, t);
 
     float2 screenUV = float2((fx + 0.5) / (float)nx, (fy + 0.5) / (float)ny);
-    float2 jitter = GetBlueNoiseJitter(screenUV);
+    float3 jitter = GetBlueNoiseJitter(screenUV);
     float ndcX = screenUV.x * 2.0 - 1.0 + jitter.x / (float)nx;
     float ndcY = 1.0 - screenUV.y * 2.0 + jitter.y / (float)ny;
 
@@ -303,7 +325,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         // 1 when looking straight towards the sun, which is where the forward peak belongs.
         float cosTheta = dot(normalize(DirectionalLightDirectionVS), viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
-        float shadow = ComputeShadow(worldPos);
+        float shadow = ComputeShadowAlongSlice(dirVS, fz, (float)nz, jitter.z);
         scatter += DirectionalLightColor * LIGHT_OUTPUT_SCALE * phase * density * DirectionalScatter * shadow;
     }
 

@@ -39,6 +39,8 @@ namespace Engine.Logic
         private GraphicsDevice _graphicsDevice;
 
         private UIManager _vistaUI;
+        // Fonts shared by the debug overlay and script UI (GameUI).
+        private readonly UIFontRegistry _uiFonts = new UIFontRegistry();
         private double _vistaSmoothFps = 60;
         private double _vistaFpsRefresh;
         private long _vistaMaxGcMemory;
@@ -81,6 +83,10 @@ namespace Engine.Logic
 
             _bridge?.Bind(_sceneLogic, _editorLogic, _assets);
 
+            // Build order of the game's scenes; entry 0 starts the standalone game (see Update).
+            SceneList.Load();
+            GameUI.Bind(graphicsDevice, _uiFonts);
+
             // Under Anvil, the in-engine "Editor Mode" toggle (formerly in
             // HelperSuite's right-side panel) no longer exists, so force the
             // selection/outline/gizmo render pass on when hosted. Standalone
@@ -101,6 +107,8 @@ namespace Engine.Logic
                 if (_videoIntro.HasFinished)
                 {
                     _currentState = GameState.MainGame;
+                    // The standalone game plays scene 0 of the scene list; Anvil stays in Edit.
+                    _sceneLogic.StartFirstScene();
                 }
                 return;
             }
@@ -118,6 +126,9 @@ namespace Engine.Logic
             _sceneLogic.Lighting.Update(_graphicsDevice, _sceneLogic.ActiveScene);
 
             _debug.Update(gameTime);
+
+            // Script UI (menus, HUDs) after the scripts changed it this frame.
+            GameUI.Update(gameTime);
 
             UpdateVistaUI(gameTime);
 
@@ -194,13 +205,18 @@ namespace Engine.Logic
         // Load Vista UI helper functions
         private void LoadVistaUI(ContentManager content, GraphicsDevice graphicsDevice)
         {
-            _vistaUI = new UIManager(graphicsDevice);
-
             // Register fonts the CSS can reference by font-family.
             var defaultFont = content.Load<SpriteFont>("Fonts/defaultFont");
             var monospaceFont = content.Load<SpriteFont>("Fonts/monospace");
-            _vistaUI.Fonts.Register("default", defaultFont, isDefault: true);
-            _vistaUI.Fonts.Register("monospace", monospaceFont);
+            _uiFonts.Register("default", defaultFont, isDefault: true);
+            _uiFonts.Register("monospace", monospaceFont);
+            // Game UI faces, sized for a 1080-high design canvas (GameUI scales layers to the window).
+            _uiFonts.Register("display", content.Load<SpriteFont>("Fonts/UI/Display"));
+            _uiFonts.Register("heading", content.Load<SpriteFont>("Fonts/UI/Heading"));
+            _uiFonts.Register("body", content.Load<SpriteFont>("Fonts/UI/Body"));
+            _uiFonts.Register("caption", content.Load<SpriteFont>("Fonts/UI/Caption"));
+
+            _vistaUI = new UIManager(graphicsDevice, _uiFonts);
 
             string baseDir = AppContext.BaseDirectory;
             string xmlPath = Path.Combine(baseDir, "Content", "UI", "debug.xml");
@@ -248,6 +264,9 @@ namespace Engine.Logic
                 lighting: _sceneLogic.Lighting,
                 lightingSettings: _sceneLogic.ActiveScene.Lighting,
                 scene: _sceneLogic.ActiveScene);
+
+            // Script UI (menus, HUDs) over the scene, under the debug console and overlay.
+            GameUI.Draw(_spriteBatch);
 
             _debug.Draw(gameTime);
 

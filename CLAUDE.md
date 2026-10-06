@@ -39,6 +39,10 @@ Notes:
 - `Engine/Logic/ScreenManager.cs` - central coordinator for load/init/update/draw across renderer, scene logic, GUI, editor logic, debug screen, intro video, and Vista UI.
 - `Engine/Logic/MainSceneLogic.cs` - owns the live scene lists: entities, decals, lights, debug entities, camera, environment sample, and editor-side add/delete helpers.
 - `Engine/Logic/EditorLogic.cs` - in-engine editor mode, selection, gizmos, delete/copy behavior.
+- `Engine/Logic/GameFlow.cs` - script API for the scene list: queued `LoadScene(index/name)`, `Quit`, `EscapeQuits`, `PlayStopped`.
+- `Engine/Logic/GameInput.cs` - script input merging keyboard (native + Anvil-forwarded), mouse and gamepads; menu navigation with key repeat.
+- `Engine/Logic/GameUI.cs` - Vista layers opened by scripts (menus/HUDs), scaled from a 1080p canvas, hot-reloaded from source Content.
+- `Engine/Recources/SceneList.cs` - build order of scenes (`Content/System/SceneList.json`); index 0 boots the standalone game.
 - `Engine/Renderer/Renderer.cs` - main render pipeline and render target ownership.
 - `Engine/Renderer/RenderModules/` - individual rendering modules: G-buffer, deferred lighting, froxels, shadows, TAA, bloom, decals, SDFs, forward pass, editor outlines.
 - `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type.
@@ -54,7 +58,8 @@ Notes:
 - `Editor/Anvil/Models/SceneObjectViewModel.cs` - inspector/hierarchy models; property setters enqueue engine mutations.
 - `Editor/Anvil/Services/BridgeReconciler.cs` - reconciles engine snapshots into stable Avalonia view models.
 - `Vista/UI/UIManager.cs` - loads XML/CSS, builds UI tree, updates layout, draws via SpriteBatch.
-- `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic.
+- `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic (absolute layout, gradients, borders, text, transitions, hit testing).
+- `Docs/markdown/Scenes_and_Game_Flow.md`, `Docs/markdown/VistaUI_Architecture.md` - scene list/GameFlow/GameInput/GameUI and the supported Vista CSS.
 
 ## Runtime Flow
 
@@ -64,8 +69,9 @@ Standalone engine:
 2. `Engine.Engine` sets content root to `Content`, creates `EditorBridge`, `ScreenManager`, graphics, and BEPU physics.
 3. `ScreenManager.Load()` loads `Globals.content`, `Shaders`, `ShaderManager`, `Assets`, renderer modules, scene/debug/gui/video content, and Vista UI.
 4. `ScreenManager.Initialize()` initializes renderer, scene, GUI, editor logic, debug UI, and binds the bridge to scene/editor/assets.
-5. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene, renderer SDFs, debug screen, Vista UI, then drains bridge operations and publishes snapshots.
-6. `ScreenManager.Draw()` draws intro video or the main renderer, legacy GUI, debug overlay, and Vista UI.
+5. When the intro video ends, `MainSceneLogic.StartFirstScene()` loads scene list entry 0 (`Content/System/SceneList.json`, the MainMenu sample) and starts Play. Anvil skips this.
+6. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene (queued `GameFlow` scene loads apply first, then `Input`/`GameInput`, then scripts), renderer SDFs, debug screen, `GameUI` layers, Vista debug UI, then drains bridge operations and publishes snapshots.
+7. `ScreenManager.Draw()` draws intro video or the main renderer, `GameUI` layers, legacy GUI, debug overlay, and Vista UI.
 
 Anvil editor:
 
@@ -119,7 +125,8 @@ Important types:
 
 ## Common Change Recipes
 
-- Change startup/demo scene: edit `MainSceneLogic.SetUpEditorScene(...)`.
+- Change the startup scene or build order: Anvil > Game Settings > Scenes, or `Engine/Content/System/SceneList.json` (index 0 boots the standalone game). Scripts switch scenes with `GameFlow.LoadScene(...)`; in Anvil, Stop returns to the edited scene.
+- Add a game menu or HUD: a Vista document in `Engine/Content/UI/<Name>.xml` + `.css`, opened with `GameUI.Open("UI/<Name>")` from a script behaviour (reference: `Engine/Content/Scripts/MainMenuScript.cs`). The document is parsed as HTML (always close `div`s); layout is absolute.
 - Add an engine asset: update `Content.mgcb`, then add a load/register field in `Assets.cs`.
 - Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
 - Add a gameobject role: append a value to `Engine/Entities/GameObjectRole.cs` (saved by name, so never rename one) and handle it where it matters; `ScenePhysics`/`WaterVolume` handle `Water`.

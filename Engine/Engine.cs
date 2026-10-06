@@ -92,6 +92,9 @@ namespace Engine
             //Initialize screen manager, which controls draw / logic for our screens
             _screenManager = new ScreenManager(_bridge);
 
+            //Scripts close the standalone game through GameFlow.Quit (ignored inside Anvil)
+            GameFlow.QuitHandler = Exit;
+
             //Initialize our physics (BEPUphysics v2) and give it gravity. Z is up in
             //this engine, so gravity points down the negative Z axis.
             _physics = new PhysicsSystem(new Vector3(0, 0, -9.81f));
@@ -209,8 +212,8 @@ namespace Engine
             bool active = _isActive || _bridge.IsHostedByEditor;
             if (!active) return;
 
-            //Exit the game when pressing escape
-            if (Input.WasKeyPressed(Keys.Escape))
+            //Exit the game when pressing escape (unless a menu uses Escape for Back)
+            if (Input.WasKeyPressed(Keys.Escape) && GameFlow.EscapeQuits)
                 Exit();
 
             _screenManager.Update(gameTime, active);

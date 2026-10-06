@@ -235,69 +235,53 @@ float3 SampleSky(float3 viewDir)
 	return skyColor;
 }
 
+// Resolves the noisy SSR target: rgb = reflected colour, a = coverage (0 where the ray missed).
+// Each pixel's jittered ray either hits or misses, so neighbours on the same surface are averaged
+// (5x5, depth-aware): hit colours weighted by coverage, coverage itself averaged. This turns the
+// per-pixel hit/miss pattern into a smooth partial blend instead of speckle.
 float4 GetSSR(float2 TexCoord)
 {
-	
-	//Just a bit shorter
 	int3 texCoord = int3(TexCoord * Resolution, 0);
 
-	//Get our current Position in viewspace
-	float4 similarSampleAcc = ReflectionMap.Load(texCoord);
+	float centerDepth = DepthMap.Load(texCoord).r;
 
-	float alpha = similarSampleAcc.a;
-
-	if(similarSampleAcc.a <= 0.01) return float4(0,0,0,0);
-
-	if (!FireflyReduction) 
-		return similarSampleAcc;
-
-	float similarLuma = GetLuma(similarSampleAcc.rgb);
-
-	//Ignore rest for dark values
-	//if (similarLuma < 0.1f) return similarSampleAcc;
-
-	float4 neighbor;
-	float neighborLuma;
-
-	float similarSamples = 1;
-
-	float4 differentSampleAcc;
-	float differentSamples = 0;
+	float3 colorAcc = 0;
+	float colorWeight = 0;
+	float coverageAcc = 0;
+	float weightAcc = 0;
 
 	[loop]
 	for (int x = -2; x <= 2; x++)
 	{
+		[loop]
 		for (int y = -2; y <= 2; y++)
 		{
-			//Don't sample mid again
-			if (y == 0 && x == 0) continue;
+			int3 sampleCoord = int3(texCoord.x + x, texCoord.y + y, 0);
 
-			neighbor = ReflectionMap.Load(int3(texCoord.x + x, texCoord.y + y, 0));
-			neighborLuma = GetLuma(neighbor.rgb);
+			float weight = (abs(x) > 1 || abs(y) > 1) ? 0.5f : 1;
 
-			float weight = 1;
+			//Stay on the same surface
+			float sampleDepth = DepthMap.Load(sampleCoord).r;
+			weight *= saturate(1 - abs(sampleDepth - centerDepth) / (centerDepth * 0.02f + 0.0001f));
 
-			if (abs(x) > 1 || abs(y) > 1) weight = 0.5f;
+			float4 reflection = ReflectionMap.Load(sampleCoord);
 
-			//is similar?
-			if (abs(neighborLuma - similarLuma) < FireflyThreshold)
-			{
-				//Join to similar samples
-				similarSamples += weight;
-				similarSampleAcc += neighbor * weight;
-			}
-			else
-			{
-				differentSamples += weight;
-				differentSampleAcc += neighbor * weight;
-			}
+			coverageAcc += reflection.a * weight;
+			weightAcc += weight;
+
+			//Fireflies: bright hits get less say, so a single sky or sun pixel doesn't dominate
+			float colorW = reflection.a * weight;
+			if (FireflyReduction)
+				colorW /= 1 + GetLuma(reflection.rgb) / max(FireflyThreshold, 0.001f);
+
+			colorAcc += reflection.rgb * colorW;
+			colorWeight += colorW;
 		}
 	}
 
-	similarSampleAcc /= similarSamples;
-	differentSampleAcc /= differentSamples;
+	if (colorWeight <= 0.0001f) return float4(0, 0, 0, 0);
 
-	return float4(similarSamples > differentSamples ? similarSampleAcc.rgb : differentSampleAcc.rgb, alpha);
+	return float4(colorAcc / colorWeight, coverageAcc / weightAcc);
 }
 
 //float GetNormalVariance(float2 texCoord, float3 baseNormal, float offset)
@@ -509,9 +493,10 @@ PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
 	}
 
 	//Sample our screen space reflection map and use the environment map only as fallback
+	//Blend in by coverage, weighted like the cubemap reflection so a hit and a miss differ only in what is reflected
 	float4 ssreflectionMap = GetSSR(input.TexCoord);
-
-	if (ssreflectionMap.a > 0) specularReflection.rgb = ssreflectionMap.rgb * EnvironmentMapSpecularStrengthRcp;
+	float specularWeight = (1 - roughness) * fresnel;
+	specularReflection.rgb = lerp(specularReflection.rgb, ssreflectionMap.rgb * specularWeight * EnvironmentMapSpecularStrengthRcp, ssreflectionMap.a);
 
     output.Diffuse = float4(diffuseAmbient, 0) * ao;
     output.Specular = float4(specularReflection.xyz, 0) *EnvironmentMapSpecularStrength * (ao * 0.5f + 0.5f);

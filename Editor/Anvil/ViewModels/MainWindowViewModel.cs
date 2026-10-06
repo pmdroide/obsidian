@@ -536,7 +536,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ProjectName = vm.Apply();
             AddConsoleEntry(ConsoleLevel.Log,
-                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\")",
+                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\") " +
+                $"and {Engine.Recources.SceneList.FileName} ({vm.Scenes.Count} scenes)",
                 "Anvil:GameSettings");
         }
         catch (Exception ex)

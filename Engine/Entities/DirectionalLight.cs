@@ -181,6 +181,7 @@ namespace Engine.Entities
                     Shaders.deferredDirectionalLightParameter_ShadowMap.SetValue(ShadowMap);
                     Shaders.deferredDirectionalLightParameter_ShadowFiltering.SetValue((int)ShadowFiltering);
                     Shaders.deferredDirectionalLightParameter_ShadowMapSize.SetValue((float)ShadowResolution);
+                    Shaders.deferredDirectionalLightParameter_ShadowSize.SetValue(ShadowSize);
                     Shaders.deferredDirectionalLightShadowed.Passes[0].Apply();   
                 }
             }

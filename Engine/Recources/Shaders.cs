@@ -209,6 +209,7 @@ namespace Engine.Recources
         public static readonly EffectParameter deferredDirectionalLightParameter_LightDirection = deferredDirectionalLight.Parameters["LightVector"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowFiltering = deferredDirectionalLight.Parameters["ShadowFiltering"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowMapSize = deferredDirectionalLight.Parameters["ShadowMapSize"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_ShadowSize = deferredDirectionalLight.Parameters["ShadowSize"];
 
         public static readonly EffectParameter deferredDirectionalLightParameter_AlbedoMap = deferredDirectionalLight.Parameters["AlbedoMap"];
         public static readonly EffectParameter deferredDirectionalLightParameter_NormalMap = deferredDirectionalLight.Parameters["NormalMap"];

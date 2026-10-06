@@ -185,7 +185,8 @@ public class MonoGameHost : NativeControlHost
 
     /// <summary>
     /// Map the subset of Avalonia keys the engine cares about (WASD/QE camera
-    /// fly, Shift/Ctrl modifiers, F1 render-mode cycle, Space editor toggle).
+    /// fly, Shift/Ctrl modifiers, F1 render-mode cycle, Space editor toggle,
+    /// arrows/Enter/Backspace for game menus).
     /// Everything else returns <see cref="XnaKeys.None"/> and is ignored.
     /// </summary>
     private static XnaKeys MapAvaloniaKey(Key k) => k switch
@@ -203,6 +204,9 @@ public class MonoGameHost : NativeControlHost
         Key.LeftAlt => XnaKeys.LeftAlt, Key.RightAlt => XnaKeys.RightAlt,
         Key.F1 => XnaKeys.F1, Key.F2 => XnaKeys.F2, Key.F3 => XnaKeys.F3,
         Key.Escape => XnaKeys.Escape,
+        // Menu navigation for game UI in Play mode (GameInput).
+        Key.Up => XnaKeys.Up, Key.Down => XnaKeys.Down, Key.Left => XnaKeys.Left, Key.Right => XnaKeys.Right,
+        Key.Enter => XnaKeys.Enter, Key.Back => XnaKeys.Back, Key.Tab => XnaKeys.Tab,
         _ => XnaKeys.None,
     };
 

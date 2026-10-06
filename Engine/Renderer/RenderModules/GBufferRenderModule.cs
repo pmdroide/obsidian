@@ -321,12 +321,12 @@ namespace Engine.Renderer.RenderModules
                     //}
                 }
 
+                //m_defaultroughness only applies to the default-material debug view above; here the material's own value is used
                 if (!material.HasRoughnessMap)
-                    _Material_Roughness.SetValue(GameSettings.m_defaultroughness >
-                                                                               0
-                        ? GameSettings.m_defaultroughness
-                        : material.Roughness);
-                _Material_Metallic.SetValue(material.Metallic);
+                    _Material_Roughness.SetValue(material.Roughness);
+                //Emissive materials carry their strength in the metallic channel (set above); don't overwrite it
+                if (material.Type != MaterialEffect.MaterialTypes.Emissive || material.EmissiveStrength <= 0 || material.HasDiffuse)
+                    _Material_Metallic.SetValue(material.Metallic);
 
                 if (material.Type == MaterialEffect.MaterialTypes.SubsurfaceScattering)
                 {

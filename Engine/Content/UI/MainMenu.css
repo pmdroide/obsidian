@@ -1,0 +1,524 @@
+/*
+  MainMenu scene UI. Design canvas: 1080 units high (GameUI scales it to the window).
+  Vista layout is absolute: left/top/right/bottom/width/height (px or % of the parent box) plus
+  margins. Fonts: display, heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Palette
+    ink      rgba(4, 5, 8)         backdrop shading
+    text     #F1ECE4               warm white
+    accent   #E9A94B               amber, matches the low sun
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #F1ECE4;
+    font-family: body;
+}
+
+/* ---------------------------------------------------------------- backdrop */
+
+#vignette {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background-image: radial-gradient(ellipse at center, rgba(4, 5, 8, 0), rgba(4, 5, 8, 0), rgba(4, 5, 8, 0.45), rgba(4, 5, 8, 0.85));
+}
+
+#shade-bottom {
+    bottom: 0;
+    height: 46%;
+    pointer-events: none;
+    background-image: linear-gradient(to bottom, rgba(4, 5, 8, 0), rgba(4, 5, 8, 0.55), rgba(4, 5, 8, 0.92));
+}
+
+#shade-left {
+    width: 62%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.7s;
+    background-image: linear-gradient(to right, rgba(4, 5, 8, 0.94), rgba(4, 5, 8, 0.82), rgba(4, 5, 8, 0.4), rgba(4, 5, 8, 0));
+}
+
+#root.in-menu #shade-left { opacity: 1; }
+
+/* ---------------------------------------------------------------- screens */
+
+.screen {
+    width: 100%;
+    height: 100%;
+    left: -36px;
+    opacity: 0;
+    transition: opacity 0.4s, left 0.55s;
+}
+
+.screen.active {
+    left: 0;
+    opacity: 1;
+}
+
+/* The title drifts up as it leaves instead of sliding sideways. */
+#title-screen { left: 0; top: -48px; transition: opacity 0.5s, top 0.8s; }
+#title-screen.active { top: 0; }
+
+/* ---------------------------------------------------------------- title */
+
+#wordmark {
+    top: 36%;
+    height: 120px;
+    font-family: display;
+    text-align: center;
+    letter-spacing: 30px;
+    color: #F4EFE7;
+    text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+#wordmark-rule {
+    top: 36%;
+    margin-top: 132px;
+    left: 50%;
+    margin-left: -72px;
+    width: 144px;
+    height: 2px;
+    background-color: #E9A94B;
+}
+
+#tagline {
+    top: 36%;
+    margin-top: 156px;
+    height: 24px;
+    font-family: caption;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 9px;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+#press {
+    left: 50%;
+    margin-left: -230px;
+    width: 460px;
+    bottom: 150px;
+    height: 58px;
+    font-family: caption;
+    text-align: center;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 10px;
+    color: #F1ECE4;
+    border-top: 1px solid rgba(233, 169, 75, 0.45);
+    border-bottom: 1px solid rgba(233, 169, 75, 0.45);
+    background-image: linear-gradient(to right, rgba(233, 169, 75, 0), rgba(233, 169, 75, 0.12), rgba(233, 169, 75, 0));
+}
+
+#title-version {
+    right: 64px;
+    bottom: 48px;
+    width: 600px;
+    height: 24px;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: rgba(241, 236, 228, 0.32);
+}
+
+/* ---------------------------------------------------------------- screen headers */
+
+.eyebrow {
+    left: 150px;
+    top: 172px;
+    height: 24px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: #E9A94B;
+}
+
+.screen-title {
+    left: 148px;
+    top: 200px;
+    height: 48px;
+    font-family: heading;
+    text-transform: uppercase;
+    letter-spacing: 12px;
+    color: #F4EFE7;
+}
+
+.title-rule {
+    left: 152px;
+    top: 254px;
+    width: 64px;
+    height: 2px;
+    background-color: #E9A94B;
+}
+
+.screen-sub {
+    left: 150px;
+    top: 274px;
+    height: 24px;
+    font-family: body;
+    color: rgba(241, 236, 228, 0.5);
+}
+
+/* ---------------------------------------------------------------- option rows */
+
+.options {
+    left: 150px;
+    top: 330px;
+    width: 560px;
+    height: 520px;
+}
+
+#settings-list { width: 880px; }
+
+.option {
+    left: 0;
+    width: 100%;
+    height: 60px;
+    transition: left 0.22s;
+}
+
+.option.selected { left: 14px; }
+.option.offscreen { display: none; }
+
+.option .hl {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.22s;
+    background-image: linear-gradient(to right, rgba(233, 169, 75, 0.24), rgba(233, 169, 75, 0.08), rgba(233, 169, 75, 0));
+}
+
+.option .bar {
+    left: 0;
+    top: 14px;
+    width: 3px;
+    height: 32px;
+    opacity: 0;
+    transition: opacity 0.18s;
+    background-color: #E9A94B;
+}
+
+.option.selected .hl,
+.option.selected .bar { opacity: 1; }
+
+.option .label {
+    left: 30px;
+    height: 100%;
+    font-family: heading;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.52);
+    transition: color 0.2s;
+}
+
+.option.selected .label { color: #FFFFFF; }
+.option.disabled .label { color: rgba(241, 236, 228, 0.2); }
+
+.option .meta {
+    right: 28px;
+    width: 260px;
+    height: 100%;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.32);
+    transition: color 0.2s;
+}
+
+.option.selected .meta { color: #E9A94B; }
+
+/* Scene rows: index column before the name. */
+.scene-row .index {
+    left: 30px;
+    width: 48px;
+    height: 100%;
+    font-family: caption;
+    letter-spacing: 2px;
+    vertical-align: middle;
+    color: rgba(233, 169, 75, 0.55);
+}
+
+.scene-row .label { left: 84px; }
+.scene-row.selected .index { color: #E9A94B; }
+
+/* Setting rows: < value > on the right. */
+.setting .value {
+    right: 72px;
+    width: 220px;
+    height: 100%;
+    font-family: heading;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.55);
+    transition: color 0.2s;
+}
+
+.setting .label { font-family: heading; letter-spacing: 2px; }
+
+.setting .arrow {
+    width: 36px;
+    height: 100%;
+    font-family: heading;
+    text-align: center;
+    vertical-align: middle;
+    color: #E9A94B;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.setting .arrow-left { right: 292px; }
+.setting .arrow-right { right: 36px; }
+.setting.selected .arrow { opacity: 1; }
+.setting.selected .value { color: #FFFFFF; }
+
+.scroll-hint {
+    left: 180px;
+    width: 300px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: rgba(233, 169, 75, 0.7);
+    display: none;
+}
+
+#scene-scroll-up { top: 306px; }
+#scene-scroll-down { top: 722px; }
+.scroll-hint.visible { display: block; }
+
+/* ---------------------------------------------------------------- descriptions */
+
+.desc {
+    left: 150px;
+    top: 680px;
+    width: 560px;
+    height: 110px;
+    padding-top: 18px;
+    font-family: body;
+    line-height: 28px;
+    white-space: pre-line;
+    color: rgba(241, 236, 228, 0.66);
+    border-top: 1px solid rgba(241, 236, 228, 0.12);
+}
+
+#scenes-desc { top: 760px; }
+#settings-desc { top: 864px; width: 880px; height: 70px; }
+
+/* ---------------------------------------------------------------- credits */
+
+#credits-list {
+    left: 150px;
+    top: 330px;
+    width: 760px;
+    height: 400px;
+}
+
+.credit {
+    width: 100%;
+    height: 46px;
+    border-bottom: 1px solid rgba(241, 236, 228, 0.07);
+}
+
+.credit .role {
+    left: 0;
+    width: 180px;
+    height: 100%;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    vertical-align: middle;
+    color: #E9A94B;
+}
+
+.credit .who {
+    left: 190px;
+    width: 560px;
+    height: 100%;
+    font-family: body;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.85);
+}
+
+#credits-note {
+    left: 150px;
+    top: 690px;
+    width: 640px;
+    height: 120px;
+    font-family: body;
+    line-height: 28px;
+    color: rgba(241, 236, 228, 0.5);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+#footer {
+    bottom: 0;
+    height: 120px;
+    opacity: 0;
+    transition: opacity 0.6s;
+}
+
+#root.in-menu #footer { opacity: 1; }
+
+#footer-rule {
+    left: 150px;
+    right: 150px;
+    top: 22px;
+    height: 1px;
+    background-image: linear-gradient(to right, rgba(241, 236, 228, 0.18), rgba(241, 236, 228, 0.1), rgba(241, 236, 228, 0));
+}
+
+.hint {
+    top: 48px;
+    width: 260px;
+    height: 34px;
+}
+
+#hint-1 { left: 150px; }
+#hint-2 { left: 400px; }
+#hint-3 { left: 650px; }
+#hint-4 { left: 900px; display: none; }
+#hint-4.visible { display: block; }
+
+.key {
+    left: 0;
+    width: 76px;
+    height: 34px;
+    font-family: body;
+    text-align: center;
+    vertical-align: middle;
+    color: #F1ECE4;
+    border: 1px solid rgba(241, 236, 228, 0.32);
+    background-color: rgba(241, 236, 228, 0.05);
+}
+
+.hint-label {
+    left: 90px;
+    width: 160px;
+    height: 34px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.55);
+}
+
+#version {
+    right: 150px;
+    top: 48px;
+    width: 600px;
+    height: 34px;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.28);
+}
+
+/* ---------------------------------------------------------------- quit dialog */
+
+#quit-dialog {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(2, 3, 5, 0.66);
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+#quit-dialog.open { opacity: 1; }
+
+.dialog-panel {
+    left: 50%;
+    top: 50%;
+    width: 620px;
+    height: 270px;
+    margin-left: -310px;
+    margin-top: -112px;
+    background-color: rgba(12, 14, 18, 0.97);
+    border-top: 3px solid #E9A94B;
+    border-bottom: 1px solid rgba(241, 236, 228, 0.08);
+    transition: top 0.3s;
+}
+
+#quit-dialog.open .dialog-panel { margin-top: -135px; }
+
+.dialog-title {
+    left: 48px;
+    top: 40px;
+    height: 40px;
+    font-family: heading;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    color: #F4EFE7;
+}
+
+.dialog-text {
+    left: 48px;
+    top: 92px;
+    width: 524px;
+    height: 60px;
+    font-family: body;
+    line-height: 27px;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+.dialog-button {
+    top: 178px;
+    width: 250px;
+    height: 54px;
+    font-family: caption;
+    text-align: center;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: rgba(241, 236, 228, 0.7);
+    border: 1px solid rgba(241, 236, 228, 0.2);
+    transition: background-color 0.18s, color 0.18s, border-color 0.18s;
+}
+
+#quit-cancel { left: 48px; }
+#quit-confirm { left: 322px; }
+
+.dialog-button.selected {
+    color: #0B0C0F;
+    background-color: #E9A94B;
+    border-color: #E9A94B;
+}
+
+/* ---------------------------------------------------------------- misc */
+
+#editor-badge {
+    right: 40px;
+    top: 36px;
+    width: 300px;
+    height: 30px;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: rgba(233, 169, 75, 0.8);
+    display: none;
+}
+
+#root.editor #editor-badge { display: block; }
+
+#fade {
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 1.8s;
+}
+
+#fade.clear { opacity: 0; }
+#fade.out { opacity: 1; transition: opacity 0.5s; }

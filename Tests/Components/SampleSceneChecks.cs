@@ -98,6 +98,33 @@ internal static class SampleSceneChecks
             "double-clicking a scene in Assets queues that scene file to load");
     }
 
+    /// <summary>Engine/Content/Scenes/GodRayTest.obsc: a slatted hall for checking sun and moon shafts over the day/night cycle.</summary>
+    public static void RunGodRays()
+    {
+        var bridge = new EditorBridge();
+        string path = Path.Combine(bridge.ContentSourceRoot, "Scenes", "GodRayTest.obsc");
+        var bounds = new BoundingBox(-Vector3.One, Vector3.One);
+        var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds) };
+        var scene = SceneSerialization.LoadFromFile(path, assets);
+
+        Check(scene.BasicEntities.Count == 29 && scene.DirectionalLights.Count == 1 && scene.Environment.DayNightCycle &&
+              scene.MainCamera.GetComponent<Engine.Components.ScriptBehaviourComponent>() is { ScriptId: Engine.Scripting.FreecamScript.ScriptId, Enabled: true },
+            "the god ray scene loads the hall, the sun template, the day/night cycle and a Freecam camera");
+
+        // The cycle copies the template's shadow box, and fog outside it counts as lit: the whole hall must fit inside.
+        var sun = scene.DirectionalLights[0];
+        var hall = scene.BasicEntities.Where(e => e.Name != "Ground" && e.Name != "Backdrop Wall").Select(WorldBox).ToList();
+        float reach = hall.SelectMany(b => b.GetCorners()).Max(c => Vector3.Distance(c, sun.Position));
+        Check(sun.CastShadows && reach < sun.ShadowSize / 2 && reach < sun.ShadowDepth,
+            "every hall slat sits inside the sun's shadow box from any direction");
+
+        // Froxel fog is zero within Start Dist. of the camera, so the shafts have to form well beyond it.
+        Vector3 eye = scene.MainCamera.Position;
+        float nearest = hall.Min(b => Vector3.Distance(eye, Vector3.Clamp(eye, b.Min, b.Max)));
+        Check(nearest > 2 * GameSettings.g_FroxelFogDistanceStart,
+            "the camera sits far enough from the hall for the default fog to show the shafts");
+    }
+
     private static BoundingBox WorldBox(BasicEntity e)
     {
         var corners = new BoundingBox(-Vector3.One, Vector3.One).GetCorners();

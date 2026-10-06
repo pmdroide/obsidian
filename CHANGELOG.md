@@ -1,5 +1,140 @@
 # Changelog
 
+## Added: MainMenu sample scene, scene list and game UI
+
+**Why:** To test that Vista UI works and can look good in a real game flow, and to give the game a build order of scenes with a fixed startup scene.
+
+- **Scene list** (`Engine/Recources/SceneList.cs`, `Content/System/SceneList.json`): the game's scenes in build order. Index 0 is the startup scene.
+  - The standalone game loads entry 0 after the intro video and starts Play (`MainSceneLogic.StartFirstScene`). With an empty list it starts in an empty scene, as before.
+  - Edited in **Anvil > Game Settings > Scenes** (Add Scenes..., Remove, Move Up, Move Down). It refuses files outside `Engine/Content`.
+  - Shipped list: `MainMenu`, `GodRayTest`, `AutoExposureTest`.
+  - The build now copies `Content/Scenes/**` (`.obsc`, `.probes`), all of `Content/UI/**` and `SceneList.json` next to the exe.
+- **`GameFlow`** (`Engine/Logic/GameFlow.cs`): script API to load a scene by index or name (queued to the start of the next frame, keeps Play running), `LoadNextScene`, `ReloadScene`, `Quit`, `EscapeQuits`, `PlayStopped`.
+  - Inside Anvil, Stop returns to the scene being edited, with its transforms rewound. Opening a scene from the Assets panel during Play still replaces it for good.
+- **`GameInput`** (`Engine/Logic/GameInput.cs`): keyboard (native and Anvil-forwarded), mouse and XInput gamepads merged, with pressed edges.
+  - `MenuUp/Down/Left/Right` repeat while held; also `MenuConfirm`, `MenuBack`, `AnyInputPressed` and `LastDevice`.
+  - Anvil now also forwards the arrows, Enter, Backspace and Tab.
+- **`GameUI`** (`Engine/Logic/GameUI.cs`): Vista layers opened by scripts, drawn over the scene and under the debug overlay, scaled from a 1080-high canvas.
+  - Layers are closed when Play stops or the scene changes.
+  - Saving the XML/CSS in a dev checkout reloads the layer while the game runs.
+- **Vista**:
+  - Cached styles: only restyled elements are recomputed. A computed style costs about 0.15 ms, and Vista previously computed every element twice per frame.
+  - Box geometry is read from the declared CSS, because AngleSharp resolves percentages against its render device rather than the parent box.
+  - New CSS: `right`/`bottom` anchoring, left+right stretching, margins, `display: none`, `visibility`, `opacity`, `pointer-events`, linear and radial gradients, borders, `text-align`, `vertical-align` (centres capitals), `letter-spacing`, `line-height`, `text-transform`, `white-space`, word wrap, `text-shadow`, and transitions on opacity, colours, position and size.
+  - Premultiplied colours (translucent colours were too bright before).
+  - `ReferenceHeight` scaling, `ElementAt` hit testing, `SetClass`, `Invalidate`/`Refresh`, `RuntimeOpacity`/`RuntimeOffset`, a synchronous `Load` with a `Loaded` event, and a shared font registry.
+  - Characters a font lacks draw as `?` instead of throwing.
+  - AngleSharp.Css throws on every `radial-gradient`, so stylesheets are rewritten on load to a marked linear gradient that reads back as radial.
+  - A style that still fails to compute hides its element instead of crashing.
+- **UI fonts**: `Fonts/UI/Display`, `Heading`, `Caption` (Bahnschrift) and `Body` (Segoe UI, with arrows), registered as `display`, `heading`, `caption`, `body`.
+- **MainMenu sample** (`Content/Scenes/MainMenu.obsc`, `Content/UI/MainMenu.xml/.css`, `Content/Scripts/MainMenuScript.cs`, script "Main Menu" on the Main Camera):
+  - The scene is a ring of black obsidian monoliths around an emissive ember core at golden hour, with the camera drifting slowly.
+  - Flow: fade from black, **Press any button**, then the main menu (Play, Scenes, Settings, Credits, Quit), with a confirmation dialog for Quit.
+  - Play loads the next scene in the list. The Scenes screen lists and loads the whole list.
+  - Settings toggle overlay, VSync, FPS cap, TAA, SSAO, bloom, fog, reflections and UI scale live. In Anvil they are restored when Play stops.
+  - Keyboard, mouse (hover, click, wheel, right click) and gamepad all work. The footer prompts follow the last device used.
+- **Fixed: emissive materials rendered black.** `GBufferRenderModule` wrote the emissive strength into the metallic slot, then overwrote it with `material.Metallic` (0).
+- In Play, the dev hotkeys Space (editor mode), L, X and M are off, so they don't collide with game controls. F1 still cycles render modes.
+- Escape closes the standalone game only while `GameFlow.EscapeQuits` is true. The menu turns it off and uses Escape for Back.
+- Docs: new `Docs/markdown/Scenes_and_Game_Flow.md`. `VistaUI_Architecture.md` is rewritten as a reference for the supported CSS and API. `Script_Behaviours.md` and `CLAUDE.md` are updated.
+- Tests: new `GameFlowChecks` and `VistaChecks` in `Tests/Components`.
+  - `GameFlowChecks`: the scene list, the MainMenu scene, the Game Settings list editor, scene switching including the return to the edited scene, and menu input.
+  - `VistaChecks`: layout, hit testing, transitions, gradients and styles.
+  - All checks pass, including `--graphics`.
+- Checked in the standalone game: screenshots of every screen at 1280×720; Play loads GodRayTest. Not yet checked in Anvil's Play mode, where only the automated checks cover it.
+
+- Claude
+
+## Fixed: noisy, hazy image
+
+**Why:** The engine looked grainy and washed out. In `GodRayTest`, every surface had salt-and-pepper speckle, the god rays were blotchy, and bloom and chromatic aberration softened the frame. Four causes:
+- **Authored roughness was ignored.** `GBufferRenderModule` wrote `GameSettings.m_defaultroughness` (0.5) instead of the material's roughness for every material without a roughness map. So the 0.9–0.95 rough hall got glossy reflections.
+- **SSR replaced the reflection instead of blending.** On a ray hit, `DeferredEnvironmentMap.fx` swapped the specular term for the raw scene colour, ignoring SSR's alpha and the `(1 - roughness) × fresnel` weight the cubemap uses. Each jittered ray hit or missed per pixel, giving speckle.
+- **Fog shafts aliased.** Each froxel tested the shadow map once, but distant slices are about 10 m deep against 12 m slat spacing. Also, `noise.png` is greyscale, so the froxel X/Y jitter only moved along the diagonal, which left diagonal streaks.
+- **Post-processing defaults.** Bloom at threshold 0 with mip strengths of 1 smeared the whole frame. Chromatic aberration at 0.035 left red fringes on edges.
+
+- `GBufferRenderModule.SetMaterialSettings`: uses `material.Roughness`. `m_defaultroughness` now only applies in the default-material debug view.
+- `ScreenSpaceReflections.fx`: alpha is coverage only (edge and facing fade). Ray spread uses roughness² instead of roughness.
+- `DeferredEnvironmentMap.fx`: `GetSSR` is a depth-aware 5×5 resolve (colour weighted by coverage, firefly weight `1 / (1 + luma / FireflyThreshold)`). The result blends into the cubemap reflection by coverage, with the same roughness/fresnel weight.
+- `Froxel.fx`: `GetBlueNoiseJitter` returns three decorrelated values. `ComputeShadowAlongSlice` averages 6 stratified shadow tests through each froxel's depth.
+- `GameSettings`: bloom strengths 0.25 / 0.5 / 0.5 / 0.5 / 0.5 (were 0.5 / 1 / 1 / 1 / 1). Chromatic aberration 0 (was 0.035). The vignette no longer turns off when chromatic aberration is 0 (`PostProcessing.fx` skips the fringe sample instead).
+- Measured offscreen in `GodRayTest` at 1280×720, six views, still camera:
+  - frame-to-frame shimmer went from 0.83 to 0.17 (mean luma change per pixel, out of 255);
+  - without TAA, raw grain went from 3.7 to 0.07;
+  - RMS contrast went from 64 to 71 (inside the hall) and from 45 to 52 (side view).
+- `Docs/markdown/Scene_Lighting_and_Fog.md`: new **Image clarity** section, a fog shadow-sampling note, and updated **Current issues**.
+- Effect on other scenes: materials without a roughness map now render with their own roughness, so ones that relied on the 0.5 override will look different.
+- `Tests/Components` passes, including `--graphics`. Not yet checked in the Anvil viewport.
+
+- Claude
+
+## Added: day/night cycle tuning guide
+
+- New section **Tuning a scene for the day/night cycle** in `Docs/markdown/Scene_Lighting_and_Fog.md`. It covers:
+  - the sun and moon path and timings;
+  - how the scene's brightest directional light acts as a template for the cycle light;
+  - a table of recommended settings, saying where each is edited (Inspector, Environment panel, Post Processing, or the `.obsc` file);
+  - a list of hours to check, with what to look for at each.
+- Corrected the **Direct lights** section: Anvil only shows colour, intensity and Cast Shadows for directional lights. The shadow settings are edited in the scene file.
+
+- Claude
+
+## Fixed: lighting flickers when the sun or moon is overhead
+
+**Why:** In `GodRayTest`, sunlight flickered while the sun or moon passed overhead:
+- At noon the frame's average brightness jumped by about 13/255 every frame, against about 0.5 at 09:00.
+- The cause was shadow acne on surfaces facing the light, such as the ground and roof tops.
+  - The shadow map's write bias, `(1 - |normal.z|) * SizeBias`, is almost zero for those surfaces.
+  - The soft PCF lookup (filtering 1 and 2) reads texels up to 2–3 away with no bias of its own.
+  - So a surface tilted slightly from the light shadowed itself in a noisy pattern, and TAA's per-frame jitter made it shimmer.
+
+- `DeferredDirectionalLight.fx`: `CalcShadowTermSoftPCF` subtracts a slope-scaled receiver bias (`GetSlopeBias`). It is half a shadow texel plus the kernel reach times tan(angle to the light), capped at tan = 4. The texel size comes from a new `ShadowSize` parameter, set in `DirectionalLight.ApplyShader` through `Shaders.deferredDirectionalLightParameter_ShadowSize`.
+- After the fix, the per-frame brightness change at noon is 0.09/255, and at midnight 0.1–0.3/255 (it was 3.3).
+- Shadow edges stay attached.
+- God rays are unchanged: the froxel fog uses its own shadow test in `Froxel.fx`, and the shadow map itself is untouched.
+
+- Claude
+
+## Added: god ray test scene
+
+**Why:** To check that sun and moon shafts (froxel fog) show up across the whole day/night cycle.
+
+- New `Engine/Content/Scenes/GodRayTest.obsc`. It has:
+  - a 120 m hall with a slatted roof and east and west louvres, a dark backdrop wall and a reference sphere;
+  - a camera 110–230 m away with Freecam, past the fog's 30 m start distance;
+  - the day/night cycle on, from 07:00, lasting 4 minutes;
+  - a `Sun` template light with intensity 100 and a 260 m shadow box covering the hall.
+- Checked by rendering it offscreen at ten hours with default fog, fog on and off. Shafts show at every hour:
+  - clear from 08:00 to 15:00;
+  - faint at sunrise and sunset;
+  - about a third as strong under the moon from 21:00 to 03:00;
+  - weakest at 19:00, with the moon low.
+- `Tests/Components/SampleSceneChecks.cs` (`RunGodRays`) checks that the scene loads, that the hall fits inside the shadow box, and that the camera is past the fog start.
+- `Docs/markdown/Scene_Lighting_and_Fog.md` documents the scene and the results.
+
+- Claude
+
+## Added: scene lighting and fog documentation
+
+- New `Docs/markdown/Scene_Lighting_and_Fog.md`. It covers:
+  - what lights a pixel: direct lights, the environment cubemap, baked probes, screen-space effects, froxel fog and exposure;
+  - the Environment, Lighting and Post Processing panels, with their defaults;
+  - how probes are sampled: normal offset, visibility test and reflection darkening;
+  - a checklist for lighting interiors;
+  - the `AutoExposureTest` sample scene;
+  - a code map.
+- Its **Current issues** section lists what is still wrong or missing:
+  - indoor god rays are faint because fog is global and starts 30 m from the camera; Fog Volume versus per-scene fog is undecided;
+  - Post Processing settings are not saved;
+  - fog sparkles at high density, and beams are soft;
+  - unbaked interiors are lit by the outdoor cubemap;
+  - there is one environment sample per scene, and it can't be edited in Anvil;
+  - the bake ignores the day/night cycle and has to be redone by hand;
+  - probe lighting is low-frequency, and old `.probes` files have no visibility data;
+  - the fog phase change affects existing scenes.
+
+- Claude
+
 ## Fixed: probe light leaking through walls, and backwards fog scattering
 
 **Why:** The house interior looked odd: corners and wall edges glowed, there was a bright smear under the ceiling, and walls were blotchy. All of it was baked probe light leaking through geometry thinner than the 0.57 m probe spacing:

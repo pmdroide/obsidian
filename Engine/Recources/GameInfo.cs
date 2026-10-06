@@ -62,6 +62,18 @@ namespace Engine.Recources
             return Path.Combine(AppContext.BaseDirectory, "Content");
         }
 
+        /// <summary>
+        /// Absolute path of a Content-relative loose file (scene, UI document, settings): the source
+        /// <c>Engine/Content</c> copy when it exists, else the copy next to the executable.
+        /// </summary>
+        public static string ResolveContentFile(string contentRelativePath)
+        {
+            string relative = contentRelativePath.Replace('/', Path.DirectorySeparatorChar);
+            string source = Path.Combine(SourceContentRoot, relative);
+            if (File.Exists(source)) return source;
+            return Path.Combine(AppContext.BaseDirectory, "Content", relative);
+        }
+
         /// <summary>Reads GameInfo.json from disk without touching <see cref="Current"/>.</summary>
         public static Data Read()
         {

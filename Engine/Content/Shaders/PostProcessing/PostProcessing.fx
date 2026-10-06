@@ -180,7 +180,7 @@ float4 VignetteChromaShiftPixelShaderFunction(float4 pos : SV_POSITION, float2 t
 	float dist = distance(texCoord, float2(0.5.xx));
 
 	//Chroma shift / fringe effect
-	if (dist > 0.1)
+	if (dist > 0.1 && ChromaticAbberationStrength > 0)
 	{
 		//Depending on distance to center, we substitute our red channel for another pixel from a slight offset
 		float2 distcr = (texCoord - float2(0.5, 0.5)) ;

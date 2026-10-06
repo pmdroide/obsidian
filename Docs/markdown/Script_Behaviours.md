@@ -52,6 +52,15 @@ Movement eases in and out. Freecam starts from the camera's saved view. The
 `Scenes/AutoExposureTest.obsc` sample already has it attached. The script is
 short, so copy it as a starting point for your own camera controllers.
 
+### Main Menu
+
+`Engine/Content/Scripts/MainMenuScript.cs` runs the `Scenes/MainMenu.obsc`
+sample: a Vista menu (title, main menu, scene list, settings, credits, quit
+dialog) and a slow camera drift. It is the reference for scripts that load
+scenes (`GameFlow`), read menu input from keyboard, mouse and gamepad
+(`GameInput`) and show UI (`GameUI`). See
+[Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md).
+
 ### Helpers on a camera
 
 In a camera script, `GameObject` is `null` and `Camera` is the camera. The
@@ -287,6 +296,17 @@ public sealed class EngineSoundScript : ScriptBehaviour
     // No Stop() override needed: _hum stops with the script.
 }
 ```
+
+### Game flow, input and UI
+
+Static APIs in `Engine.Logic` for game scripts (details in
+[Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md)):
+
+| API | Use it for |
+| --- | --- |
+| `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. |
+| `GameInput.MenuUp/Down/Confirm/Back`, `AnyInputPressed`, `WasPressed(...)` | Keyboard, mouse and gamepad input with pressed edges and key repeat. |
+| `GameUI.Open("UI/Name")` / `GameUI.Close(ui)` | A Vista XML/CSS layer over the scene. |
 
 Run `dotnet run --project Tests/Components/Components.csproj` to verify script
 selection, bridge edits, cloning, scene persistence, lifecycle, error isolation,

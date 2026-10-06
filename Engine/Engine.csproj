@@ -47,12 +47,17 @@
     <None Include="Content\Scripts\**\*.cs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Loose files read at runtime (NOT via the MGCB pipeline): Vista UI documents (the debug overlay
+       and GameUI layers) and scenes, which the standalone game opens through the scene list
+       (Content/System/SceneList.json, below). Dev runs read the source copies directly. -->
   <ItemGroup>
-    <None Update="Content\UI\debug.xml">
+    <None Update="Content\UI\**\*.xml;Content\UI\**\*.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <None Update="Content\UI\debug.css">
+    <None Update="Content\Scenes\**\*.obsc;Content\Scenes\**\*.probes">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 
@@ -87,6 +92,10 @@
     </None>
     <None Update="Content\System\GameIcon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\System\SceneList.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
   <PropertyGroup Condition="Exists('Content\System\GameIcon.ico')">

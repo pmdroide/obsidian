@@ -11,6 +11,7 @@ public static class ScriptRegistry
     {
         Register<SpinExampleScript>(SpinExampleScript.ScriptId, "Spin Example");
         Register<FreecamScript>(FreecamScript.ScriptId, "Freecam");
+        Register<MainMenuScript>(MainMenuScript.ScriptId, "Main Menu");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

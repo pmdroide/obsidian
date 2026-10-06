@@ -7,6 +7,9 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Components" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="AngleSharp" Version="1.4.0" />
     <PackageReference Include="AngleSharp.Css" Version="1.0.0-beta.154" />
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.4.1">
