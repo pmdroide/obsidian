@@ -1,5 +1,47 @@
 # Changelog
 
+## Added: documentation website build and GitHub Pages instructions
+
+- Added `Docs/website/README.md` instructions for dependency installation, local builds and previews, and GitHub Pages deployment using a GitHub Actions workflow.
+- Documented the repository base path, the required sidebar logo path change, deployment updates, and adjustments for forks or custom domains.
+
+- Codex
+
+## Added: skeletal animation and the AnimationTest sample scene
+
+**Why:** To test animations with the Mixamo FBX files in `Content/GameObjects/Player`, and to test textures on an animated mesh in the same scene. The engine had no skeletal animation before this.
+
+- **AnimationTest sample** (`Content/Scenes/AnimationTest.obsc`, last in the scene list): open it in Anvil and press Play. The camera has Freecam.
+  - X Bot playing its own walk clip, In Place.
+  - Y Bot playing the X Bot walk (retargeted by bone name).
+  - A textured Y Bot (UV checker albedo + normal map), walking.
+  - X Bot with root motion.
+  - Y Bot at 0.25 speed.
+  - A Y Bot bind-pose reference with no Animator.
+  - A cube with the same checker maps.
+  - The FBX files have no textures of their own. The checker maps (`GameObjects/Textures/UVChecker_BaseColor.png`, `UVChecker_Normal.png`) were generated for this.
+- **`ContentPipeline/`** (new net8.0 project, also in `Engine.slnx`): a MonoGame pipeline extension with `SkinnedModelProcessor`.
+  - Stores the skeleton and clips in `Model.Tag`. A file without a skeleton builds exactly like `ModelProcessor`.
+  - `Engine.csproj` builds it before the content build, and `Content.mgcb` references it.
+  - Re-reads FBX clips with Assimp, with pivots merged. MonoGame 3.8.4's `FbxImporter` applied each bone's PreRotation to the animation keys twice, which flipped Mixamo legs about 180°.
+- **`Engine/Animation/`**:
+  - `SkinningData` (+ content reader).
+  - `AnimationPlayer`: keyframe lerp/slerp, retargeting by bone name using model-space rotation deltas, root height scaling, In Place.
+  - `SkinnedMeshInstance`: parallel CPU skinning into per-entity dynamic vertex buffers.
+- **Rendering**: `MeshMaterialLibrary.Draw` swaps in an instance's posed vertex buffer (`TransformMatrix.Skin`). The G-buffer, shadow, forward, ID and outline passes all show the pose, with no new shaders.
+  - Animated entities flag `HasChanged` each frame, so culling and shadow maps update.
+  - Cost: about 2 ms per frame per 35k-vertex character.
+- **Animator component** (`AnimatorComponent`, Inspector > Add Component > Animator): Source (content path of another skinned model), Clip, Speed, Loop, In Place.
+  - Plays in Play mode. Edit mode and Stop show the bind pose.
+- **Assets**: `PlayerYBot` and `PlayerWalking` (`GameObjects/Player`, built Z-up in metres), loaded with their FBX material colours and widened culling bounds.
+- Docs: new `Docs/markdown/Skeletal_Animation.md`. `CLAUDE.md`, `Gameobject_Components.md` and `Importing Structure.md` are updated.
+- Tests: new `AnimationChecks` in `Tests/Components`.
+  - Covers the component and editor, player math, retargeting, the sample scene, and the real assets (the pre-rotation regression, feet on the ground, render output, loop and one-shot timing).
+  - All checks pass, including `--graphics`.
+- Checked in the standalone game: a screenshot of the scene in Play (all characters animating, shadows following, checker on the skinned mesh). The look is hazy and washed out because of the engine-wide froxel fog and auto exposure. Not yet checked in Anvil's Play mode or Inspector.
+
+- Claude
+
 ## Added: MainMenu sample scene, scene list and game UI
 
 **Why:** To test that Vista UI works and can look good in a real game flow, and to give the game a build order of scenes with a fixed startup scene.

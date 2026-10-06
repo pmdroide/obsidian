@@ -17,6 +17,9 @@ components remain compatible. Audio assets anywhere under `Engine/Content` are
 copied into builds. Anvil also copies newly imported audio into its runtime
 content directory on first playback, so assigning a new asset needs no rebuild.
 
+**Animator** plays a skeletal clip on a skinned model in Play mode (Source, Clip, Speed, Loop,
+In Place). See `Skeletal_Animation.md` and the `AnimationTest` sample scene.
+
 ## Roles and buoyancy
 
 Every mesh gameobject has a **Role** under its name in the Inspector. **Default**

@@ -444,6 +444,7 @@ namespace Engine.Renderer.Helper
                     int vertexOffset = meshLib.GetMesh().VertexOffset;
                     //int vCount = meshLib.GetMesh().NumVertices;
                     int startIndex = meshLib.GetMesh().StartIndex;
+                    VertexBuffer sharedVertices = null;
                     // Water draws a subdivided copy of the mesh so the waves can move its vertices.
                     if (renderType == RenderType.Water && renderModule is WaterRenderModule water &&
                         water.BindMesh(graphicsDevice, meshLib.GetMesh(), out primitiveCount))
@@ -453,7 +454,8 @@ namespace Engine.Renderer.Helper
                     }
                     else
                     {
-                        graphicsDevice.SetVertexBuffer(meshLib.GetMesh().VertexBuffer);
+                        sharedVertices = meshLib.GetMesh().VertexBuffer;
+                        graphicsDevice.SetVertexBuffer(sharedVertices);
                         graphicsDevice.Indices = (meshLib.GetMesh().IndexBuffer);
                         primitiveCount = meshLib.GetMesh().PrimitiveCount;
                     }
@@ -466,14 +468,21 @@ namespace Engine.Renderer.Helper
                         //if (!meshLib.GetWorldMatrices()[index].Rendered) continue;
                         if (!meshLib.Rendered[index]) continue;
 
-                        Matrix localWorldMatrix = meshLib.GetWorldMatrices()[index].World;
+                        TransformMatrix transform = meshLib.GetWorldMatrices()[index];
+                        Matrix localWorldMatrix = transform.World;
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,
                                 outlineId, outlined)) continue;
                         GameStats.MeshDraws++;
-                        
+
+                        // Animated instances draw their own posed copy of the shared vertices.
+                        VertexBuffer skinned = sharedVertices != null ? transform.Skin?.Resolve(sharedVertices) : null;
+                        if (skinned != null) graphicsDevice.SetVertexBuffer(skinned);
+
                         graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex,
                                 primitiveCount);
+
+                        if (skinned != null) graphicsDevice.SetVertexBuffer(sharedVertices);
                     }
                 }
 

@@ -1,0 +1,287 @@
+{
+  "Version": 2,
+  "Name": "AnimationTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        1.2,
+        1.5,
+        -0.25
+      ],
+      "Scale": [
+        7,
+        5,
+        0.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.21,
+          0.23
+        ],
+        "Roughness": 0.85
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "X Bot - Walking (own clip)",
+      "ModelKey": "PlayerWalking",
+      "Position": [
+        -3,
+        0,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "c4fac551-c8e3-4201-9339-f1f90a247011",
+          "Data": {
+            "ClipSource": "",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Y Bot - Walking (retargeted)",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        -1.5,
+        0,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "68279721-af59-45ea-aaef-e3c157523ee1",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Y Bot - Textured",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        0,
+        0,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d165a818-5314-4547-b1fe-92241e74fd82",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "CastShadows": true,
+            "BaseColorTexture": "GameObjects/Textures/UVChecker_BaseColor.png",
+            "NormalTexture": "GameObjects/Textures/UVChecker_Normal.png",
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "animator",
+          "InstanceId": "073af063-0f88-4553-9399-388836218f5d",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "X Bot - Root Motion",
+      "ModelKey": "PlayerWalking",
+      "Position": [
+        1.5,
+        1.2,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "02929a4d-319d-46cc-bd3d-8a79cb75bf05",
+          "Data": {
+            "ClipSource": "",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Y Bot - Bind Pose (no Animator)",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        3.6,
+        0.5,
+        0
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Y Bot - Slow Motion",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        -1.5,
+        2.2,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "b2b3ebc3-54af-48db-99a1-1b474624a0d2",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 0.25,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "UV Checker Cube",
+      "ModelKey": "Cube",
+      "Position": [
+        5.6,
+        0.5,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.3826834,
+        0.9238795
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4b6ed141-e739-4f28-b3ff-3ad3bcd8db5f",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "CastShadows": true,
+            "BaseColorTexture": "GameObjects/Textures/UVChecker_BaseColor.png",
+            "NormalTexture": "GameObjects/Textures/UVChecker_Normal.png",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 20,
+      "Name": "Sun",
+      "Direction": [
+        0.6,
+        0.45,
+        -0.66
+      ],
+      "Position": [
+        1,
+        1,
+        2
+      ],
+      "Color": [
+        255,
+        250,
+        240,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 20,
+      "ShadowDepth": 60,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      1,
+      -3,
+      1.5
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 14
+  },
+  "MainCamera": {
+    "Position": [
+      0.8,
+      -7.5,
+      1.6
+    ],
+    "Forward": [
+      0,
+      1,
+      -0.06
+    ],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "bab5f9e0-d77f-48c5-8913-832536e82769",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

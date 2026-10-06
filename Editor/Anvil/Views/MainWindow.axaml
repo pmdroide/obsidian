@@ -1261,6 +1261,39 @@
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
+                                        <DataTemplate DataType="m:AnimatorComponentViewModel" x:DataType="m:AnimatorComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="PersonStanding" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Source" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding ClipSource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="This model" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Clip" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding ClipName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Longest clip" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Speed, Mode=TwoWay}"
+                                                                       Minimum="-10" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
+                                                    <CheckBox Content="In Place" IsChecked="{Binding InPlace, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Plays a skeletal clip in Play mode (the bind pose shows while editing). Source is the content path of another skinned model with the same bone names, e.g. GameObjects/Player/Walking; empty uses this model's own clips. In Place removes the clip's forward travel." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
                                         <DataTemplate DataType="m:ScriptBehaviourComponentViewModel" x:DataType="m:ScriptBehaviourComponentViewModel">
                                             <Expander IsExpanded="True" Header="{Binding DisplayName}">
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">

@@ -23,6 +23,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Components" />
     <ProjectReference Include="..\Vista\Vista.csproj" />
+    <!-- Content pipeline extension (SkinnedModelProcessor): built before the content build, which
+         loads it through the /reference line in Content.mgcb. Not referenced by the engine itself. -->
+    <ProjectReference Include="..\ContentPipeline\ContentPipeline.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 
   <Import Project="thirdparty\steam\Steamworks.props" />

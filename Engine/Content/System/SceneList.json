@@ -2,6 +2,7 @@
   "Scenes": [
     "Scenes/MainMenu.obsc",
     "Scenes/GodRayTest.obsc",
-    "Scenes/AutoExposureTest.obsc"
+    "Scenes/AutoExposureTest.obsc",
+    "Scenes/AnimationTest.obsc"
   ]
 }

@@ -10,6 +10,7 @@
 
 #-------------------------------- References --------------------------------#
 
+/reference:../../ContentPipeline/bin/Obsidian.ContentPipeline.dll
 
 #---------------------------------- Content ---------------------------------#
 
@@ -590,3 +591,65 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:GameObjects/Error/ERRORText_typeBlinn_Metallic.jpg
+
+#begin GameObjects/Player/Y Bot.fbx
+/importer:FbxImporter
+/processor:SkinnedModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=90
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=0.01
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:GameObjects/Player/Y Bot.fbx
+
+#begin GameObjects/Player/Walking.fbx
+/importer:FbxImporter
+/processor:SkinnedModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=90
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=0.01
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:GameObjects/Player/Walking.fbx
+
+#begin GameObjects/Textures/UVChecker_BaseColor.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:GameObjects/Textures/UVChecker_BaseColor.png
+
+#begin GameObjects/Textures/UVChecker_Normal.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:GameObjects/Textures/UVChecker_Normal.png

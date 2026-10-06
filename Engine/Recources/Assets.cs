@@ -63,6 +63,11 @@ namespace Engine.Recources
         public ModelDefinition StanfordDragon;
         public ModelDefinition StanfordDragonLowpoly;
 
+        // Skinned Mixamo characters (SkinnedModelProcessor: Model.Tag is Animation.SkinningData).
+        // The Animator component plays their clips; see Content/Scenes/AnimationTest.obsc.
+        public ModelDefinition PlayerYBot;
+        public ModelDefinition PlayerWalking;
+
 
 
         public SpriteFont DefaultFont;
@@ -213,6 +218,9 @@ namespace Engine.Recources
 
             DragonLowPolyMaterial = CreateMaterial(Color.Red, 0.5f, 0, type: MaterialEffect.MaterialTypes.Basic, normalMap: content.Load<Texture2D>("GameObjects/default/dragon_normal"));
 
+            PlayerYBot = LoadSkinnedModel(content, "GameObjects/Player/Y Bot", graphicsDevice);
+            PlayerWalking = LoadSkinnedModel(content, "GameObjects/Player/Walking", graphicsDevice);
+
             //Fonts
 
             DefaultFont = content.Load<SpriteFont>("Fonts/defaultFont");
@@ -262,6 +270,29 @@ namespace Engine.Recources
             // Re-register models imported in previous editor sessions so they reappear
             // in the Meshes folder and saved scenes referencing them can load.
             ReimportExistingModels(content, graphicsDevice);
+        }
+
+        /// <summary>
+        /// Loads a skinned model with its FBX material colours (entities saved without a material
+        /// keep them). Mesh bounds are widened so poses reaching past the bind pose aren't culled.
+        /// Returns null when the asset is missing, so a scene using it skips the entity instead
+        /// of blocking boot.
+        /// </summary>
+        private ModelDefinition LoadSkinnedModel(ContentManager content, string assetPath, GraphicsDevice graphicsDevice)
+        {
+            try
+            {
+                var definition = new ModelDefinition(content, assetPath, graphicsDevice);
+                BindEmbeddedTextures(definition.Model);
+                foreach (ModelMesh mesh in definition.Model.Meshes)
+                    mesh.BoundingSphere = new BoundingSphere(mesh.BoundingSphere.Center, mesh.BoundingSphere.Radius * 1.5f);
+                return definition;
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"Assets: failed to load skinned model '{assetPath}': " + ex.Message);
+                return null;
+            }
         }
 
         /// <summary>

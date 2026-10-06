@@ -276,6 +276,9 @@ namespace Engine.Entities
 
         public Matrix World;
 
+        // Posed vertex buffers (Animator component) drawn in place of the shared mesh's; null = static.
+        public Animation.SkinnedMeshInstance Skin;
+
         public TransformMatrix(Matrix world, int id)
         {
             World = world;

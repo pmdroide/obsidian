@@ -30,6 +30,7 @@ public static class ComponentRegistry
         Register<PhysicsComponent>(PhysicsComponent.TypeId, "Physics");
         Register<AudioComponent>(AudioComponent.TypeId, "Audio");
         Register<ScriptBehaviourComponent>(ScriptBehaviourComponent.TypeId, "Script Behaviour", allowMultiple: true);
+        Register<AnimatorComponent>(AnimatorComponent.TypeId, "Animator");
     }
 
     /// <summary>Definitions in registration order (the Add Component menu order).</summary>

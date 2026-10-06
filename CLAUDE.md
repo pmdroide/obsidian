@@ -9,6 +9,7 @@ Solution projects:
 - `Engine/Engine.csproj` - MonoGame WindowsDX executable and core engine.
 - `Editor/Anvil/Anvil.csproj` - Avalonia editor shell that embeds the engine viewport.
 - `Vista/Vista.csproj` - lightweight XML/CSS UI renderer built on AngleSharp + MonoGame.
+- `ContentPipeline/ContentPipeline.csproj` - MonoGame pipeline extension (`SkinnedModelProcessor`), net8.0 because mgcb runs on .NET 8. `Engine.csproj` builds it before the content build; `Content.mgcb` loads it via `/reference`.
 
 ## Quick Commands
 
@@ -46,7 +47,8 @@ Notes:
 - `Engine/Renderer/Renderer.cs` - main render pipeline and render target ownership.
 - `Engine/Renderer/RenderModules/` - individual rendering modules: G-buffer, deferred lighting, froxels, shadows, TAA, bloom, decals, SDFs, forward pass, editor outlines.
 - `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type.
-- `Engine/Components/` - gameobject components (`GameComponent`, `ComponentRegistry`, Material, Physics, Audio). See "Adding a Gameobject Component".
+- `Engine/Components/` - gameobject components (`GameComponent`, `ComponentRegistry`, Material, Physics, Audio, Animator). See "Adding a Gameobject Component".
+- `Engine/Animation/` - skeletal animation: `SkinningData` (skeleton + clips from `Model.Tag`), `AnimationPlayer` (sampling, retargeting by bone name), `SkinnedMeshInstance` (CPU skinning into per-entity vertex buffers that `MeshMaterialLibrary` draws via `TransformMatrix.Skin`).
 - `Engine/Recources/` - asset, shader, settings, stats, materials, model wrappers. Keep the existing `Recources` spelling.
 - `Engine/Content/Content.mgcb` - MonoGame content manifest.
 - `Engine/Content/` - models, textures, shaders, fonts, video, Sponza assets, UI XML/CSS.
@@ -60,6 +62,7 @@ Notes:
 - `Vista/UI/UIManager.cs` - loads XML/CSS, builds UI tree, updates layout, draws via SpriteBatch.
 - `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic (absolute layout, gradients, borders, text, transitions, hit testing).
 - `Docs/markdown/Scenes_and_Game_Flow.md`, `Docs/markdown/VistaUI_Architecture.md` - scene list/GameFlow/GameInput/GameUI and the supported Vista CSS.
+- `Docs/markdown/Skeletal_Animation.md` - Animator component, the AnimationTest sample scene, and how skinned models are built and drawn.
 
 ## Runtime Flow
 
@@ -128,6 +131,7 @@ Important types:
 - Change the startup scene or build order: Anvil > Game Settings > Scenes, or `Engine/Content/System/SceneList.json` (index 0 boots the standalone game). Scripts switch scenes with `GameFlow.LoadScene(...)`; in Anvil, Stop returns to the edited scene.
 - Add a game menu or HUD: a Vista document in `Engine/Content/UI/<Name>.xml` + `.css`, opened with `GameUI.Open("UI/<Name>")` from a script behaviour (reference: `Engine/Content/Scripts/MainMenuScript.cs`). The document is parsed as HTML (always close `div`s); layout is absolute.
 - Add an engine asset: update `Content.mgcb`, then add a load/register field in `Assets.cs`.
+- Add an animated (skinned) model: `Content.mgcb` entry with `/processor:SkinnedModelProcessor` (Mixamo: `RotationX=90`, `Scale=0.01`, `GenerateTangentFrames=True`; copy the `GameObjects/Player` entries), a `ModelDefinition` field loaded with `Assets.LoadSkinnedModel`, then an Animator component (Source = content path of another FBX to share its clips). Sample: `Content/Scenes/AnimationTest.obsc`. After changing the processor, delete the model's `.xnb`/`.mgcontent` so mgcb rebuilds it.
 - Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
 - Add a gameobject role: append a value to `Engine/Entities/GameObjectRole.cs` (saved by name, so never rename one) and handle it where it matters; `ScenePhysics`/`WaterVolume` handle `Water`.
 - Change water waves: the swell lives in both `Engine/Content/Shaders/Forward/Water.fx` (`Swell`) and `Engine/Physics/WaterWaves.cs` (buoyancy); keep them identical.

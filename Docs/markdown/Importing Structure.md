@@ -11,6 +11,7 @@ This project does **not** have a broad automatic asset discovery system. It main
 - [Engine/Content/Content.mgcb](C:/Dev/GitHub/obsidian/Engine/Content/Content.mgcb:16)  
   The main import manifest. This says which importer/processor to use:
   - `.fbx`, `.obj`: `FbxImporter` + `ModelProcessor`
+  - skinned `.fbx` (e.g. `GameObjects/Player`): `FbxImporter` + `SkinnedModelProcessor` from `ContentPipeline/` (keeps skeleton and clips in `Model.Tag`; see `Skeletal_Animation.md`)
   - `.x`: `XImporter` + `ModelProcessor`
   - `.png`, `.jpg`, `.dds`, `.tif`: `TextureImporter` + `TextureProcessor`
   - `.spritefont`: `FontDescriptionImporter`
