@@ -1,0 +1,323 @@
+{
+  "Version": 2,
+  "Name": "MultiplayerTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.25
+      ],
+      "Scale": [
+        10.5,
+        10.5,
+        0.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.26,
+          0.28,
+          0.31
+        ],
+        "Roughness": 0.9,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Spawn Pad",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        0.01
+      ],
+      "Scale": [
+        1.6,
+        1.6,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.31,
+          0.64,
+          1.0
+        ],
+        "Roughness": 0.35,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Wall North",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        10,
+        0.4
+      ],
+      "Scale": [
+        10.25,
+        0.25,
+        0.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.17,
+          0.18,
+          0.2
+        ],
+        "Roughness": 0.7,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Wall South",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -10,
+        0.4
+      ],
+      "Scale": [
+        10.25,
+        0.25,
+        0.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.17,
+          0.18,
+          0.2
+        ],
+        "Roughness": 0.7,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Wall East",
+      "ModelKey": "Cube",
+      "Position": [
+        10,
+        0,
+        0.4
+      ],
+      "Scale": [
+        0.25,
+        9.75,
+        0.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.17,
+          0.18,
+          0.2
+        ],
+        "Roughness": 0.7,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Wall West",
+      "ModelKey": "Cube",
+      "Position": [
+        -10,
+        0,
+        0.4
+      ],
+      "Scale": [
+        0.25,
+        9.75,
+        0.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.17,
+          0.18,
+          0.2
+        ],
+        "Roughness": 0.7,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Corner Marker 01",
+      "ModelKey": "Cube",
+      "Position": [
+        6.5,
+        6.5,
+        0.01
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.91,
+          0.36,
+          0.25
+        ],
+        "Roughness": 0.5,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Corner Marker 02",
+      "ModelKey": "Cube",
+      "Position": [
+        -6.5,
+        6.5,
+        0.01
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.38,
+          0.79,
+          0.41
+        ],
+        "Roughness": 0.5,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Corner Marker 03",
+      "ModelKey": "Cube",
+      "Position": [
+        -6.5,
+        -6.5,
+        0.01
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.96,
+          0.77,
+          0.25
+        ],
+        "Roughness": 0.5,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Corner Marker 04",
+      "ModelKey": "Cube",
+      "Position": [
+        6.5,
+        -6.5,
+        0.01
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.7,
+          0.4,
+          1.0
+        ],
+        "Roughness": 0.5,
+        "Metallic": 0.0
+      },
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 20,
+      "Name": "Sun",
+      "Direction": [
+        0.55,
+        0.4,
+        -0.73
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        248,
+        236,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 30,
+      "ShadowDepth": 80,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      3
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15
+  },
+  "MainCamera": {
+    "Position": [
+      -7,
+      0,
+      3.8
+    ],
+    "Forward": [
+      0.92,
+      0,
+      -0.38
+    ],
+    "FieldOfView": 0.9,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "5d0c7e41-2b9a-4f63-8a1e-7c4f2d9b6e10",
+        "Data": {
+          "ScriptId": "multiplayer-test",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

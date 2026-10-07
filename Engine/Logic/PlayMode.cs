@@ -170,7 +170,7 @@ namespace Engine.Logic
             foreach (var d in s.Decals)
                 _decalSnap.Add(new TransformSnap(d.Id, d.Position, d.RotationMatrix, d.Scale));
             foreach (var pl in s.PointLights)
-                _pointLightSnap.Add(new TransformSnap(pl.Id, pl.Position, Matrix.Identity, Vector3.One));
+                _pointLightSnap.Add(new TransformSnap(pl.Id, pl.Position, pl is SpotLight ? pl.RotationMatrix : Matrix.Identity, Vector3.One));
             foreach (var dl in s.DirectionalLights)
                 _dirLightSnap.Add(new TransformSnap(dl.Id, dl.Position, dl.RotationMatrix, Vector3.One));
             _snappedCamera = s.MainCamera;

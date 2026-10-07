@@ -28,6 +28,10 @@ namespace Engine.Steam
         private DateTime _nextStatusRefresh;
 
         public SteamConnectionStatus Status => _status;
+        /// <summary>The engine's session, for scripts (see <see cref="SteamP2PSession"/>). Set by <c>Engine.Engine</c>.</summary>
+        public static SteamService Current { get; internal set; }
+        /// <summary>Saved App ID; also the App ID of the running session once connected.</summary>
+        public uint ConfiguredAppId => _settings.AppId;
 
         public SteamService() : this(new SteamworksClient(), new SteamSettingsStore()) { }
         internal SteamService(ISteamClient client, SteamSettingsStore settingsStore = null)

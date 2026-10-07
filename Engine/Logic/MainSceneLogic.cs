@@ -526,6 +526,13 @@ namespace Engine.Logic
             return AddPointLight(position, radius, color, intensity, castShadows: false);
         }
 
+        internal SpotLight EditorAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle)
+        {
+            SpotLight light = new SpotLight(position, radius, color, intensity, direction, spotAngle, innerSpotAngle: spotAngle * 0.75f);
+            PointLights.Add(light);
+            return light;
+        }
+
         internal DirectionalLight EditorAddDirectionalLight(Vector3 direction, Color color, float intensity)
         {
             return AddDirectionalLight(direction: direction, intensity: (int)intensity, color: color);
@@ -537,6 +544,26 @@ namespace Engine.Logic
             if (material != null)
                 return AddEntity(model, material, position, 0, 0, 0, 1f);
             return AddEntity(model, position, 0, 0, 0, 1f);
+        }
+
+        /// <summary>
+        /// Adds a gameobject from a model key ("Capsule") for the current Play session. It is
+        /// flagged <see cref="BasicEntity.IsRuntimeSpawned"/> so saving skips it. Null for an unknown key.
+        /// </summary>
+        internal BasicEntity SpawnRuntimeEntity(string modelKey, Vector3 position, string name)
+        {
+            ModelDefinition model = _assets?.FindModel(modelKey);
+            if (model == null)
+            {
+                EditorBridge.Log($"Spawn: unknown model key '{modelKey}'");
+                return null;
+            }
+            // Like the editor's Add, a model whose geometry never loaded shows the error mesh.
+            if (model.Model == null && _assets.ErrorModel != null) model = _assets.ErrorModel;
+            BasicEntity entity = AddEntity(model, position, 0, 0, 0, 1f);
+            entity.IsRuntimeSpawned = true;
+            if (!string.IsNullOrEmpty(name)) entity.Name = name;
+            return entity;
         }
 
         internal bool EditorDelete(int id)

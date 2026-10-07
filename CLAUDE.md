@@ -46,7 +46,7 @@ Notes:
 - `Engine/Recources/SceneList.cs` - build order of scenes (`Content/System/SceneList.json`); index 0 boots the standalone game.
 - `Engine/Renderer/Renderer.cs` - main render pipeline and render target ownership.
 - `Engine/Renderer/RenderModules/` - individual rendering modules: G-buffer, deferred lighting, froxels, shadows, TAA, bloom, decals, SDFs, forward pass, editor outlines.
-- `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type.
+- `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type. `SpotLight` derives from `PointLight` and lives in the scene's `PointLights` list; every point light shader multiplies by a spot cone (point lights pass outer cosine -2).
 - `Engine/Components/` - gameobject components (`GameComponent`, `ComponentRegistry`, Material, Physics, Audio, Animator). See "Adding a Gameobject Component".
 - `Engine/Animation/` - skeletal animation: `SkinningData` (skeleton + clips from `Model.Tag`), `AnimationPlayer` (sampling, retargeting by bone name), `SkinnedMeshInstance` (CPU skinning into per-entity vertex buffers that `MeshMaterialLibrary` draws via `TransformMatrix.Skin`).
 - `Engine/Recources/` - asset, shader, settings, stats, materials, model wrappers. Keep the existing `Recources` spelling.
@@ -63,6 +63,8 @@ Notes:
 - `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic (absolute layout, gradients, borders, text, transitions, hit testing).
 - `Docs/markdown/Scenes_and_Game_Flow.md`, `Docs/markdown/VistaUI_Architecture.md` - scene list/GameFlow/GameInput/GameUI and the supported Vista CSS.
 - `Docs/markdown/Skeletal_Animation.md` - Animator component, the AnimationTest sample scene, and how skinned models are built and drawn.
+- `Engine/Physics/ScenePhysics.cs` + `PhysicsContact.cs` - BEPU bodies per gameobject, raycasts, and collision/trigger Enter/Stay/Exit events dispatched to Script Behaviours (`OnCollisionEnter`, `OnTriggerEnter`, ...). `Engine/Components/InteractableComponent.cs` + `ScriptBehaviour.FindInteractable/Interact/CameraRay` - raycast interaction. Sample: `Content/Scenes/CollisionTest.obsc` (first-person player `Content/Scripts/CollisionTestPlayerScript.cs` + station scripts); see `Docs/markdown/Collisions_and_Interaction.md`.
+- `Engine/Steam/SteamP2PSession.cs` - Steam lobby + `SteamNetworkingMessages` peer-to-peer session for scripts (`SteamService.Current` is the engine's Steam session). Sample: `Content/Scenes/MultiplayerTest.obsc` + `Content/Scripts/MultiplayerTestScript.cs`; see `Docs/markdown/Steam_Multiplayer.md`.
 
 ## Runtime Flow
 
@@ -132,7 +134,10 @@ Important types:
 - Add a game menu or HUD: a Vista document in `Engine/Content/UI/<Name>.xml` + `.css`, opened with `GameUI.Open("UI/<Name>")` from a script behaviour (reference: `Engine/Content/Scripts/MainMenuScript.cs`). The document is parsed as HTML (always close `div`s); layout is absolute.
 - Add an engine asset: update `Content.mgcb`, then add a load/register field in `Assets.cs`.
 - Add an animated (skinned) model: `Content.mgcb` entry with `/processor:SkinnedModelProcessor` (Mixamo: `RotationX=90`, `Scale=0.01`, `GenerateTangentFrames=True`; copy the `GameObjects/Player` entries), a `ModelDefinition` field loaded with `Assets.LoadSkinnedModel`, then an Animator component (Source = content path of another FBX to share its clips). Sample: `Content/Scenes/AnimationTest.obsc`. After changing the processor, delete the model's `.xnb`/`.mgcontent` so mgcb rebuilds it.
+- Give a script Inspector settings: public fields or `[SerializeField]` private fields (`bool`/`int`/`float`/`double`/`string`/enum/`Vector2`/`Vector3`/`Color`) on the `ScriptBehaviour`, optionally `[Range]`, `[Tooltip]`, `[HideInInspector]`, `[FormerlySerializedAs]`. Values live per attachment in `ScriptBehaviourComponent.Fields` and are applied before `Start` (`Engine/Scripting/ScriptFields.cs`). Use `[NonSerialized]` for public runtime state.
+- Spawn gameobjects at runtime from a script: `Spawn("Capsule", position)` / `Destroy(entity)` on `ScriptBehaviour`. Spawned objects are flagged `BasicEntity.IsRuntimeSpawned`, never saved, and removed when the script stops. Built-in model keys are the public `ModelDefinition` fields on `Assets` (`Assets.FindModel`).
 - Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
+- React to contacts or let the player use objects: override `OnCollisionEnter/Stay/Exit`, `OnTriggerEnter/Stay/Exit` or `OnInteract` on a `ScriptBehaviour`; triggers are Physics > Is Trigger (Static triggers are convex hulls), usable objects get an Interactable component plus a non-trigger Physics component. Reference: the CollisionTest sample scripts.
 - Add a gameobject role: append a value to `Engine/Entities/GameObjectRole.cs` (saved by name, so never rename one) and handle it where it matters; `ScenePhysics`/`WaterVolume` handle `Water`.
 - Change water waves: the swell lives in both `Engine/Content/Shaders/Forward/Water.fx` (`Swell`) and `Engine/Physics/WaterWaves.cs` (buoyancy); keep them identical.
 - Add an editor-backed scene property: extend snapshot/mutation structs in `IEditorBridge.cs`, populate it in `EditorBridge.BuildSnapshot()`, reconcile it in `BridgeReconciler`, and expose it through `SceneObjectViewModel`/XAML.

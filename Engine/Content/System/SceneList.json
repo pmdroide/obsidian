@@ -3,6 +3,8 @@
     "Scenes/MainMenu.obsc",
     "Scenes/GodRayTest.obsc",
     "Scenes/AutoExposureTest.obsc",
-    "Scenes/AnimationTest.obsc"
+    "Scenes/AnimationTest.obsc",
+    "Scenes/MultiplayerTest.obsc",
+    "Scenes/CollisionTest.obsc"
   ]
 }

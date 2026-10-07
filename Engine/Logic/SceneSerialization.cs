@@ -54,7 +54,7 @@ namespace Engine.Logic
             };
             string json = JsonSerializer.Serialize(doc, Options);
             File.WriteAllText(path, json);
-            EditorBridge.Log($"SceneSerialization.SaveToFile: '{path}' ({doc.Entities.Count} entities, {doc.PointLights.Count} pls, {doc.DirectionalLights.Count} dls, {doc.Decals.Count} decals)");
+            EditorBridge.Log($"SceneSerialization.SaveToFile: '{path}' ({doc.Entities.Count} entities, {doc.PointLights.Count} pls, {doc.SpotLights.Count} spots, {doc.DirectionalLights.Count} dls, {doc.Decals.Count} decals)");
 
             scene.FilePath = path;
             scene.Name = Path.GetFileNameWithoutExtension(path);
@@ -140,6 +140,19 @@ namespace Engine.Logic
                 pl.IsEnabled = rec.IsEnabled;
                 ClaimId(pl, rec.Id);
                 scene.PointLights.Add(pl);
+            }
+
+            foreach (var rec in doc.SpotLights ?? new List<SpotLightRecord>())
+            {
+                var sl = new SpotLight(rec.Position, rec.Radius, rec.Color, rec.Intensity,
+                    Matrix.CreateFromQuaternion(rec.Rotation), rec.SpotAngle, rec.InnerSpotAngle,
+                    castShadows: rec.CastShadows, isVolumetric: rec.IsVolumetric,
+                    shadowResolution: rec.ShadowResolution, softShadowBlurAmount: rec.SoftShadowBlurAmount,
+                    staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
+                sl.Name = rec.Name ?? sl.Name;
+                sl.IsEnabled = rec.IsEnabled;
+                ClaimId(sl, rec.Id);
+                scene.PointLights.Add(sl);
             }
 
             foreach (var rec in doc.DirectionalLights)
@@ -248,6 +261,8 @@ namespace Engine.Logic
 
             foreach (var be in scene.BasicEntities)
             {
+                // Script-spawned objects (e.g. network players) only exist for the Play session.
+                if (be.IsRuntimeSpawned) continue;
                 if (!modelReverse.TryGetValue(be.ModelDefinition, out string modelKey))
                 {
                     EditorBridge.Log($"SaveScene: entity '{be.Name}' has unregistered ModelDefinition, skipping");
@@ -287,6 +302,20 @@ namespace Engine.Logic
 
             foreach (var pl in scene.PointLights)
             {
+                if (pl is SpotLight sl)
+                {
+                    doc.SpotLights.Add(new SpotLightRecord
+                    {
+                        Id = sl.Id, Name = sl.Name, IsEnabled = sl.IsEnabled,
+                        Position = sl.Position, Radius = sl.Radius, Color = sl.Color, Intensity = sl.Intensity,
+                        CastShadows = sl.CastShadows, IsVolumetric = sl.IsVolumetric,
+                        ShadowResolution = sl.ShadowResolution, SoftShadowBlurAmount = sl.SoftShadowBlurAmount,
+                        StaticShadow = sl.StaticShadows, VolumetricDensity = sl.LightVolumeDensity,
+                        Rotation = Quaternion.CreateFromRotationMatrix(sl.RotationMatrix),
+                        SpotAngle = sl.SpotAngle, InnerSpotAngle = sl.InnerSpotAngle,
+                    });
+                    continue;
+                }
                 doc.PointLights.Add(new PointLightRecord
                 {
                     Id = pl.Id, Name = pl.Name, IsEnabled = pl.IsEnabled,
@@ -428,6 +457,8 @@ namespace Engine.Logic
             public string Name { get; set; }
             public List<BasicEntityRecord> Entities { get; set; } = new();
             public List<PointLightRecord> PointLights { get; set; } = new();
+            // Optional: files saved before spot lights existed have none
+            public List<SpotLightRecord> SpotLights { get; set; } = new();
             public List<DirectionalLightRecord> DirectionalLights { get; set; } = new();
             public List<DecalRecord> Decals { get; set; } = new();
             public EnvironmentSampleRecord EnvironmentSample { get; set; }
@@ -502,6 +533,13 @@ namespace Engine.Logic
             public int SoftShadowBlurAmount { get; set; }
             public bool StaticShadow { get; set; }
             public float VolumetricDensity { get; set; } = 1f;
+        }
+
+        public class SpotLightRecord : PointLightRecord
+        {
+            public Quaternion Rotation { get; set; } = Quaternion.Identity;
+            public float SpotAngle { get; set; } = 60f;
+            public float InnerSpotAngle { get; set; } = 40f;
         }
 
         public class DirectionalLightRecord

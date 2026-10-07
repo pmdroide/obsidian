@@ -1,0 +1,170 @@
+/*
+  MultiplayerTest HUD. Design canvas: 1080 units high (GameUI scales it to the window).
+  Layout is absolute; fonts are heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Palette
+    panel    rgba(8, 10, 14, 0.74)
+    text     #F1ECE4
+    muted    rgba(241, 236, 228, 0.62)
+    accent   #4FA3FF               Steam blue
+    online   #62C968
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #F1ECE4;
+    font-family: body;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- panel */
+
+/* Top right, clear of the engine's performance overlay in the top-left corner. */
+#panel {
+    right: 40px;
+    top: 40px;
+    width: 600px;
+    height: 418px;
+    background-color: rgba(8, 10, 14, 0.74);
+}
+
+#accent {
+    width: 3px;
+    height: 100%;
+    background-color: #4FA3FF;
+}
+
+.eyebrow {
+    left: 30px;
+    top: 24px;
+    width: 400px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+#title {
+    left: 30px;
+    top: 48px;
+    width: 540px;
+    height: 40px;
+    font-family: heading;
+}
+
+#steam-dot {
+    left: 30px;
+    top: 113px;
+    width: 10px;
+    height: 10px;
+    background-color: rgba(241, 236, 228, 0.3);
+    transition: background-color 0.3s;
+}
+
+#steam-dot.online { background-color: #62C968; }
+
+#steam {
+    left: 52px;
+    top: 104px;
+    width: 330px;
+    height: 28px;
+    white-space: nowrap;
+}
+
+#lobby {
+    right: 30px;
+    top: 107px;
+    width: 220px;
+    height: 24px;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #4FA3FF;
+}
+
+#rule {
+    left: 30px;
+    top: 146px;
+    width: 540px;
+    height: 1px;
+    background-color: rgba(241, 236, 228, 0.14);
+}
+
+#status {
+    left: 30px;
+    top: 160px;
+    width: 540px;
+    height: 56px;
+    line-height: 1.3;
+    color: rgba(241, 236, 228, 0.78);
+}
+
+/* ---------------------------------------------------------------- players */
+
+#players-label { top: 236px; }
+
+.player {
+    left: 30px;
+    width: 540px;
+    height: 34px;
+    display: none;
+}
+
+.player.used { display: block; }
+
+#player-0 { top: 266px; }
+#player-1 { top: 302px; }
+#player-2 { top: 338px; }
+#player-3 { top: 374px; }
+
+.swatch {
+    top: 9px;
+    width: 16px;
+    height: 16px;
+    background-color: #F1ECE4;
+}
+
+.name {
+    left: 30px;
+    width: 300px;
+    height: 34px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.detail {
+    right: 0;
+    width: 220px;
+    height: 34px;
+    text-align: right;
+    vertical-align: middle;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+/* ---------------------------------------------------------------- key hints */
+
+#keys {
+    left: 40px;
+    bottom: 36px;
+    width: 900px;
+    height: 112px;
+}
+
+.keys-line {
+    left: 0;
+    width: 900px;
+    height: 28px;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    display: none;
+}
+
+.keys-line.visible { display: block; }
+
+#keys-steam { top: 0; }
+#keys-lobby { top: 0; }
+#keys-in-lobby { top: 0; }
+#keys-move { top: 36px; display: block; }

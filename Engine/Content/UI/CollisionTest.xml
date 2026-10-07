@@ -1,0 +1,28 @@
+<!--
+  CollisionTest scene HUD (Vista). Driven by Engine/Content/Scripts/CollisionTestPlayerScript.cs, which
+  fills #prompt, #touching, #carrying and #feed (CollisionTestFeed) and toggles #crosshair.active and
+  #prompt.visible. Designed on a 1080-high canvas. Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="crosshair"><div id="dot"></div></div>
+    <div id="prompt"></div>
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Physics sandbox</div>
+        <div id="title">Collision Test</div>
+        <div id="touching"></div>
+        <div id="carrying"></div>
+        <div id="rule"></div>
+        <div id="feed-label" class="eyebrow">Events</div>
+        <div id="feed"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-move" class="keys-line">WASD move  ·  Shift run  ·  Space jump  ·  Hold right mouse (or arrows) look</div>
+        <div id="keys-act" class="keys-line">E use  ·  Hold left mouse carry  ·  F throw  ·  Q shove  ·  R reset</div>
+        <div id="keys-crates" class="keys-line">Crates: light 10 kg · medium 60 kg · heavy 180 kg · anchor 2000 kg</div>
+    </div>
+
+</div>

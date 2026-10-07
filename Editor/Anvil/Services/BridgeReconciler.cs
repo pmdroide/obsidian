@@ -151,13 +151,18 @@ public static class BridgeReconciler
                 vm.Light.AttachToParent(vm);
                 if (!freezeFields)
                 {
-                    var newType = l.IsDirectional ? LightType.Directional : LightType.Point;
+                    var newType = l.IsDirectional ? LightType.Directional : l.IsSpot ? LightType.Spot : LightType.Point;
                     if (vm.Light.Type != newType) vm.Light.Type = newType;
                     var newColor = FromXnaColor(l.Color);
                     if (vm.Light.Color != newColor) vm.Light.Color = newColor;
                     SetIfChanged(v => vm.Light.Intensity = v, vm.Light.Intensity, l.Intensity);
                     SetIfChanged(v => vm.Light.Radius = v, vm.Light.Radius, l.Radius);
                     if (vm.Light.CastShadows != l.CastShadows) vm.Light.CastShadows = l.CastShadows;
+                    if (l.IsSpot)
+                    {
+                        SetIfChanged(v => vm.Light.SpotAngle = v, vm.Light.SpotAngle, l.SpotAngle);
+                        SetIfChanged(v => vm.Light.InnerSpotAngle = v, vm.Light.InnerSpotAngle, l.InnerSpotAngle);
+                    }
                 }
             }
             else if (!freezeFields)
@@ -185,6 +190,7 @@ public static class BridgeReconciler
     {
         EditorObjectKind.BasicEntity => SceneObjectType.Mesh,
         EditorObjectKind.PointLight => SceneObjectType.Light,
+        EditorObjectKind.SpotLight => SceneObjectType.Light,
         EditorObjectKind.DirectionalLight => SceneObjectType.Light,
         EditorObjectKind.Camera => SceneObjectType.Camera,
         EditorObjectKind.Decal => SceneObjectType.Mesh,

@@ -423,6 +423,21 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle)
+        {
+            Log($"EnqueueAddSpotLight pos={position} dir={direction} radius={radius} angle={spotAngle}");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene == null) { Log("AddSpotLight: scene is null"); return; }
+                try
+                {
+                    SpotLight light = _scene.EditorAddSpotLight(position, direction, radius, color, intensity, spotAngle);
+                    Log($"AddSpotLight ok: id={light?.Id}");
+                }
+                catch (Exception ex) { Log("AddSpotLight threw: " + ex); }
+            });
+        }
+
         public void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity)
         {
             Log($"EnqueueAddDirectionalLight dir={direction} intensity={intensity}");
@@ -921,19 +936,23 @@ namespace Engine.Editor
             for (int i = 0; i < _scene.PointLights.Count; i++)
             {
                 PointLight p = _scene.PointLights[i];
+                SpotLight spot = p as SpotLight;
                 LightSnapshot ls = new LightSnapshot(
                     color: p.Color,
                     intensity: p.Intensity,
                     radius: p.Radius,
                     castShadows: p.CastShadows,
                     isDirectional: false,
-                    direction: Vector3.Zero);
+                    direction: spot?.Direction ?? Vector3.Zero,
+                    isSpot: spot != null,
+                    spotAngle: spot?.SpotAngle ?? 0f,
+                    innerSpotAngle: spot?.InnerSpotAngle ?? 0f);
                 list.Add(new EditorObjectSnapshot(
                     id: p.Id,
-                    name: p.Name ?? ("PointLight " + p.Id),
-                    kind: EditorObjectKind.PointLight,
+                    name: p.Name ?? (p.GetType().Name + " " + p.Id),
+                    kind: spot != null ? EditorObjectKind.SpotLight : EditorObjectKind.PointLight,
                     position: p.Position,
-                    rotation: Matrix.Identity,
+                    rotation: spot?.RotationMatrix ?? Matrix.Identity,
                     scale: Vector3.One,
                     isEnabled: p.IsEnabled,
                     light: ls,

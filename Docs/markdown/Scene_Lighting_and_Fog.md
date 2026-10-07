@@ -7,7 +7,7 @@ doesn't work well yet. Coordinates are Z-up throughout.
 
 Every frame, `Renderer.Draw` combines these sources:
 
-1. **Direct lights.** Directional lights (the sun) and point lights from the scene,
+1. **Direct lights.** Directional lights (the sun), point lights and spot lights from the scene,
    with shadow maps. They are drawn by `LightAccumulationModule`.
 2. **Environment cubemap.** A cubemap captured at the scene's environment sample
    position. It gives every pixel a reflection (specular) term and a small diffuse
@@ -26,7 +26,7 @@ Every frame, `Renderer.Draw` combines these sources:
 
 ## Direct lights
 
-Add lights from **GameObject > Light > Directional Light / Point Light**, or from the
+Add lights from **GameObject > Light > Directional Light / Point Light / Spot Light**, or from the
 Hierarchy **+** menu. New directional lights use intensity 100, which is a sunny day.
 
 - **Directional light:** direction, colour, intensity and **Cast Shadows** in Anvil.
@@ -35,6 +35,23 @@ Hierarchy **+** menu. New directional lights use intensity 100, which is a sunny
   box around the light's position, so keep the scene inside it.
 - **Point light:** position, radius, colour and intensity. For scale, intensity 3
   with radius 7 is barely visible next to a sun of 100.
+- **Spot light:** a point light limited to a cone. It has the point light's settings plus
+  **Spot Angle** (full cone angle, 1-179°) and **Inner** (the fully lit core). The edge
+  fades from Inner to Spot Angle. With no rotation it points straight down (-Z); turn it
+  with the Rotation fields or the rotate gizmo. A selected spot light draws its cone in
+  the viewport. New spot lights use radius 25, intensity 40 and a 60° cone.
+  - Spot lights are `SpotLight : PointLight` (`Engine/Entities/SpotLight.cs`) and live in
+    the scene's `PointLights` list, so they use the same light volume, the same cube
+    shadow map and the same forward, fog and bake paths. Each of those shaders
+    multiplies the distance falloff by the cone (`SpotConeFactor`; point lights pass an
+    outer cosine of -2, which lights every direction).
+  - Shadows render only the cube faces the cone reaches, so a narrow spot costs one
+    face instead of six.
+  - Scene files store them in a separate `SpotLights` list with a rotation quaternion,
+    `SpotAngle` and `InnerSpotAngle`. Older scenes load unchanged.
+  - Volumetric spot lights (`IsVolumetric`, scene file only) are approximate when
+    unshadowed: the analytic glow is weighted by the cone at the point of each view ray
+    closest to the light.
 - **Day/night cycle** (Environment panel, below): while it is on, the renderer swaps
   in its own sun and moon and ignores the scene's directional lights for shading.
 
@@ -150,7 +167,7 @@ over the view frustum, with logarithmic depth slices from 1 m to the far plane
 
 The sun's scattering uses its shadow map, so shafts form wherever the sun reaches,
 for example through a window. Point lights use their cube shadow maps when they cast
-shadows.
+shadows. Spot lights only scatter inside their cone.
 
 Each froxel tests the sun's shadow map at 6 points spread through its depth
 (`ComputeShadowAlongSlice`). Distant slices are about 10 m deep, so a single test aliased
@@ -363,7 +380,8 @@ up with the line of sight, so you see bright gaps instead.
 | Cubemap + probe sampling | `Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx`, `Engine/Renderer/RenderModules/DeferredEnvironmentMapRenderModule.cs` |
 | Probe bake | `Engine/Renderer/Lighting/` (`LightingSettings`, `LightingSystem`, `ProbeVolumeBaker`, `ProbeVolumeData`, `LightingBakeInput`) |
 | Sky / day-night | `Engine/Logic/EnvironmentSettings.cs`, `Engine/Renderer/EnvironmentSky.cs` |
+| Point / spot lights | `Engine/Entities/PointLight.cs`, `Engine/Entities/SpotLight.cs`, `Engine/Content/Shaders/Deferred/DeferredPointLight.fx`, `Engine/Renderer/RenderModules/DeferredLighting/PointLightRenderModule.cs`, `Engine/Renderer/RenderModules/ShadowMapRenderModule.cs` |
 | Fog | `Engine/Content/Shaders/Deferred/Froxel.fx`, `Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs`, `Engine/Content/Shaders/Deferred/DeferredCompose.fx` |
 | Exposure | `Engine/Content/Shaders/PostProcessing/AutoExposure.fx`, `Engine/Renderer/RenderModules/PostProcessingFilters/AutoExposureFilter.cs`, `Engine/Content/Shaders/PostProcessing/PostProcessing.fx` |
 | Defaults | `Engine/Recources/GameSettings.cs` |
-| Checks | `Tests/Components/SampleSceneChecks.cs`, `Tests/Components/AutoExposureChecks.cs` |
+| Checks | `Tests/Components/SampleSceneChecks.cs`, `Tests/Components/AutoExposureChecks.cs`, `Tests/Components/SpotLightChecks.cs` |

@@ -20,6 +20,19 @@ content directory on first playback, so assigning a new asset needs no rebuild.
 **Animator** plays a skeletal clip on a skinned model in Play mode (Source, Clip, Speed, Loop,
 In Place). See `Skeletal_Animation.md` and the `AnimationTest` sample scene.
 
+**Physics** has two contact options besides Body and Mass. **Is Trigger** makes the
+collider overlap instead of collide: scripts get `OnTriggerEnter/Stay/Exit`, nothing is
+pushed and raycasts pass through. A Static trigger uses the model's convex hull, so a body
+fully inside still counts. **Freeze Rotation** (Dynamic only) stops contacts and impulses from
+tipping or spinning the body, for characters and upright props.
+
+**Interactable** marks a gameobject the player can use. It has a **Prompt** (the text a HUD
+shows while aiming at it) and a **Range** in metres from the camera. A script finds it with
+`FindInteractable(CameraRay, ...)` and uses it with `Interact(hit)`, which runs `OnInteract`
+on the gameobject's own scripts. Rays only hit colliders, so add a Physics component too.
+See [Collisions_and_Interaction.md](Collisions_and_Interaction.md) and the `CollisionTest`
+sample scene.
+
 ## Roles and buoyancy
 
 Every mesh gameobject has a **Role** under its name in the Inspector. **Default**

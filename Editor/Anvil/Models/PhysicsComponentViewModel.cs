@@ -16,6 +16,8 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
     [ObservableProperty] private bool _buoyancy;
     [ObservableProperty] private double _buoyancyStrength = 2;
     [ObservableProperty] private double _waterDrag = 3;
+    [ObservableProperty] private bool _isTrigger;
+    [ObservableProperty] private bool _freezeRotation;
 
     public bool IsStatic => BodyType == PhysicsBodyType.Static;
     public bool IsDynamic => BodyType == PhysicsBodyType.Dynamic;
@@ -48,6 +50,9 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
         Push(c => ((PhysicsComponent)c).WaterDrag = drag);
     }
 
+    partial void OnIsTriggerChanged(bool value) => Push(c => ((PhysicsComponent)c).IsTrigger = value);
+    partial void OnFreezeRotationChanged(bool value) => Push(c => ((PhysicsComponent)c).FreezeRotation = value);
+
     public override void Apply(GameComponent component, bool freezeFields)
     {
         base.Apply(component, freezeFields);
@@ -58,5 +63,7 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
         Buoyancy = physics.Buoyancy;
         if (Math.Abs(BuoyancyStrength - physics.BuoyancyStrength) > 0.0001) BuoyancyStrength = physics.BuoyancyStrength;
         if (Math.Abs(WaterDrag - physics.WaterDrag) > 0.0001) WaterDrag = physics.WaterDrag;
+        IsTrigger = physics.IsTrigger;
+        FreezeRotation = physics.FreezeRotation;
     }
 }

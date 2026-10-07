@@ -32,6 +32,7 @@ internal static class MaterialGraphicsChecks
             EnvironmentChecks.RunGraphics(graphics, content);
             AutoExposureChecks.RunGraphics(graphics, content);
             AnimationChecks.RunGraphics(graphics, content);
+            SpotLightChecks.RunGraphics(content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);

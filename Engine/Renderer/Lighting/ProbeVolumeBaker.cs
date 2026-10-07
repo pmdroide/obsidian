@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Engine.Entities;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Renderer.Lighting
@@ -176,7 +177,7 @@ namespace Engine.Renderer.Lighting
 
         /// <summary>
         /// Irradiance from the scene's lights at a surface point (white albedo), with hard shadows.
-        /// Point light attenuation mirrors DeferredPointLight.fx.
+        /// Point and spot light attenuation mirrors DeferredPointLight.fx.
         /// </summary>
         private static Vector3 DirectIrradiance(LightingBakeInput input, TriangleBvh bvh, Vector3 p, Vector3 n, float maxDistance)
         {
@@ -203,6 +204,7 @@ namespace Engine.Renderer.Lighting
                 float relative = dist / pl.Radius;
                 float denominator = 4 * relative + 1;
                 float attenuation = MathHelper.Clamp(1 / (denominator * denominator) - 0.04f * relative, 0, 1);
+                attenuation *= SpotLight.ConeFactor(-l, pl.SpotDirection, pl.SpotCosOuter, pl.SpotCosInner);
                 if (attenuation <= 0) continue;
                 if (bvh.Occluded(p, l, dist - RayBias)) continue;
 

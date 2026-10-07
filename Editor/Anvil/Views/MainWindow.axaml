@@ -364,6 +364,8 @@
                                       Command="{Binding AddDirectionalLightCommand}" />
                             <MenuItem Header="Point Light"
                                       Command="{Binding AddPointLightCommand}" />
+                            <MenuItem Header="Spot Light"
+                                      Command="{Binding AddSpotLightCommand}" />
                         </MenuItem>
                     </MenuItem>
                     <MenuItem Header="Game Settings"
@@ -1040,13 +1042,40 @@
                                                            ShowButtonSpinner="False" FormatString="0.##" />
                                         </Grid>
                                         <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
-                                              IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Point}">
+                                              IsVisible="{Binding HasRadius}">
                                             <TextBlock Grid.Column="0" Text="Radius"
                                                        Classes="muted" FontSize="11"
                                                        VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Column="1" Classes="field"
                                                            Value="{Binding Radius, Mode=TwoWay}"
                                                            ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+                                        <!-- Spot cone: full angles in degrees; the edge fades from Inner to Spot Angle. -->
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                              IsVisible="{Binding IsSpot}">
+                                            <TextBlock Grid.Column="0" Text="Spot Angle"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="1" Maximum="179"
+                                                    Value="{Binding SpotAngle, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding SpotAngle, StringFormat={}{0:0}°}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                              IsVisible="{Binding IsSpot}">
+                                            <TextBlock Grid.Column="0" Text="Inner"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="{Binding SpotAngle}"
+                                                    Value="{Binding InnerSpotAngle, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding InnerSpotAngle, StringFormat={}{0:0}°}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
                                         </Grid>
                                         <CheckBox Content="Cast Shadows"
                                                   IsChecked="{Binding CastShadows, Mode=TwoWay}"
@@ -1240,6 +1269,10 @@
                                                                Text="Immovable mesh collider. Other bodies collide with it." />
                                                     <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsDynamic}"
                                                                Text="Falls with gravity and collides (convex hull). Simulated in Play mode." />
+                                                    <CheckBox Content="Is Trigger" IsChecked="{Binding IsTrigger, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsTrigger}"
+                                                               Text="Overlaps instead of colliding: scripts get OnTriggerEnter/Stay/Exit, nothing is pushed and raycasts pass through. A Static trigger is the model's convex hull." />
+                                                    <CheckBox Content="Freeze Rotation" IsChecked="{Binding FreezeRotation, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <CheckBox Content="Buoyancy" IsChecked="{Binding Buoyancy, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <StackPanel Spacing="8" IsVisible="{Binding IsDynamic}">
                                                         <StackPanel Spacing="8" IsVisible="{Binding Buoyancy}">
@@ -1294,6 +1327,32 @@
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
+                                        <DataTemplate DataType="m:InteractableComponentViewModel" x:DataType="m:InteractableComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Hand" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Prompt" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding Prompt, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Interact" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Range, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Scripts aim at it with FindInteractable(CameraRay, ...) and use it with Interact(hit), which runs OnInteract on this gameobject's scripts. Rays only hit colliders, so add a Physics component too. Range is in metres from the camera." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
                                         <DataTemplate DataType="m:ScriptBehaviourComponentViewModel" x:DataType="m:ScriptBehaviourComponentViewModel">
                                             <Expander IsExpanded="True" Header="{Binding DisplayName}">
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -1309,6 +1368,84 @@
                                                         </ComboBox.ItemTemplate>
                                                     </ComboBox>
                                                     <TextBlock Text="{Binding ScriptId}" Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                    <!-- Serialized fields: public / [SerializeField] fields of the script (Engine.Scripting.ScriptFields).
+                                                         Each row is label + editor (picked by the field view model's type) + reset. -->
+                                                    <ItemsControl ItemsSource="{Binding Fields}" IsVisible="{Binding HasFields}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Spacing="6" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.DataTemplates>
+                                                            <DataTemplate DataType="m:ScriptBoolFieldViewModel" x:DataType="m:ScriptBoolFieldViewModel">
+                                                                <CheckBox IsChecked="{Binding Value, Mode=TwoWay}" />
+                                                            </DataTemplate>
+                                                            <!-- Before the number template: a range field is also a number field. -->
+                                                            <DataTemplate DataType="m:ScriptRangeFieldViewModel" x:DataType="m:ScriptRangeFieldViewModel">
+                                                                <Grid ColumnDefinitions="*,56" ColumnSpacing="6">
+                                                                    <Slider Grid.Column="0" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                                                                            Value="{Binding SliderValue, Mode=TwoWay}"
+                                                                            IsSnapToTickEnabled="{Binding IsInteger}" TickFrequency="1"
+                                                                            MinHeight="18" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field"
+                                                                                   Value="{Binding Value, Mode=TwoWay}"
+                                                                                   ShowButtonSpinner="False" FormatString="{Binding FormatString}" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptNumberFieldViewModel" x:DataType="m:ScriptNumberFieldViewModel">
+                                                                <NumericUpDown Classes="field" HorizontalAlignment="Stretch"
+                                                                               Value="{Binding Value, Mode=TwoWay}"
+                                                                               ShowButtonSpinner="False" FormatString="{Binding FormatString}" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptTextFieldViewModel" x:DataType="m:ScriptTextFieldViewModel">
+                                                                <TextBox Classes="field" Text="{Binding Value, Mode=TwoWay}" FontSize="11" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptEnumFieldViewModel" x:DataType="m:ScriptEnumFieldViewModel">
+                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{Binding Options}"
+                                                                          SelectedItem="{Binding Value, Mode=TwoWay}" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptVectorFieldViewModel" x:DataType="m:ScriptVectorFieldViewModel">
+                                                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                                    <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding X, Mode=TwoWay}"
+                                                                                   ShowButtonSpinner="False" FormatString="0.##" ToolTip.Tip="X" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Y, Mode=TwoWay}"
+                                                                                   ShowButtonSpinner="False" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                    <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding Z, Mode=TwoWay}" IsVisible="{Binding HasZ}"
+                                                                                   ShowButtonSpinner="False" FormatString="0.##" ToolTip.Tip="Z" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptColorFieldViewModel" x:DataType="m:ScriptColorFieldViewModel">
+                                                                <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                                        HorizontalAlignment="Left">
+                                                                    <Border Width="28" Height="20" CornerRadius="3"
+                                                                            Background="{Binding Value, Converter={StaticResource ColorToBrush}}"
+                                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                    <Button.Flyout>
+                                                                        <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                        <Flyout Opening="OwnedFlyout_Opening">
+                                                                            <ColorPicker x:DataType="m:ScriptColorFieldViewModel" Color="{Binding Value, Mode=TwoWay}" />
+                                                                        </Flyout>
+                                                                    </Button.Flyout>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ItemsControl.DataTemplates>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="m:ScriptFieldViewModel">
+                                                                <Grid ColumnDefinitions="90,*,22" ColumnSpacing="6">
+                                                                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Tooltip}"
+                                                                               Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <ContentControl Grid.Column="1" Content="{Binding}" VerticalAlignment="Center" />
+                                                                    <Button Grid.Column="2" Classes="iconButton" Padding="2"
+                                                                            Command="{Binding ResetCommand}" IsVisible="{Binding IsOverridden}"
+                                                                            ToolTip.Tip="Reset to the script's default">
+                                                                        <controls:LucideIcon Icon="RotateCcw" Width="12" Height="12" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
                                                     <TextBlock Text="Start runs once; Update runs each frame in Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <TextBlock Text="Add another Script Behaviour to run more scripts on this object." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />

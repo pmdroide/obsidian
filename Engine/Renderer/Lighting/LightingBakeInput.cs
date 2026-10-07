@@ -30,6 +30,10 @@ namespace Engine.Renderer.Lighting
             public Vector3 Position;
             public float Radius;
             public Vector3 Radiance;
+            //Spot cone (see SpotLight.ConeFactor); point lights use CosOuter = -2, CosInner = -1
+            public Vector3 SpotDirection;
+            public float SpotCosOuter;
+            public float SpotCosInner;
         }
 
         public Vector3[] A, B, C;
@@ -142,11 +146,15 @@ namespace Engine.Renderer.Lighting
             foreach (PointLight pl in scene.PointLights)
             {
                 if (pl == null || !pl.IsEnabled || pl.Intensity <= 0 || pl.Radius <= 0) continue;
+                SpotLight spot = pl as SpotLight;
                 input.PointLights.Add(new PointLightInput
                 {
                     Position = pl.Position,
                     Radius = pl.Radius,
                     Radiance = pl.ColorV3 * pl.Intensity,
+                    SpotDirection = spot?.Direction ?? Vector3.UnitZ,
+                    SpotCosOuter = spot?.CosOuter ?? -2,
+                    SpotCosInner = spot?.CosInner ?? -1,
                 });
             }
 

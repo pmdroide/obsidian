@@ -24,6 +24,9 @@ float3 LightPositionWS[MAXLIGHTS];
 float LightRadius[MAXLIGHTS];
 float LightIntensity[MAXLIGHTS];
 float3 LightColor[MAXLIGHTS];
+//Spot cone per light: axis, and (cos outer, cos inner) of the half angles. Point lights use (-2, -1).
+float3 LightSpotDirectionWS[MAXLIGHTS];
+float2 LightSpotCos[MAXLIGHTS];
 
 float cols = 20.0f;
 float rows = 10.0f;
@@ -141,6 +144,11 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
 
         //Normalize
         lightVector /= lightDistance;
+
+        //Spot cone, mirrors SpotConeFactor in DeferredPointLight.fx
+        float2 spotCos = LightSpotCos[i];
+        float spotT = saturate((dot(-lightVector, LightSpotDirectionWS[i]) - spotCos.x) / max(spotCos.y - spotCos.x, 0.0001f));
+        attenuation *= spotT * spotT;
 
         float NdL = saturate(dot(normal, lightVector));
 

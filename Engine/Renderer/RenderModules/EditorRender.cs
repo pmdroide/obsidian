@@ -92,6 +92,9 @@ namespace Engine.Renderer.RenderModules
             {
                 var light = lights[index];
                 DrawBillboard(light, staticViewProjection, view, sendData);
+
+                if (light is SpotLight spot)
+                    DrawSpotCone(spot, spot.Id == sendData.SelectedObjectId);
             }
 
             //DirectionalLights
@@ -143,6 +146,44 @@ namespace Engine.Renderer.RenderModules
             }
 
         }
+        /// <summary>
+        /// Spot lights show their axis; the selected one also shows the outer cone at full radius.
+        /// </summary>
+        private void DrawSpotCone(SpotLight spot, bool selected)
+        {
+            HelperGeometryManager helper = HelperGeometryManager.GetInstance();
+            Vector3 origin = spot.Position;
+            Vector3 direction = spot.Direction;
+
+            if (!selected)
+            {
+                helper.AddLineStartDir(origin, direction * Math.Min(spot.Radius * 0.25f, 3), 1, spot.Color, spot.Color);
+                return;
+            }
+
+            helper.AddLineStartDir(origin, direction * spot.Radius, 1, spot.Color, spot.Color);
+
+            //Any vector perpendicular to the axis spans the cone's base circle
+            Vector3 side = Math.Abs(direction.Z) < 0.9f ? Vector3.UnitZ : Vector3.UnitX;
+            Vector3 tangent = Vector3.Normalize(Vector3.Cross(direction, side));
+            Vector3 bitangent = Vector3.Cross(direction, tangent);
+
+            float halfAngle = MathHelper.ToRadians(spot.SpotAngle * 0.5f);
+            Vector3 baseCenter = origin + direction * (float)Math.Cos(halfAngle) * spot.Radius;
+            float baseRadius = (float)Math.Sin(halfAngle) * spot.Radius;
+
+            const int segments = 24;
+            Vector3 previous = baseCenter + tangent * baseRadius;
+            for (int i = 1; i <= segments; i++)
+            {
+                float a = MathHelper.TwoPi * i / segments;
+                Vector3 point = baseCenter + (tangent * (float)Math.Cos(a) + bitangent * (float)Math.Sin(a)) * baseRadius;
+                helper.AddLineStartEnd(previous, point, 1, spot.Color, spot.Color);
+                if (i % 6 == 0) helper.AddLineStartEnd(origin, point, 1, Color.Black, spot.Color);
+                previous = point;
+            }
+        }
+
         private void DrawBillboard(TransformableObject billboardObject, Matrix staticViewProjection, Matrix view, EditorLogic.EditorSendData sendData)
         {
             Matrix world = Matrix.CreateTranslation(billboardObject.Position);

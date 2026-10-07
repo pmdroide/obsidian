@@ -61,6 +61,8 @@ monodroid*.msi
 *.dll
 !Engine/thirdparty/steam/Steamworks.NET.dll
 !Engine/thirdparty/steam/steam_api64.dll
+# Model source, not a compiler object file (*.obj is ignored above).
+!Engine/Content/GameObjects/Default/capsule.obj
 *.VC.db
 *.VC.opendb
 

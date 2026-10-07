@@ -24,6 +24,13 @@ public sealed class PhysicsComponent : GameComponent
     public float BuoyancyStrength { get; set; } = 2f;
     /// <summary>How strongly water slows the body's movement and spin (fraction removed per second).</summary>
     public float WaterDrag { get; set; } = 3f;
+    /// <summary>
+    /// Overlaps instead of colliding: scripts get OnTriggerEnter/Stay/Exit, nothing is pushed and raycasts
+    /// pass through. A Static trigger uses the model's convex hull, so a body fully inside still counts.
+    /// </summary>
+    public bool IsTrigger { get; set; }
+    /// <summary>Dynamic bodies only: contacts and impulses never tip or spin it (characters, upright props).</summary>
+    public bool FreezeRotation { get; set; }
 
     /// <summary>The body ScenePhysics should build: None while disabled.</summary>
     public PhysicsBodyType ActiveBodyType => Enabled ? BodyType : PhysicsBodyType.None;

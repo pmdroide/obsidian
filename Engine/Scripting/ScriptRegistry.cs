@@ -1,6 +1,10 @@
 namespace Engine.Scripting;
 
-public sealed record ScriptDefinition(string Id, string DisplayName, Func<ScriptBehaviour> Create);
+/// <param name="ScriptType">The behaviour's C# type; its serialized fields come from <see cref="ScriptFields"/>.</param>
+public sealed record ScriptDefinition(string Id, string DisplayName, Func<ScriptBehaviour> Create, Type ScriptType = null)
+{
+    public IReadOnlyList<ScriptFieldInfo> Fields => ScriptFields.For(ScriptType);
+}
 
 /// <summary>Stable script IDs are saved in scenes; register compiled C# behaviours here.</summary>
 public static class ScriptRegistry
@@ -12,6 +16,14 @@ public static class ScriptRegistry
         Register<SpinExampleScript>(SpinExampleScript.ScriptId, "Spin Example");
         Register<FreecamScript>(FreecamScript.ScriptId, "Freecam");
         Register<MainMenuScript>(MainMenuScript.ScriptId, "Main Menu");
+        Register<MultiplayerTestScript>(MultiplayerTestScript.ScriptId, "Multiplayer Test");
+        Register<CollisionTestPlayerScript>(CollisionTestPlayerScript.ScriptId, "Collision Test Player");
+        Register<TriggerZoneScript>(TriggerZoneScript.ScriptId, "Trigger Zone");
+        Register<ImpactReporterScript>(ImpactReporterScript.ScriptId, "Impact Reporter");
+        Register<LaunchPadScript>(LaunchPadScript.ScriptId, "Launch Pad");
+        Register<BallDispenserScript>(BallDispenserScript.ScriptId, "Ball Dispenser");
+        Register<GateLeverScript>(GateLeverScript.ScriptId, "Gate Lever");
+        Register<ColorCycleScript>(ColorCycleScript.ScriptId, "Color Cycle");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;
@@ -20,7 +32,7 @@ public static class ScriptRegistry
     {
         if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Script id is required.", nameof(id));
         if (string.IsNullOrWhiteSpace(displayName)) throw new ArgumentException("Script name is required.", nameof(displayName));
-        Definitions.Add(id, new ScriptDefinition(id, displayName, () => new T()));
+        Definitions.Add(id, new ScriptDefinition(id, displayName, () => new T(), typeof(T)));
     }
 
     public static ScriptDefinition Find(string id) =>

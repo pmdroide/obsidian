@@ -16,6 +16,7 @@ namespace Engine.Editor
         DirectionalLight,
         Camera,
         Decal,
+        SpotLight,
     }
 
     public readonly struct LightSnapshot
@@ -26,9 +27,16 @@ namespace Engine.Editor
         public readonly bool CastShadows;
         public readonly bool IsDirectional;
         public readonly Vector3 Direction;
+        // Spot lights only: full cone angles in degrees.
+        public readonly bool IsSpot;
+        public readonly float SpotAngle;
+        public readonly float InnerSpotAngle;
 
-        public LightSnapshot(Color color, float intensity, float radius, bool castShadows, bool isDirectional, Vector3 direction)
+        public LightSnapshot(Color color, float intensity, float radius, bool castShadows, bool isDirectional, Vector3 direction, bool isSpot = false, float spotAngle = 0f, float innerSpotAngle = 0f)
         {
+            IsSpot = isSpot;
+            SpotAngle = spotAngle;
+            InnerSpotAngle = innerSpotAngle;
             Color = color;
             Intensity = intensity;
             Radius = radius;
@@ -159,6 +167,7 @@ namespace Engine.Editor
         /// <summary>Enable or mute the engine's output, including editor audio previews.</summary>
         void EnqueueSetAudioEnabled(bool enabled);
         void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity);
+        void EnqueueAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle);
         void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity);
         void EnqueueAddBasicEntity(string modelKey, Vector3 position);
         void EnqueueDelete(int id);

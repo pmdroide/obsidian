@@ -482,6 +482,8 @@ if (args.Contains("--audio"))
 
 ScriptBehaviourChecks.Run();
 GameObjectMenuChecks.Run();
+SpotLightChecks.Run();
+ScriptFieldChecks.Run();
 SampleSceneChecks.Run();
 SampleSceneChecks.RunGodRays();
 FreecamChecks.Run();
@@ -492,6 +494,8 @@ InputDeviceChecks.Run();
 GameFlowChecks.Run();
 VistaChecks.Run();
 AnimationChecks.Run();
+MultiplayerChecks.Run();
+CollisionChecks.Run();
 if (args.Contains("--input-native")) InputDeviceChecks.RunNative();
 if (args.Contains("--steam-native")) SteamChecks.RunNative();
 Console.WriteLine("All component checks passed.");

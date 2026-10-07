@@ -1,0 +1,32 @@
+<!--
+  MultiplayerTest scene HUD (Vista). Driven by Engine/Content/Scripts/MultiplayerTestScript.cs, which
+  fills the text, colours the player swatches and toggles .used rows, #steam-dot.online and the
+  .visible key hints. Designed on a 1080-high canvas. Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Steam peer to peer</div>
+        <div id="title">Multiplayer Test</div>
+        <div id="steam-dot"></div>
+        <div id="steam"></div>
+        <div id="lobby"></div>
+        <div id="rule"></div>
+        <div id="status"></div>
+
+        <div id="players-label" class="eyebrow">Players</div>
+        <div id="player-0" class="player"><div class="swatch"></div><div class="name"></div><div class="detail"></div></div>
+        <div id="player-1" class="player"><div class="swatch"></div><div class="name"></div><div class="detail"></div></div>
+        <div id="player-2" class="player"><div class="swatch"></div><div class="name"></div><div class="detail"></div></div>
+        <div id="player-3" class="player"><div class="swatch"></div><div class="name"></div><div class="detail"></div></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-steam" class="keys-line">C connect to Steam</div>
+        <div id="keys-lobby" class="keys-line">H host a lobby  ·  J join a lobby</div>
+        <div id="keys-in-lobby" class="keys-line">I invite friends  ·  L leave the lobby</div>
+        <div id="keys-move" class="keys-line">WASD move  ·  Space jump  ·  Hold right mouse orbit</div>
+    </div>
+
+</div>

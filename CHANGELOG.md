@@ -1,5 +1,121 @@
 # Changelog
 
+## Added: Unity-style serialized fields for Script Behaviours
+
+**Why:** Scripts had no per-object settings. Tuning a value meant editing constants in C# and rebuilding, and two gameobjects could not share a script with different values.
+
+- **Serialized fields:** public instance fields and private/protected `[SerializeField]` fields are saved per Script Behaviour attachment and shown in the Inspector. Supported types: `bool`, `int`, `float`, `double`, `string`, enums, `Vector2`, `Vector3`, `Color`.
+  - `[NonSerialized]`, `readonly`, `static`, `const` fields and properties are skipped.
+  - Base class fields between the script and `ScriptBehaviour` count, and are listed first.
+- **Attributes** (new `Engine/Scripting/ScriptFieldAttributes.cs`): `[SerializeField]`, `[HideInInspector]`, `[Range(min, max)]`, `[Tooltip]`, `[FormerlySerializedAs]`.
+- **Engine:**
+  - New `Engine/Scripting/ScriptFields.cs` finds the fields, nicifies labels (`_moveSpeed` → "Move Speed"), reads C# defaults from one lazily built instance, and encodes values as readable JSON (enums by name, vectors as arrays, colours as `#RRGGBBAA`).
+  - `ScriptDefinition` now records the script's type (`ScriptType`, `Fields`).
+  - `ScriptBehaviourComponent` has a `Fields` record (saved in `.obsc` files, copied on clone) plus `SetField`, `SetFieldJson`, `GetField<T>`, `ResetField` and `ClearFields`.
+  - Values are applied before `Start`. Edits during Play reach the running script before its next `Update`, field by field, so values the script changed itself are kept.
+  - Values that no longer fit their field are skipped with a log line. Renamed fields load through `[FormerlySerializedAs]`.
+- **Anvil Inspector:** the Script Behaviour panel lists the fields under the script picker, each with its own editor:
+  - checkbox, number box, slider for `[Range]`, text box, enum dropdown, X/Y(/Z) boxes, and colour picker;
+  - the label shows the `[Tooltip]` on hover, and a reset button appears on changed fields;
+  - picking another script shows its fields at once and clears the old values.
+  - New `Editor/Anvil/Models/ScriptFieldViewModels.cs`.
+- **Samples:** `SpinExampleScript` has **Degrees Per Second** (`[Range(-360, 360)]`, default 45). `LaunchPadScript` has **Up Speed** / **Forward Speed** (defaults 9 / 4, unchanged).
+- **Docs:** new "Serialized fields" section in `Docs/markdown/Script_Behaviours.md`; `CLAUDE.md` recipe.
+- **Checks:** new `Tests/Components/ScriptFieldChecks.cs` covers:
+  - which fields serialize, labels and attributes;
+  - encoding, and rejecting bad values;
+  - applying before Start, live edits and Reset during Play;
+  - stale values and renamed fields;
+  - clone and save/load;
+  - Inspector display and edits, reset, and switching scripts.
+  - `ScriptBehaviourChecks`' counting fixture marks its runtime counters `[NonSerialized]`.
+
+- Claude
+
+## Added: spot lights
+
+**Why:** The engine only had directional and point lights.
+
+- **`SpotLight`** (`Engine/Entities/SpotLight.cs`) is a `PointLight` limited to a cone: **Spot Angle** (full angle, 1-179°) and **Inner** angle (fully lit core, fades out to Spot Angle). Its rotation sets the cone axis; with no rotation it points straight down (-Z). It lives in the scene's `PointLights` list, so selection, delete/copy, Play/Stop and the light volume work as for point lights.
+- **Rendering:** a shared cone falloff (`SpotConeFactor`, mirrored by `SpotLight.ConeFactor` on the CPU) is applied in:
+  - `DeferredPointLight.fx`: unshadowed, shadowed and SDF-shadowed lighting, and both volumetric glows.
+  - `Forward.fx` (transparent materials) and `Froxel.fx` (volumetric fog), through new per-light cone arrays.
+  - The probe volume bake (`LightingBakeInput` / `ProbeVolumeBaker`).
+  - Point lights pass an outer cosine of -2, so they are unchanged.
+- **Shadows:** spot lights reuse the cube shadow map but render only the faces their cone reaches (`ShadowMapRenderModule.LightSeesFace`).
+- **Anvil:** **GameObject > Light > Spot Light** and the Hierarchy **+** menu add a spot light. The Inspector shows Type Spot, Radius, and **Spot Angle** / **Inner** sliders. A selected spot light draws its cone in the viewport. The bridge has `EnqueueAddSpotLight`, `EditorObjectKind.SpotLight`, and spot fields on `LightSnapshot`.
+- **Scene files:** a new optional `SpotLights` list (rotation quaternion, `SpotAngle`, `InnerSpotAngle` plus the point light fields). Older scenes load unchanged.
+- **Docs:** `Docs/markdown/Scene_Lighting_and_Fog.md` and `CLAUDE.md`.
+- **Checks:** new `Tests/Components/SpotLightChecks.cs` (cone math, cube face culling, clone, bake, bridge add/snapshot, Inspector edits, Play/Stop, save/load; with `--graphics`, the compiled shaders expose the cone uniforms). `GameObjectMenuChecks` now expects the Spot Light menu entries.
+
+- Claude
+
+## Added: collision and trigger events, raycast interaction, and the CollisionTest sample scene
+
+**Why:** To test collisions properly. Scripts could raycast and push bodies, but nothing told them when gameobjects touched, there were no triggers, a dynamic character tipped over, and there was no way to use objects.
+
+- **Collision and trigger events** for Script Behaviours: `OnCollisionEnter/Stay/Exit(Collision)` and `OnTriggerEnter/Stay/Exit(BasicEntity other)`. They run right after the physics step, on both gameobjects of a pair.
+  - `Collision` has the other `GameObject`, `Point`, `Normal` (pointing at the receiver), `Depth` and `ImpactSpeed`.
+  - `PhysicsSystem` records each pair's deepest contact through BEPU's narrow-phase callbacks (new `Engine/Physics/PhysicsContact.cs`). Speculative contacts that close within the step count, so a fast impact reports its real speed.
+  - `ScenePhysics` turns the contacts into Enter/Stay/Exit, keyed by gameobject pair. A body that falls asleep keeps its contacts. A removed or disabled body raises Exit. Leaving Play forgets contacts silently.
+  - Delivered through the new `ScriptBehaviourComponent.Notify`; a throwing hook stops its script.
+- **Physics component:**
+  - **Is Trigger** overlaps without colliding. Raycasts skip triggers unless `includeTriggers: true`. A Static trigger is built as the model's convex hull (new `PhysicsSystem.AddStaticConvex`), so a body fully inside still counts.
+  - **Freeze Rotation** (Dynamic) gives the body infinite inertia, for upright characters.
+  - Both appear in Anvil's Inspector and are saved in scenes.
+- **Interactable component** (Inspector > Add Component > Interactable, `Engine/Components/InteractableComponent.cs`): Prompt and Range. `ScriptBehaviour.FindInteractable(ray, ...)` finds the interactable the ray points at (blocked by colliders, not by triggers). `Interact(hit)` / `Interact(gameobject)` run the target's new `OnInteract(Interaction)` hook and raise `InteractableComponent.Interacted`. Anvil editor: `InteractableComponentViewModel` plus an Inspector template.
+- **New script helpers:**
+  - Rays: `MainCamera`, `CameraRay`, `MouseRay`, `ScreenPointToRay(pixel)`, and `Raycast(Ray, ...)`.
+  - Contacts and lookup: `IsTouching(other)`, `FindGameObject(name)`.
+  - Physics on other gameobjects: `GetVelocity`, `SetVelocity`, `SetAngularVelocity`, `AddImpulse` and `AddImpulseAtPosition`.
+- **CollisionTest sample** (`Content/Scenes/CollisionTest.obsc`, last in the scene list; HUD `Content/UI/CollisionTest.xml` + `.css`):
+  - A first-person player capsule (Dynamic, 80 kg, Freeze Rotation) moves with a limited acceleration, so the solver does the pushing.
+  - Controls: WASD, Shift, Space, hold right mouse / arrows to look, E to use, hold left mouse to carry, F to throw, Q to shove at the hit point, R to reset.
+  - Stations:
+    - Crates of 10 / 60 / 180 / 2000 kg.
+    - A Goal Zone trigger that counts what's inside.
+    - A Launch Pad trigger.
+    - A lever that slides a Static gate into the floor.
+    - A colour-cycling Prize Cube.
+    - Dominoes falling onto an Impact Plate that reports impact speeds.
+    - A Ball Dispenser dropping balls on a block tower.
+  - New scripts in `Content/Scripts`: Collision Test Player, Trigger Zone, Impact Reporter, Launch Pad, Ball Dispenser, Gate Lever, Color Cycle, plus the `CollisionTestFeed` helper (HUD event feed, colour and highlight helpers). Every runtime material or prompt change is restored on Stop.
+- **Docs:** new `Docs/markdown/Collisions_and_Interaction.md` (also on the docs website under Gameplay & Input). Updated `Script_Behaviours.md`, `Gameobject_Components.md` and `CLAUDE.md`.
+- **Checks:** new `Tests/Components/CollisionChecks.cs`. It covers:
+  - Events, impact data and normals on both sides; sleeping contacts; removal; leaving Play.
+  - Trigger pass-through and see-through rays; a sleeping body inside a trigger.
+  - Freeze Rotation; Interactable range, blocking and disable.
+  - Inspector edits, clone and save/load.
+  - A scripted Play run of the sample: the launch pad throws the player, the 60 kg crate is pushed, the anchor holds, the lever opens the gate, the dispenser drops a ball, and Stop restores everything.
+
+  All component checks pass. The standalone engine was also launched into the scene: the HUD, contact tracking, impact reports and interactions worked on the real models.
+- **Not possible yet:** a see-through trigger volume. `IsTransparent` on a Basic material hides the object, and the ForwardShaded type draws a fixed grey, so the zones are thin glowing (Emissive) pads instead. `EmissiveStrength` only shows on the Emissive material type.
+
+- Claude
+
+## Added: Steam peer-to-peer multiplayer sample with capsule players
+
+**Why:** To test basic peer-to-peer multiplayer through Steam. The engine could connect to Steam, but it had no lobbies or networking yet.
+
+- **MultiplayerTest sample** (`Content/Scenes/MultiplayerTest.obsc`, last in the scene list): a walled 20 m arena. The Main Camera runs the new **Multiplayer Test** script.
+  - Each player is a coloured capsule with a dark visor showing its facing. The colour comes from the Steam ID, so every peer sees the same colours.
+  - H hosts a public lobby (up to 4 players). J finds a lobby and joins it. I opens the Steam invite dialog, L leaves, and C connects to Steam (the same as Anvil > Window > Steam > Connect).
+  - WASD or the left stick moves the player relative to the camera, Space jumps, and holding the right mouse button orbits the follow camera. Without Steam the local capsule still works.
+  - Each peer sends its own capsule's position and yaw to every other peer about 20 times a second (unreliable, 21 bytes, out-of-order packets dropped). Remote capsules ease towards the newest state.
+  - Vista HUD (`Content/UI/MultiplayerTest.xml` + `.css`) in the top-right, clear of the performance overlay: Steam account, lobby state, status line, and the player list with colour, ping and host.
+  - Testing needs two Steam accounts, each in its own Steam client (normally two PCs) with the same App ID (default 480).
+- **`Engine/Steam/SteamP2PSession.cs`** (reusable): lobby host/find/join/leave/invite through `SteamMatchmaking`, and peer join/leave events from the lobby member list. Send, broadcast and receive go through `SteamNetworkingMessages` (Valve relay, no open ports). Sessions are accepted only from lobby members. Also reports the connection state and ping per peer, and follows Steam invites and Join Game from the friends list. Searches only match lobbies with the same game key, because App 480 is shared by every developer.
+- **`SteamService.Current`** gives scripts the engine's Steam session, and **`SteamService.ConfiguredAppId`** returns the saved App ID.
+- **Capsule primitive:** `Content/GameObjects/Default/capsule.obj`, model key `Capsule` (`Assets.Capsule`). It is Z-up, with radius 0.5 and height 2, centred on its origin (the same size as Unity's capsule). It was generated with smooth normals and UVs, and is built with `FbxImporter`. `OpenAssetImporter` produced a material the runtime couldn't read, which crashed the engine at boot. `.gitignore` now allows this file, because its `*.obj` rule is meant for compiler output.
+- **Runtime spawning for scripts:** `ScriptBehaviour.Spawn(modelKey, position, name)`, `Destroy(entity)` and `DestroyAllSpawned()`.
+  - Spawned gameobjects get `BasicEntity.IsRuntimeSpawned` and are removed when the script stops (like script sounds).
+  - Scene saves skip them.
+  - Backed by `MainSceneLogic.SpawnRuntimeEntity` and the new `Assets.FindModel(key)`.
+- **Docs:** new `Docs/markdown/Steam_Multiplayer.md` (also on the docs website under Gameplay & Input). Updated `Script_Behaviours.md` (sample, spawn helpers), `Engine/thirdparty/steam/README.md`, and `CLAUDE.md`.
+- **Checks:** `Tests/Components/MultiplayerChecks.cs` checks the scene, script registration, scene list and HUD files. Offline, it checks that Play spawns the capsule and visor, W moves the capsule relative to the camera, the camera follows, saving during Play leaves spawned objects out, Stop removes them, and model-key lookup works. All component checks pass. The standalone engine was also launched into the scene to check rendering (capsule, shadow, visor, HUD). The two-PC Steam lobby was not tested, because it needs a second Steam account.
+
+- Claude
+
 ## Updated: current engine docs and a separate welcome page
 
 - Connected the documentation website directly to all 13 current guides in `Docs/markdown`, grouped into their respective topics. New unmapped Markdown files appear under Reference until assigned a topic.

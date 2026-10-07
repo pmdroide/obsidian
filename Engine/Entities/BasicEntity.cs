@@ -44,6 +44,8 @@ namespace Engine.Entities
         internal PhysicsBodyType AttachedPhysicsType;
         internal Vector3 AttachedScale;
         internal float AttachedMass;
+        internal bool AttachedTrigger;
+        internal bool AttachedFreezeRotation;
         // Collider centre in entity-local (scaled) space; dynamic bodies sit on their centre of mass.
         internal Vector3 ColliderOffset;
         // Transform last exchanged with the body, used to detect editor/script moves.
@@ -108,6 +110,9 @@ namespace Engine.Entities
 
         /// <summary>What this gameobject is for (Inspector > Role); e.g. Water makes it a volume to float in.</summary>
         public GameObjectRole Role { get; set; } = GameObjectRole.Default;
+
+        /// <summary>Created by a script during Play (<c>ScriptBehaviour.Spawn</c>); never saved with the scene.</summary>
+        public bool IsRuntimeSpawned { get; internal set; }
 
         public override TransformableObject Clone {
             get

@@ -9,18 +9,6 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Engine.Physics
 {
-    /// <summary>
-    /// Keeps BEPU bodies in step with each <see cref="BasicEntity"/>'s
-    /// <see cref="Components.PhysicsComponent"/> (read through <see cref="BasicEntity.PhysicsType"/> /
-    /// <see cref="BasicEntity.Mass"/>; a disabled or missing component means no body).
-    /// Once per frame on the game thread it builds, rebuilds or removes bodies to
-    /// match, then either pushes entity transforms into the bodies (editing) or steps
-    /// the simulation and writes dynamic poses back into the entities (simulating).
-    ///
-    /// Static  = triangle mesh of the model (exact, never moves on its own).
-    /// Dynamic = convex hull of the model with mass, so gravity and collisions apply.
-    /// Water-role gameobjects build no body; dynamic bodies with Buoyancy float in them (<see cref="Physics.Buoyancy"/>).
-    /// </summary>
     /// <summary>Closest collider hit by <see cref="ScenePhysics.Raycast"/>.</summary>
     public struct RaycastHit
     {
@@ -34,6 +22,39 @@ namespace Engine.Physics
         public float Distance;
     }
 
+    /// <summary>A contact passed to a script's OnCollisionEnter/Stay/Exit, seen from the script's gameobject.</summary>
+    public struct Collision
+    {
+        /// <summary>The other gameobject.</summary>
+        public BasicEntity GameObject;
+        /// <summary>World-space contact position (the deepest point of the latest contact).</summary>
+        public Vector3 Point;
+        /// <summary>Unit contact normal pointing from the other gameobject towards this one.</summary>
+        public Vector3 Normal;
+        /// <summary>Penetration depth in world units (about zero while resting).</summary>
+        public float Depth;
+        /// <summary>
+        /// Speed (units/s) at which the two surfaces were closing along <see cref="Normal"/> just before
+        /// the physics step resolved the contact. On Enter this is the impact speed; while resting it is near 0.
+        /// </summary>
+        public float ImpactSpeed;
+    }
+
+    /// <summary>
+    /// Keeps BEPU bodies in step with each <see cref="BasicEntity"/>'s
+    /// <see cref="Components.PhysicsComponent"/> (read through <see cref="BasicEntity.PhysicsType"/> /
+    /// <see cref="BasicEntity.Mass"/>; a disabled or missing component means no body).
+    /// Once per frame on the game thread it builds, rebuilds or removes bodies to
+    /// match, then either pushes entity transforms into the bodies (editing) or steps
+    /// the simulation and writes dynamic poses back into the entities (simulating).
+    /// After each step it turns BEPU's contacts into Enter/Stay/Exit events for the
+    /// Script Behaviours on both gameobjects (collisions and triggers).
+    ///
+    /// Static  = triangle mesh of the model (exact, never moves on its own).
+    /// Dynamic = convex hull of the model with mass, so gravity and collisions apply.
+    /// Trigger = overlaps without colliding; a Static trigger is the model's convex hull (solid volume).
+    /// Water-role gameobjects build no body; dynamic bodies with Buoyancy float in them (<see cref="Physics.Buoyancy"/>).
+    /// </summary>
     public sealed class ScenePhysics
     {
         // Large frame hitches would otherwise launch bodies through thin colliders.
@@ -58,6 +79,25 @@ namespace Engine.Physics
             public Vector3[] HullPoints; // de-duplicated vertices
         }
 
+        private enum ContactPhase { Enter, Stay, Exit }
+
+        /// <summary>Two gameobjects in contact; the latest contact is stored as seen from <see cref="A"/>.</summary>
+        private sealed class Touch
+        {
+            public BasicEntity A, B;
+            public bool IsTrigger;
+            public PhysicsContact Contact;
+            public int Frame;
+        }
+
+        // Keyed by the gameobject pair, so a rebuilt body (new handle) keeps its contacts.
+        private readonly Dictionary<(BasicEntity, BasicEntity), Touch> _touches = new Dictionary<(BasicEntity, BasicEntity), Touch>();
+        private readonly List<(Touch Touch, ContactPhase Phase)> _contactEvents = new List<(Touch, ContactPhase)>();
+        private readonly List<Touch> _ended = new List<Touch>();
+
+        /// <summary>Collider geometry for gameobjects without a loaded model (GPU-free checks in Tests/Components).</summary>
+        internal Func<BasicEntity, (Vector3[] Vertices, int[] Indices)> FallbackGeometry;
+
         public ScenePhysics(PhysicsSystem physics)
         {
             _physics = physics ?? throw new ArgumentNullException(nameof(physics));
@@ -69,21 +109,20 @@ namespace Engine.Physics
 
         /// <summary>
         /// Closest collider along a ray. Water and gameobjects without a Physics component
-        /// have no collider and are never hit. <paramref name="ignore"/> skips one gameobject (e.g. the caster).
+        /// have no collider and are never hit; triggers only with <paramref name="includeTriggers"/>.
+        /// <paramref name="ignore"/> skips one gameobject (e.g. the caster).
         /// </summary>
-        public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit, BasicEntity ignore = null)
+        public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit, BasicEntity ignore = null,
+            bool includeTriggers = false)
         {
             hit = default;
             if (!_physics.RayCast(origin, direction, maxDistance, ignore?.DynamicBody, ignore?.StaticBody,
-                    out float distance, out Vector3 normal, out var body, out var staticHandle))
+                    out float distance, out Vector3 normal, out var body, out var staticHandle, includeTriggers))
                 return false;
 
-            BasicEntity owner = null;
-            if (body != null) _bodyOwners.TryGetValue(body.Value.Value, out owner);
-            else if (staticHandle != null) _staticOwners.TryGetValue(staticHandle.Value.Value, out owner);
             hit = new RaycastHit
             {
-                GameObject = owner,
+                GameObject = OwnerOf(body, staticHandle),
                 Point = origin + Vector3.Normalize(direction) * distance,
                 Normal = normal,
                 Distance = distance,
@@ -156,15 +195,135 @@ namespace Engine.Physics
                 _attached.RemoveAt(i);
             }
 
-            if (!simulate || _attached.Count == 0) return;
+            if (!simulate)
+            {
+                // Contacts only exist while simulating; scripts are stopped or never ran.
+                _touches.Clear();
+                return;
+            }
+            if (_attached.Count == 0 && _touches.Count == 0) return;
 
             float step = Math.Min(dt, MaxStep);
+            // Without a step there are no fresh contacts, so the current touches stand.
+            if (!(step > 0)) return;
             ApplyBuoyancy(entities, time, step);
             _physics.Step(step);
 
             for (int i = 0; i < _attached.Count; i++)
                 if (_attached[i].AttachedPhysicsType == PhysicsBodyType.Dynamic)
                     PullPose(_attached[i]);
+
+            UpdateTouches();
+            DispatchContactEvents();
+        }
+
+        /// <summary>True while the two gameobjects touch or overlap (as of the last physics step).</summary>
+        public bool IsTouching(BasicEntity a, BasicEntity b) => FindTouch(a, b) != null;
+
+        private Touch FindTouch(BasicEntity a, BasicEntity b) =>
+            a == null || b == null ? null
+            : _touches.TryGetValue((a, b), out Touch touch) || _touches.TryGetValue((b, a), out touch) ? touch : null;
+
+        /// <summary>Turns this step's contacts into Enter/Stay events and vanished pairs into Exit events.</summary>
+        private void UpdateTouches()
+        {
+            IReadOnlyList<PhysicsContact> contacts = _physics.Contacts;
+            for (int i = 0; i < contacts.Count; i++)
+            {
+                PhysicsContact contact = contacts[i];
+                BasicEntity a = OwnerOf(contact.BodyA, contact.StaticA);
+                BasicEntity b = OwnerOf(contact.BodyB, contact.StaticB);
+                if (a == null || b == null || a == b) continue;
+
+                Touch touch = FindTouch(a, b);
+                if (touch != null && touch.IsTrigger != contact.IsTrigger)
+                {
+                    // Became (or stopped being) a trigger: end the old kind of contact, start the new one.
+                    EndTouch(touch);
+                    touch = null;
+                }
+                bool entered = touch == null;
+                if (entered)
+                {
+                    touch = new Touch { A = a, B = b, IsTrigger = contact.IsTrigger };
+                    _touches[(a, b)] = touch;
+                }
+                else if (touch.Frame == _frame) continue;
+                touch.Contact = touch.A == a ? contact : contact.Swapped();
+                touch.Frame = _frame;
+                _contactEvents.Add((touch, entered ? ContactPhase.Enter : ContactPhase.Stay));
+            }
+
+            foreach (Touch touch in _touches.Values)
+            {
+                if (touch.Frame == _frame) continue;
+                // BEPU doesn't re-test a pair whose bodies all sleep: it is still resting together.
+                if (IsResting(touch.A) && IsResting(touch.B)) touch.Frame = _frame;
+                else _ended.Add(touch);
+            }
+            foreach (Touch touch in _ended) EndTouch(touch);
+            _ended.Clear();
+        }
+
+        private void EndTouch(Touch touch)
+        {
+            if (!_touches.Remove((touch.A, touch.B))) _touches.Remove((touch.B, touch.A));
+            _contactEvents.Add((touch, ContactPhase.Exit));
+        }
+
+        /// <summary>Still in this scene with a static collider or a sleeping body.</summary>
+        private bool IsResting(BasicEntity e) =>
+            e.PhysicsScene == this && (e.DynamicBody != null ? !_physics.IsAwake(e.DynamicBody.Value) : e.StaticBody != null);
+
+        private BasicEntity OwnerOf(BepuPhysics.BodyHandle? body, BepuPhysics.StaticHandle? staticHandle)
+        {
+            BasicEntity owner = null;
+            if (body != null) _bodyOwners.TryGetValue(body.Value.Value, out owner);
+            else if (staticHandle != null) _staticOwners.TryGetValue(staticHandle.Value.Value, out owner);
+            return owner;
+        }
+
+        private void DispatchContactEvents()
+        {
+            // Hooks may spawn or destroy gameobjects; that only touches the body lists, not these events.
+            for (int i = 0; i < _contactEvents.Count; i++)
+            {
+                var (touch, phase) = _contactEvents[i];
+                Notify(touch.A, touch.B, touch.Contact, touch.IsTrigger, phase);
+                Notify(touch.B, touch.A, touch.Contact.Swapped(), touch.IsTrigger, phase);
+            }
+            _contactEvents.Clear();
+        }
+
+        /// <summary>Runs the matching hook on every running Script Behaviour of <paramref name="self"/>.</summary>
+        private static void Notify(BasicEntity self, BasicEntity other, PhysicsContact contact, bool trigger, ContactPhase phase)
+        {
+            // Most touching pairs (crates on the floor) have no scripts: skip them without allocating.
+            bool hasScript = false;
+            foreach (var component in self.Components)
+                if (component is Components.ScriptBehaviourComponent) { hasScript = true; break; }
+            if (!hasScript) return;
+
+            var collision = new Collision
+            {
+                GameObject = other,
+                Point = contact.Point,
+                Normal = contact.Normal, // stored B->A, and self is A
+                Depth = contact.Depth,
+                ImpactSpeed = contact.ImpactSpeed,
+            };
+            foreach (var script in self.GetComponents<Components.ScriptBehaviourComponent>().ToArray())
+            {
+                switch (phase)
+                {
+                    case ContactPhase.Enter when trigger: script.Notify("OnTriggerEnter", s => s.OnTriggerEnter(other)); break;
+                    case ContactPhase.Stay when trigger: script.Notify("OnTriggerStay", s => s.OnTriggerStay(other)); break;
+                    case ContactPhase.Exit when trigger: script.Notify("OnTriggerExit", s => s.OnTriggerExit(other)); break;
+                    case ContactPhase.Enter: script.Notify("OnCollisionEnter", s => s.OnCollisionEnter(collision)); break;
+                    case ContactPhase.Stay: script.Notify("OnCollisionStay", s => s.OnCollisionStay(collision)); break;
+                    case ContactPhase.Exit: script.Notify("OnCollisionExit", s => s.OnCollisionExit(collision)); break;
+                }
+            }
         }
 
         /// <summary>Remove an entity's body right away (e.g. on delete).</summary>
@@ -178,17 +337,21 @@ namespace Engine.Physics
         {
             for (int i = 0; i < _attached.Count; i++) DestroyBody(_attached[i]);
             _attached.Clear();
+            _touches.Clear();
         }
 
         private void Reconcile(BasicEntity e)
         {
             // Water is a volume to float in, not a surface to land on.
-            PhysicsBodyType desired = e.Model == null || e.Role == GameObjectRole.Water ? PhysicsBodyType.None : e.PhysicsType;
+            bool hasGeometry = e.Model != null || FallbackGeometry != null;
+            PhysicsBodyType desired = !hasGeometry || e.Role == GameObjectRole.Water ? PhysicsBodyType.None : e.PhysicsType;
             float mass = e.Mass;
+            bool trigger = desired != PhysicsBodyType.None && e.Physics?.IsTrigger == true;
+            bool freezeRotation = desired == PhysicsBodyType.Dynamic && e.Physics?.FreezeRotation == true;
 
             bool rebuild = e.AttachedPhysicsType != desired
-                || (desired != PhysicsBodyType.None && e.AttachedScale != e.Scale)
-                || (desired == PhysicsBodyType.Dynamic && e.AttachedMass != mass);
+                || (desired != PhysicsBodyType.None && (e.AttachedScale != e.Scale || e.AttachedTrigger != trigger))
+                || (desired == PhysicsBodyType.Dynamic && (e.AttachedMass != mass || e.AttachedFreezeRotation != freezeRotation));
             if (!rebuild) return;
 
             Detach(e);
@@ -196,7 +359,7 @@ namespace Engine.Physics
 
             try
             {
-                Attach(e, desired, mass);
+                Attach(e, desired, mass, trigger, freezeRotation);
             }
             catch (Exception ex)
             {
@@ -227,12 +390,12 @@ namespace Engine.Physics
             }
         }
 
-        private void Attach(BasicEntity e, PhysicsBodyType type, float mass)
+        private void Attach(BasicEntity e, PhysicsBodyType type, float mass, bool trigger, bool freezeRotation)
         {
-            Geometry g = GetGeometry(e.Model);
+            Geometry g = GetGeometry(e);
             Quaternion orientation = Orientation(e);
 
-            if (type == PhysicsBodyType.Static)
+            if (type == PhysicsBodyType.Static && !trigger)
             {
                 // The mesh shape carries the (non-uniform) scale; the static carries the pose.
                 e.StaticBody = _physics.AddStaticMesh(g.Vertices, g.Indices, e.Position, orientation, e.Scale);
@@ -243,13 +406,26 @@ namespace Engine.Physics
             {
                 var scaled = new Vector3[g.HullPoints.Length];
                 for (int i = 0; i < scaled.Length; i++) scaled[i] = g.HullPoints[i] * e.Scale;
-                e.DynamicBody = _physics.AddDynamicConvex(scaled, e.Position, orientation, mass, out e.ColliderOffset);
-                _bodyOwners[e.DynamicBody.Value.Value] = e;
+                if (type == PhysicsBodyType.Static)
+                {
+                    // A mesh is hollow: a body fully inside would touch no triangle and leave the trigger.
+                    e.StaticBody = _physics.AddStaticConvex(scaled, e.Position, orientation, out e.ColliderOffset);
+                    _staticOwners[e.StaticBody.Value.Value] = e;
+                    _physics.SetTrigger(e.StaticBody.Value, true);
+                }
+                else
+                {
+                    e.DynamicBody = _physics.AddDynamicConvex(scaled, e.Position, orientation, mass, out e.ColliderOffset, freezeRotation);
+                    _bodyOwners[e.DynamicBody.Value.Value] = e;
+                    if (trigger) _physics.SetTrigger(e.DynamicBody.Value, true);
+                }
             }
 
             e.AttachedPhysicsType = type;
             e.AttachedScale = e.Scale;
             e.AttachedMass = mass;
+            e.AttachedTrigger = trigger;
+            e.AttachedFreezeRotation = freezeRotation;
             e.PhysicsScene = this;
             MarkSynced(e);
             _attached.Add(e);
@@ -281,15 +457,12 @@ namespace Engine.Physics
         private void PushPose(BasicEntity e, bool resetVelocity)
         {
             Quaternion orientation = Orientation(e);
+            // Convex colliders are centred on their own centre; mesh statics have no offset.
+            Vector3 center = e.Position + Vector3.Transform(e.ColliderOffset, orientation);
             if (e.StaticBody != null)
-            {
-                _physics.SetStaticPose(e.StaticBody.Value, e.Position, orientation);
-            }
+                _physics.SetStaticPose(e.StaticBody.Value, center, orientation);
             else if (e.DynamicBody != null)
-            {
-                Vector3 center = e.Position + Vector3.Transform(e.ColliderOffset, orientation);
                 _physics.SetBodyPose(e.DynamicBody.Value, center, orientation, resetVelocity);
-            }
             MarkSynced(e);
         }
 
@@ -314,11 +487,19 @@ namespace Engine.Physics
         private static Quaternion Orientation(BasicEntity e) =>
             Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(e.RotationMatrix));
 
-        private Geometry GetGeometry(Model model)
+        private Geometry GetGeometry(BasicEntity e)
         {
+            Model model = e.Model;
+            Vector3[] vertices;
+            int[] indices;
+            if (model == null)
+            {
+                (vertices, indices) = FallbackGeometry(e);
+                return new Geometry { Vertices = vertices, Indices = indices, HullPoints = new HashSet<Vector3>(vertices).ToArray() };
+            }
             if (_geometry.TryGetValue(model, out Geometry g)) return g;
 
-            ModelDataExtractor.GetVerticesAndIndicesFromModel(model, out Vector3[] vertices, out int[] indices);
+            ModelDataExtractor.GetVerticesAndIndicesFromModel(model, out vertices, out indices);
             g = new Geometry
             {
                 Vertices = vertices,

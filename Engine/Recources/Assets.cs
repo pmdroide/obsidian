@@ -23,6 +23,8 @@ namespace Engine.Recources
         public ModelDefinition IsoSphere;
 
         public ModelDefinition Cube;
+        // Z-up capsule, radius 0.5 and height 2, centred on the origin (Unity's default capsule).
+        public ModelDefinition Capsule;
 
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
@@ -135,6 +137,7 @@ namespace Engine.Recources
             SphereMeshPart = Sphere.Meshes[0].MeshParts[0];
 
             Cube = new ModelDefinition(content, "GameObjects/Default/cube", graphicsDevice, true, new Vector3(50, 50, 50));
+            Capsule = new ModelDefinition(content, "GameObjects/Default/capsule", graphicsDevice);
 
             IconDecal = content.Load<Texture2D>("System/Editor/icon_decal");
             IconLight = content.Load<Texture2D>("System/Editor/icon_light");
@@ -427,6 +430,18 @@ namespace Engine.Recources
             if (material == null) _dynamicMaterials.Remove(key);
             else _dynamicMaterials[key] = material;
             MaterialRegistered?.Invoke(key);
+        }
+
+        /// <summary>
+        /// The model saved in scenes as <paramref name="key"/>: a public <see cref="ModelDefinition"/>
+        /// field ("Cube", "Capsule") or a runtime-imported model. Null when unknown.
+        /// </summary>
+        public ModelDefinition FindModel(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            var field = typeof(Assets).GetField(key, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (field != null && field.FieldType == typeof(ModelDefinition)) return field.GetValue(this) as ModelDefinition;
+            return _dynamicModels.TryGetValue(key, out var model) ? model : null;
         }
 
         public bool TryGetDynamicMaterial(string key, out MaterialEffect material)

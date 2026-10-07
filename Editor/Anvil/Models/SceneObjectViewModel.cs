@@ -141,11 +141,18 @@ public partial class MaterialInfo : ComponentViewModel
 
 public partial class LightInfo : ObservableObject
 {
-    [ObservableProperty] private LightType _type = LightType.Directional;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasRadius)), NotifyPropertyChangedFor(nameof(IsSpot))]
+    private LightType _type = LightType.Directional;
     [ObservableProperty] private Color _color = Color.Parse("#FFF7D6");
     [ObservableProperty] private double _intensity = 1.0;
     [ObservableProperty] private double _radius = 10.0;
     [ObservableProperty] private bool _castShadows;
+    // Spot lights only: full cone angles in degrees.
+    [ObservableProperty] private double _spotAngle = 60.0;
+    [ObservableProperty] private double _innerSpotAngle = 40.0;
+
+    public bool HasRadius => Type != LightType.Directional;
+    public bool IsSpot => Type == LightType.Spot;
 
     private SceneObjectViewModel? _parent;
     internal void AttachToParent(SceneObjectViewModel parent) => _parent = parent;
@@ -184,6 +191,30 @@ public partial class LightInfo : ObservableObject
             bridge.EnqueueMutate(id, obj =>
             {
                 if (obj is PointLight pl) pl.Radius = f;
+            });
+        }
+    }
+
+    partial void OnSpotAngleChanged(double value)
+    {
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge && !double.IsNaN(value))
+        {
+            float f = (float)value;
+            bridge.EnqueueMutate(id, obj =>
+            {
+                if (obj is SpotLight sl) sl.SpotAngle = f;
+            });
+        }
+    }
+
+    partial void OnInnerSpotAngleChanged(double value)
+    {
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge && !double.IsNaN(value))
+        {
+            float f = (float)value;
+            bridge.EnqueueMutate(id, obj =>
+            {
+                if (obj is SpotLight sl) sl.InnerSpotAngle = f;
             });
         }
     }

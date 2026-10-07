@@ -1,0 +1,1872 @@
+{
+  "Version": 2,
+  "Name": "CollisionTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.25
+      ],
+      "Scale": [
+        14,
+        14,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "41ab497f-3c89-5a0a-8cb7-7f7128e9292a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "3627a574-2c4f-5d7e-b583-d56811085640",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.26,
+            "Green": 0.28,
+            "Blue": 0.31,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Wall North",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        14,
+        0.6
+      ],
+      "Scale": [
+        14.25,
+        0.25,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "73b2be0e-e552-5c16-a1c5-bf612760f918",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "a9472382-2ed7-5f37-82c6-30f3b48ca998",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.18,
+            "Blue": 0.2,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Wall South",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -14,
+        0.6
+      ],
+      "Scale": [
+        14.25,
+        0.25,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7ae570d5-dfb5-5e9c-97ca-3aa5b67fcc79",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "7f878a17-f3d9-5307-a24a-b80c18a0b1fa",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.18,
+            "Blue": 0.2,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Wall East",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        0,
+        0.6
+      ],
+      "Scale": [
+        0.25,
+        13.75,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "97d5800f-3977-55a7-a7c7-a429dd4a762f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d01c1961-303f-52ec-89ae-22143e4d1332",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.18,
+            "Blue": 0.2,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Wall West",
+      "ModelKey": "Cube",
+      "Position": [
+        -14,
+        0,
+        0.6
+      ],
+      "Scale": [
+        0.25,
+        13.75,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9ad8ecf8-5b7b-5014-a1bb-84687e90fd3b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "ee2cc7e7-64b3-54da-a2fb-6379d4f0135d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.18,
+            "Blue": 0.2,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Player",
+      "ModelKey": "Capsule",
+      "Position": [
+        0,
+        -10,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "93f864f3-4b37-5f46-84fb-75fcea78256d",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 80,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "4881f009-d4ec-5993-83c1-b54acdd105b7",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.31,
+            "Green": 0.64,
+            "Blue": 1.0,
+            "Roughness": 0.45,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "a6cc0439-da48-5b1d-8884-3bcf0f0bd4e3",
+          "Data": {
+            "ScriptId": "collision-test-player",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Light Crate",
+      "ModelKey": "Cube",
+      "Position": [
+        -11.5,
+        -3,
+        0.35
+      ],
+      "Scale": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "6ffff368-b53e-58cb-b97d-e998635f82dd",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 10,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "3751f319-e1a8-5e23-bfac-ff0a73cf2788",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.98,
+            "Green": 0.85,
+            "Blue": 0.45,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Medium Crate",
+      "ModelKey": "Cube",
+      "Position": [
+        -8.5,
+        -3,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "8ddfe90c-3d55-5696-8e55-d19980fc4c95",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 60,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "7be1cc73-846f-517b-93d5-41e59c8534f6",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.96,
+            "Green": 0.6,
+            "Blue": 0.25,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Heavy Crate",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.5,
+        -3,
+        0.65
+      ],
+      "Scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "ee166394-7136-5a08-af63-4efc5f582c5f",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 180,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "2f7cfbb0-6073-5772-8868-f378508252bd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.3,
+            "Blue": 0.22,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Anchor Block",
+      "ModelKey": "Cube",
+      "Position": [
+        -5,
+        -9,
+        0.8
+      ],
+      "Scale": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d28ee953-fee2-5b45-beec-3948c017536a",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 2000,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "ab409fb5-25a1-5c0c-a458-489a440b6ce2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.22,
+            "Green": 0.23,
+            "Blue": 0.26,
+            "Roughness": 0.5,
+            "Metallic": 0.6,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Goal Zone",
+      "ModelKey": "Cube",
+      "Position": [
+        -8.5,
+        9.5,
+        0.06
+      ],
+      "Scale": [
+        4,
+        3,
+        0.06
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "50ede27d-88e0-53cf-9d87-00d1469ef653",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": true,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "555c8f31-44d9-5618-beed-eef1698d97d9",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 0.2,
+            "Green": 0.8,
+            "Blue": 0.35,
+            "Roughness": 0.5,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.6,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "3458a83b-e159-5cb1-8b6d-377556e960ab",
+          "Data": {
+            "ScriptId": "trigger-zone",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Launch Pad",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -3,
+        0.06
+      ],
+      "Scale": [
+        1.2,
+        1.2,
+        0.06
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "f1c272fb-58e6-5ffb-8764-225ff70bdb87",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": true,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "9bed9cf8-eed4-5748-8ded-d9bcd864035d",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 0.2,
+            "Green": 0.85,
+            "Blue": 1.0,
+            "Roughness": 0.3,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.8,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "988c24c3-f470-5f3e-bb5a-7f7a448686ea",
+          "Data": {
+            "ScriptId": "launch-pad",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Vault Wall West",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.25,
+        10.875,
+        1
+      ],
+      "Scale": [
+        0.15,
+        2.875,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "364a0ff4-d970-543b-aa57-58fe1930c28e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "7e5db1da-5868-5f62-967c-2dba396184a7",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.32,
+            "Blue": 0.36,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Vault Wall East",
+      "ModelKey": "Cube",
+      "Position": [
+        2.25,
+        10.875,
+        1
+      ],
+      "Scale": [
+        0.15,
+        2.875,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7b34720f-f85e-532b-9cab-e557032cc0a6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "e3e52c29-3c2b-5ff9-b479-8ae7b54a81cd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.32,
+            "Blue": 0.36,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Vault Wall Front Left",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.625,
+        8,
+        1
+      ],
+      "Scale": [
+        0.625,
+        0.15,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4c3cccf0-f6c4-5e9a-91cf-0f211f75e683",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "567c81d9-4b50-58dd-9c98-28d47795ff2c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.32,
+            "Blue": 0.36,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "Vault Wall Front Right",
+      "ModelKey": "Cube",
+      "Position": [
+        1.625,
+        8,
+        1
+      ],
+      "Scale": [
+        0.625,
+        0.15,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d8edf355-5015-5371-a5b6-4be054d7c9dc",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "384b4de4-f99e-5fc1-82e4-ed5233a2b69f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.32,
+            "Blue": 0.36,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "Gate",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        8,
+        1
+      ],
+      "Scale": [
+        1.0,
+        0.12,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bea628f1-545a-55b1-942e-47b26f64b615",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "338b5ad8-2d1a-58b1-8e56-11a78382993f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.18,
+            "Blue": 0.15,
+            "Roughness": 0.4,
+            "Metallic": 0.7,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "Gate Lever",
+      "ModelKey": "Cube",
+      "Position": [
+        3.2,
+        6.8,
+        0.6
+      ],
+      "Scale": [
+        0.2,
+        0.2,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e4f7612b-00b3-5f56-87ae-8df43f7fab08",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "73fe40b3-a15b-567c-aa41-ceab7b5ced88",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.91,
+            "Green": 0.36,
+            "Blue": 0.25,
+            "Roughness": 0.4,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "interactable",
+          "InstanceId": "36b3054d-8a2b-55d9-8347-a930e521b747",
+          "Data": {
+            "Prompt": "Open the gate",
+            "Range": 3.0,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "3b9abb3e-3225-5bd8-bc45-9c573f0dfcd4",
+          "Data": {
+            "ScriptId": "gate-lever",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "Prize Cube",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        11,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3ca332e8-2bc3-5ba7-852e-d74739cc4d57",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 8,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "e4012026-062e-59b0-a905-9a09b57f1abb",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.94,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "interactable",
+          "InstanceId": "48ec2f13-85f5-529a-81a8-ff7c7d1b93e9",
+          "Data": {
+            "Prompt": "Change colour",
+            "Range": 3.0,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "83510785-7f4f-56c8-a49c-720eecee37f9",
+          "Data": {
+            "ScriptId": "color-cycle",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "Domino 01",
+      "ModelKey": "Cube",
+      "Position": [
+        3.6,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bf94a7a3-4ae3-5569-9551-0b1f4bc9aeaa",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "618db250-73e1-5f26-88e2-837493553f75",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.8924,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "Domino 02",
+      "ModelKey": "Cube",
+      "Position": [
+        4.4,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "c5f21b20-b430-5f26-a9f2-c981556abc25",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "e137920a-31de-5db6-a9da-e7c24fc3f106",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.11639999999999999,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 22,
+      "Name": "Domino 03",
+      "ModelKey": "Cube",
+      "Position": [
+        5.2,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e1dcb5a6-fd2e-56ac-a3a2-a9509fb99d22",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "64515d97-3624-50e4-838a-440ba8456c54",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.8924,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 23,
+      "Name": "Domino 04",
+      "ModelKey": "Cube",
+      "Position": [
+        6.0,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "78c957de-ddcd-57d0-8dac-90651e065b91",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "bb19c8ab-e2fc-522c-b2cf-49351ad09520",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.11639999999999999,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 24,
+      "Name": "Domino 05",
+      "ModelKey": "Cube",
+      "Position": [
+        6.800000000000001,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "43e6cce4-1ad1-591c-a5a2-9a8fbfbbbf03",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "1e104585-166a-5c27-9071-21beb2bbe65b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.8924,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 25,
+      "Name": "Domino 06",
+      "ModelKey": "Cube",
+      "Position": [
+        7.6,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3947f1d2-3156-57d2-aea4-e2821f452ec9",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "82c29039-cc17-5c45-a986-b6a3b7347ec7",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.11639999999999999,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 26,
+      "Name": "Domino 07",
+      "ModelKey": "Cube",
+      "Position": [
+        8.4,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "6124951e-9542-565e-bb24-a150f17f3acd",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d98cc76a-d16c-523f-a526-5cb8bc2ca0c1",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.8924,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 27,
+      "Name": "Domino 08",
+      "ModelKey": "Cube",
+      "Position": [
+        9.200000000000001,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b15709c3-674d-593a-a3fb-cae734cbd917",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "4be59e76-9612-5e03-9130-33d9f964d1a0",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.11639999999999999,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 28,
+      "Name": "Domino 09",
+      "ModelKey": "Cube",
+      "Position": [
+        10.0,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7ed377b6-8987-5272-a635-404119044f3b",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "8644b3cf-7662-54eb-a52f-a61ff6d2754d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.8924,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 29,
+      "Name": "Domino 10",
+      "ModelKey": "Cube",
+      "Position": [
+        10.8,
+        10.5,
+        0.6
+      ],
+      "Scale": [
+        0.08,
+        0.4,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e23d9858-880c-523e-af99-fb0d1b155340",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "022950fa-e3ba-54e0-b5e3-d1fac7c097a6",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.11639999999999999,
+            "Roughness": 0.35,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 30,
+      "Name": "Impact Plate",
+      "ModelKey": "Cube",
+      "Position": [
+        12,
+        10.5,
+        1.1
+      ],
+      "Scale": [
+        0.1,
+        1.6,
+        1.1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b75c1547-0f61-5cf1-b899-6db3ed2762bf",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "21370e20-57bf-585a-8f63-39b84305ab0b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.35,
+            "Green": 0.5,
+            "Blue": 0.75,
+            "Roughness": 0.3,
+            "Metallic": 0.6,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "c9961b56-1693-58d9-888f-28bf5316c2b8",
+          "Data": {
+            "ScriptId": "impact-reporter",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 31,
+      "Name": "Stack Block 1",
+      "ModelKey": "Cube",
+      "Position": [
+        8,
+        -4,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "29a9a4fe-ce5a-5e51-87b9-a67ba36617d6",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 6,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "0daab127-ba77-5cc3-ad28-e4268f2d82ec",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.25,
+            "Green": 0.55,
+            "Blue": 0.9,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 32,
+      "Name": "Stack Block 2",
+      "ModelKey": "Cube",
+      "Position": [
+        8,
+        -4,
+        0.8999999999999999
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7755cb2c-6c41-52ef-bbcc-ecdcca5fc1c1",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 6,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "a1f685d5-b176-5e0f-8fa6-1ac8eeefd061",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.4,
+            "Green": 0.5,
+            "Blue": 0.775,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 33,
+      "Name": "Stack Block 3",
+      "ModelKey": "Cube",
+      "Position": [
+        8,
+        -4,
+        1.5
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4e1a2734-d392-5e6a-b713-92d2dc850b42",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 6,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "aa2cb448-dff4-5416-8084-111cdb41e2e9",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.55,
+            "Green": 0.45000000000000007,
+            "Blue": 0.65,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 34,
+      "Name": "Stack Block 4",
+      "ModelKey": "Cube",
+      "Position": [
+        8,
+        -4,
+        2.0999999999999996
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "059d211e-a800-5a2c-86fd-0779e743a60c",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 6,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "fedfbb5e-530e-55be-b80b-545595d20380",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.7,
+            "Green": 0.4,
+            "Blue": 0.525,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 35,
+      "Name": "Stack Block 5",
+      "ModelKey": "Cube",
+      "Position": [
+        8,
+        -4,
+        2.6999999999999997
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e9060add-d3b8-5bde-b7cb-05104d6800e0",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 6,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "4d0906d1-5592-525f-870a-5bb2d8717879",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.35000000000000003,
+            "Blue": 0.4,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 36,
+      "Name": "Ball Chute",
+      "ModelKey": "Cube",
+      "Position": [
+        8,
+        -4,
+        6
+      ],
+      "Scale": [
+        0.35,
+        0.35,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "15c61389-76e7-57b7-a331-0a3b100e3407",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.15,
+            "Green": 0.16,
+            "Blue": 0.18,
+            "Roughness": 0.3,
+            "Metallic": 0.8,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 37,
+      "Name": "Ball Dispenser",
+      "ModelKey": "Cube",
+      "Position": [
+        5,
+        -6.5,
+        0.5
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.5
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9a5c46bd-13db-5e9e-b09e-6af25f79b6d6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "b476c910-5db7-521f-a9f4-3b9be0a83b1c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.96,
+            "Green": 0.77,
+            "Blue": 0.25,
+            "Roughness": 0.4,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "interactable",
+          "InstanceId": "39fca88e-3c4f-50dd-b773-247e3e31c260",
+          "Data": {
+            "Prompt": "Drop a ball",
+            "Range": 3.0,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "46f15434-3540-5215-bab7-c4009fe37eee",
+          "Data": {
+            "ScriptId": "ball-dispenser",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 100,
+      "Name": "Sun",
+      "Direction": [
+        0.5,
+        0.35,
+        -0.79
+      ],
+      "Position": [
+        0,
+        0,
+        15
+      ],
+      "Color": [
+        255,
+        248,
+        236,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 42,
+      "ShadowDepth": 100,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      3
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -10,
+      1.7
+    ],
+    "Forward": [
+      0,
+      1,
+      0
+    ],
+    "FieldOfView": 1.2,
+    "Components": []
+  }
+}

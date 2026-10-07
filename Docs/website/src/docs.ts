@@ -40,6 +40,8 @@ const PAGE_METADATA: Record<string, PageMetadata> = {
   'Material_Component.md': { topic: 'rendering', slug: 'materials', title: 'Materials & Water' },
   'Scene_Lighting_and_Fog.md': { topic: 'rendering', slug: 'lighting-and-fog', title: 'Scene Lighting & Fog' },
   'Input Architecture.md': { topic: 'gameplay', slug: 'input', title: 'Input Architecture' },
+  'Steam_Multiplayer.md': { topic: 'gameplay', slug: 'steam-multiplayer', title: 'Steam Multiplayer' },
+  'Collisions_and_Interaction.md': { topic: 'gameplay', slug: 'collisions-and-interaction', title: 'Collisions & Interaction' },
   'Skeletal_Animation.md': { topic: 'animation', slug: 'skeletal-animation', title: 'Skeletal Animation' },
   'VistaUI_Architecture.md': { topic: 'ui', slug: 'vista', title: 'Vista UI' },
   'Audio_Architecture.md': { topic: 'sound', slug: 'architecture', title: 'Audio Architecture' },

@@ -50,6 +50,7 @@ public static class ComponentEditorRegistry
         Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
         Register(ScriptBehaviourComponent.TypeId, owner => new ScriptBehaviourComponentViewModel(owner));
         Register(AnimatorComponent.TypeId, owner => new AnimatorComponentViewModel(owner));
+        Register(InteractableComponent.TypeId, owner => new InteractableComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

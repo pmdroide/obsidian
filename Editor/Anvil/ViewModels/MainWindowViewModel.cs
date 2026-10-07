@@ -234,6 +234,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Sphere", _ => AddEntity("IsoSphere"), _bridge));
         AddableObjects.Add(new AddableObjectType("Directional Light", _ => AddDirectionalLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -419,6 +420,14 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_bridge == null) return;
         XnaVector3 pos = _bridge.SpawnPoint;
         _bridge.EnqueueAddPointLight(pos, radius: 25f, color: XnaColor.White, intensity: 20f);
+    }
+
+    [RelayCommand]
+    private void AddSpotLight()
+    {
+        if (_bridge == null) return;
+        // Points straight down (engine convention: -Z is down); rotate it with the gizmo or inspector.
+        _bridge.EnqueueAddSpotLight(_bridge.SpawnPoint, new XnaVector3(0, 0, -1), radius: 25f, color: XnaColor.White, intensity: 40f, spotAngle: 60f);
     }
 
     [RelayCommand]
