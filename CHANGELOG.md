@@ -1,5 +1,17 @@
 # Changelog
 
+## Updated: current engine docs and a separate welcome page
+
+- Connected the documentation website directly to all 13 current guides in `Docs/markdown`, grouped into their respective topics. New unmapped Markdown files appear under Reference until assigned a topic.
+- Replaced the old example introduction, first steps, and issue reporting pages with Obsidian documentation, and removed placeholder topics from the published navigation.
+- Added a separate responsive welcome page with documentation and GitHub links, a crystal illustration, topic shortcuts, and light/dark themes.
+- Added shareable hash routes, full-content documentation search, heading navigation, previous/next guides, GitHub source links, and a mobile navigation drawer with keyboard support.
+- Resolved links between Markdown guides and converted local code/diagram links into GitHub links. Fixed the logo path for deployments under `/obsidian/`.
+- Split the documentation renderer into a separate bundle and updated the website README with source locations, routes, and the Markdown deployment trigger.
+- Verified the production build, lint, and GitHub Pages base path. Browser checks passed for all 13 engine guides at desktop, tablet, and phone widths, including routing, search, links, heading navigation, theme persistence, the mobile drawer, and missing-page recovery.
+
+- Codex
+
 ## Added: documentation website build and GitHub Pages instructions
 
 - Added `Docs/website/README.md` instructions for dependency installation, local builds and previews, and GitHub Pages deployment using a GitHub Actions workflow.

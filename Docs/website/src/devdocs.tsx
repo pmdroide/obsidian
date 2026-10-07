@@ -1,464 +1,143 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {
-  Search,
-  Rocket,
-  Armchair,
-  Code2,
-  Pencil,
-  PackageOpen,
-  Boxes,
-  Image as ImageIcon,
-  Network,
-  Zap,
-  Monitor,
-  Gamepad2,
-  Workflow,
-  Clapperboard,
-  Disc,
-  Volume2,
-  Joystick,
-  Settings,
-  PersonStanding,
-  ChevronRight,
-  Sun,
-  Moon,
-  Menu,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, ChevronRight, ExternalLink, FileText, Menu, Search, X } from 'lucide-react';
+import { DEFAULT_DOC, DOC_PAGES, DOC_SECTIONS, docHref, headingId, resolveMarkdownHref, sourceHref } from './docs';
 
-// Eagerly load every Markdown file under ./markdown as a raw string.
-// Keys look like "./markdown/getting-started/introduction.md".
-// Add a new .md file + a sidebar entry below and it just works.
-const PAGES = import.meta.glob('./markdown/**/*.md', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
-
-function pageContent(slug: string): string {
-  return (
-    PAGES[`./markdown/${slug}.md`] ??
-    `# Not found\n\nNo Markdown file exists for \`${slug}\`.`
-  );
+// Give Markdown headings stable, GitHub-style anchors, including repeated headings.
+type MarkdownNode = {
+  type: string; value?: string; depth?: number;
+  children?: MarkdownNode[]; data?: { hProperties?: Record<string, string> };
+};
+function nodeText(node: MarkdownNode): string {
+  return node.value ?? node.children?.map(nodeText).join('') ?? '';
+}
+function headingAnchors() {
+  return (tree: MarkdownNode) => {
+    const counts = new Map<string, number>();
+    const visit = (node: MarkdownNode) => {
+      if (node.type === 'heading') {
+        const base = headingId(nodeText(node));
+        const count = counts.get(base) ?? 0;
+        counts.set(base, count + 1);
+        node.data = { ...node.data, hProperties: { ...node.data?.hProperties, id: count ? `${base}-${count}` : base } };
+      }
+      node.children?.forEach(visit);
+    };
+    visit(tree);
+  };
+}
+function outline(content: string) {
+  const counts = new Map<string, number>();
+  return [...content.replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1\s*$/gm, '').matchAll(/^(#{1,3})\s+(.+)$/gm)].map((match) => {
+    const title = match[2].replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*`_]/g, '');
+    const base = headingId(title);
+    const count = counts.get(base) ?? 0;
+    counts.set(base, count + 1);
+    return { title, depth: match[1].length, id: count ? `${base}-${count}` : base };
+  }).filter((heading) => heading.depth > 1);
 }
 
-type DocPage = {
-  label: string;
-  slug: string; // path under ./markdown without the .md extension
-};
-
-type Section = {
-  label: string;
-  icon: LucideIcon;
-  children: DocPage[];
-};
-
-const SIDEBAR_ITEMS: Section[] = [
-  {
-    label: 'Getting Started',
-    icon: Rocket,
-    children: [
-      { label: 'Introduction', slug: 'getting-started/introduction' },
-      { label: 'First Steps', slug: 'getting-started/first-steps' },
-      { label: 'Reporting Issues', slug: 'getting-started/reporting-issues' },
-    ],
-  },
-  {
-    label: 'Scene',
-    icon: Armchair,
-    children: [
-      { label: 'Overview', slug: 'scene/overview' },
-      { label: 'Hierarchy', slug: 'scene/hierarchy' },
-      { label: 'GameObjects', slug: 'scene/gameobjects' },
-    ],
-  },
-  {
-    label: 'Code',
-    icon: Code2,
-    children: [
-      { label: 'Overview', slug: 'code/overview' },
-      { label: 'Components', slug: 'code/components' },
-      { label: 'Hotloading', slug: 'code/hotloading' },
-    ],
-  },
-  {
-    label: 'Editor',
-    icon: Pencil,
-    children: [
-      { label: 'Overview', slug: 'editor/overview' },
-      { label: 'Inspector', slug: 'editor/inspector' },
-    ],
-  },
-  {
-    label: 'Exporting Standalone',
-    icon: PackageOpen,
-    children: [
-      { label: 'Overview', slug: 'exporting-standalone/overview' },
-      { label: 'Publishing', slug: 'exporting-standalone/publishing' },
-    ],
-  },
-  {
-    label: 'Assets',
-    icon: Boxes,
-    children: [
-      { label: 'Overview', slug: 'assets/overview' },
-      { label: 'Importing', slug: 'assets/importing' },
-    ],
-  },
-  {
-    label: 'Rendering',
-    icon: ImageIcon,
-    children: [
-      { label: 'Overview', slug: 'rendering/overview' },
-      { label: 'Materials', slug: 'rendering/materials' },
-    ],
-  },
-  {
-    label: 'Networking & Multiplayer',
-    icon: Network,
-    children: [
-      { label: 'Overview', slug: 'networking/overview' },
-      { label: 'Networking Basics', slug: 'networking/basics' },
-    ],
-  },
-  {
-    label: 'Physics',
-    icon: Zap,
-    children: [
-      { label: 'Overview', slug: 'physics/overview' },
-      { label: 'Colliders', slug: 'physics/colliders' },
-    ],
-  },
-  {
-    label: 'UI',
-    icon: Monitor,
-    children: [
-      { label: 'Overview', slug: 'ui/overview' },
-      { label: 'Razor', slug: 'ui/razor' },
-    ],
-  },
-  {
-    label: 'Game Mounts',
-    icon: Gamepad2,
-    children: [
-      { label: 'Overview', slug: 'game-mounts/overview' },
-      { label: 'Setup', slug: 'game-mounts/setup' },
-    ],
-  },
-  {
-    label: 'ActionGraph',
-    icon: Workflow,
-    children: [
-      { label: 'Overview', slug: 'actiongraph/overview' },
-      { label: 'Nodes', slug: 'actiongraph/nodes' },
-    ],
-  },
-  {
-    label: 'Movie Maker',
-    icon: Clapperboard,
-    children: [
-      { label: 'Overview', slug: 'movie-maker/overview' },
-      { label: 'Timeline', slug: 'movie-maker/timeline' },
-    ],
-  },
-  {
-    label: 'Media',
-    icon: Disc,
-    children: [
-      { label: 'Overview', slug: 'media/overview' },
-      { label: 'Video', slug: 'media/video' },
-    ],
-  },
-  {
-    label: 'Sound',
-    icon: Volume2,
-    children: [
-      { label: 'Overview', slug: 'sound/overview' },
-      { label: 'Sound Events', slug: 'sound/sound-events' },
-    ],
-  },
-  {
-    label: 'Gameplay',
-    icon: Joystick,
-    children: [
-      { label: 'Overview', slug: 'gameplay/overview' },
-      { label: 'Player', slug: 'gameplay/player' },
-    ],
-  },
-  {
-    label: 'Services',
-    icon: Settings,
-    children: [
-      { label: 'Overview', slug: 'services/overview' },
-      { label: 'Stats & Leaderboards', slug: 'services/stats' },
-    ],
-  },
-  {
-    label: 'Animation',
-    icon: PersonStanding,
-    children: [
-      { label: 'Overview', slug: 'animation/overview' },
-      { label: 'AnimGraph', slug: 'animation/animgraph' },
-    ],
-  },
-];
-
-const TOP_NAV = ['about', 'games', 'workshop', 'forum', 'learn'];
-
-type Theme = 'dark' | 'light';
-
-function getInitialTheme(): Theme {
-  const attr = document.documentElement.getAttribute('data-theme');
-  return attr === 'light' ? 'light' : 'dark';
+function setPageTitle(title: string) {
+  document.title = title;
 }
 
-const MARKDOWN_COMPONENTS = {
-  h1: ({ children }: { children?: ReactNode }) => (
-    <h1 className="text-2xl md:text-3xl text-primary font-medium mb-6 md:mb-8">{children}</h1>
-  ),
-  h2: ({ children }: { children?: ReactNode }) => (
-    <h2 className="text-lg md:text-xl text-foreground font-medium mt-6 md:mt-8 mb-3">{children}</h2>
-  ),
-  h3: ({ children }: { children?: ReactNode }) => (
-    <h3 className="text-base md:text-lg text-foreground font-medium mt-6 md:mt-8 mb-3">{children}</h3>
-  ),
-  p: ({ children }: { children?: ReactNode }) => (
-    <p className="text-muted-foreground leading-relaxed mb-3">{children}</p>
-  ),
-  a: ({ href, children }: { href?: string; children?: ReactNode }) => (
-    <a href={href} className="text-primary hover:underline">
-      {children}
-    </a>
-  ),
-  ul: ({ children }: { children?: ReactNode }) => (
-    <ul className="list-disc pl-6 mb-3 space-y-1 text-muted-foreground leading-relaxed">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }: { children?: ReactNode }) => (
-    <ol className="list-decimal pl-6 mb-3 space-y-1 text-muted-foreground leading-relaxed">
-      {children}
-    </ol>
-  ),
-  blockquote: ({ children }: { children?: ReactNode }) => (
-    <blockquote className="border-l-2 border-border pl-4 my-4 text-muted-foreground italic">
-      {children}
-    </blockquote>
-  ),
-  code: ({ children }: { children?: ReactNode }) => (
-    <code className="bg-card px-1.5 py-0.5 rounded text-sm text-foreground break-words">
-      {children}
-    </code>
-  ),
-};
-
-export default function DocsPage() {
-  const [activeSlug, setActiveSlug] = useState(
-    SIDEBAR_ITEMS[0].children[0].slug
-  );
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    [SIDEBAR_ITEMS[0].label]: true,
-  });
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+export default function DocsPage({ route }: { route: string }) {
+  const [path, query] = route.split('?');
+  const slug = path === '/docs' || path === '/docs/' ? DEFAULT_DOC : path.replace(/^\/docs\//, '');
+  const page = DOC_PAGES.find((doc) => doc.slug === slug);
+  const section = DOC_SECTIONS.find((topic) => topic.id === page?.topic);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ [section?.id ?? 'getting-started']: true });
+  const [search, setSearch] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredSections = DOC_SECTIONS.map((topic) => ({
+    ...topic,
+    pages: topic.pages.filter((doc) => !normalizedSearch || `${topic.label} ${doc.title} ${doc.content}`.toLowerCase().includes(normalizedSearch)),
+  })).filter((topic) => topic.pages.length);
+  const headings = page ? outline(page.content) : [];
+  const currentIndex = DOC_PAGES.findIndex((doc) => doc.slug === page?.slug);
+  const previous = DOC_PAGES[currentIndex - 1];
+  const next = currentIndex >= 0 ? DOC_PAGES[currentIndex + 1] : undefined;
 
-  // Reflect the active theme onto <html> and remember the choice.
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try {
-      localStorage.setItem('theme', theme);
-    } catch {
-      // Ignore storage failures
+    setPageTitle(`${page?.title ?? 'Page not found'} · Obsidian Docs`);
+    const heading = new URLSearchParams(query).get('heading');
+    if (heading) {
+      const frame = requestAnimationFrame(() => document.getElementById(heading)?.scrollIntoView());
+      return () => cancelAnimationFrame(frame);
     }
-  }, [theme]);
+  }, [page, query]);
 
-  // Prevent background scrolling when mobile sidebar drawer is open
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!isMobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const first = sidebar.current?.querySelector<HTMLElement>('button, input, a');
+    first?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+        menuButton.current?.focus();
+      }
+      if (event.key === 'Tab') {
+        const items = [...(sidebar.current?.querySelectorAll<HTMLElement>('a, button, input') ?? [])];
+        const firstItem = items[0];
+        const lastItem = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === firstItem) { event.preventDefault(); lastItem?.focus(); }
+        else if (!event.shiftKey && document.activeElement === lastItem) { event.preventDefault(); firstItem?.focus(); }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [isMobileMenuOpen]);
 
-  const toggleTheme = () =>
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-
-  const toggleSection = (label: string) =>
-    setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
-
   return (
-    <div className="size-full min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
-      {/* Top Bar — Kept 4 direct children to maintain correct justify-between alignment on desktop */}
-      <header className="flex items-center justify-between gap-4 px-4 md:px-8 py-4 border-b border-border sticky top-0 bg-background z-30">
-        
-        {/* 1. Logo & Mobile Hamburger Menu toggle */}
-        <div className="flex items-center gap-3">
-          <button 
-            className="md:hidden text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Open Menu"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <img
-            src="/logo.png"
-            alt="Obsidian"
-            className="brand-logo w-10 h-10 shrink-0 select-none"
-          />
-        </div>
-
-        {/* 2. Nav links (Hidden on mobile/tablet screens) */}
-        <nav className="hidden lg:flex items-center gap-6">
-          {TOP_NAV.map((item) => (
-            <button
-              key={item}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
-
-        {/* 3. Search (Hidden on smallest mobile devices) */}
-        <div className="relative hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Find Docs.."
-            className="w-40 md:w-56 bg-input border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
-          />
-        </div>
-
-        {/* 4. Theme toggle (Always visible, stays perfectly pinned to the right edge) */}
-        <button
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          className="flex items-center justify-center w-10 h-10 rounded-lg bg-card border border-border hover:bg-accent transition-colors shrink-0"
-        >
-          {theme === 'dark' ? (
-            <Sun className="w-5 h-5 text-muted-foreground" />
-          ) : (
-            <Moon className="w-5 h-5 text-muted-foreground" />
-          )}
-        </button>
-      </header>
-
-      {/* Body Layout */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-10 gap-6 lg:gap-12 relative">
-        
-        {/* Mobile Backdrop Overlay Blur */}
-        {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-
-        {/* Sidebar Navigation */}
-        <aside 
-          className={`
-            fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out
-            md:relative md:z-0 md:p-0 md:border-none md:translate-x-0 md:overflow-visible shrink-0
-            ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
-          `}
-        >
-          {/* Mobile Close Bar inside Menu Drawer */}
-          <div className="flex items-center justify-between mb-6 md:hidden">
-            <span className="font-semibold text-foreground">Documentation</span>
-            <button 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <nav className="space-y-1">
-            {SIDEBAR_ITEMS.map(({ label, icon: Icon, children }) => {
-              const isOpen = expanded[label] ?? false;
-              const hasActiveChild = children.some((c) => c.slug === activeSlug);
-              return (
-                <div key={label}>
-                  <button
-                    onClick={() => toggleSection(label)}
-                    aria-expanded={isOpen}
-                    className={`w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm transition-colors ${
-                      hasActiveChild
-                        ? 'text-primary'
-                        : 'text-foreground hover:bg-accent'
-                    }`}
-                  >
-                    <ChevronRight
-                      className={`w-3 h-3 shrink-0 transition-transform ${
-                        isOpen ? 'rotate-90' : ''
-                      } ${
-                        hasActiveChild ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    />
-                    <Icon className="w-4 h-4 shrink-0 text-primary" />
-                    <span className="text-left font-medium md:font-normal">{label}</span>
-                  </button>
-
-                  {isOpen && (
-                    <div className="ml-[1.375rem] mt-1 mb-1 flex flex-col gap-1 border-l border-border pl-3">
-                      {children.map((child) => {
-                        const isActive = child.slug === activeSlug;
-                        return (
-                          <button
-                            key={child.slug}
-                            onClick={() => {
-                              setActiveSlug(child.slug);
-                              setIsMobileMenuOpen(false); // Closes the drawer on selection
-                            }}
-                            className={`text-left px-2 py-1.5 md:py-1 rounded text-sm transition-colors ${
-                              isActive
-                                ? 'text-primary bg-accent font-medium'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                            }`}
-                          >
-                            {child.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* Main Content Pane */}
-        <main className="flex-1 min-w-0 overflow-hidden">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={MARKDOWN_COMPONENTS}
-          >
-            {pageContent(activeSlug)}
-          </ReactMarkdown>
-        </main>
+    <div className="docs-layout">
+      <div className="mobile-docs-bar">
+        <button ref={menuButton} className="icon-button" onClick={() => setIsMobileMenuOpen(true)} aria-label="Open documentation menu" aria-expanded={isMobileMenuOpen} aria-controls="docs-sidebar"><Menu size={20} /></button>
+        <span>{section?.label ?? 'Documentation'}</span><ChevronRight size={14} /><span>{page?.title ?? 'Not found'}</span>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-border mt-auto py-6">
-        <div className="max-w-7xl w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Obsidian. All rights reserved.</p>
-          
-          {/* Optional: Extra small links on the right side of the footer */}
-          <div className="flex items-center gap-4">
-            <button className="hover:text-foreground transition-colors">Privacy Policy</button>
-            <button className="hover:text-foreground transition-colors">Terms of Service</button>
-          </div>
-        </div>
-      </footer>
+      {isMobileMenuOpen && <div className="sidebar-backdrop" onClick={() => { setIsMobileMenuOpen(false); menuButton.current?.focus(); }} />}
+      <aside ref={sidebar} id="docs-sidebar" className={`docs-sidebar ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="Documentation navigation">
+        <div className="sidebar-title"><span><BookOpen size={17} /> Documentation</span><button className="icon-button mobile-close" onClick={() => { setIsMobileMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close documentation menu"><X size={20} /></button></div>
+        <label className="docs-search"><Search size={16} /><input type="search" placeholder="Search the docs…" aria-label="Search documentation" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+        <nav aria-label="Documentation topics">
+          {filteredSections.map(({ id, label, icon: Icon, pages }) => {
+            const isOpen = Boolean(normalizedSearch) || expanded[id];
+            return <div className="sidebar-section" key={id}>
+              <button className={`section-toggle ${section?.id === id ? 'active-section' : ''}`} onClick={() => setExpanded((current) => ({ ...current, [id]: !isOpen }))} aria-expanded={Boolean(isOpen)} aria-controls={`topic-${id}`}><Icon size={17} /><span>{label}</span><ChevronDown size={14} className={isOpen ? '' : 'chevron-closed'} /></button>
+              {isOpen && <div id={`topic-${id}`} className="section-pages">{pages.map((doc) => <a key={doc.slug} href={docHref(doc.slug)} aria-current={page?.slug === doc.slug ? 'page' : undefined} className={page?.slug === doc.slug ? 'active-page' : ''} onClick={() => setIsMobileMenuOpen(false)}>{doc.title}</a>)}</div>}
+            </div>;
+          })}
+        </nav>
+        {!filteredSections.length && <p className="search-empty" role="status">No guides match “{search}”. Try a different search.</p>}
+        {normalizedSearch && <p className="search-count" role="status">{filteredSections.reduce((total, topic) => total + topic.pages.length, 0)} guides found</p>}
+        <a className="sidebar-home" href="#/"><ArrowLeft size={14} /> Back to Obsidian</a>
+      </aside>
+      <main id="main-content" className="docs-content" tabIndex={-1}>
+        {page ? <>
+          <div className="docs-breadcrumb"><span>Docs</span><ChevronRight size={13} /><span>{section?.label}</span></div>
+          <div className="article-meta"><span><FileText size={13} /> ENGINE GUIDE</span><span>{Math.max(1, Math.ceil(page.content.split(/\s+/).length / 220))} min read</span></div>
+          <article className="markdown-content">
+            <ReactMarkdown remarkPlugins={[remarkGfm, headingAnchors]} urlTransform={(href) => resolveMarkdownHref(href, page)} components={{
+              a: ({ href, children }) => <a href={href} {...(href?.startsWith('http') ? { target: '_blank', rel: 'noreferrer' } : {})}>{children}</a>,
+              table: ({ children }) => <div className="table-scroll"><table>{children}</table></div>,
+            }}>{page.content.startsWith('# ') ? page.content : `# ${page.title}\n\n${page.content}`}</ReactMarkdown>
+          </article>
+          <div className="article-source"><a href={sourceHref(page.source)} target="_blank" rel="noreferrer">View this guide on GitHub <ExternalLink size={14} /></a><span>{page.source}</span></div>
+          <nav className="article-pagination" aria-label="Previous and next guide">
+            {previous ? <a href={docHref(previous.slug)}><ArrowLeft size={16} /><div><span>Previous guide</span><strong>{previous.title}</strong></div></a> : <div />}
+            {next && <a href={docHref(next.slug)}><div><span>Next guide</span><strong>{next.title}</strong></div><ArrowRight size={16} /></a>}
+          </nav>
+        </> : <div className="not-found"><p className="eyebrow">404 / GUIDE NOT FOUND</p><h1>This page hasn’t been written.</h1><p>Find a current guide in the sidebar, or start with an introduction to Obsidian.</p><a className="button button-primary" href={docHref()}>Open the docs <ArrowRight size={17} /></a></div>}
+      </main>
+      {page && <aside className="docs-outline" aria-label="On this page"><p className="outline-title">ON THIS PAGE</p><nav>{headings.map((heading) => <a href={docHref(page.slug, heading.id)} className={heading.depth === 3 ? 'outline-subheading' : ''} key={heading.id}>{heading.title}</a>)}</nav><a className="outline-source" href={sourceHref(page.source)} target="_blank" rel="noreferrer">View source <ExternalLink size={13} /></a></aside>}
     </div>
   );
 }
