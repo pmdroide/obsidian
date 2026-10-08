@@ -56,6 +56,7 @@ namespace Engine.Renderer
         private SubsurfaceScatterRenderModule _subsurfaceScatterRenderModule;
         private ForwardRenderModule _forwardRenderModule;
         private WaterRenderModule _waterRenderModule;
+        private WeatherRenderModule _weatherRenderModule;
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
@@ -212,6 +213,7 @@ namespace Engine.Renderer
             _subsurfaceScatterRenderModule = new SubsurfaceScatterRenderModule(content, "Shaders/SubsurfaceScattering/SubsurfaceScattering");
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
             _waterRenderModule = new WaterRenderModule(content);
+            _weatherRenderModule = new WeatherRenderModule(content);
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
             _froxelRenderModule = new FroxelRenderModule(shaderManager, "Shaders/Deferred/Froxel");
@@ -454,6 +456,11 @@ namespace Engine.Renderer
                 }
                 _waterRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, _viewProjection,
                     camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
+
+                // Rain, sandstorm or snow: haze and particles over the opaque and transparent scene.
+                _weatherRenderModule.Update(scene?.Environment, gameTime.ElapsedGameTime.TotalSeconds);
+                _weatherRenderModule.Draw(_graphicsDevice, scene?.Environment, camera, _view, _viewProjection,
+                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
                 
                 //Compose the image and add information from previous frames to apply temporal super sampling
                 _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
@@ -1890,6 +1897,7 @@ namespace Engine.Renderer
             _deferredEnvironmentMapRenderModule?.Dispose();
             _decalRenderModule?.Dispose();
             _waterRenderModule?.Dispose();
+            _weatherRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();

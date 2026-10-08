@@ -1,5 +1,45 @@
 # Changelog
 
+## Added: weather (rain, sandstorm, snow) and the WeatherTest sample scene
+
+**Why:** To test weather. Scenes had a sky, clouds and a day/night cycle, but no precipitation or atmospheric haze.
+
+- **Environment settings** (`Engine/Logic/EnvironmentSettings.cs`), saved in the scene's `Environment` record:
+  - `Weather` (None, Rain, Sandstorm, Snow; saved by name).
+  - `WeatherIntensity` (0-1, default 0.7) and `WeatherHaze` (0-1, default 0.6).
+  - `WindSpeed` (0-40 m/s, default 4) and `WindDirection` (degrees the wind blows towards, default 45).
+  - Out-of-range values are clamped on load; older scenes load with no weather.
+- **Weather profiles** (new `Engine/Logic/Weather.cs`): `WeatherType`, plus a `WeatherProfile` per type. A profile sets the particle count, box size, fall speed, streak or flake shape, sway, colours, haze, cloud cover and sun dimming. Tune a weather there.
+- **Rendering** (new `Engine/Renderer/RenderModules/WeatherRenderModule.cs` and `Engine/Content/Shaders/Forward/Weather.fx`, added to `Content.mgcb`). Drawn after water and before TAA, in Edit and Play:
+  - **Haze:** a full-screen pass that thickens with depth (the sky gets the most), lit by the captured sky and the sun.
+  - **Particles:** one static buffer of up to 24 000 quads, animated in the vertex shader.
+    - They sit on a world-space lattice that wraps around the camera, so they don't move with it.
+    - Fall and wind are accumulated on the CPU for 4 speed groups, so changing the wind never makes them jump.
+    - Rain and sand are velocity-aligned streaks; snow is round flakes.
+    - Sub-pixel particles widen to one pixel and fade instead of flickering.
+    - Particles fade at the box faces, near the eye and where they meet geometry.
+- **Day/night cycle** (`Engine/Renderer/EnvironmentSky.cs`): weather thickens the clouds and dims the sun; a sandstorm also reddens it.
+- **Play/Stop** (`Engine/Logic/PlayMode.cs`): Play snapshots the scene's environment and Stop restores it, as for transforms. Weather a script changed is never saved by accident.
+- **Scripts:** new `ScriptBehaviour.SceneEnvironment` (the active scene's `EnvironmentSettings`).
+- **Anvil:** a **Weather** group at the bottom of the Environment panel: type, Intensity, Haze, Wind (m/s) and Wind towards. The panel reloads when Play stops.
+- **WeatherTest sample** (`Content/Scenes/WeatherTest.obsc`, last in the scene list):
+  - A village street with houses, a tower, dunes, a pond, trees, reference spheres, street lamps, and visibility markers at 10/25/50/100/150 m.
+  - It starts in rain at 15:00 under a slow day/night cycle.
+  - The Main Camera runs Freecam and the new **Weather Test** script (`Content/Scripts/WeatherTestScript.cs`, HUD `Content/UI/WeatherTest.xml` + `.css`). Keys:
+    - 1-4 cross-fade clear/rain/sandstorm/snow;
+    - Up/Down set intensity, Left/Right turn the wind, Z/X set wind speed;
+    - H steps the haze, T moves the time of day, C auto-cycles.
+  - Inspector fields: **Auto Cycle** and **Seconds Per Weather**.
+- **Docs:** new `Docs/markdown/Weather.md`, plus links from `Scene_Lighting_and_Fog.md` and `Script_Behaviours.md`, and `CLAUDE.md` (repo map and recipe).
+- **Checks:** new `Tests/Components/WeatherChecks.cs` covers:
+  - settings clamping, profiles and wind direction, and save/load by name;
+  - older scenes, and Inspector edits through the bridge;
+  - the sample scene, and its script in Play (keys, cross-fades, restore on Stop);
+  - with `--graphics`: each weather drawn on the GPU (haze thicker over the sky, particles-only with Haze 0, offsets wrap).
+- **Known limits:** no roof occlusion, no wet or snowy surfaces or splashes, point lights don't light the particles, and no weather sound.
+
+- Claude
+
 ## Added: Unity-style serialized fields for Script Behaviours
 
 **Why:** Scripts had no per-object settings. Tuning a value meant editing constants in C# and rebuilding, and two gameobjects could not share a script with different values.

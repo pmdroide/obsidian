@@ -78,6 +78,14 @@ Launch Pad, Ball Dispenser, Gate Lever and Color Cycle. It is the reference for
 collision and trigger events, camera rays and the Interactable component. See
 [Collisions_and_Interaction.md](Collisions_and_Interaction.md).
 
+### Weather Test
+
+`Engine/Content/Scripts/WeatherTestScript.cs` runs on the Main Camera of the
+`Scenes/WeatherTest.obsc` sample, next to Freecam. Keys 1-4 cross-fade between
+clear, rain, sandstorm and snow. The arrows, Z/X, H and T tune intensity, wind,
+haze and time of day. It is the reference for changing the weather from a script.
+See [Weather.md](Weather.md).
+
 ### Helpers on a camera
 
 In a camera script, `GameObject` is `null` and `Camera` is the camera. The
@@ -253,6 +261,7 @@ the physics engine uses.
 | `DeltaTime` | Seconds since the last frame. Multiply speeds by it. |
 | `GetComponent<T>()` | First component of type `T` on this gameobject, or `null`. |
 | `Log(message)` | Writes `[ObjectName] message` to the engine/editor log. |
+| `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
 | `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned. Happens automatically when the script stops. |
 

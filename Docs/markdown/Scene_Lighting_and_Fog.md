@@ -65,6 +65,8 @@ scene (`Environment` in the `.obsc`).
 - **Sky / Sun, moon and stars / Clouds:** look of the procedural sky.
 - **Exposure > Day (EV) / Night (EV):** offsets added to the Post Processing exposure,
   blended by daylight. They only apply while the day/night cycle is on.
+- **Weather:** rain, sandstorm or snow, with intensity, haze and wind. See
+  [Weather.md](Weather.md).
 
 The environment sample (where the reflection cubemap is captured, and its
 `SpecularStrength` and `DiffuseStrength`) is **not editable in Anvil**. Change it in
@@ -380,6 +382,7 @@ up with the line of sight, so you see bright gaps instead.
 | Cubemap + probe sampling | `Engine/Content/Shaders/Deferred/DeferredEnvironmentMap.fx`, `Engine/Renderer/RenderModules/DeferredEnvironmentMapRenderModule.cs` |
 | Probe bake | `Engine/Renderer/Lighting/` (`LightingSettings`, `LightingSystem`, `ProbeVolumeBaker`, `ProbeVolumeData`, `LightingBakeInput`) |
 | Sky / day-night | `Engine/Logic/EnvironmentSettings.cs`, `Engine/Renderer/EnvironmentSky.cs` |
+| Weather | `Engine/Logic/Weather.cs`, `Engine/Renderer/RenderModules/WeatherRenderModule.cs`, `Engine/Content/Shaders/Forward/Weather.fx` ([Weather.md](Weather.md)) |
 | Point / spot lights | `Engine/Entities/PointLight.cs`, `Engine/Entities/SpotLight.cs`, `Engine/Content/Shaders/Deferred/DeferredPointLight.fx`, `Engine/Renderer/RenderModules/DeferredLighting/PointLightRenderModule.cs`, `Engine/Renderer/RenderModules/ShadowMapRenderModule.cs` |
 | Fog | `Engine/Content/Shaders/Deferred/Froxel.fx`, `Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs`, `Engine/Content/Shaders/Deferred/DeferredCompose.fx` |
 | Exposure | `Engine/Content/Shaders/PostProcessing/AutoExposure.fx`, `Engine/Renderer/RenderModules/PostProcessingFilters/AutoExposureFilter.cs`, `Engine/Content/Shaders/PostProcessing/PostProcessing.fx` |

@@ -2090,6 +2090,36 @@
                                     <TextBlock Text="Coverage 0 is a clear sky, 1 is overcast. Heavy cover also dims the sun."
                                                TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                 </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Weather" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding WeatherTypes}"
+                                              SelectedIndex="{Binding SelectedWeather, Mode=TwoWay}" />
+                                    <StackPanel Spacing="8" IsVisible="{Binding HasWeather}">
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Intensity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding WeatherIntensity, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WeatherIntensity, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Haze" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding WeatherHaze, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WeatherHaze, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Wind (m/s)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="40" Value="{Binding WindSpeed, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WindSpeed, StringFormat={}{0:0.0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Wind towards" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="359" Value="{Binding WindDirection, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WindDirection, StringFormat={}{0:0}°}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <TextBlock Text="Wind angle: 0° blows towards +X, 90° towards +Y. A sandstorm always blows at least 7 m/s. With the day/night sky, weather also thickens the clouds and dims the sun."
+                                                   TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    </StackPanel>
+                                </StackPanel>
                                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
                             </StackPanel>
                         </ScrollViewer>

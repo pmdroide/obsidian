@@ -271,6 +271,16 @@ public abstract class ScriptBehaviour
     private ScenePhysics PhysicsScene => GameObject?.PhysicsScene ?? ScenePhysics.Current;
 
     ////////////////////////////////////////////////////////////////////////////////
+    //  ENVIRONMENT (sky and weather)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>
+    /// The active scene's sky and weather settings (Inspector > Environment). Changes show the next frame
+    /// and are undone when Play stops, e.g. <c>SceneEnvironment.Weather = WeatherType.Snow</c>.
+    /// </summary>
+    public Logic.EnvironmentSettings SceneEnvironment => Logic.GameFlow.SceneLogic?.ActiveScene?.Environment;
+
+    ////////////////////////////////////////////////////////////////////////////////
     //  CAMERA RAYS & INTERACTION (Interactable component)
     ////////////////////////////////////////////////////////////////////////////////
 

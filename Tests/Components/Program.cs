@@ -488,6 +488,7 @@ SampleSceneChecks.Run();
 SampleSceneChecks.RunGodRays();
 FreecamChecks.Run();
 EnvironmentChecks.Run();
+WeatherChecks.Run();
 WaterChecks.Run();
 SteamChecks.Run();
 InputDeviceChecks.Run();

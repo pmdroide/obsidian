@@ -376,6 +376,12 @@
 /processorParam:DebugMode=Auto
 /build:Shaders/Forward/Water.fx
 
+#begin Shaders/Forward/Weather.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Forward/Weather.fx
+
 #begin Shaders/GBufferSetup/ClearGBuffer.fx
 /importer:EffectImporter
 /processor:EffectProcessor

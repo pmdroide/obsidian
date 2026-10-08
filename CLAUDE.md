@@ -64,6 +64,7 @@ Notes:
 - `Docs/markdown/Scenes_and_Game_Flow.md`, `Docs/markdown/VistaUI_Architecture.md` - scene list/GameFlow/GameInput/GameUI and the supported Vista CSS.
 - `Docs/markdown/Skeletal_Animation.md` - Animator component, the AnimationTest sample scene, and how skinned models are built and drawn.
 - `Engine/Physics/ScenePhysics.cs` + `PhysicsContact.cs` - BEPU bodies per gameobject, raycasts, and collision/trigger Enter/Stay/Exit events dispatched to Script Behaviours (`OnCollisionEnter`, `OnTriggerEnter`, ...). `Engine/Components/InteractableComponent.cs` + `ScriptBehaviour.FindInteractable/Interact/CameraRay` - raycast interaction. Sample: `Content/Scenes/CollisionTest.obsc` (first-person player `Content/Scripts/CollisionTestPlayerScript.cs` + station scripts); see `Docs/markdown/Collisions_and_Interaction.md`.
+- `Engine/Logic/Weather.cs` + `Engine/Renderer/RenderModules/WeatherRenderModule.cs` + `Content/Shaders/Forward/Weather.fx` - scene weather (rain, sandstorm, snow) from `EnvironmentSettings.Weather`/`WeatherIntensity`/`WeatherHaze`/`WindSpeed`/`WindDirection`: GPU particles in a camera-wrapped box plus a depth haze, drawn after water. Per-type look is `WeatherProfile`. Scripts use `ScriptBehaviour.SceneEnvironment`; PlayMode restores the environment on Stop. Sample: `Content/Scenes/WeatherTest.obsc` + `Content/Scripts/WeatherTestScript.cs`; see `Docs/markdown/Weather.md`.
 - `Engine/Steam/SteamP2PSession.cs` - Steam lobby + `SteamNetworkingMessages` peer-to-peer session for scripts (`SteamService.Current` is the engine's Steam session). Sample: `Content/Scenes/MultiplayerTest.obsc` + `Content/Scripts/MultiplayerTestScript.cs`; see `Docs/markdown/Steam_Multiplayer.md`.
 
 ## Runtime Flow
@@ -139,6 +140,7 @@ Important types:
 - Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
 - React to contacts or let the player use objects: override `OnCollisionEnter/Stay/Exit`, `OnTriggerEnter/Stay/Exit` or `OnInteract` on a `ScriptBehaviour`; triggers are Physics > Is Trigger (Static triggers are convex hulls), usable objects get an Interactable component plus a non-trigger Physics component. Reference: the CollisionTest sample scripts.
 - Add a gameobject role: append a value to `Engine/Entities/GameObjectRole.cs` (saved by name, so never rename one) and handle it where it matters; `ScenePhysics`/`WaterVolume` handle `Water`.
+- Add or tune a weather: edit/add a `WeatherProfile` in `Engine/Logic/Weather.cs` (new `WeatherType` values are saved by name, so never rename one), then list it in `EnvironmentViewModel.WeatherTypes`/`WeatherTypeValues`.
 - Change water waves: the swell lives in both `Engine/Content/Shaders/Forward/Water.fx` (`Swell`) and `Engine/Physics/WaterWaves.cs` (buoyancy); keep them identical.
 - Add an editor-backed scene property: extend snapshot/mutation structs in `IEditorBridge.cs`, populate it in `EditorBridge.BuildSnapshot()`, reconcile it in `BridgeReconciler`, and expose it through `SceneObjectViewModel`/XAML.
 - Add an Anvil command: add command in `MainWindowViewModel`, bind it from `MainWindow.axaml`, and route engine work through `IEditorBridge`.

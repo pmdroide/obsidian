@@ -13,7 +13,7 @@ namespace Engine.Logic
 
     /// <summary>
     /// Owns Edit/Play transitions. On <see cref="Play"/> snapshots the active scene's
-    /// transforms so <see cref="Stop"/> can restore them. Camera selection, physics
+    /// transforms and environment (sky, weather) so <see cref="Stop"/> can restore them. Camera selection, physics
     /// gating, and script ticks all read <see cref="Mode"/>.
     /// </summary>
     public class PlayModeController
@@ -33,6 +33,9 @@ namespace Engine.Logic
         // The main camera's pose, so a camera script (e.g. Freecam) can't move the saved camera.
         private Vector3 _cameraPosition, _cameraForward, _cameraUp;
         private Camera _snappedCamera;
+        // Scripts may change the weather or sky while playing; Stop puts the edited scene's back.
+        private EnvironmentSettings _environmentSnap;
+        private Scene _environmentScene;
 
         // Cached editor-mode value so Stop() can restore whatever the user had set.
         private bool _editorFlagBeforePlay;
@@ -173,6 +176,8 @@ namespace Engine.Logic
                 _pointLightSnap.Add(new TransformSnap(pl.Id, pl.Position, pl is SpotLight ? pl.RotationMatrix : Matrix.Identity, Vector3.One));
             foreach (var dl in s.DirectionalLights)
                 _dirLightSnap.Add(new TransformSnap(dl.Id, dl.Position, dl.RotationMatrix, Vector3.One));
+            _environmentSnap = s.Environment?.Clone();
+            _environmentScene = s;
             _snappedCamera = s.MainCamera;
             if (_snappedCamera != null)
             {
@@ -197,6 +202,9 @@ namespace Engine.Logic
                 _snappedCamera.Up = _cameraUp;
             }
             _snappedCamera = null;
+            if (_environmentSnap != null && ReferenceEquals(_environmentScene, s)) s.Environment = _environmentSnap;
+            _environmentSnap = null;
+            _environmentScene = null;
         }
 
         private static void ApplyById<T>(List<TransformSnap> snaps, List<T> live)

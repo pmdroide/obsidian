@@ -24,6 +24,7 @@ public static class ScriptRegistry
         Register<BallDispenserScript>(BallDispenserScript.ScriptId, "Ball Dispenser");
         Register<GateLeverScript>(GateLeverScript.ScriptId, "Gate Lever");
         Register<ColorCycleScript>(ColorCycleScript.ScriptId, "Color Cycle");
+        Register<WeatherTestScript>(WeatherTestScript.ScriptId, "Weather Test");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

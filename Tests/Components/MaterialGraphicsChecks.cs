@@ -30,6 +30,7 @@ internal static class MaterialGraphicsChecks
             using var content = new ContentManager(services,
                 Path.Combine(AppContext.BaseDirectory, "Content"));
             EnvironmentChecks.RunGraphics(graphics, content);
+            WeatherChecks.RunGraphics(graphics, content);
             AutoExposureChecks.RunGraphics(graphics, content);
             AnimationChecks.RunGraphics(graphics, content);
             SpotLightChecks.RunGraphics(content);

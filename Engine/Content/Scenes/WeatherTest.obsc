@@ -1,0 +1,1554 @@
+{
+  "Version": 2,
+  "Name": "WeatherTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [0, 0, -0.5],
+      "Scale": [200, 200, 0.5],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9213bd6c-7bdf-55c7-84de-e314a1bae4d0",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.42,
+            "Green": 0.39,
+            "Blue": 0.34,
+            "Roughness": 0.95,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Street",
+      "ModelKey": "Cube",
+      "Position": [0, 10, 0.01],
+      "Scale": [3, 45, 0.02],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "7cea9400-04b2-5c4a-8a08-e013d3627a76",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.11,
+            "Green": 0.11,
+            "Blue": 0.12,
+            "Roughness": 0.45,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "House 01",
+      "ModelKey": "Cube",
+      "Position": [-9, -12, 3.8],
+      "Scale": [4, 4.5, 3.8],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ae8e44f9-6c6a-5a08-9281-ead7633288dd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.72,
+            "Green": 0.66,
+            "Blue": 0.58,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "House 01 Roof",
+      "ModelKey": "Cube",
+      "Position": [-9, -12, 7.8],
+      "Scale": [4.6, 5.1, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "71be79f5-4156-5874-ad6b-2a19e2f5da03",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "House 01 Door",
+      "ModelKey": "Cube",
+      "Position": [-4.98, -12, 1.1],
+      "Scale": [0.05, 0.7, 1.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "08fed0a9-09c7-549f-b804-5a7dfee5d59d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.13,
+            "Blue": 0.08,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "House 02",
+      "ModelKey": "Cube",
+      "Position": [9, -6, 4.6],
+      "Scale": [4, 4.5, 4.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "95977d44-83e0-5136-93ac-cc8927b9ec53",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.58,
+            "Green": 0.62,
+            "Blue": 0.66,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "House 02 Roof",
+      "ModelKey": "Cube",
+      "Position": [9, -6, 9.399999999999999],
+      "Scale": [4.6, 5.1, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "81483d63-b908-5911-bec7-baaf36f843ce",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "House 02 Door",
+      "ModelKey": "Cube",
+      "Position": [4.98, -6, 1.1],
+      "Scale": [0.05, 0.7, 1.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5fdfaace-5b58-5fef-8bb9-d3bd3b38fdc2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.13,
+            "Blue": 0.08,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "House 03",
+      "ModelKey": "Cube",
+      "Position": [-9, 6, 3.0],
+      "Scale": [4, 4.5, 3.0],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3169662b-d180-5a94-944d-406cb8eccad3",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.66,
+            "Green": 0.55,
+            "Blue": 0.48,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "House 03 Roof",
+      "ModelKey": "Cube",
+      "Position": [-9, 6, 6.2],
+      "Scale": [4.6, 5.1, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "95a33370-da5b-5610-9593-c611b4e6b7ba",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "House 03 Door",
+      "ModelKey": "Cube",
+      "Position": [-4.98, 6, 1.1],
+      "Scale": [0.05, 0.7, 1.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "773544cc-7c44-59ed-a217-30579a5f837c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.13,
+            "Blue": 0.08,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "House 04",
+      "ModelKey": "Cube",
+      "Position": [9, 14, 3.8],
+      "Scale": [4, 4.5, 3.8],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "919a74d3-ed71-50b8-92b2-4455673ac320",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.66,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "House 04 Roof",
+      "ModelKey": "Cube",
+      "Position": [9, 14, 7.8],
+      "Scale": [4.6, 5.1, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0a471b08-8652-5fc1-89fa-e4e2c91d9f90",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "House 04 Door",
+      "ModelKey": "Cube",
+      "Position": [4.98, 14, 1.1],
+      "Scale": [0.05, 0.7, 1.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ac29474b-63f3-5775-9521-cc1c375dfd63",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.13,
+            "Blue": 0.08,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "House 05",
+      "ModelKey": "Cube",
+      "Position": [-9, 24, 4.6],
+      "Scale": [4, 4.5, 4.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "a1b44f6f-25cd-5d84-88c7-8c63de3b77ba",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.55,
+            "Green": 0.6,
+            "Blue": 0.55,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "House 05 Roof",
+      "ModelKey": "Cube",
+      "Position": [-9, 24, 9.399999999999999],
+      "Scale": [4.6, 5.1, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "34f6f1b4-10c9-5837-8093-369a5fac72d9",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "House 05 Door",
+      "ModelKey": "Cube",
+      "Position": [-4.98, 24, 1.1],
+      "Scale": [0.05, 0.7, 1.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0ffbb59f-9817-5900-a78d-0b42b265e28f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.13,
+            "Blue": 0.08,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "House 06",
+      "ModelKey": "Cube",
+      "Position": [9, 32, 3.0],
+      "Scale": [4, 4.5, 3.0],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "1a0a87a3-f32c-5802-aa55-2e737816a529",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.68,
+            "Green": 0.6,
+            "Blue": 0.62,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "House 06 Roof",
+      "ModelKey": "Cube",
+      "Position": [9, 32, 6.2],
+      "Scale": [4.6, 5.1, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "2c873c57-719c-512b-90fa-e6d42d89c44c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "House 06 Door",
+      "ModelKey": "Cube",
+      "Position": [4.98, 32, 1.1],
+      "Scale": [0.05, 0.7, 1.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "e13225d6-8634-53b3-b3c5-7bfacdbb7c7d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.13,
+            "Blue": 0.08,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "Tower",
+      "ModelKey": "Cube",
+      "Position": [0, 58, 12],
+      "Scale": [3, 3, 12],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "6cb058ee-83c5-56b6-a3c9-3282f4488553",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.6,
+            "Green": 0.58,
+            "Blue": 0.55,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 22,
+      "Name": "Tower Cap",
+      "ModelKey": "Cube",
+      "Position": [0, 58, 24.4],
+      "Scale": [3.6, 3.6, 0.4],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "091adf74-af72-5475-9397-572c725c96c9",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.2,
+            "Blue": 0.19,
+            "Roughness": 0.7,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 23,
+      "Name": "Pond",
+      "ModelKey": "Cube",
+      "Position": [17, -20, 0.04],
+      "Scale": [7, 5, 0.04],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d9a2b328-a468-598e-8361-21488223889c",
+          "Data": {
+            "MaterialType": 6,
+            "Red": 0.06,
+            "Green": 0.18,
+            "Blue": 0.22,
+            "Roughness": 0.05,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "Opacity": 0.85,
+            "WaveScale": 1.2,
+            "WaveSpeed": 0.8,
+            "WaveStrength": 0.25,
+            "WaveHeight": 0.04,
+            "Clarity": 2.0,
+            "Foam": 0.2
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 24,
+      "Name": "Pond Rim",
+      "ModelKey": "Cube",
+      "Position": [17, -20, 0.02],
+      "Scale": [7.6, 5.6, 0.02],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9ccebf42-8a57-56fb-9607-be7e13309548",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.29,
+            "Blue": 0.27,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 25,
+      "Name": "Tree 1 Trunk",
+      "ModelKey": "Cube",
+      "Position": [-17, -18, 1.6],
+      "Scale": [0.25, 0.25, 1.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "67e47871-1e97-5f90-b660-ec5e51dc77dd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.25,
+            "Green": 0.17,
+            "Blue": 0.1,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 26,
+      "Name": "Tree 1 Crown",
+      "ModelKey": "IsoSphere",
+      "Position": [-17, -18, 4.4],
+      "Scale": [1.9, 1.9, 2.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "88dbb0a7-1726-58ed-970b-d697e543cf1b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.3,
+            "Blue": 0.13,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 27,
+      "Name": "Tree 2 Trunk",
+      "ModelKey": "Cube",
+      "Position": [-20, 2, 1.6],
+      "Scale": [0.25, 0.25, 1.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8ab15dc5-d587-5adc-9f5c-2e48aaa96f84",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.25,
+            "Green": 0.17,
+            "Blue": 0.1,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 28,
+      "Name": "Tree 2 Crown",
+      "ModelKey": "IsoSphere",
+      "Position": [-20, 2, 4.4],
+      "Scale": [1.9, 1.9, 2.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3a8e169f-973d-55ff-8a9b-7422767cc951",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.3,
+            "Blue": 0.13,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 29,
+      "Name": "Tree 3 Trunk",
+      "ModelKey": "Cube",
+      "Position": [-16, 16, 1.6],
+      "Scale": [0.25, 0.25, 1.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5c1532c6-e38c-5306-b73d-15203b4d04f2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.25,
+            "Green": 0.17,
+            "Blue": 0.1,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 30,
+      "Name": "Tree 3 Crown",
+      "ModelKey": "IsoSphere",
+      "Position": [-16, 16, 4.4],
+      "Scale": [1.9, 1.9, 2.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "06955816-d03e-5726-9ecb-96a5d6bac3b3",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.3,
+            "Blue": 0.13,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 31,
+      "Name": "Tree 4 Trunk",
+      "ModelKey": "Cube",
+      "Position": [20, 4, 1.6],
+      "Scale": [0.25, 0.25, 1.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9153c2c2-d9b0-5305-91e0-64f7f922070b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.25,
+            "Green": 0.17,
+            "Blue": 0.1,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 32,
+      "Name": "Tree 4 Crown",
+      "ModelKey": "IsoSphere",
+      "Position": [20, 4, 4.4],
+      "Scale": [1.9, 1.9, 2.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "6f464dfe-8c63-59aa-86b9-f7322ea3d5df",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.3,
+            "Blue": 0.13,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 33,
+      "Name": "Tree 5 Trunk",
+      "ModelKey": "Cube",
+      "Position": [22, 22, 1.6],
+      "Scale": [0.25, 0.25, 1.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "bc423eb8-9a70-5f22-92a4-0a958e95627d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.25,
+            "Green": 0.17,
+            "Blue": 0.1,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 34,
+      "Name": "Tree 5 Crown",
+      "ModelKey": "IsoSphere",
+      "Position": [22, 22, 4.4],
+      "Scale": [1.9, 1.9, 2.1],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "87f24bc7-bf5a-57d0-9c50-61dc87a77e02",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.17,
+            "Green": 0.3,
+            "Blue": 0.13,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 35,
+      "Name": "Dune 1",
+      "ModelKey": "IsoSphere",
+      "Position": [-45, 70, -1.4],
+      "Scale": [22, 12, 4],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "f752460a-e8dc-5115-b780-fd364907feec",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.66,
+            "Green": 0.53,
+            "Blue": 0.36,
+            "Roughness": 0.95,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 36,
+      "Name": "Dune 2",
+      "ModelKey": "IsoSphere",
+      "Position": [-5, 95, -2.0999999999999996],
+      "Scale": [30, 14, 6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "c9f0a361-bf84-5c53-a942-74393a4012c4",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.66,
+            "Green": 0.53,
+            "Blue": 0.36,
+            "Roughness": 0.95,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 37,
+      "Name": "Dune 3",
+      "ModelKey": "IsoSphere",
+      "Position": [40, 75, -1.2249999999999999],
+      "Scale": [20, 12, 3.5],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "82200bd2-754a-502f-a90b-8c66bec07cac",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.66,
+            "Green": 0.53,
+            "Blue": 0.36,
+            "Roughness": 0.95,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 38,
+      "Name": "Reference White",
+      "ModelKey": "IsoSphere",
+      "Position": [-3.5, -20, 0.8],
+      "Scale": [0.8, 0.8, 0.8],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "c23b90d7-0394-533d-bbcf-04d74f021963",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.9,
+            "Green": 0.9,
+            "Blue": 0.9,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 39,
+      "Name": "Reference Dark",
+      "ModelKey": "IsoSphere",
+      "Position": [-5.5, -18, 0.8],
+      "Scale": [0.8, 0.8, 0.8],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0accafce-365a-5901-ad2a-cb8614268349",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.08,
+            "Green": 0.08,
+            "Blue": 0.08,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 40,
+      "Name": "Reference Glossy",
+      "ModelKey": "IsoSphere",
+      "Position": [-3.5, -16, 0.8],
+      "Scale": [0.8, 0.8, 0.8],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "55e38dc0-b1aa-593a-a31e-0ded3a338d9c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.7,
+            "Green": 0.7,
+            "Blue": 0.72,
+            "Roughness": 0.1,
+            "Metallic": 1.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 41,
+      "Name": "Marker 10 m",
+      "ModelKey": "Cube",
+      "Position": [4.5, -15, 3],
+      "Scale": [0.3, 0.3, 3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "07a41f43-d7d8-5b95-a9a7-5f61e5737eb6",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.9,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 42,
+      "Name": "Marker 10 m Band",
+      "ModelKey": "Cube",
+      "Position": [4.5, -15, 5.2],
+      "Scale": [0.32, 0.32, 0.3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "96c2256a-abc4-5424-9d7b-a6eab08d26d0",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.18,
+            "Blue": 0.12,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 43,
+      "Name": "Marker 25 m",
+      "ModelKey": "Cube",
+      "Position": [4.5, 0, 3],
+      "Scale": [0.3, 0.3, 3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d9391814-d8b1-571e-82c6-7e9171909ff0",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.9,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 44,
+      "Name": "Marker 25 m Band",
+      "ModelKey": "Cube",
+      "Position": [4.5, 0, 5.2],
+      "Scale": [0.32, 0.32, 0.3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3a3eb23c-8fbf-54f6-aa16-6d332e2ea805",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.18,
+            "Blue": 0.12,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 45,
+      "Name": "Marker 50 m",
+      "ModelKey": "Cube",
+      "Position": [4.5, 25, 3],
+      "Scale": [0.3, 0.3, 3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "a16b86a8-f164-549b-b2b0-3d76212ec54b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.9,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 46,
+      "Name": "Marker 50 m Band",
+      "ModelKey": "Cube",
+      "Position": [4.5, 25, 5.2],
+      "Scale": [0.32, 0.32, 0.3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "a0e30a53-14b9-5b9c-8fa5-e08afb74c902",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.18,
+            "Blue": 0.12,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 47,
+      "Name": "Marker 100 m",
+      "ModelKey": "Cube",
+      "Position": [4.5, 75, 3],
+      "Scale": [0.3, 0.3, 3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0371d32c-b157-5a6a-a58d-694e140e9b95",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.9,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 48,
+      "Name": "Marker 100 m Band",
+      "ModelKey": "Cube",
+      "Position": [4.5, 75, 5.2],
+      "Scale": [0.32, 0.32, 0.3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8e10bbce-43dc-576e-981a-6f7dcdc557a5",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.18,
+            "Blue": 0.12,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 49,
+      "Name": "Marker 150 m",
+      "ModelKey": "Cube",
+      "Position": [4.5, 125, 3],
+      "Scale": [0.3, 0.3, 3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0a87c695-53e1-5a57-bbc3-448cf7db6173",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.9,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 50,
+      "Name": "Marker 150 m Band",
+      "ModelKey": "Cube",
+      "Position": [4.5, 125, 5.2],
+      "Scale": [0.32, 0.32, 0.3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "c2f5a537-74de-502a-a6eb-0a5ce5293030",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.18,
+            "Blue": 0.12,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 51,
+      "Name": "Lamp 1 Post",
+      "ModelKey": "Cube",
+      "Position": [-3.6, -14, 2],
+      "Scale": [0.08, 0.08, 2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "aa92fca9-ca8e-5fe0-99b8-35280187dc16",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 1.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 52,
+      "Name": "Lamp 1 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [-3.6, -14, 4.15],
+      "Scale": [0.2, 0.2, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0b83333a-78e6-5e74-aa0d-0b90d4ec41ce",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.78,
+            "Blue": 0.5,
+            "Roughness": 0.5,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 53,
+      "Name": "Lamp 2 Post",
+      "ModelKey": "Cube",
+      "Position": [3.6, 0, 2],
+      "Scale": [0.08, 0.08, 2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d6109bd7-c8e2-5ccf-80e7-c4b03e659b9a",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 1.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 54,
+      "Name": "Lamp 2 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [3.6, 0, 4.15],
+      "Scale": [0.2, 0.2, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8e615549-3a69-5e74-9618-c51c88ea8070",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.78,
+            "Blue": 0.5,
+            "Roughness": 0.5,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 55,
+      "Name": "Lamp 3 Post",
+      "ModelKey": "Cube",
+      "Position": [-3.6, 14, 2],
+      "Scale": [0.08, 0.08, 2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5394bb80-c2fa-57d6-b5a2-12364ea6befd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 1.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 56,
+      "Name": "Lamp 3 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [-3.6, 14, 4.15],
+      "Scale": [0.2, 0.2, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4f025ca1-6499-5951-bedd-9f50758a91b1",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.78,
+            "Blue": 0.5,
+            "Roughness": 0.5,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 57,
+      "Name": "Lamp 4 Post",
+      "ModelKey": "Cube",
+      "Position": [3.6, 28, 2],
+      "Scale": [0.08, 0.08, 2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4f8fe2ec-9caa-5dd0-ae38-a6ef490266ff",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 1.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 58,
+      "Name": "Lamp 4 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [3.6, 28, 4.15],
+      "Scale": [0.2, 0.2, 0.2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "dd23aac6-9f2c-55a5-ad45-b17ee93d56d3",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.78,
+            "Blue": 0.5,
+            "Roughness": 0.5,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 59,
+      "Name": "Lamp 1 Light",
+      "Position": [-3.6, -14, 3.9],
+      "Radius": 10,
+      "Color": [255, 196, 140, 255],
+      "Intensity": 2.5
+    },
+    {
+      "Id": 60,
+      "Name": "Lamp 2 Light",
+      "Position": [3.6, 0, 3.9],
+      "Radius": 10,
+      "Color": [255, 196, 140, 255],
+      "Intensity": 2.5
+    },
+    {
+      "Id": 61,
+      "Name": "Lamp 3 Light",
+      "Position": [-3.6, 14, 3.9],
+      "Radius": 10,
+      "Color": [255, 196, 140, 255],
+      "Intensity": 2.5
+    },
+    {
+      "Id": 62,
+      "Name": "Lamp 4 Light",
+      "Position": [3.6, 28, 3.9],
+      "Radius": 10,
+      "Color": [255, 196, 140, 255],
+      "Intensity": 2.5
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 63,
+      "Name": "Sun",
+      "Direction": [-0.5, 0.45, -0.74],
+      "Position": [0, 0, 2],
+      "Color": [255, 250, 240, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 140,
+      "ShadowDepth": 220,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [0, -12, 3],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 15,
+    "CycleDurationMinutes": 30,
+    "CloudCoverage": 0.35,
+    "CloudSpeed": 2,
+    "Weather": "Rain",
+    "WeatherIntensity": 0.7,
+    "WeatherHaze": 0.6,
+    "WindSpeed": 5,
+    "WindDirection": 60
+  },
+  "MainCamera": {
+    "Position": [0, -30, 1.8],
+    "Forward": [0.0, 0.99504, -0.0995],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "90de3864-12d8-57d0-a191-6f6debed1b94",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "a54716d5-eb14-5666-883c-bf5be9049dcd",
+        "Data": {
+          "ScriptId": "weather-test",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

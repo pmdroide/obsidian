@@ -5,6 +5,7 @@
     "Scenes/AutoExposureTest.obsc",
     "Scenes/AnimationTest.obsc",
     "Scenes/MultiplayerTest.obsc",
-    "Scenes/CollisionTest.obsc"
+    "Scenes/CollisionTest.obsc",
+    "Scenes/WeatherTest.obsc"
   ]
 }
