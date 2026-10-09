@@ -521,7 +521,9 @@
                             <Button Classes="iconButton" ToolTip.Tip="Layers">
                                 <controls:LucideIcon Icon="Layers" />
                             </Button>
-                            <Button Classes="iconButton" ToolTip.Tip="Stats">
+                            <Button Classes="iconButton" Classes.active="{Binding IsStatsVisible}"
+                                    Command="{Binding ToggleStatsCommand}" ToolTip.Tip="{Binding StatsToggleTip}"
+                                    AutomationProperties.Name="Debug stats">
                                 <controls:LucideIcon Icon="Monitor" />
                             </Button>
                         </StackPanel>
@@ -922,6 +924,9 @@
                                         </Grid>
                                         <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsWaterRole}"
                                                    Text="Water volume: bodies with Buoyancy float below its top surface, riding its waves. It builds no collider." />
+                                        <CheckBox Content="Persistent" IsChecked="{Binding Persistent, Mode=TwoWay}" FontSize="11"
+                                                  IsVisible="{Binding HasRole}"
+                                                  ToolTip.Tip="Keep this gameobject, with its scripts still running, when a script loads another scene during Play (like Unity's DontDestroyOnLoad)." />
                                     </StackPanel>
                                 </Border>
 
@@ -1428,6 +1433,17 @@
                                                                         </Flyout>
                                                                     </Button.Flyout>
                                                                 </Button>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptGameObjectFieldViewModel" x:DataType="m:ScriptGameObjectFieldViewModel">
+                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{Binding Options}"
+                                                                          SelectedItem="{Binding Value, Mode=TwoWay}">
+                                                                    <ComboBox.ItemTemplate>
+                                                                        <DataTemplate x:DataType="m:GameObjectOption">
+                                                                            <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                                        </DataTemplate>
+                                                                    </ComboBox.ItemTemplate>
+                                                                </ComboBox>
                                                             </DataTemplate>
                                                         </ItemsControl.DataTemplates>
                                                         <ItemsControl.ItemTemplate>

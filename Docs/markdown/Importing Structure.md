@@ -55,7 +55,7 @@ This project does **not** have a broad automatic asset discovery system. It main
   Debug shader hot-reload path. Rebuilds changed `.fx` files using `mgcb.exe`.
 
 - [Engine/Logic/VideoIntroLogic.cs](C:/Dev/GitHub/obsidian/Engine/Logic/VideoIntroLogic.cs:20)  
-  Video is not loaded through `ContentManager`. It uses LibVLC directly from `Content/intro.mp4`.
+  Video is not loaded through `ContentManager`. It uses LibVLC directly on the loose files listed in `Content/System/IntroVideos.json` (Anvil > Game Settings > Intro Videos), played in order; Enter skips one.
 
 **Content Structure**
 ```text

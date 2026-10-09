@@ -115,6 +115,7 @@ namespace Engine.Logic
                 // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
                 be.IsEnabled = rec.IsEnabled || doc.Version < 2;
                 be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
+                be.Persistent = rec.Persistent;
                 foreach (var record in rec.Components ?? new())
                 {
                     var component = ComponentRegistry.Restore(record);
@@ -274,6 +275,7 @@ namespace Engine.Logic
                     Name = be.Name,
                     IsEnabled = be.IsEnabled,
                     Role = be.Role,
+                    Persistent = be.Persistent,
                     ModelKey = modelKey,
                     Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
                     Position = be.Position,
@@ -483,6 +485,9 @@ namespace Engine.Logic
             // Missing in older scenes, which load as Default.
             [JsonConverter(typeof(JsonStringEnumConverter))]
             public GameObjectRole Role { get; set; } = GameObjectRole.Default;
+            // Only written when true, so scenes without persistent gameobjects don't change.
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+            public bool Persistent { get; set; }
             public string ModelKey { get; set; }
             public Vector3 Position { get; set; }
             public Quaternion Rotation { get; set; } = Quaternion.Identity;

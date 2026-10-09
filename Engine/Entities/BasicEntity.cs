@@ -114,15 +114,32 @@ namespace Engine.Entities
         /// <summary>Created by a script during Play (<c>ScriptBehaviour.Spawn</c>); never saved with the scene.</summary>
         public bool IsRuntimeSpawned { get; internal set; }
 
+        /// <summary>
+        /// Inspector > Persistent (saved): when a script loads another scene during Play, this gameobject moves
+        /// into it with its components and scripts still running. See <c>Logic.PersistentGameObjects</c>.
+        /// </summary>
+        public bool Persistent { get; set; }
+
+        /// <summary>Set by <c>ScriptBehaviour.DontDestroyOnLoad</c> for the current Play session only; cleared on Stop.</summary>
+        public bool RuntimePersistent { get; internal set; }
+
+        /// <summary>True when the next scene load during Play carries this gameobject over.</summary>
+        public bool IsPersistent => Persistent || RuntimePersistent;
+
         public override TransformableObject Clone {
             get
             {
                 //Not very clean...
-                return new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
+                var copy = new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
                 {
                     Components = Components.Select(ComponentRegistry.Copy).ToList(),
                     Role = Role,
+                    Persistent = Persistent,
                 };
+                // Script fields that reference this gameobject reference the copy instead, like Unity.
+                foreach (var script in copy.Components.OfType<ScriptBehaviourComponent>())
+                    script.RemapGameObjectReferences(Id, copy.Id);
+                return copy;
             }  
         }
 

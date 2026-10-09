@@ -497,6 +497,8 @@ VistaChecks.Run();
 AnimationChecks.Run();
 MultiplayerChecks.Run();
 CollisionChecks.Run();
+PersistenceChecks.Run();
+PauseChecks.Run();
 if (args.Contains("--input-native")) InputDeviceChecks.RunNative();
 if (args.Contains("--steam-native")) SteamChecks.RunNative();
 Console.WriteLine("All component checks passed.");

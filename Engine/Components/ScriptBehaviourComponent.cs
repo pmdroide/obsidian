@@ -43,6 +43,8 @@ public sealed class ScriptBehaviourComponent : GameComponent
     private bool _faulted;
     [JsonIgnore] public bool IsRunning => _instance != null && !_faulted;
     [JsonIgnore] public string LastError { get; private set; }
+    /// <summary>The running script keeps updating while the game is paused (<see cref="ScriptBehaviour.UpdateWhilePaused"/>).</summary>
+    [JsonIgnore] public bool UpdatesWhilePaused => IsRunning && _instance.UpdateWhilePaused;
     /// <summary>Set by <see cref="Camera.AddComponent"/> when this script runs on the main camera.</summary>
     [JsonIgnore] public Camera HostCamera { get; internal set; }
 
@@ -72,7 +74,7 @@ public sealed class ScriptBehaviourComponent : GameComponent
             _dirtyFields.Clear();
             _reapplyAllFields = false;
             _instance.Attach(owner, owner == null ? HostCamera : null);
-            _instance.Start();
+            Run(s => s.Start());
         }
         catch (Exception ex) { Fail("Start", ex); }
     }
@@ -84,8 +86,12 @@ public sealed class ScriptBehaviourComponent : GameComponent
         EnsureStarted(owner);
         if (!IsRunning) return;
         ApplyFieldEdits();
+        // Inline rather than Run(...), so the per-frame call doesn't allocate a closure.
+        ScriptBehaviour previous = ScriptBehaviour.Running;
+        ScriptBehaviour.Running = _instance;
         try { _instance.Tick((float)time.ElapsedGameTime.TotalSeconds); }
         catch (Exception ex) { Fail("Update", ex); }
+        finally { ScriptBehaviour.Running = previous; }
     }
 
     /// <summary>
@@ -95,15 +101,27 @@ public sealed class ScriptBehaviourComponent : GameComponent
     internal void Notify(string hook, Action<ScriptBehaviour> call)
     {
         if (!IsRunning) return;
-        try { call(_instance); }
+        try { Run(call); }
         catch (Exception ex) { Fail(hook, ex); }
     }
 
-    /// <summary>The value this attachment gives a serialized field: stored, otherwise the script's default.</summary>
+    /// <summary>Calls into the behaviour with <see cref="ScriptBehaviour.Running"/> set (hooks can nest, e.g. Interact).</summary>
+    private void Run(Action<ScriptBehaviour> call)
+    {
+        ScriptBehaviour previous = ScriptBehaviour.Running;
+        ScriptBehaviour.Running = _instance;
+        try { call(_instance); }
+        finally { ScriptBehaviour.Running = previous; }
+    }
+
+    /// <summary>
+    /// The value this attachment gives a serialized field: stored, otherwise the script's default.
+    /// A GameObject field gives the gameobject in the active scene (null when none or gone).
+    /// </summary>
     public T GetField<T>(string name)
     {
         var field = RequireField(name);
-        return (T)ScriptFields.GetValue(field, _fields);
+        return (T)ScriptFields.ToFieldValue(field, ScriptFields.GetValue(field, _fields));
     }
 
     /// <summary>
@@ -130,6 +148,20 @@ public sealed class ScriptBehaviourComponent : GameComponent
         bool removed = _fields.Remove(name);
         foreach (string former in field.FormerNames) removed |= _fields.Remove(former);
         if (removed) _dirtyFields.Add(name);
+    }
+
+    /// <summary>
+    /// Points GameObject fields that store <paramref name="fromId"/> at <paramref name="toId"/>, so a
+    /// duplicated gameobject's references to itself follow the copy.
+    /// </summary>
+    internal void RemapGameObjectReferences(int fromId, int toId)
+    {
+        foreach (var field in ScriptFields.For(ScriptId))
+        {
+            if (field.Kind != ScriptFieldKind.GameObject || !ScriptFields.TryGetStored(field, _fields, out var json) ||
+                !ScriptFields.TryDecode(field, json, out var id) || (int)id != fromId) continue;
+            SetFieldJson(field.Name, ScriptFields.Encode(field, toId));
+        }
     }
 
     /// <summary>Drops every stored value, e.g. after switching to another script.</summary>

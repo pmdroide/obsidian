@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text.Json;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Engine.Editor;
 using Engine.Scripting;
 using XnaColor = Microsoft.Xna.Framework.Color;
 using XnaVector2 = Microsoft.Xna.Framework.Vector2;
@@ -43,6 +46,7 @@ public abstract partial class ScriptFieldViewModel : ObservableObject
         ScriptFieldKind.Enum => new ScriptEnumFieldViewModel(component, info),
         ScriptFieldKind.Vector2 or ScriptFieldKind.Vector3 => new ScriptVectorFieldViewModel(component, info),
         ScriptFieldKind.Color => new ScriptColorFieldViewModel(component, info),
+        ScriptFieldKind.GameObject => new ScriptGameObjectFieldViewModel(component, info),
         _ => throw new ArgumentOutOfRangeException(nameof(info)),
     };
 
@@ -183,4 +187,50 @@ public sealed partial class ScriptColorFieldViewModel : ScriptFieldViewModel
     }
 
     partial void OnValueChanged(Color value) => Push(new XnaColor(value.R, value.G, value.B, value.A));
+}
+
+/// <summary>One choice in a gameobject field's picker: a scene gameobject's ID (0 = None) and its label.</summary>
+public sealed record GameObjectOption(int Id, string Label);
+
+/// <summary>
+/// A BasicEntity field: picks a gameobject of the scene by ID. The choices follow the latest engine
+/// snapshot each time the value is shown; a stored ID no longer in the scene shows as Missing.
+/// </summary>
+public sealed partial class ScriptGameObjectFieldViewModel : ScriptFieldViewModel
+{
+    public static GameObjectOption None { get; } = new(0, "None");
+    private readonly ScriptBehaviourComponentViewModel _owner;
+    public ObservableCollection<GameObjectOption> Options { get; } = new() { None };
+    [ObservableProperty] private GameObjectOption? _value = None;
+
+    public ScriptGameObjectFieldViewModel(ScriptBehaviourComponentViewModel c, ScriptFieldInfo i) : base(c, i) => _owner = c;
+
+    protected override void Show(object value)
+    {
+        int id = value is int i ? i : 0;
+        RefreshOptions(id);
+        Value = Options.First(o => o.Id == id);
+    }
+
+    private void RefreshOptions(int selectedId)
+    {
+        var objects = (_owner.SceneObjects ?? Array.Empty<EditorObjectSnapshot>())
+            .Where(o => o.Kind == EditorObjectKind.BasicEntity).ToList();
+        var duplicateNames = objects.GroupBy(o => o.Name).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
+        var next = new List<GameObjectOption> { None };
+        foreach (var o in objects)
+            next.Add(new GameObjectOption(o.Id, duplicateNames.Contains(o.Name) ? $"{o.Name} (#{o.Id})" : o.Name));
+        if (selectedId != 0 && next.All(o => o.Id != selectedId))
+            next.Add(new GameObjectOption(selectedId, $"Missing (#{selectedId})"));
+        // Rebuilding an unchanged list would make the ComboBox drop and re-pick its selection every snapshot.
+        if (Options.SequenceEqual(next)) return;
+        Options.Clear();
+        foreach (var option in next) Options.Add(option);
+    }
+
+    partial void OnValueChanged(GameObjectOption? value)
+    {
+        // ComboBox clears its selection while the options are rebuilt.
+        if (value != null) Push(value.Id);
+    }
 }

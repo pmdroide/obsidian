@@ -153,7 +153,7 @@ internal static class WeatherChecks
         Check(new[] { 10, 25, 50, 100, 150 }.All(d => scene.BasicEntities.Any(e => e.Name == $"Marker {d} m")),
             "the weather sample has visibility markers to judge the haze");
         SceneList.Load();
-        Check(SceneList.Find("WeatherTest") == SceneList.Scenes.Count - 1, "the weather sample is last in the scene list");
+        Check(SceneList.Find("WeatherTest") >= 0, "the weather sample is in the scene list");
         string ui = GameInfo.ResolveContentFile("UI/WeatherTest");
         Check(File.Exists(ui + ".xml") && File.Exists(ui + ".css"), "the weather sample's HUD ships with the scene");
 

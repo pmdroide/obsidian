@@ -25,6 +25,12 @@ public abstract class ScriptBehaviour
     public virtual void Update() { }
     public virtual void Stop() { }
 
+    /// <summary>
+    /// True to keep getting <see cref="Update"/> while the game is paused (<see cref="Logic.GameFlow.Paused"/>),
+    /// for a pause menu. Every other script, component and the physics step wait until it resumes.
+    /// </summary>
+    public virtual bool UpdateWhilePaused => false;
+
     // Event hooks run on the game thread right after the physics step (after every Update that frame).
     // They need a Physics component on this gameobject. Triggers: PhysicsComponent.IsTrigger.
 
@@ -42,6 +48,14 @@ public abstract class ScriptBehaviour
     public virtual void OnTriggerExit(BasicEntity other) { }
     /// <summary>Another script used this gameobject's Interactable component (<see cref="Interact(RaycastHit)"/>).</summary>
     public virtual void OnInteract(Interaction interaction) { }
+    /// <summary>
+    /// A scene loaded and this persistent gameobject came along (<see cref="DontDestroyOnLoad()"/>), still running.
+    /// Runs after the new scene's scripts started, e.g. to move to its spawn point.
+    /// </summary>
+    public virtual void OnSceneLoaded() { }
+
+    /// <summary>The behaviour whose Start, Update or hook is running (GameUI records it as a layer's owner).</summary>
+    internal static ScriptBehaviour Running { get; set; }
 
     internal void Attach(BasicEntity owner, Camera camera = null)
     {
@@ -352,6 +366,22 @@ public abstract class ScriptBehaviour
         return entity;
     }
 
+    /// <summary>
+    /// Keeps this gameobject when a script loads another scene during Play: it moves into the new scene with
+    /// its scripts still running (and HUD layers they opened still open). Like Inspector > Persistent, but
+    /// for this Play session only. Does nothing on the main camera, which belongs to its scene.
+    /// </summary>
+    public void DontDestroyOnLoad() => DontDestroyOnLoad(GameObject);
+
+    /// <summary>Keeps <paramref name="entity"/> (e.g. one this script spawned) across scene loads for this Play session.</summary>
+    public void DontDestroyOnLoad(BasicEntity entity)
+    {
+        if (entity != null) entity.RuntimePersistent = true;
+    }
+
+    /// <summary>True when this gameobject survives scene loads (Inspector > Persistent or <see cref="DontDestroyOnLoad()"/>).</summary>
+    public bool IsPersistent => GameObject?.IsPersistent == true;
+
     /// <summary>Removes a gameobject this script spawned (other gameobjects are left alone).</summary>
     public void Destroy(BasicEntity entity)
     {
@@ -361,7 +391,10 @@ public abstract class ScriptBehaviour
         if (sceneLogic != null && sceneLogic.BasicEntities.Contains(entity)) sceneLogic.EditorDelete(entity.Id);
     }
 
-    /// <summary>Removes every gameobject this script spawned (also happens automatically when it stops).</summary>
+    /// <summary>
+    /// Removes every gameobject this script spawned (also happens automatically when it stops). One that left
+    /// with a scene load (<see cref="DontDestroyOnLoad(BasicEntity)"/>) is no longer in this script's scene and stays.
+    /// </summary>
     public void DestroyAllSpawned()
     {
         foreach (var entity in _spawned.ToArray()) Destroy(entity);

@@ -256,6 +256,8 @@ public partial class SceneObjectViewModel : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWaterRole))]
     private GameObjectRole _role = GameObjectRole.Default;
     public bool IsWaterRole => Role == GameObjectRole.Water;
+    // Kept across scene loads during Play (BasicEntity.Persistent).
+    [ObservableProperty] private bool _persistent;
 
     [ObservableProperty] private double _positionX;
     [ObservableProperty] private double _positionY;
@@ -341,6 +343,12 @@ public partial class SceneObjectViewModel : ObservableObject
     {
         if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || !Enum.IsDefined(value)) return;
         bridge.EnqueueSetRole(id, value);
+    }
+
+    partial void OnPersistentChanged(bool value)
+    {
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
+        bridge.EnqueueSetPersistent(id, value);
     }
 
     partial void OnNameChanged(string value)

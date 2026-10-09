@@ -458,7 +458,8 @@ namespace Engine.Renderer
                     camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
 
                 // Rain, sandstorm or snow: haze and particles over the opaque and transparent scene.
-                _weatherRenderModule.Update(scene?.Environment, gameTime.ElapsedGameTime.TotalSeconds);
+                // Paused (pause menu): the particles hang in the air.
+                _weatherRenderModule.Update(scene?.Environment, GameFlow.Paused ? 0 : gameTime.ElapsedGameTime.TotalSeconds);
                 _weatherRenderModule.Draw(_graphicsDevice, scene?.Environment, camera, _view, _viewProjection,
                     _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
                 

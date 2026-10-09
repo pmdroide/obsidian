@@ -1,0 +1,1267 @@
+{
+  "Version": 2,
+  "Name": "PersistenceTest2",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.25
+      ],
+      "Scale": [
+        10,
+        22,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "62058ec2-d6ed-5c8e-9a55-f16932165330",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "adb75b16-4c23-5483-8fd1-6232c91896b9",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.66,
+            "Green": 0.47,
+            "Blue": 0.32,
+            "Roughness": 0.95,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Player Spawn",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -15,
+        0.03
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.03
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "e987cbd4-0af5-5a7f-853e-45b2e19cf411",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.35,
+            "Green": 0.85,
+            "Blue": 0.8,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Player",
+      "Persistent": true,
+      "ModelKey": "Capsule",
+      "Position": [
+        0,
+        -15,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "027c12bc-1c61-5347-920a-497650f32189",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 80,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "4c2faa29-0c9f-56bb-847c-21aa9f4d32b5",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.31,
+            "Green": 0.64,
+            "Blue": 1.0,
+            "Roughness": 0.45,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "eaf5c2cf-1129-5403-ab86-11620bd8c883",
+          "Data": {
+            "ScriptId": "persistent-player",
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "c2b84e17-90a5-4f3d-8d62-5e1f7a9c0b38",
+          "Data": {
+            "ScriptId": "pause-menu",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Canyon Wall West",
+      "ModelKey": "Cube",
+      "Position": [
+        -11,
+        0,
+        5
+      ],
+      "Scale": [
+        1.2,
+        22,
+        5
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b215a57c-8cd4-57f2-a465-256901faf19a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "a1e3c531-1003-5f7e-ae0f-1815593e4848",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.3,
+            "Blue": 0.22,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Canyon Wall East",
+      "ModelKey": "Cube",
+      "Position": [
+        11,
+        0,
+        5
+      ],
+      "Scale": [
+        1.2,
+        22,
+        5
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "61145dfb-e095-53b3-a7f2-28af4c2aacd8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "85b31781-6737-54aa-bc24-f3959d20a44e",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.3,
+            "Blue": 0.22,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Canyon End",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        23,
+        5
+      ],
+      "Scale": [
+        12,
+        1.2,
+        5
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bff33898-93cb-516d-8c9d-4e7dae04b593",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "0f4817fd-f178-552b-9ee9-7ab9a7e536aa",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.3,
+            "Blue": 0.22,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Canyon Start",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -23,
+        2
+      ],
+      "Scale": [
+        12,
+        1.2,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "61d45f0b-a250-5120-8eb3-4dbba39f571a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "555d0caa-52b0-5e16-97a2-d267d744423b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.3,
+            "Blue": 0.22,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Boulder 1",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -7,
+        -6,
+        0.8800000000000001
+      ],
+      "Scale": [
+        1.6,
+        1.7600000000000002,
+        1.2800000000000002
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "06371ade-dd6b-53fe-b46b-35f1cd902ccd",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "be8f3159-43de-586a-957a-5b80eb84ffdf",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.46,
+            "Green": 0.33,
+            "Blue": 0.25,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Boulder 2",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        6.5,
+        -1,
+        1.2100000000000002
+      ],
+      "Scale": [
+        2.2,
+        2.4200000000000004,
+        1.7600000000000002
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "1c16b7f1-c395-5829-81bf-67a3118e4d8b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "090387b3-1ea4-53d5-b37f-6f775b1b74cd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.46,
+            "Green": 0.33,
+            "Blue": 0.25,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Boulder 3",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -6,
+        8,
+        0.7150000000000001
+      ],
+      "Scale": [
+        1.3,
+        1.4300000000000002,
+        1.04
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0d5ae8e8-2b34-56b3-b598-f13f7469845e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "47a80e8d-5e55-53af-84ab-7145e8975b3e",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.46,
+            "Green": 0.33,
+            "Blue": 0.25,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Boulder 4",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        7,
+        12,
+        0.9900000000000001
+      ],
+      "Scale": [
+        1.8,
+        1.9800000000000002,
+        1.4400000000000002
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d8bd1da6-213c-55a3-bc6c-6c7a6957f845",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "1596e0c7-d159-5bc5-8ad8-e43002b8d0d4",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.46,
+            "Green": 0.33,
+            "Blue": 0.25,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Boulder 5",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -3.5,
+        2,
+        0.49500000000000005
+      ],
+      "Scale": [
+        0.9,
+        0.9900000000000001,
+        0.7200000000000001
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0eb26ab0-f86c-543c-a354-29e5430b1b06",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d694eb5d-6979-51f1-8316-c3d759b64102",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.46,
+            "Green": 0.33,
+            "Blue": 0.25,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Ledge",
+      "ModelKey": "Cube",
+      "Position": [
+        5.5,
+        6,
+        0.3
+      ],
+      "Scale": [
+        2.2,
+        3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d0d05d93-767b-5565-ac99-c2ce47e903a7",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "72b4374b-fe22-5e38-8773-c4632a8ca7a7",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.35,
+            "Green": 0.24,
+            "Blue": 0.15,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Portal Post Left",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.65,
+        18,
+        2.1
+      ],
+      "Scale": [
+        0.25,
+        0.3,
+        2.1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "ba7cbd95-044e-5920-958a-12ec69aaf799",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "b4bf4f5d-c8ca-5d3e-9ec7-cbc0fca3e141",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.1,
+            "Green": 0.1,
+            "Blue": 0.12,
+            "Roughness": 0.4,
+            "Metallic": 0.7,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Portal Post Right",
+      "ModelKey": "Cube",
+      "Position": [
+        1.65,
+        18,
+        2.1
+      ],
+      "Scale": [
+        0.25,
+        0.3,
+        2.1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "ea6b9975-23af-5d0e-9e7a-5a48907ce428",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "73dd49ae-f815-5115-9aaa-0e5182452180",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.1,
+            "Green": 0.1,
+            "Blue": 0.12,
+            "Roughness": 0.4,
+            "Metallic": 0.7,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "Portal Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        18,
+        4.45
+      ],
+      "Scale": [
+        1.9,
+        0.3,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "2704339f-2e25-5000-b418-50717c587c77",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "69b93530-2e28-5646-9e11-f2b01cac8628",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.1,
+            "Green": 0.1,
+            "Blue": 0.12,
+            "Roughness": 0.4,
+            "Metallic": 0.7,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "Portal",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        18,
+        2.1
+      ],
+      "Scale": [
+        1.4,
+        0.12,
+        2.1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d0f90d91-bd39-5d22-8451-7c2302b7987a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": true,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "07267d98-989e-52a0-ab8d-0f10a124212c",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 0.55,
+            "Green": 0.48,
+            "Blue": 1.0,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 1.6,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "a159917a-7b0d-54ad-9d0d-79397dc8391c",
+          "Data": {
+            "ScriptId": "scene-portal",
+            "Enabled": true,
+            "Fields": {
+              "TargetScene": "PersistenceTest",
+              "Traveller": "Player"
+            }
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "Lantern 1 Post",
+      "ModelKey": "Cube",
+      "Position": [
+        -3,
+        -10,
+        1.2
+      ],
+      "Scale": [
+        0.08,
+        0.08,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "c82168f3-7c46-53d0-96ee-5add2efee8d9",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "404b80d6-7e86-5f68-931e-25dd90542197",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 0.6,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "Lantern 1 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -3,
+        -10,
+        2.55
+      ],
+      "Scale": [
+        0.18,
+        0.18,
+        0.18
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "e3394039-1d73-551c-87b5-fd0251c96d81",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.7450980392156863,
+            "Blue": 0.47058823529411764,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "Lantern 2 Post",
+      "ModelKey": "Cube",
+      "Position": [
+        3,
+        -2,
+        1.2
+      ],
+      "Scale": [
+        0.08,
+        0.08,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "071e5ab0-fd8f-5d91-8641-0665d109927f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "0ee7c540-d010-589c-8653-9bb556af9b66",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 0.6,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "Lantern 2 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        3,
+        -2,
+        2.55
+      ],
+      "Scale": [
+        0.18,
+        0.18,
+        0.18
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "224b819f-768e-5bab-bcd1-351dcade922a",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.7450980392156863,
+            "Blue": 0.47058823529411764,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 22,
+      "Name": "Lantern 3 Post",
+      "ModelKey": "Cube",
+      "Position": [
+        -3,
+        8,
+        1.2
+      ],
+      "Scale": [
+        0.08,
+        0.08,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b60579df-52bf-57ba-ad7a-409d54b9a868",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "a35df700-087b-5d58-9f5a-6045319e26cf",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 0.6,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 23,
+      "Name": "Lantern 3 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -3,
+        8,
+        2.55
+      ],
+      "Scale": [
+        0.18,
+        0.18,
+        0.18
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9ef8c9f3-a0ef-5663-96b7-3c6db38be5b1",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1.0,
+            "Green": 0.7450980392156863,
+            "Blue": 0.47058823529411764,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 24,
+      "Name": "Lantern 4 Post",
+      "ModelKey": "Cube",
+      "Position": [
+        3,
+        15,
+        1.2
+      ],
+      "Scale": [
+        0.08,
+        0.08,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "fa95935f-077d-5733-aaa7-d2a858db69c6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "566120a6-403e-5649-afe3-5f86d31c044a",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.12,
+            "Blue": 0.13,
+            "Roughness": 0.5,
+            "Metallic": 0.6,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 25,
+      "Name": "Lantern 4 Head",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        3,
+        15,
+        2.55
+      ],
+      "Scale": [
+        0.18,
+        0.18,
+        0.18
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ca37302d-0312-544f-83fb-dcfa24916910",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 0.6666666666666666,
+            "Green": 0.5882352941176471,
+            "Blue": 1.0,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "EmissiveStrength": 2.0,
+            "CastShadows": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 200,
+      "Name": "Lantern 1 Light",
+      "Position": [
+        -3,
+        -10,
+        2.8
+      ],
+      "Radius": 9,
+      "Color": [
+        255,
+        190,
+        120,
+        255
+      ],
+      "Intensity": 3
+    },
+    {
+      "Id": 201,
+      "Name": "Lantern 2 Light",
+      "Position": [
+        3,
+        -2,
+        2.8
+      ],
+      "Radius": 9,
+      "Color": [
+        255,
+        190,
+        120,
+        255
+      ],
+      "Intensity": 3
+    },
+    {
+      "Id": 202,
+      "Name": "Lantern 3 Light",
+      "Position": [
+        -3,
+        8,
+        2.8
+      ],
+      "Radius": 9,
+      "Color": [
+        255,
+        190,
+        120,
+        255
+      ],
+      "Intensity": 3
+    },
+    {
+      "Id": 203,
+      "Name": "Lantern 4 Light",
+      "Position": [
+        3,
+        15,
+        2.8
+      ],
+      "Radius": 9,
+      "Color": [
+        170,
+        150,
+        255,
+        255
+      ],
+      "Intensity": 3
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 100,
+      "Name": "Sun",
+      "Direction": [
+        -0.75,
+        0.2,
+        -0.32
+      ],
+      "Position": [
+        0,
+        0,
+        20
+      ],
+      "Color": [
+        255,
+        178,
+        120,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 60,
+      "ShadowDepth": 120,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      3
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 18.4
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -22,
+      4.5
+    ],
+    "Forward": [
+      0,
+      0.96,
+      -0.27
+    ],
+    "FieldOfView": 1.2,
+    "Components": []
+  }
+}

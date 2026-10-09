@@ -1,5 +1,150 @@
 # Changelog
 
+## Removed: Vista debug overlay; Anvil Stats toggle for the engine debug stats (2026-10-09)
+
+**Why:** The FPS/frame/res/memory panel was drawn twice: once by the Vista overlay (`debug.xml`/`.css`) and once by the engine's own `DebugScreen`. Only the engine's stats are kept, and Anvil can now hide them.
+
+- **Removed** `Engine/Content/UI/debug.xml` and `debug.css`, and the Vista overlay in `Engine/Logic/ScreenManager.cs` (`_vistaUI`, `UpdateVistaUI`, its draw pass). `LoadVistaUI` is now `LoadUIFonts`: it only registers the fonts the `GameUI` layers use.
+- **Removed** `GameSettings.ui_vista_enabled`. The debug stats are controlled by `GameSettings.u_showdisplayinfo` (0 off, 1 FPS only, 3 full; default 3).
+- **Anvil:** the viewport toolbar's **Stats** button (previously unwired) now shows/hides the engine debug stats (`MainWindowViewModel.IsStatsVisible`/`ToggleStatsCommand`, applied on the game thread through the bridge). It's highlighted while the stats are on and is applied when the bridge attaches. On by default, not saved between sessions.
+- **Sample menus:** "Performance overlay" in `Engine/Content/Scripts/MenuSettings.cs` toggles `u_showdisplayinfo` (0/3).
+- **Tests:** `Tests/Components/PauseChecks.cs` checks the setting through `u_showdisplayinfo`. Default and `--graphics` runs pass.
+- **Docs:** `Docs/markdown/VistaUI_Architecture.md`, `Docs/markdown/Scenes_and_Game_Flow.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: ordered, skippable intro videos (2026-10-09)
+
+**Why:** The standalone game could only play one hard-coded `Content/intro.mp4`, with no way to skip it.
+
+- **Engine:**
+  - New `Engine/Recources/IntroVideoList.cs`: the intro videos in play order, saved as `Content/System/IntroVideos.json` (Content-relative paths, e.g. `Video/intro.mp4`). Without the file it defaults to `Video/intro.mp4`; an empty list plays no intro.
+  - `Engine/Logic/VideoIntroLogic.cs` plays the list back to back with one LibVLC player. **Enter** skips the current video (pressed this frame, window focused; an Enter held at startup doesn't count). Missing files are logged and left out. The frame buffer is cleared between videos so the previous last frame doesn't flash.
+  - `ScreenManager` passes `isActive` to `VideoIntroLogic.Update`.
+  - `Engine/Engine.csproj`: every `.mp4/.mkv/.mov/.avi/.wmv/.webm` under `Content` is copied to the output (and publish) at its own path (`Content/Video/...`, no longer flattened to `Content/intro.mp4`), plus `System/IntroVideos.json`.
+  - Added `Engine/Content/System/IntroVideos.json` with `Video/intro.mp4`.
+- **Anvil:** Game Settings has an **Intro Videos** list above Scenes (Add Videos..., Remove, Move Up, Move Down), saved with the dialog. The dialog now scrolls with a max height, and Cancel/Save stay visible below the scroll area. The save log line includes the intro video count.
+- **Tests:** `Tests/Components/GameFlowChecks.cs` checks the shipped list and the Game Settings add/move/remove behaviour.
+- **Docs:** `Docs/markdown/Scenes_and_Game_Flow.md` (new "Intro videos" section), `Docs/markdown/Importing Structure.md`, `CLAUDE.md`.
+
+- Claude
+
+## Changed: cinematic intro to neutral ash formation (2026-10-09)
+
+- Added `Art/ObsidianIntro/ash_v2/` as a separate review revision, preserving the original silver/red version.
+- Replaced active brushed silver materials with grayscale granular consolidation shaders and neutralized all five animated studio lights.
+- Added an editable Geometry Nodes effect with 34,000 grains converging onto the emblem and lettering surfaces, preserving the emblem's contour and five openings. Disabled the earlier sparse mote layer in this revision.
+- Added seven representative stills, an updated H.264 Eevee preview, editable blend, and documentation. Retained the reference's 141-frame / 30 fps timing; final 1080p rendering still awaits preview approval.
+
+- Codex
+
+## Added: Obsidian Engine cinematic intro review scene (2026-10-09)
+
+- Added `Art/ObsidianIntro/Obsidian_Engine_Intro.blend`, built through Blender MCP, with the supplied logo traced as editable extruded curves preserving all five openings, editable `OBSIDIAN ENGINE` text, brushed silver materials, animated crimson/silver lighting, camera movement, and fragment reveal.
+- Matched the supplied reference's 141-frame / 30 fps duration and centered reveal/hold/fade structure; preserved the original Blender default scene.
+- Added six review stills, a contact sheet, and a low-resolution Eevee H.264 preview, plus local source assets and scene documentation.
+- Prepared 1920×1080 final settings; final animation rendering remains pending user approval of the preview.
+
+- Codex
+
+## Added: gameobject references in script serialized fields
+
+**Why:** Scripts could only find other gameobjects by name in code (`FindGameObject`). Now a `BasicEntity` field can be set in the Inspector, like a Unity `GameObject` field.
+
+- **Engine** (`Engine/Scripting/ScriptFields.cs`):
+  - New `ScriptFieldKind.GameObject` for public or `[SerializeField]` `BasicEntity` fields.
+  - Saved as the target's scene ID, or `null` for none. Decoded values and the default are that ID (0 = none).
+  - `SetField` accepts a gameobject, its ID or `null`.
+  - New `ScriptFields.ToFieldValue` turns the ID into the live gameobject when values are applied (before `Start` and on edits during Play) and in `GetField<BasicEntity>`. A deleted target gives `null`.
+- **Scene lookup:** new `MainSceneLogic.FindGameObjectById`. When a persistent gameobject's copy is left out of an arriving scene, `PersistentGameObjects` records that copy's ID (`ReplacementFor`), so the scene's references to the copy get the carried gameobject.
+- **Duplicating:** `BasicEntity.Clone` points the copy's self-references at the copy (`ScriptBehaviourComponent.RemapGameObjectReferences`).
+- **Anvil:** new `ScriptGameObjectFieldViewModel` + `GameObjectOption` and an Inspector ComboBox template.
+  - The picker lists **None** and the scene's gameobjects from the latest snapshot. Duplicate names show "Name (#id)".
+  - An ID with no gameobject shows as "Missing (#id)".
+  - The options list is only rebuilt when it changes, so the selection doesn't flicker.
+- **Docs:** "Gameobject references" in `Script_Behaviours.md`, and `CLAUDE.md`.
+- **Checks:** `Tests/Components/ScriptFieldChecks.cs` covers discovery, encoding, Get/SetField, applying before Start and during Play, duplication, save/load, deleted targets, the Inspector picker (pick, None, Missing) and the persistent-copy redirect.
+
+- Claude
+
+## Added: game pause and a Pause Menu script that follows the persistent player
+
+**Why:** To have a pause menu that works in every scene, built on persistent gameobjects. The engine had no pause, and a scene load always carried persistent gameobjects, even back to the main menu.
+
+- **Pausing** (`GameFlow.Paused`):
+  - While paused, `PlayModeController.UpdateScripts` skips every gameobject and Main Camera component, `MainSceneLogic.UpdatePhysics` doesn't step (bodies keep pose and velocity), and weather particles stop (`Renderer` passes 0 seconds to `WeatherRenderModule.Update`).
+  - Scripts that override the new `ScriptBehaviour.UpdateWhilePaused` (exposed as `ScriptBehaviourComponent.UpdatesWhilePaused`) keep updating. Game UI layers keep running.
+  - A scene load or Stop unpauses.
+- **Leaving persistent gameobjects behind:** `GameFlow.LoadScene(index or name, carryPersistent: false)`. They stop and unload with the departing scene. Inside Anvil, the edited scene's ones go straight back to it, as Stop would (`MainSceneLogic.LeavePersistentBehind`).
+- **Pause Menu script** (`Content/Scripts/PauseMenuScript.cs`, registered as "Pause Menu"; document `Content/UI/PauseMenu.xml` + `.css`):
+  - Esc (`PauseKey` field) or gamepad Start pauses.
+  - **Pages:**
+    - Pause page: Resume, Restart scene, Settings, Main menu and Quit game. Restart, Main menu and Quit ask for confirmation.
+    - Settings page: master volume and rendering options.
+  - **Scene changes:** Restart reloads the scene, and the player and the menu carry on. Main menu loads scene list entry 0 with `carryPersistent: false`. Both fade to black first.
+  - **Layer:** the menu opens its Vista layer when you pause, above the player's HUD, and closes it on resume. The game resumes once the menu has faded out, so the key that resumed doesn't also reach gameplay.
+  - **Look:** a cool "time stopped" palette over the dimmed scene. A **This session** card shows time played, time in the scene, scene loads, pauses and the route. These live in the one persistent instance and keep counting across scenes (`ShowSession` field).
+  - **Input:** keyboard, mouse and gamepad, with hints that follow the last device. Quit is disabled inside Anvil.
+  - Added to the Player in `PersistenceTest.obsc` and `PersistenceTest2.obsc`. The HUD's key line mentions Esc.
+- **Shared menu settings** (new `Content/Scripts/MenuSettings.cs`): `MenuSetting` and `MenuSettings.Graphics()` / `MasterVolume()` / `Toggle()`. `MainMenuScript` now uses them, so both menus share one Anvil restore list, and the value from before Play is what Stop puts back. The main menu's Bloom, Volumetric fog and Reflections descriptions are now generic.
+- **Docs:** `Persistent_GameObjects.md` (the pause menu example, "Leaving them behind"), `Scenes_and_Game_Flow.md` (Pausing, `carryPersistent`), `Script_Behaviours.md` and `CLAUDE.md`.
+- **Checks:** new `Tests/Components/PauseChecks.cs` covers:
+  - Esc freezes a falling player in mid-air and blocks its R reload.
+  - Resume waits for the fade, then the game carries on.
+  - Restart keeps the same menu instance and its session numbers.
+  - Main menu leaves the player behind, and the player is back in the edited scene.
+  - Standalone `carryPersistent: false`, and Stop unpausing.
+  - With `--graphics`: the layer on top, the filled document, the Settings page, and closing.
+  - `PersistenceChecks.Wire`, `ApplyPending` and `Behaviour` are now `internal` to share them.
+- **Known limits:** sounds already playing keep playing while paused, and the water shader's waves keep moving.
+
+- Claude
+
+## Added: persistent gameobjects and the PersistenceTest sample scenes
+
+**Why:** To keep a gameobject, such as the player, across scene loads. Until now a scene load during Play stopped every script and unloaded every gameobject, so a player lost its state when changing levels.
+
+- **Making a gameobject persistent:**
+  - **Inspector > Persistent** (new `BasicEntity.Persistent`). Saved as `"Persistent": true`, written only when set, so existing scenes don't change.
+  - **Scripts:** `ScriptBehaviour.DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` (new `BasicEntity.RuntimePersistent`). Lasts for the Play session, is never saved and is cleared on Stop.
+  - `IsPersistent` (on the entity and on the script) is true for either. Clones keep the flag.
+- **Scene loads during Play** (new `Engine/Logic/PersistentGameObjects.cs`, driven by `MainSceneLogic.ApplyPendingSceneLoad`):
+  - Persistent gameobjects leave the departing scene before its scripts stop, then join the new scene after its own gameobjects.
+  - **What keeps running:**
+    - Components and scripts are not restarted (new internal `PlayModeController.Play(continuing)`).
+    - Physics bodies are kept (`ScenePhysics.DetachAll(keep)`). Their contacts with the old scene end on the next step, with the usual Exit events.
+    - HUD layers their scripts opened stay open. `GameUI` now records which gameobject's script opened each layer, via the new internal `ScriptBehaviour.Running`.
+  - **Copies are left out:** if the new scene has its own copy of a carried gameobject, that copy is dropped. A copy is the same gameobject from its file (matched by scene entry and saved ID), or a Persistent one with the same name. Returning to a level, or `ReloadScene()`, never duplicates the player.
+  - A carried gameobject whose ID the new scene already uses gets a new one.
+  - New hook `ScriptBehaviour.OnSceneLoaded()` runs on the carried gameobjects' scripts after the new scene's scripts start, for example to move to a spawn point.
+- **Anvil:**
+  - A **Persistent** checkbox under Role in the Inspector (`EditorObjectSnapshot.IsPersistent`, `IEditorBridge.EnqueueSetPersistent`, reconciler, `SceneObjectViewModel.Persistent`).
+  - **Stop** puts carried gameobjects back in the edited scene, at their place in the Hierarchy, with their ID and Play-start transform. Ones picked up in other scenes, or spawned at runtime, are dropped.
+- **PersistenceTest sample** (`Content/Scenes/PersistenceTest.obsc` and `PersistenceTest2.obsc`, added to the end of the scene list):
+  - A courtyard and a canyon at sunset, linked by glowing portals: static triggers running the new **Scene Portal** script.
+  - **Player:** a Persistent third-person capsule running **Persistent Player** (`Content/Scripts/PersistentPlayerScript.cs`).
+    - Controls: WASD, Shift, Space, right mouse or arrows to orbit, wheel to zoom, R to reload.
+    - Its HUD (`Content/UI/PersistenceTest.xml` + `.css`) counts play time, distance, scene loads and the route across scenes.
+  - **Companion Orb** (`CompanionOrbScript.cs`) is not Persistent: when you walk up to it, it calls `DontDestroyOnLoad()` and follows you.
+  - The canyon has its own Player, so it can be played on its own; it is left out when the courtyard's player arrives.
+  - Shared event feed: `PersistenceTestFeed.cs`.
+- **Docs:**
+  - New `Docs/markdown/Persistent_GameObjects.md`, also listed on the docs website (`Docs/website/src/docs.ts`).
+  - Updates to `Scenes_and_Game_Flow.md`, `Script_Behaviours.md` and `CLAUDE.md` (repo map and recipe).
+- **Checks:** new `Tests/Components/PersistenceChecks.cs` covers:
+  - the saved flag and Inspector plumbing;
+  - a headless Play run of the sample: through the portal and back, with the same script instance and body, IDs renumbered, no duplicates, spawned and `DontDestroyOnLoad` objects carried, and Stop restoring the edited scene;
+  - the standalone game;
+  - with `--graphics`: the persistent HUD layer staying open.
+- **Test fixes:**
+  - `WeatherChecks` now checks that WeatherTest is *in* the scene list, rather than last.
+  - `CollisionChecks.World` is `internal` so its box colliders can be reused.
+- **Known limits:**
+  - Only gameobjects can be persistent: lights, decals and the Main Camera stay with their scene.
+  - Opening a scene from Anvil's Assets panel during Play still replaces everything.
+
+- Claude
+
 ## Added: weather (rain, sandstorm, snow) and the WeatherTest sample scene
 
 **Why:** To test weather. Scenes had a sky, clouds and a day/night cycle, but no precipitation or atmospheric haze.

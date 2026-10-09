@@ -62,6 +62,24 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleAudio() => IsAudioEnabled = !IsAudioEnabled;
 
+    // Engine debug stats (DebugScreen) in the viewport's top-left corner.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatsToggleTip))]
+    private bool _isStatsVisible = true;
+
+    public string StatsToggleTip => IsStatsVisible ? "Hide debug stats" : "Show debug stats";
+    partial void OnIsStatsVisibleChanged(bool value) => PushStatsVisible();
+
+    [RelayCommand]
+    private void ToggleStats() => IsStatsVisible = !IsStatsVisible;
+
+    // 3 = DebugScreen's full detail level, 0 = off.
+    private void PushStatsVisible()
+    {
+        bool visible = IsStatsVisible;
+        _bridge?.EnqueueGameThreadAction(() => Engine.Recources.GameSettings.u_showdisplayinfo = visible ? 3 : 0);
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilteredConsole))]
     private string _consoleFilter = "All";
@@ -217,6 +235,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_bridge != null) return;
         _bridge = bridge;
         bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
+        PushStatsVisible();
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
@@ -545,7 +564,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ProjectName = vm.Apply();
             AddConsoleEntry(ConsoleLevel.Log,
-                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\") " +
+                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\"), " +
+                $"{Engine.Recources.IntroVideoList.FileName} ({vm.IntroVideos.Count} intro videos) " +
                 $"and {Engine.Recources.SceneList.FileName} ({vm.Scenes.Count} scenes)",
                 "Anvil:GameSettings");
         }

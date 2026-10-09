@@ -25,6 +25,10 @@ public static class ScriptRegistry
         Register<GateLeverScript>(GateLeverScript.ScriptId, "Gate Lever");
         Register<ColorCycleScript>(ColorCycleScript.ScriptId, "Color Cycle");
         Register<WeatherTestScript>(WeatherTestScript.ScriptId, "Weather Test");
+        Register<PersistentPlayerScript>(PersistentPlayerScript.ScriptId, "Persistent Player");
+        Register<ScenePortalScript>(ScenePortalScript.ScriptId, "Scene Portal");
+        Register<CompanionOrbScript>(CompanionOrbScript.ScriptId, "Companion Orb");
+        Register<PauseMenuScript>(PauseMenuScript.ScriptId, "Pause Menu");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

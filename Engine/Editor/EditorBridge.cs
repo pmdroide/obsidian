@@ -370,6 +370,17 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueSetPersistent(int entityId, bool persistent)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = LookupEntityById(entityId);
+                if (entity == null || entity.Persistent == persistent) return;
+                entity.Persistent = persistent;
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
         public void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null)
         {
             if (mutate == null) return;
@@ -930,7 +941,8 @@ namespace Engine.Editor
                     light: null,
                     material: matSnap,
                     components: be.Components.Select(ComponentRegistry.Capture).ToArray(),
-                    role: be.Role));
+                    role: be.Role,
+                    isPersistent: be.Persistent));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)

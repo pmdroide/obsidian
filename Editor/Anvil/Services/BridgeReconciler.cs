@@ -108,6 +108,7 @@ public static class BridgeReconciler
             if (vm.Type != newObjectType) vm.Type = newObjectType;
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
             if (vm.Role != snap.Role) vm.Role = snap.Role;
+            if (vm.Persistent != snap.IsPersistent) vm.Persistent = snap.IsPersistent;
 
             // Structural changes must reconcile even while the Add Component menu has focus.
             var componentIds = snap.Components.Select(c => (c.Type, c.InstanceId)).ToHashSet();

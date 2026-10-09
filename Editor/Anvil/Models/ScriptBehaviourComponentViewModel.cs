@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Engine.Components;
+using Engine.Editor;
 using Engine.Scripting;
 
 namespace Anvil.Models;
@@ -47,6 +48,9 @@ public partial class ScriptBehaviourComponentViewModel : ComponentViewModel
             RebuildFields(value);
         }
     }
+
+    /// <summary>The engine's latest scene snapshot, for gameobject field pickers.</summary>
+    internal IReadOnlyList<EditorObjectSnapshot>? SceneObjects => Owner.Bridge?.Snapshot;
 
     internal void PushField(string name, JsonElement value) =>
         Push(c => ((ScriptBehaviourComponent)c).SetFieldJson(name, value));

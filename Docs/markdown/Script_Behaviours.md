@@ -191,7 +191,8 @@ public sealed class DoorScript : ScriptBehaviour
 - **Not serialized:** `[NonSerialized]`, `readonly`, `static` and `const` fields, and properties.
 
 **Supported types:** `bool`, `int`, `float`, `double`, `string`, any enum,
-`Vector2`, `Vector3` and `Color`. Fields of other types are ignored.
+`Vector2`, `Vector3`, `Color` and `BasicEntity` (a gameobject reference, see
+[Gameobject references](#gameobject-references)). Fields of other types are ignored.
 
 **Attributes** (namespace `Engine.Scripting`):
 
@@ -238,9 +239,43 @@ float height = door.GetField<float>("OpenHeight");
 ```
 
 Values are stored in the component's `Fields` record in the `.obsc` file:
-numbers and bools as JSON values, enums by name, vectors as `[x, y, z]` arrays
-and colours as `"#RRGGBBAA"`. `SpinExampleScript` (Degrees Per Second) and
+numbers and bools as JSON values, enums by name, vectors as `[x, y, z]` arrays,
+colours as `"#RRGGBBAA"` and gameobjects as their scene ID (`null` for none). `SpinExampleScript` (Degrees Per Second) and
 `LaunchPadScript` (Up Speed, Forward Speed) are working examples.
+
+### Gameobject references
+
+A `BasicEntity` field references another gameobject of the scene, like a
+`GameObject` field in Unity:
+
+```csharp
+public sealed class DoorButtonScript : ScriptBehaviour
+{
+    public BasicEntity Door;                          // pick the door in the Inspector
+    [SerializeField] private BasicEntity _light;
+
+    public override void OnInteract(Interaction interaction)
+    {
+        if (Door != null) Door.Position += Vector3.UnitZ * 3f;
+    }
+}
+```
+
+- **Inspector:** a picker with **None** and every gameobject in the scene, in
+  Hierarchy order. Gameobjects with the same name show their ID, for example
+  "Crate (#12)".
+- **Saving:** the reference is saved as the target's scene ID. It survives save/load
+  and renaming the target.
+- **Before `Start`:** the field holds the gameobject with that ID in the active scene.
+- **Deleted targets:** if the target was deleted, the field is `null` and the Inspector
+  shows **Missing (#id)** until you pick another one or reset the field.
+- **Duplicating:** a duplicated gameobject's references to itself point at the copy.
+  Its references to other gameobjects are kept.
+- **Persistent gameobjects:** a scene's reference to its own copy of a persistent
+  gameobject (left out because the carried one came along) gets the carried one.
+- **From code:** `SetField("Door", entity)` (or `null`) and `GetField<BasicEntity>("Door")`.
+
+Only gameobjects can be referenced. Lights, decals and the Main Camera cannot.
 
 ## Built-in helpers
 
@@ -264,6 +299,10 @@ the physics engine uses.
 | `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
 | `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned. Happens automatically when the script stops. |
+| `DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` | Keeps this gameobject (or another, e.g. one it spawned) when a script loads another scene. It moves into the new scene with its scripts still running. Lasts for this Play session; the saved equivalent is **Inspector > Persistent**. See [Persistent_GameObjects.md](Persistent_GameObjects.md). |
+| `IsPersistent` | True when this gameobject survives scene loads. |
+| `OnSceneLoaded()` | Override it: runs on a persistent gameobject's scripts after a scene load carried it over, once the new scene's scripts have started. For example, move to the new scene's spawn point. |
+| `UpdateWhilePaused` | Override it to return true and `Update` keeps running while `GameFlow.Paused` freezes the game, for a pause menu. Every other script waits. Reference: `PauseMenuScript.cs`. |
 
 ### Transform
 
@@ -471,7 +510,8 @@ Static APIs in `Engine.Logic` for game scripts (details in
 
 | API | Use it for |
 | --- | --- |
-| `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. |
+| `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. Pass `carryPersistent: false` to leave persistent gameobjects behind. |
+| `GameFlow.Paused` | Freezing the game (scripts, components, physics) behind a pause menu. |
 | `GameInput.MenuUp/Down/Confirm/Back`, `AnyInputPressed`, `WasPressed(...)` | Keyboard, mouse and gamepad input with pressed edges and key repeat. |
 | `GameUI.Open("UI/Name")` / `GameUI.Close(ui)` | A Vista XML/CSS layer over the scene. |
 

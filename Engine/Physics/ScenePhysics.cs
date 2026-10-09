@@ -333,11 +333,29 @@ namespace Engine.Physics
             DestroyBody(e);
         }
 
-        public void DetachAll()
+        /// <summary>
+        /// Removes every body except those of <paramref name="keep"/> (persistent gameobjects carried into the
+        /// next scene). Their touches with removed bodies end on the next step, with the usual Exit events.
+        /// </summary>
+        public void DetachAll(IReadOnlyCollection<BasicEntity> keep = null)
         {
-            for (int i = 0; i < _attached.Count; i++) DestroyBody(_attached[i]);
-            _attached.Clear();
-            _touches.Clear();
+            if (keep == null || keep.Count == 0)
+            {
+                for (int i = 0; i < _attached.Count; i++) DestroyBody(_attached[i]);
+                _attached.Clear();
+                _touches.Clear();
+                return;
+            }
+            for (int i = _attached.Count - 1; i >= 0; i--)
+            {
+                if (keep.Contains(_attached[i])) continue;
+                DestroyBody(_attached[i]);
+                _attached.RemoveAt(i);
+            }
+            var forgotten = new List<(BasicEntity, BasicEntity)>();
+            foreach (var pair in _touches)
+                if (!keep.Contains(pair.Value.A) && !keep.Contains(pair.Value.B)) forgotten.Add(pair.Key);
+            foreach (var key in forgotten) _touches.Remove(key);
         }
 
         private void Reconcile(BasicEntity e)

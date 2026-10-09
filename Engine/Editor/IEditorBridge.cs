@@ -81,11 +81,14 @@ namespace Engine.Editor
         public readonly IReadOnlyList<ComponentRecord> Components;
         // BasicEntity only.
         public readonly GameObjectRole Role;
+        // BasicEntity only: the saved Persistent flag (not a script's DontDestroyOnLoad).
+        public readonly bool IsPersistent;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false)
         {
             Components = components ?? Array.Empty<ComponentRecord>();
             Role = role;
+            IsPersistent = isPersistent;
             Id = id;
             Name = name;
             Kind = kind;
@@ -163,6 +166,8 @@ namespace Engine.Editor
         void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null);
         /// <summary>Set a gameobject's <see cref="GameObjectRole"/> and mark the scene dirty.</summary>
         void EnqueueSetRole(int entityId, GameObjectRole role);
+        /// <summary>Set a gameobject's saved Persistent flag (kept across scene loads during Play) and mark the scene dirty.</summary>
+        void EnqueueSetPersistent(int entityId, bool persistent);
         void EnqueuePlayAudio(int entityId, bool play);
         /// <summary>Enable or mute the engine's output, including editor audio previews.</summary>
         void EnqueueSetAudioEnabled(bool enabled);

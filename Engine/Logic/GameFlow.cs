@@ -9,7 +9,7 @@ namespace Engine.Logic
     /// scenes during Play, and quitting.
     ///
     /// Scene loads are queued and happen at the start of the next frame, so a script can call
-    /// <see cref="LoadScene(int)"/> from its own Update. In Play the new scene starts playing straight
+    /// <see cref="LoadScene(int, bool)"/> from its own Update. In Play the new scene starts playing straight
     /// away. Inside Anvil, pressing Stop returns to the scene you were editing.
     /// </summary>
     public static class GameFlow
@@ -19,6 +19,8 @@ namespace Engine.Logic
         internal static Action QuitHandler;
 
         internal static string PendingScenePath { get; private set; }
+        /// <summary>False when the queued load leaves persistent gameobjects behind.</summary>
+        internal static bool PendingCarriesPersistent { get; private set; } = true;
 
         /// <summary>True when the engine runs inside the Anvil editor (Play mode), false in the standalone game.</summary>
         public static bool IsEditor => Input.HostBridge?.IsHostedByEditor == true;
@@ -31,6 +33,14 @@ namespace Engine.Logic
         /// changed engine-wide state such as <see cref="GameSettings"/> restore it here.
         /// </summary>
         public static event Action PlayStopped;
+
+        /// <summary>
+        /// Freezes the game during Play (a pause menu): gameobject and camera components stop updating,
+        /// physics doesn't step, and weather particles hold still. Scripts that return true from
+        /// <see cref="Scripting.ScriptBehaviour.UpdateWhilePaused"/> keep running, and so do game UI
+        /// layers. A scene load or Stop unpauses.
+        /// </summary>
+        public static bool Paused { get; set; }
 
         internal static void RaisePlayStopped()
         {
@@ -51,26 +61,34 @@ namespace Engine.Logic
         /// <summary>Build-list index of the running scene, or -1 when it isn't in the list.</summary>
         public static int ActiveSceneIndex => SceneList.IndexOf(SceneLogic?.ActiveScene?.FilePath);
 
-        /// <summary>Queues the scene at <paramref name="index"/> in the build list. False when out of range or missing.</summary>
-        public static bool LoadScene(int index)
+        /// <summary>
+        /// Queues the scene at <paramref name="index"/> in the build list. False when out of range or missing.
+        /// With <paramref name="carryPersistent"/> false, persistent gameobjects stay behind and unload with
+        /// the departing scene (for example when going back to the main menu); inside Anvil, Stop still puts
+        /// the edited scene's ones back.
+        /// </summary>
+        public static bool LoadScene(int index, bool carryPersistent = true)
         {
             if (index < 0 || index >= SceneList.Scenes.Count)
             {
                 EditorBridge.Log($"GameFlow.LoadScene: index {index} is outside the scene list (0..{SceneList.Scenes.Count - 1})");
                 return false;
             }
-            return QueuePath(SceneList.ResolvePath(SceneList.Scenes[index]));
+            return QueuePath(SceneList.ResolvePath(SceneList.Scenes[index]), carryPersistent);
         }
 
-        /// <summary>Queues a scene by list name ("GodRayTest") or Content-relative path ("Scenes/GodRayTest.obsc").</summary>
-        public static bool LoadScene(string nameOrPath)
+        /// <summary>
+        /// Queues a scene by list name ("GodRayTest") or Content-relative path ("Scenes/GodRayTest.obsc").
+        /// <paramref name="carryPersistent"/> works as in <see cref="LoadScene(int, bool)"/>.
+        /// </summary>
+        public static bool LoadScene(string nameOrPath, bool carryPersistent = true)
         {
             int index = SceneList.Find(nameOrPath);
-            if (index >= 0) return LoadScene(index);
+            if (index >= 0) return LoadScene(index, carryPersistent);
             if (string.IsNullOrWhiteSpace(nameOrPath)) return false;
             string entry = nameOrPath.EndsWith(SceneSerialization.Extension, StringComparison.OrdinalIgnoreCase)
                 ? nameOrPath : nameOrPath + SceneSerialization.Extension;
-            return QueuePath(SceneList.ResolvePath(entry));
+            return QueuePath(SceneList.ResolvePath(entry), carryPersistent);
         }
 
         /// <summary>Queues the next scene in the build list (wrapping to 0 after the last).</summary>
@@ -95,7 +113,7 @@ namespace Engine.Logic
             QuitHandler();
         }
 
-        private static bool QueuePath(string path)
+        private static bool QueuePath(string path, bool carryPersistent = true)
         {
             if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
             {
@@ -103,6 +121,7 @@ namespace Engine.Logic
                 return false;
             }
             PendingScenePath = path;
+            PendingCarriesPersistent = carryPersistent;
             return true;
         }
 
@@ -111,6 +130,14 @@ namespace Engine.Logic
             string path = PendingScenePath;
             PendingScenePath = null;
             return path;
+        }
+
+        /// <summary>Whether the load just taken carries persistent gameobjects (resets to true).</summary>
+        internal static bool TakePendingCarriesPersistent()
+        {
+            bool carry = PendingCarriesPersistent;
+            PendingCarriesPersistent = true;
+            return carry;
         }
     }
 }

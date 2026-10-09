@@ -12,7 +12,8 @@ namespace Engine.Logic
     /// <summary>
     /// Vista UI layers opened by scripts (menus, HUDs). Layers draw over the scene, under the debug
     /// overlay, in the order they were opened. A script opens its layer in Start and closes it in
-    /// Stop; anything left open is closed when Play stops or the scene changes.
+    /// Stop; anything left open is closed when Play stops or the scene changes, except layers opened by
+    /// scripts on persistent gameobjects, which stay open while those carry on into the next scene.
     ///
     /// Documents are loose files: <c>Content/&lt;path&gt;.xml</c> + <c>.css</c>. In a dev checkout the
     /// source copies are read and watched, so saving the XML/CSS reloads the layer in place
@@ -23,6 +24,8 @@ namespace Engine.Logic
         private sealed class Layer
         {
             public UIManager UI;
+            // The gameobject whose script opened it (null for the main camera or outside a script).
+            public Entities.BasicEntity Owner;
             public string Xml, Css;
             public DateTime XmlTime, CssTime;
         }
@@ -57,6 +60,7 @@ namespace Engine.Logic
             }
             var layer = new Layer
             {
+                Owner = Scripting.ScriptBehaviour.Running?.GameObject,
                 Xml = GameInfo.ResolveContentFile(path + ".xml"),
                 Css = GameInfo.ResolveContentFile(path + ".css"),
             };
@@ -86,10 +90,18 @@ namespace Engine.Logic
             ui.Dispose();
         }
 
-        public static void CloseAll()
+        public static void CloseAll() => CloseAll(null);
+
+        /// <summary>Closes every layer except those opened by scripts on <paramref name="keepOwnedBy"/> (carried gameobjects).</summary>
+        internal static void CloseAll(IReadOnlyCollection<Entities.BasicEntity> keepOwnedBy)
         {
-            foreach (var layer in Layers) layer.UI.Dispose();
-            Layers.Clear();
+            for (int i = Layers.Count - 1; i >= 0; i--)
+            {
+                Layer layer = Layers[i];
+                if (layer.Owner != null && keepOwnedBy?.Contains(layer.Owner) == true) continue;
+                layer.UI.Dispose();
+                Layers.RemoveAt(i);
+            }
         }
 
         /// <summary>Topmost layer element under a viewport position, or null (for "is the cursor over UI").</summary>

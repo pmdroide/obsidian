@@ -164,6 +164,106 @@ internal static class ScriptFieldChecks
         Check(component.ScriptId == OtherFieldsScript.Id && component.Fields.Count == 0,
             "switching scripts drops the previous script's values");
 
+        // GameObject references
+        ScriptRegistry.Register<ReferenceScript>(ReferenceScript.Id, "Test References");
+        MainSceneLogic previousLogic = GameFlow.SceneLogic;
+        GameFlow.SceneLogic = logic;
+        try
+        {
+            var refFields = ScriptFields.For(ReferenceScript.Id);
+            var targetInfo = refFields.Single(f => f.Name == "Target");
+            Check(refFields.Select(f => f.Name).SequenceEqual(new[] { "Target", "_self" }) &&
+                  refFields.All(f => f.Kind == ScriptFieldKind.GameObject) && (int)targetInfo.DefaultValue == 0,
+                "public and [SerializeField] BasicEntity fields are serialized as gameobject references, defaulting to none");
+
+            var target = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One) { Name = "Target Cube" };
+            var holder = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One) { Name = "Holder" };
+            logic.BasicEntities.Add(target);
+            logic.BasicEntities.Add(holder);
+            Check(ScriptFields.Encode(targetInfo, target).GetInt32() == target.Id &&
+                  ScriptFields.Encode(targetInfo, null).ValueKind == JsonValueKind.Null &&
+                  ScriptFields.TryDecode(targetInfo, JsonSerializer.SerializeToElement(target.Id), out var decodedId) && (int)decodedId == target.Id &&
+                  !ScriptFields.TryDecode(targetInfo, JsonSerializer.SerializeToElement("Target Cube"), out _) &&
+                  Throws(() => ScriptFields.Encode(targetInfo, "Target Cube")),
+                "a gameobject is stored as its scene ID (null for none); names and other values are rejected");
+
+            var refs = new ScriptBehaviourComponent { ScriptId = ReferenceScript.Id };
+            holder.AddComponent(refs);
+            refs.SetField("Target", target);
+            refs.SetField("_self", holder);
+            Check(refs.GetField<BasicEntity>("Target") == target && refs.GetField<BasicEntity>("_self") == holder,
+                "SetField takes a gameobject and GetField returns the live one");
+
+            play.Play();
+            play.UpdateScripts(frame);
+            var running = ReferenceScript.Last!;
+            Check(running.TargetAtStart == target && running.Self == holder,
+                "referenced gameobjects are in the script's fields before Start");
+            refs.SetField("Target", null);
+            play.UpdateScripts(frame);
+            Check(running.Target == null, "clearing a reference during Play reaches the running script");
+            play.Stop();
+
+            refs.SetField("Target", target);
+            var duplicate = (BasicEntity)holder.Clone;
+            var duplicateRefs = duplicate.GetComponent<ScriptBehaviourComponent>();
+            Check(ScriptFields.GetValue(refFields[1], duplicateRefs.Fields) is int selfId && selfId == duplicate.Id &&
+                  ScriptFields.GetValue(targetInfo, duplicateRefs.Fields) is int targetId && targetId == target.Id &&
+                  refs.GetField<BasicEntity>("_self") == holder,
+                "duplicating a gameobject points its references to itself at the copy and keeps the others");
+
+            file = Path.Combine(Path.GetTempPath(), $"anvil-refs-{Guid.NewGuid():N}.obsc");
+            try
+            {
+                SceneSerialization.SaveToFile(logic.ActiveScene, file, assets);
+                var loadedScene = SceneSerialization.LoadFromFile(file, assets);
+                var loadedHolder = loadedScene.BasicEntities.Single(e => e.Name == "Holder");
+                var loadedRefs = loadedHolder.GetComponent<ScriptBehaviourComponent>();
+                int loadedTargetId = (int)ScriptFields.GetValue(targetInfo, loadedRefs.Fields);
+                Check(loadedScene.BasicEntities.Single(e => e.Id == loadedTargetId).Name == "Target Cube" &&
+                      (int)ScriptFields.GetValue(refFields[1], loadedRefs.Fields) == loadedHolder.Id,
+                    "references are saved by ID and point at the same gameobjects after loading");
+            }
+            finally { File.Delete(file); }
+
+            logic.EditorDelete(target.Id);
+            Check(refs.GetField<BasicEntity>("Target") == null && refs.Fields.ContainsKey("Target"),
+                "a reference to a deleted gameobject resolves to null but keeps its stored ID");
+            logic.BasicEntities.Add(target);
+
+            Publish();
+            var refEditor = objects.Single(o => o.EngineId == holder.Id).Components.OfType<ScriptBehaviourComponentViewModel>().Single();
+            var targetField = refEditor.Fields.OfType<ScriptGameObjectFieldViewModel>().Single(f => f.Name == "Target");
+            Check(targetField.Value?.Id == target.Id && targetField.Value.Label == "Target Cube" && targetField.IsOverridden &&
+                  targetField.Options.First() == ScriptGameObjectFieldViewModel.None &&
+                  targetField.Options.Any(o => o.Id == holder.Id && o.Label == "Holder"),
+                "the Inspector offers None plus the scene's gameobjects and shows the stored one");
+            targetField.Value = targetField.Options.Single(o => o.Id == entity.Id);
+            Publish();
+            Check(refs.GetField<BasicEntity>("Target") == entity, "picking a gameobject in the Inspector reaches the engine");
+            targetField.Value = ScriptGameObjectFieldViewModel.None;
+            Publish();
+            Check(refs.GetField<BasicEntity>("Target") == null && targetField.Value == ScriptGameObjectFieldViewModel.None,
+                "picking None clears the reference");
+            refs.SetField("Target", 987654);
+            Publish();
+            Check(targetField.Value?.Label == "Missing (#987654)", "a stored ID with no gameobject shows as Missing");
+
+            // A scene's reference to its own copy of a persistent gameobject finds the carried one.
+            var persistent = new PersistentGameObjects();
+            var from = new Scene();
+            var player = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One) { Name = "Player", Persistent = true };
+            from.BasicEntities.Add(player);
+            var arriving = new Scene();
+            var copyInNextScene = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One) { Name = "Player", Persistent = true };
+            arriving.BasicEntities.Add(copyInNextScene);
+            persistent.TakeFrom(from, false, null);
+            persistent.PrepareArrival(arriving);
+            Check(persistent.ReplacementFor(copyInNextScene.Id) == player && !arriving.BasicEntities.Contains(copyInNextScene),
+                "a reference to the arriving scene's left-out copy of a persistent gameobject resolves to the carried one");
+        }
+        finally { GameFlow.SceneLogic = previousLogic; }
+
         void Publish()
         {
             for (int i = 0; i < 6; i++)
@@ -229,6 +329,23 @@ internal static class ScriptFieldChecks
     {
         public const string Id = "test-other-fields";
         public float Height = 1f;
+    }
+
+    public sealed class ReferenceScript : ScriptBehaviour
+    {
+        public const string Id = "test-references";
+        public static ReferenceScript? Last;
+        public BasicEntity? Target;
+        [SerializeField] private BasicEntity? _self;
+
+        public BasicEntity? TargetAtStart { get; private set; }
+        public BasicEntity? Self => _self;
+
+        public override void Start()
+        {
+            Last = this;
+            TargetAtStart = Target;
+        }
     }
 
     private static void Check(bool condition, string description)

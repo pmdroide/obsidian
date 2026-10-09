@@ -11,6 +11,7 @@
         Title="Game Settings"
         Width="440"
         SizeToContent="Height"
+        MaxHeight="860"
         CanResize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
@@ -76,7 +77,9 @@
         </Style>
     </Window.Styles>
 
-    <StackPanel Margin="20" Spacing="18">
+    <Grid RowDefinitions="*,Auto">
+    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20,20,20,0" Spacing="18">
 
         <!-- Window name -->
         <StackPanel Spacing="6">
@@ -161,6 +164,52 @@
 
         <Border Classes="divider" />
 
+        <!-- Intro videos (play order) -->
+        <StackPanel Spacing="8">
+            <TextBlock Text="Intro Videos" Classes="section" />
+            <Border Height="92" CornerRadius="3" BorderThickness="1"
+                    Background="{StaticResource AnvilInputBackgroundBrush}"
+                    BorderBrush="{StaticResource AnvilBorderBrush}">
+                <Grid>
+                    <ListBox Classes="scenes" Background="Transparent"
+                             ItemsSource="{Binding IntroVideos}"
+                             SelectedItem="{Binding SelectedIntroVideo}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:IntroVideoEntryViewModel">
+                                <Grid ColumnDefinitions="30,*,Auto" ToolTip.Tip="{Binding Entry}">
+                                    <TextBlock Grid.Column="0" Text="{Binding IndexLabel}" FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource AnvilTextMutedBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Note}" FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource AnvilTextSubtleBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="No intro videos: the game starts straight in scene 0."
+                               Classes="hint" IsVisible="{Binding HasNoIntroVideos}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="Add Videos..."
+                        Command="{Binding AddIntroVideosCommand}"
+                        CommandParameter="{Binding $parent[Window]}" />
+                <Button Content="Remove" Command="{Binding RemoveIntroVideoCommand}" />
+                <Button Content="Move Up" Command="{Binding MoveIntroVideoUpCommand}" />
+                <Button Content="Move Down" Command="{Binding MoveIntroVideoDownCommand}" />
+            </StackPanel>
+            <TextBlock Text="{Binding IntroVideoMessage}" Classes="hint"
+                       IsVisible="{Binding IntroVideoMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Text="Played in order before scene 0 when the game starts; Enter skips the current video. Saved to System/IntroVideos.json."
+                       Classes="hint" />
+        </StackPanel>
+
+        <Border Classes="divider" />
+
         <!-- Scenes (build order) -->
         <StackPanel Spacing="8">
             <TextBlock Text="Scenes" Classes="section" />
@@ -207,11 +256,13 @@
 
         <TextBlock Text="These settings apply when the game runs standalone, not to the editor viewport."
                    Classes="hint" />
+    </StackPanel>
+    </ScrollViewer>
 
-        <!-- Actions -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <!-- Actions (outside the scroll area so they stay visible) -->
+        <StackPanel Grid.Row="1" Margin="20,18,20,20" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
             <Button Content="Cancel" IsCancel="True" Click="Cancel_Click" />
             <Button Content="Save" Classes="primary" IsDefault="True" Click="Save_Click" />
         </StackPanel>
-    </StackPanel>
+    </Grid>
 </Window>

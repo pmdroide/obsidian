@@ -34,6 +34,7 @@ type PageMetadata = { topic: string; slug: string; title: string };
 const PAGE_METADATA: Record<string, PageMetadata> = {
   'Scenes_and_Game_Flow.md': { topic: 'scene', slug: 'game-flow', title: 'Scenes & Game Flow' },
   'Gameobject_Components.md': { topic: 'scene', slug: 'gameobject-components', title: 'GameObject Components' },
+  'Persistent_GameObjects.md': { topic: 'scene', slug: 'persistent-gameobjects', title: 'Persistent GameObjects' },
   'Script_Behaviours.md': { topic: 'code', slug: 'script-behaviours', title: 'Script Behaviours' },
   'Editor_Architecture.md': { topic: 'editor', slug: 'architecture', title: 'Anvil Editor Architecture' },
   'Importing Structure.md': { topic: 'assets', slug: 'importing', title: 'Importing Assets' },

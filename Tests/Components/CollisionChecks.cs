@@ -391,7 +391,7 @@ internal static class CollisionChecks
     ////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>A physics scene of box colliders with recorder scripts, stepped like Play mode.</summary>
-    private sealed class World : IDisposable
+    internal sealed class World : IDisposable
     {
         public readonly PhysicsSystem Physics = new(new Vector3(0, 0, -9.81f));
         public readonly ScenePhysics Scene;

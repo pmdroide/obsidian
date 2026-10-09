@@ -37,7 +37,7 @@ Notes:
 - `Docs/Importing Structure.md` - best summary of the asset/content pipeline.
 - `Engine/Program.cs` - standalone engine entry point.
 - `Engine/Engine.cs` - MonoGame `Game` subclass; creates graphics, physics, `ScreenManager`, and `EditorBridge`.
-- `Engine/Logic/ScreenManager.cs` - central coordinator for load/init/update/draw across renderer, scene logic, GUI, editor logic, debug screen, intro video, and Vista UI.
+- `Engine/Logic/ScreenManager.cs` - central coordinator for load/init/update/draw across renderer, scene logic, GUI, editor logic, debug screen (stats), intro video, and script UI (`GameUI`).
 - `Engine/Logic/MainSceneLogic.cs` - owns the live scene lists: entities, decals, lights, debug entities, camera, environment sample, and editor-side add/delete helpers.
 - `Engine/Logic/EditorLogic.cs` - in-engine editor mode, selection, gizmos, delete/copy behavior.
 - `Engine/Logic/GameFlow.cs` - script API for the scene list: queued `LoadScene(index/name)`, `Quit`, `EscapeQuits`, `PlayStopped`.
@@ -65,6 +65,8 @@ Notes:
 - `Docs/markdown/Skeletal_Animation.md` - Animator component, the AnimationTest sample scene, and how skinned models are built and drawn.
 - `Engine/Physics/ScenePhysics.cs` + `PhysicsContact.cs` - BEPU bodies per gameobject, raycasts, and collision/trigger Enter/Stay/Exit events dispatched to Script Behaviours (`OnCollisionEnter`, `OnTriggerEnter`, ...). `Engine/Components/InteractableComponent.cs` + `ScriptBehaviour.FindInteractable/Interact/CameraRay` - raycast interaction. Sample: `Content/Scenes/CollisionTest.obsc` (first-person player `Content/Scripts/CollisionTestPlayerScript.cs` + station scripts); see `Docs/markdown/Collisions_and_Interaction.md`.
 - `Engine/Logic/Weather.cs` + `Engine/Renderer/RenderModules/WeatherRenderModule.cs` + `Content/Shaders/Forward/Weather.fx` - scene weather (rain, sandstorm, snow) from `EnvironmentSettings.Weather`/`WeatherIntensity`/`WeatherHaze`/`WindSpeed`/`WindDirection`: GPU particles in a camera-wrapped box plus a depth haze, drawn after water. Per-type look is `WeatherProfile`. Scripts use `ScriptBehaviour.SceneEnvironment`; PlayMode restores the environment on Stop. Sample: `Content/Scenes/WeatherTest.obsc` + `Content/Scripts/WeatherTestScript.cs`; see `Docs/markdown/Weather.md`.
+- `Engine/Logic/PersistentGameObjects.cs` - persistent gameobjects (`BasicEntity.Persistent`, saved / Inspector > Persistent, or `ScriptBehaviour.DontDestroyOnLoad()`): on `GameFlow.LoadScene` during Play they move into the new scene still running (scripts, bodies, HUD layers they opened); the new scene's own copy is left out; Anvil's Stop returns them to the edited scene. Carried objects get `ScriptBehaviour.OnSceneLoaded()`. `GameFlow.LoadScene(..., carryPersistent: false)` leaves them behind. Sample: `Content/Scenes/PersistenceTest.obsc` <-> `PersistenceTest2.obsc` (`Content/Scripts/PersistentPlayerScript.cs`, `ScenePortalScript.cs`, `CompanionOrbScript.cs`); see `Docs/markdown/Persistent_GameObjects.md`.
+- `GameFlow.Paused` - freezes Play: `PlayModeController.UpdateScripts` runs only script behaviours whose `ScriptBehaviour.UpdateWhilePaused` is true, `MainSceneLogic.UpdatePhysics` doesn't step, weather particles stop; scene loads and Stop unpause. `Content/Scripts/PauseMenuScript.cs` (+ `Content/UI/PauseMenu.xml`/`.css`) is the pause menu on the PersistenceTest Player; menu settings rows are shared with the main menu in `Content/Scripts/MenuSettings.cs`.
 - `Engine/Steam/SteamP2PSession.cs` - Steam lobby + `SteamNetworkingMessages` peer-to-peer session for scripts (`SteamService.Current` is the engine's Steam session). Sample: `Content/Scenes/MultiplayerTest.obsc` + `Content/Scripts/MultiplayerTestScript.cs`; see `Docs/markdown/Steam_Multiplayer.md`.
 
 ## Runtime Flow
@@ -73,11 +75,11 @@ Standalone engine:
 
 1. `Engine/Program.cs` creates `Engine.Engine` and calls `Run()`.
 2. `Engine.Engine` sets content root to `Content`, creates `EditorBridge`, `ScreenManager`, graphics, and BEPU physics.
-3. `ScreenManager.Load()` loads `Globals.content`, `Shaders`, `ShaderManager`, `Assets`, renderer modules, scene/debug/gui/video content, and Vista UI.
+3. `ScreenManager.Load()` loads `Globals.content`, `Shaders`, `ShaderManager`, `Assets`, renderer modules, scene/debug/gui/video content, and the UI fonts for `GameUI`.
 4. `ScreenManager.Initialize()` initializes renderer, scene, GUI, editor logic, debug UI, and binds the bridge to scene/editor/assets.
-5. When the intro video ends, `MainSceneLogic.StartFirstScene()` loads scene list entry 0 (`Content/System/SceneList.json`, the MainMenu sample) and starts Play. Anvil skips this.
-6. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene (queued `GameFlow` scene loads apply first, then `Input`/`GameInput`, then scripts), renderer SDFs, debug screen, `GameUI` layers, Vista debug UI, then drains bridge operations and publishes snapshots.
-7. `ScreenManager.Draw()` draws intro video or the main renderer, `GameUI` layers, legacy GUI, debug overlay, and Vista UI.
+5. `VideoIntroLogic` plays the intro videos of `Content/System/IntroVideos.json` (`IntroVideoList`, Anvil > Game Settings > Intro Videos) in order; Enter skips one. When the last ends, `MainSceneLogic.StartFirstScene()` loads scene list entry 0 (`Content/System/SceneList.json`, the MainMenu sample) and starts Play. Anvil skips this.
+6. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene (queued `GameFlow` scene loads apply first, then `Input`/`GameInput`, then scripts), renderer SDFs, debug screen, `GameUI` layers, then drains bridge operations and publishes snapshots.
+7. `ScreenManager.Draw()` draws intro video or the main renderer, `GameUI` layers, then the `DebugScreen` stats/console on top.
 
 Anvil editor:
 
@@ -135,7 +137,9 @@ Important types:
 - Add a game menu or HUD: a Vista document in `Engine/Content/UI/<Name>.xml` + `.css`, opened with `GameUI.Open("UI/<Name>")` from a script behaviour (reference: `Engine/Content/Scripts/MainMenuScript.cs`). The document is parsed as HTML (always close `div`s); layout is absolute.
 - Add an engine asset: update `Content.mgcb`, then add a load/register field in `Assets.cs`.
 - Add an animated (skinned) model: `Content.mgcb` entry with `/processor:SkinnedModelProcessor` (Mixamo: `RotationX=90`, `Scale=0.01`, `GenerateTangentFrames=True`; copy the `GameObjects/Player` entries), a `ModelDefinition` field loaded with `Assets.LoadSkinnedModel`, then an Animator component (Source = content path of another FBX to share its clips). Sample: `Content/Scenes/AnimationTest.obsc`. After changing the processor, delete the model's `.xnb`/`.mgcontent` so mgcb rebuilds it.
-- Give a script Inspector settings: public fields or `[SerializeField]` private fields (`bool`/`int`/`float`/`double`/`string`/enum/`Vector2`/`Vector3`/`Color`) on the `ScriptBehaviour`, optionally `[Range]`, `[Tooltip]`, `[HideInInspector]`, `[FormerlySerializedAs]`. Values live per attachment in `ScriptBehaviourComponent.Fields` and are applied before `Start` (`Engine/Scripting/ScriptFields.cs`). Use `[NonSerialized]` for public runtime state.
+- Give a script Inspector settings: public fields or `[SerializeField]` private fields (`bool`/`int`/`float`/`double`/`string`/enum/`Vector2`/`Vector3`/`Color`, or `BasicEntity` for a gameobject reference saved by scene ID and resolved via `MainSceneLogic.FindGameObjectById`) on the `ScriptBehaviour`, optionally `[Range]`, `[Tooltip]`, `[HideInInspector]`, `[FormerlySerializedAs]`. Values live per attachment in `ScriptBehaviourComponent.Fields` and are applied before `Start` (`Engine/Scripting/ScriptFields.cs`). Use `[NonSerialized]` for public runtime state.
+- Keep a gameobject (e.g. the player) across scene loads: tick Inspector > Persistent (saved) or call `DontDestroyOnLoad()` from its script (this Play session only); move it to the new scene's spawn in `OnSceneLoaded()`. Reference: `Engine/Content/Scripts/PersistentPlayerScript.cs`.
+- Add a pause menu: attach the **Pause Menu** script to a persistent gameobject (the player); one instance then pauses every scene. A custom one sets `GameFlow.Paused` and overrides `UpdateWhilePaused => true` (reference: `Engine/Content/Scripts/PauseMenuScript.cs`).
 - Spawn gameobjects at runtime from a script: `Spawn("Capsule", position)` / `Destroy(entity)` on `ScriptBehaviour`. Spawned objects are flagged `BasicEntity.IsRuntimeSpawned`, never saved, and removed when the script stops. Built-in model keys are the public `ModelDefinition` fields on `Assets` (`Assets.FindModel`).
 - Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
 - React to contacts or let the player use objects: override `OnCollisionEnter/Stay/Exit`, `OnTriggerEnter/Stay/Exit` or `OnInteract` on a `ScriptBehaviour`; triggers are Physics > Is Trigger (Static triggers are convex hulls), usable objects get an Interactable component plus a non-trigger Physics component. Reference: the CollisionTest sample scripts.
@@ -147,7 +151,7 @@ Important types:
 - Fix Anvil selection/focus problems: inspect `BridgeReconciler`, `SceneObjectViewModel.SuppressPush`, `MainWindowViewModel.ReconcilerActive`, and `EditorBridge.PublishEveryNFrames`.
 - Change embedded viewport behavior: inspect `MonoGameHost.cs`, especially HWND reparenting, resize debounce, and `RunOneFrame()` loop.
 - Change in-engine editor gizmos/selection: inspect `EditorLogic.cs`, `EditorRender`, and ID/outline render modules.
-- Change Vista overlay UI: edit `Engine/Content/UI/debug.xml`, `Engine/Content/UI/debug.css`, and `ScreenManager.UpdateVistaUI(...)`.
+- Change the debug stats overlay: edit `Engine/Logic/DebugScreen.cs` (detail level `GameSettings.u_showdisplayinfo`: 0 off, 1 FPS, 3 full). Anvil's viewport **Stats** button toggles it (`MainWindowViewModel.IsStatsVisible`).
 
 ## Adding a Gameobject Component
 

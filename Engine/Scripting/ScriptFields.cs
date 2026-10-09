@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using Engine.Entities;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Scripting;
@@ -18,6 +19,8 @@ public enum ScriptFieldKind
     Vector2,
     Vector3,
     Color,
+    /// <summary>A <see cref="BasicEntity"/> in the scene, stored by its persisted ID.</summary>
+    GameObject,
 }
 
 /// <summary>One serialized field of a <see cref="ScriptBehaviour"/> type.</summary>
@@ -41,11 +44,13 @@ public sealed class ScriptFieldInfo
     /// <summary>
     /// The value the script's field initializer gives a fresh instance. The first read constructs one
     /// instance of the script (never attached or started), so keep script constructors free of side effects.
+    /// GameObject fields have no initializer: their default is ID 0 (none).
     /// </summary>
     public object DefaultValue
     {
         get
         {
+            if (Kind == ScriptFieldKind.GameObject) return 0;
             object prototype = Prototype?.Value;
             if (prototype != null) return Field.GetValue(prototype);
             return FieldType.IsValueType ? Activator.CreateInstance(FieldType) : null;
@@ -59,9 +64,12 @@ public sealed class ScriptFieldInfo
 /// Unity-style serialized fields for script behaviours. A field is serialized when it is an instance
 /// field of the script (or a base class below <see cref="ScriptBehaviour"/>), is not readonly, is either
 /// public without [NonSerialized] or marked [SerializeField], and has a supported type: bool, int, float,
-/// double, string, an enum, Vector2, Vector3 or Color. Values are stored as JSON per attachment
-/// (<see cref="Engine.Components.ScriptBehaviourComponent.Fields"/>); fields without a stored value keep
-/// their C# initializer.
+/// double, string, an enum, Vector2, Vector3, Color or BasicEntity (a gameobject reference). Values are
+/// stored as JSON per attachment (<see cref="Engine.Components.ScriptBehaviourComponent.Fields"/>); fields
+/// without a stored value keep their C# initializer.
+///
+/// GameObject fields store the target's scene ID; decoded values and defaults are that ID (0 = none), and
+/// <see cref="Apply"/> gives the script the gameobject with that ID in the active scene (null when it is gone).
 /// </summary>
 public static class ScriptFields
 {
@@ -141,6 +149,7 @@ public static class ScriptFields
         else if (type == typeof(Vector2)) kind = ScriptFieldKind.Vector2;
         else if (type == typeof(Vector3)) kind = ScriptFieldKind.Vector3;
         else if (type == typeof(Color)) kind = ScriptFieldKind.Color;
+        else if (type == typeof(BasicEntity)) kind = ScriptFieldKind.GameObject;
         else { kind = default; return false; }
         return true;
     }
@@ -174,7 +183,8 @@ public static class ScriptFields
 
     // ------------------------------------------------------------------
     //  JSON encoding: numbers and bools as JSON values, enums by name,
-    //  vectors as [x, y(, z)], colours as "#RRGGBBAA".
+    //  vectors as [x, y(, z)], colours as "#RRGGBBAA", gameobjects as
+    //  their ID (null for none).
     // ------------------------------------------------------------------
 
     /// <summary>Converts <paramref name="value"/> (any compatible type, e.g. an int for a float field) to its stored JSON.</summary>
@@ -196,6 +206,9 @@ public static class ScriptFields
             case ScriptFieldKind.Color:
                 var c = (Color)v;
                 return JsonSerializer.SerializeToElement($"#{c.R:X2}{c.G:X2}{c.B:X2}{c.A:X2}");
+            case ScriptFieldKind.GameObject:
+                int id = (int)v;
+                return id == 0 ? JsonSerializer.SerializeToElement<object>(null) : JsonSerializer.SerializeToElement(id);
             default:
                 return JsonSerializer.SerializeToElement(v, field.FieldType);
         }
@@ -254,6 +267,11 @@ public static class ScriptFields
                         !uint.TryParse(hex.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint rgba)) return false;
                     value = new Color((byte)(rgba >> 24), (byte)(rgba >> 16), (byte)(rgba >> 8), (byte)rgba);
                     return true;
+                case ScriptFieldKind.GameObject:
+                    if (json.ValueKind == JsonValueKind.Null) { value = 0; return true; }
+                    if (json.ValueKind != JsonValueKind.Number || !json.TryGetInt32(out int id) || id < 0) return false;
+                    value = id;
+                    return true;
             }
         }
         catch (Exception) { /* malformed value: treat as missing */ }
@@ -274,6 +292,12 @@ public static class ScriptFields
                 case ScriptFieldKind.Int: return Convert.ToInt32(value, CultureInfo.InvariantCulture);
                 case ScriptFieldKind.Float: return Convert.ToSingle(value, CultureInfo.InvariantCulture);
                 case ScriptFieldKind.Double: return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                case ScriptFieldKind.GameObject:
+                    // A gameobject, its ID, or null for none.
+                    if (value == null) return 0;
+                    if (value is BasicEntity entity) return entity.Id;
+                    if (value is int id && id >= 0) return id;
+                    break;
                 default:
                     if (value != null && field.FieldType.IsInstanceOfType(value)) return value;
                     break;
@@ -302,6 +326,15 @@ public static class ScriptFields
         TryGetStored(field, values, out var json) && TryDecode(field, json, out var value) ? value : field.DefaultValue;
 
     /// <summary>
+    /// What the script's C# field receives for a decoded value. Only GameObject fields differ: their ID
+    /// becomes the gameobject in the active scene, or null when nothing has that ID. Game thread only.
+    /// </summary>
+    public static object ToFieldValue(ScriptFieldInfo field, object value) =>
+        field.Kind == ScriptFieldKind.GameObject
+            ? value is int id && id > 0 ? Logic.GameFlow.SceneLogic?.FindGameObjectById(id) : null
+            : value;
+
+    /// <summary>
     /// Writes stored values into a script instance (all fields, or only <paramref name="names"/>).
     /// Fields named in <paramref name="names"/> without a stored value are reset to their default.
     /// Values that no longer fit their field are skipped and reported through <paramref name="warn"/>.
@@ -316,12 +349,12 @@ public static class ScriptFields
             if (names != null && !requested) continue;
             if (TryGetStored(field, values, out var json))
             {
-                if (TryDecode(field, json, out var value)) field.Field.SetValue(instance, value);
+                if (TryDecode(field, json, out var value)) field.Field.SetValue(instance, ToFieldValue(field, value));
                 else warn?.Invoke($"Field '{field.Name}' of {instance.GetType().Name}: saved value {json.GetRawText()} is not a {field.FieldType.Name}; using the script's value.");
             }
             else if (requested)
             {
-                field.Field.SetValue(instance, field.DefaultValue);
+                field.Field.SetValue(instance, ToFieldValue(field, field.DefaultValue));
             }
         }
     }
