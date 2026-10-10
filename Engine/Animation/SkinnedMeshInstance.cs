@@ -83,6 +83,22 @@ namespace Engine.Animation
             _chunks.Clear();
         }
 
+        /// <summary>
+        /// Bind-pose position and most heavily weighted bone of every skinned vertex of
+        /// <paramref name="model"/> (each shared vertex buffer once). Unweighted vertices are skipped.
+        /// </summary>
+        public static void CollectDominantBones(Model model, List<Vector3> positions, List<int> bones)
+        {
+            var seen = new HashSet<VertexBuffer>(ReferenceEqualityComparer.Instance);
+            foreach (ModelMesh mesh in model.Meshes)
+                foreach (ModelMeshPart part in mesh.MeshParts)
+                {
+                    VertexBuffer shared = part.VertexBuffer;
+                    if (shared == null || !seen.Add(shared)) continue;
+                    SkinSource.For(shared)?.AppendDominant(positions, bones);
+                }
+        }
+
         /// <summary>Bind-pose vertices of one shared buffer, decoded once and shared by all instances.</summary>
         private sealed class SkinSource
         {
@@ -165,6 +181,22 @@ namespace Engine.Animation
                 for (int v = 0; v < count; v++)
                     values[v] = Unsafe.ReadUnaligned<T>(ref data[v * stride + offset]);
                 return values;
+            }
+
+            public void AppendDominant(List<Vector3> positions, List<int> bones)
+            {
+                for (int v = 0; v < VertexCount; v++)
+                {
+                    Vector4 w = _weights[v];
+                    int slot = 0;
+                    float best = w.X;
+                    if (w.Y > best) { best = w.Y; slot = 1; }
+                    if (w.Z > best) { best = w.Z; slot = 2; }
+                    if (w.W > best) { best = w.W; slot = 3; }
+                    if (best <= 0) continue;
+                    positions.Add(_positions[v]);
+                    bones.Add(_indices[v * 4 + slot]);
+                }
             }
 
             public void Skin(int v, Matrix[] skin, byte[] output)

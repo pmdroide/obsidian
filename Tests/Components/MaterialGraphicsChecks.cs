@@ -33,6 +33,7 @@ internal static class MaterialGraphicsChecks
             WeatherChecks.RunGraphics(graphics, content);
             AutoExposureChecks.RunGraphics(graphics, content);
             AnimationChecks.RunGraphics(graphics, content);
+            RagdollChecks.RunGraphics(graphics, content);
             SpotLightChecks.RunGraphics(content);
             PersistenceChecks.RunGraphics(graphics, content);
             PauseChecks.RunGraphics(graphics, content);

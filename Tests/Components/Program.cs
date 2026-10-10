@@ -495,6 +495,7 @@ InputDeviceChecks.Run();
 GameFlowChecks.Run();
 VistaChecks.Run();
 AnimationChecks.Run();
+RagdollChecks.Run();
 MultiplayerChecks.Run();
 CollisionChecks.Run();
 PersistenceChecks.Run();

@@ -1,5 +1,24 @@
 # Changelog
 
+## Added: ragdoll physics for skinned gameobjects (2026-10-10)
+
+**Why:** Skinned characters could animate but had no physical body: nothing could knock them over, and they couldn't collapse.
+
+- **Engine:**
+  - New `Engine/Physics/RagdollRig.cs`: splits a skinned model into ragdoll parts from its bind pose, cached per model. Each vertex belongs to its most-weighted bone. Bones with enough vertices spanning at least 7% of the model become parts; smaller bones (fingers, toes, a short neck) join the part above them. Each part's collider is the convex hull of its vertices. Mass is shared by hull volume, with no part under a tenth of the heaviest. Joint kinds come from bone names (`JointFor`: Mixamo/Unreal/Unity/Blender names; elbows and knees are hinges). The character's left/forward comes from mirrored Left/Right bone pairs. Y Bot/X Bot get 18 parts.
+  - New `Engine/Physics/Ragdoll.cs`: the BEPU bodies and joints of one ragdoll. While animated, the parts are kinematic and are driven by velocity to the animated pose each step (teleports over 1 m jump). `Activate()` makes them dynamic and adds a ball socket, swing/twist limits or a hinge with a range, and a friction motor per joint (`RagdollJointLimits`). After each step a limp ragdoll's bones and skin matrices follow the bodies, and the gameobject follows the hips.
+  - New `Engine/Components/RagdollComponent.cs` (**Ragdoll**, registered after Animator): Mass, Active on Start, Impact (go limp when a moving body hits a part at least this fast; the part takes that body's momentum) and Joint Friction. Script API: `Activate()`, `Deactivate()` (stands up on the ground below the hips), `AddImpulse(impulse, point)`, `IsActive`. It owns its own `SkinnedMeshInstance` while limp.
+  - `ScenePhysics`: `CreateRagdoll`/`RemoveRagdoll`; drives ragdolls before and after each step. Ragdoll parts map to their gameobject for contacts (scripts get the usual collision events) and raycasts. A limp ragdoll's gameobject has its own Physics collider removed until it recovers. A sleeping ragdoll counts as resting. `DetachAll` keeps the ragdolls of carried persistent gameobjects.
+  - `PhysicsSystem`/`ContactRecorder`: collision groups keyed by body handle (`SetCollisionGroup`). Bodies of one gameobject don't collide, except ragdoll parts that aren't joined, siblings or grandparent/grandchild. `RayCast` can ignore a whole group, so `Raycast(..., ignore: gameObject)` skips its ragdoll too. New `CreateConvexShape`.
+  - `AnimatorComponent` stops posing while its gameobject's ragdoll is limp, and takes the skin back afterwards.
+  - `SkinnedMeshInstance.CollectDominantBones`; `BasicEntity.Ragdoll`/`CollisionGroup` (runtime only).
+- **Anvil:** Inspector template for Ragdoll (Mass, Impact, Friction, Active on Start) and `RagdollComponentViewModel`.
+- **Sample:** `Content/Scenes/AnimationTest.obsc` gets a ragdoll row: a Y Bot that goes limp on Play, an X Bot a falling 6 kg ball knocks over, and a slow walker to throw balls at. The ground got a Static Physics component. New **Ragdoll Test** script (`Content/Scripts/RagdollTestScript.cs`) on the camera: left click throws a ball, G drops every ragdoll, R stands them back up.
+- **Tests:** new `Tests/Components/RagdollChecks.cs`. Registration/inspector/save/clone, joint names, rig building on a hand-built skeleton, kinematic follow, raycasts, collision groups, impact, fall and recovery, knee/hip limits in free fall, and the sample scene. With `--graphics`: the real Y Bot rig, a full fall and recovery with the Animator and skin, and the sample's ball knocking over the real walking X Bot. `AnimationChecks` now expects 12 gameobjects in the sample. Default and `--graphics` runs pass (578 checks).
+- **Docs:** new `Docs/markdown/Ragdoll_Physics.md` (listed in `Docs/website/src/docs.ts` under Animation), `Docs/markdown/Skeletal_Animation.md`, `Docs/markdown/Gameobject_Components.md`, `CLAUDE.md`.
+
+- Claude
+
 ## Removed: Vista debug overlay; Anvil Stats toggle for the engine debug stats (2026-10-09)
 
 **Why:** The FPS/frame/res/memory panel was drawn twice: once by the Vista overlay (`debug.xml`/`.css`) and once by the engine's own `DebugScreen`. Only the engine's stats are kept, and Anvil can now hide them.

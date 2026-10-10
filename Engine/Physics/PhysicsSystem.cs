@@ -107,6 +107,24 @@ namespace Engine.Physics
         public bool IsAwake(BodyHandle handle) => Simulation.Bodies[handle].Awake;
 
         ////////////////////////////////////////////////////////////////////////////
+        //  COLLISION GROUPS
+        ////////////////////////////////////////////////////////////////////////////
+
+        /// <summary>
+        /// Puts a body in collision group <paramref name="group"/> (above 0): bodies of one group never
+        /// collide, except two ragdoll parts (<paramref name="part"/> 0 and up) whose pair is not set in
+        /// <paramref name="ignoredPairs"/> (a parts x parts table). Part -1 collides with nothing in its group.
+        /// </summary>
+        internal void SetCollisionGroup(BodyHandle handle, int group, int part = -1, bool[] ignoredPairs = null, int parts = 0) =>
+            _contacts.Groups[handle.Value] = new CollisionGroup { Group = group, Part = part, IgnoredPairs = ignoredPairs, Parts = parts };
+
+        internal void ClearCollisionGroup(BodyHandle handle) => _contacts.Groups.Remove(handle.Value);
+
+        /// <summary>Whether the collision groups let two bodies touch (checks).</summary>
+        internal bool GroupsCollide(BodyHandle a, BodyHandle b) =>
+            _contacts.Collides(new CollidableReference(CollidableMobility.Dynamic, a), new CollidableReference(CollidableMobility.Dynamic, b));
+
+        ////////////////////////////////////////////////////////////////////////////
         //  SHAPES
         ////////////////////////////////////////////////////////////////////////////
 
@@ -215,6 +233,19 @@ namespace Engine.Physics
                 BodyDescription.CreateDynamic(pose, inertia, new CollidableDescription(shape), new BodyActivityDescription(0.01f)));
         }
 
+        /// <summary>
+        /// Registers the convex hull of <paramref name="localPoints"/> (or their bounding box) as a shape, with
+        /// the inertia of <paramref name="mass"/> and the hull's centre in the points' space. The shape is
+        /// centred on that centre. The caller owns the shape until a body using it is removed.
+        /// </summary>
+        internal TypedIndex CreateConvexShape(XnaVector3[] localPoints, float mass, out BodyInertia inertia, out XnaVector3 localCenter)
+        {
+            if (!TryCreateHull(localPoints, mass, out TypedIndex shape, out inertia, out Vector3 center))
+                CreateBoundsBox(localPoints, mass, out shape, out inertia, out center);
+            localCenter = MathConverter.ToXna(center);
+            return shape;
+        }
+
         private bool TryCreateHull(XnaVector3[] points, float mass, out TypedIndex shape, out BodyInertia inertia, out Vector3 center)
         {
             shape = default;
@@ -318,10 +349,11 @@ namespace Engine.Physics
         /// unless <paramref name="includeTriggers"/>, triggers.
         /// <paramref name="direction"/> need not be normalized; <paramref name="distance"/> is in world units.
         /// </summary>
+        /// <param name="ignoreGroup">Skips every body in this collision group (a ragdoll and its gameobject); 0 for none.</param>
         public bool RayCast(XnaVector3 origin, XnaVector3 direction, float maxDistance,
             BodyHandle? ignoreBody, StaticHandle? ignoreStatic,
             out float distance, out XnaVector3 normal, out BodyHandle? hitBody, out StaticHandle? hitStatic,
-            bool includeTriggers = false)
+            bool includeTriggers = false, int ignoreGroup = 0)
         {
             distance = 0;
             normal = XnaVector3.Zero;
@@ -334,6 +366,8 @@ namespace Engine.Physics
                 IgnoreBody = ignoreBody,
                 IgnoreStatic = ignoreStatic,
                 SkipTriggers = includeTriggers || _contacts.Triggers.Count == 0 ? null : _contacts.Triggers,
+                Groups = ignoreGroup > 0 && _contacts.Groups.Count > 0 ? _contacts : null,
+                IgnoreGroup = ignoreGroup,
             };
             Simulation.RayCast(MathConverter.ToNumerics(origin), MathConverter.ToNumerics(XnaVector3.Normalize(direction)),
                 maxDistance, ref handler);
@@ -352,6 +386,8 @@ namespace Engine.Physics
             public BodyHandle? IgnoreBody;
             public StaticHandle? IgnoreStatic;
             public HashSet<uint> SkipTriggers;
+            internal ContactRecorder Groups;
+            public int IgnoreGroup;
             public bool HasHit;
             public float T;
             public Vector3 Normal;
@@ -359,6 +395,7 @@ namespace Engine.Physics
 
             public bool AllowTest(CollidableReference collidable) =>
                 !(SkipTriggers != null && SkipTriggers.Contains(collidable.Packed)) &&
+                !(Groups != null && Groups.TryGetGroup(collidable, out CollisionGroup group) && group.Group == IgnoreGroup) &&
                 (collidable.Mobility == CollidableMobility.Static
                     ? !(IgnoreStatic.HasValue && collidable.StaticHandle.Value == IgnoreStatic.Value.Value)
                     : !(IgnoreBody.HasValue && collidable.BodyHandle.Value == IgnoreBody.Value.Value));
@@ -429,6 +466,7 @@ namespace Engine.Physics
         {
             Simulation.Bodies.GetDescription(handle, out var description);
             SetTrigger(handle, false);
+            ClearCollisionGroup(handle);
             Simulation.Bodies.Remove(handle);
             Simulation.Shapes.RemoveAndDispose(description.Collidable.Shape, BufferPool);
         }
@@ -487,9 +525,10 @@ namespace Engine.Physics
     }
 
     /// <summary>
-    /// Minimal contact callbacks (all dynamic pairs collide). Ported from the
-    /// BepuPhysics demos' default callbacks. Pairs involving a trigger get no
-    /// contact constraint; every pair's contacts are reported to <see cref="Contacts"/>.
+    /// Minimal contact callbacks (pairs with a dynamic body collide, unless their collision
+    /// groups say otherwise). Ported from the BepuPhysics demos' default callbacks. Pairs
+    /// involving a trigger get no contact constraint; every pair's contacts are reported to
+    /// <see cref="Contacts"/>.
     /// </summary>
     public struct NarrowPhaseCallbacks : INarrowPhaseCallbacks
     {
@@ -518,7 +557,8 @@ namespace Engine.Physics
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllowContactGeneration(int workerIndex, CollidableReference a, CollidableReference b, ref float speculativeMargin)
         {
-            return a.Mobility == CollidableMobility.Dynamic || b.Mobility == CollidableMobility.Dynamic;
+            if (a.Mobility != CollidableMobility.Dynamic && b.Mobility != CollidableMobility.Dynamic) return false;
+            return Contacts == null || Contacts.Collides(a, b);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

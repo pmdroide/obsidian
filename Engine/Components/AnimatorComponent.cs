@@ -60,6 +60,18 @@ public sealed class AnimatorComponent : GameComponent
         }
         if (_player?.Clip == null || _skin == null) return;
 
+        // A limp ragdoll owns the pose; the clip picks up again when it recovers.
+        if (owner.GetComponent<RagdollComponent>() is { IsActive: true })
+        {
+            _posedTime = float.NaN;
+            return;
+        }
+        if (_owner.WorldTransform.Skin != _skin)
+        {
+            _owner.WorldTransform.Skin = _skin;
+            _posedTime = float.NaN;
+        }
+
         AnimationClip clip = _player.Clip;
         float speed = float.IsFinite(Speed) ? Speed : 1f;
         Time += (float)time.ElapsedGameTime.TotalSeconds * speed;
@@ -153,7 +165,7 @@ public sealed class AnimatorComponent : GameComponent
         }
         // Upload the pose before the buffer is drawn: Play can start after this frame's update.
         Pose();
-        _owner.WorldTransform.Skin = _skin;
+        if (_owner.GetComponent<RagdollComponent>() is not { IsActive: true }) _owner.WorldTransform.Skin = _skin;
     }
 
     private void Fail()

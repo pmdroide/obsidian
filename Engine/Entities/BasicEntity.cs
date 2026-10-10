@@ -54,6 +54,10 @@ namespace Engine.Entities
         // The ScenePhysics that owns this entity's body; null without one.
         internal ScenePhysics PhysicsScene;
         internal int PhysicsFrame;
+        // The Ragdoll component's bodies (ScenePhysics.CreateRagdoll); null without one.
+        internal Ragdoll Ragdoll;
+        // Collision group shared by this gameobject's own body and its ragdoll parts; 0 until it has a ragdoll.
+        internal int CollisionGroup;
 
         public override Vector3 Position
         {

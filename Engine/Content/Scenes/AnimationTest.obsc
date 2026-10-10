@@ -24,7 +24,23 @@
         ],
         "Roughness": 0.85
       },
-      "IsEnabled": true
+      "IsEnabled": true,
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "37562bdf-01a7-474b-b8dd-bc4072c56654",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ]
     },
     {
       "Id": 2,
@@ -215,6 +231,159 @@
         }
       ],
       "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Y Bot - Ragdoll (limp on Play)",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        -3,
+        4.2,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "521cae48-a340-49f6-9a5c-3de58549eae2",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "d10c0b9f-0a52-4413-9d79-14a7da528320",
+          "Data": {
+            "Mass": 70.0,
+            "ActiveOnStart": true,
+            "ImpactThreshold": 0.0,
+            "JointFriction": 0.2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "X Bot - Ragdoll (hit by ball)",
+      "ModelKey": "PlayerWalking",
+      "Position": [
+        0,
+        4.2,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "8b1acb56-66ad-45fd-bea6-a6113e2fb939",
+          "Data": {
+            "ClipSource": "",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "e5bf162f-1c36-4745-9ac0-399294eb0460",
+          "Data": {
+            "Mass": 70.0,
+            "ActiveOnStart": false,
+            "ImpactThreshold": 3.0,
+            "JointFriction": 0.2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Ragdoll Ball",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0.04,
+        4.17,
+        4.0
+      ],
+      "Scale": [
+        0.2,
+        0.2,
+        0.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "f04094c2-89b1-4818-b983-ad00ec1ffb77",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 6.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "331c62e3-dd63-4a6b-affe-7d27bf04558a",
+          "Data": {
+            "Red": 0.95,
+            "Green": 0.45,
+            "Blue": 0.2,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Y Bot - Ragdoll (click to knock over)",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        3,
+        4.2,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "f59e86ff-3736-4a71-8555-2ebc4de47745",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 0.6,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "e7f746f9-cb3a-4c46-8d38-93a46367ad4b",
+          "Data": {
+            "Mass": 70.0,
+            "ActiveOnStart": false,
+            "ImpactThreshold": 3.0,
+            "JointFriction": 0.2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
     }
   ],
   "PointLights": [],
@@ -279,6 +448,14 @@
         "InstanceId": "bab5f9e0-d77f-48c5-8913-832536e82769",
         "Data": {
           "ScriptId": "freecam",
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "b0472241-65b5-4556-9d7b-254dd698ed83",
+        "Data": {
+          "ScriptId": "ragdoll-test",
           "Enabled": true
         }
       }

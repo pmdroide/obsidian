@@ -20,6 +20,11 @@ content directory on first playback, so assigning a new asset needs no rebuild.
 **Animator** plays a skeletal clip on a skinned model in Play mode (Source, Clip, Speed, Loop,
 In Place). See `Skeletal_Animation.md` and the `AnimationTest` sample scene.
 
+**Ragdoll** gives a skinned model a rigid body per main bone. In Play they follow the animation until
+the ragdoll goes limp: on start, when a body hits it faster than **Impact** m/s, or when a script calls
+`Activate()`. It has **Mass** (the whole body, kg), **Friction** (joint stiffness) and **Active on Start**.
+See [Ragdoll_Physics.md](Ragdoll_Physics.md).
+
 **Physics** has two contact options besides Body and Mass. **Is Trigger** makes the
 collider overlap instead of collide: scripts get `OnTriggerEnter/Stay/Exit`, nothing is
 pushed and raycasts pass through. A Static trigger uses the model's convex hull, so a body

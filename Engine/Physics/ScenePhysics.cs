@@ -68,6 +68,9 @@ namespace Engine.Physics
         private readonly Dictionary<int, BasicEntity> _staticOwners = new Dictionary<int, BasicEntity>();
         private readonly Dictionary<Model, Geometry> _geometry =
             new Dictionary<Model, Geometry>(ReferenceEqualityComparer.Instance);
+        // Ragdolls of Ragdoll components; their parts are in _bodyOwners under the owning gameobject.
+        private readonly List<Ragdoll> _ragdolls = new List<Ragdoll>();
+        private static int _lastCollisionGroup;
 
         private int _frame;
         private bool _wasSimulating;
@@ -117,7 +120,7 @@ namespace Engine.Physics
         {
             hit = default;
             if (!_physics.RayCast(origin, direction, maxDistance, ignore?.DynamicBody, ignore?.StaticBody,
-                    out float distance, out Vector3 normal, out var body, out var staticHandle, includeTriggers))
+                    out float distance, out Vector3 normal, out var body, out var staticHandle, includeTriggers, ignore?.CollisionGroup ?? 0))
                 return false;
 
             hit = new RaycastHit
@@ -194,6 +197,8 @@ namespace Engine.Physics
                 DestroyBody(_attached[i]);
                 _attached.RemoveAt(i);
             }
+            for (int i = _ragdolls.Count - 1; i >= 0; i--)
+                if (_ragdolls[i].Owner.PhysicsFrame != _frame) RemoveRagdoll(_ragdolls[i]);
 
             if (!simulate)
             {
@@ -201,17 +206,19 @@ namespace Engine.Physics
                 _touches.Clear();
                 return;
             }
-            if (_attached.Count == 0 && _touches.Count == 0) return;
+            if (_attached.Count == 0 && _touches.Count == 0 && _ragdolls.Count == 0) return;
 
             float step = Math.Min(dt, MaxStep);
             // Without a step there are no fresh contacts, so the current touches stand.
             if (!(step > 0)) return;
             ApplyBuoyancy(entities, time, step);
+            for (int i = 0; i < _ragdolls.Count; i++) _ragdolls[i].BeforeStep(step);
             _physics.Step(step);
 
             for (int i = 0; i < _attached.Count; i++)
                 if (_attached[i].AttachedPhysicsType == PhysicsBodyType.Dynamic)
                     PullPose(_attached[i]);
+            for (int i = 0; i < _ragdolls.Count; i++) _ragdolls[i].AfterStep();
 
             UpdateTouches();
             DispatchContactEvents();
@@ -234,6 +241,8 @@ namespace Engine.Physics
                 BasicEntity a = OwnerOf(contact.BodyA, contact.StaticA);
                 BasicEntity b = OwnerOf(contact.BodyB, contact.StaticB);
                 if (a == null || b == null || a == b) continue;
+                if (a.Ragdoll != null) NotifyRagdoll(a.Ragdoll, contact.BodyA, contact, b, contact.BodyB);
+                if (b.Ragdoll != null) NotifyRagdoll(b.Ragdoll, contact.BodyB, contact.Swapped(), a, contact.BodyA);
 
                 Touch touch = FindTouch(a, b);
                 if (touch != null && touch.IsTrigger != contact.IsTrigger)
@@ -271,9 +280,65 @@ namespace Engine.Physics
             _contactEvents.Add((touch, ContactPhase.Exit));
         }
 
-        /// <summary>Still in this scene with a static collider or a sleeping body.</summary>
-        private bool IsResting(BasicEntity e) =>
-            e.PhysicsScene == this && (e.DynamicBody != null ? !_physics.IsAwake(e.DynamicBody.Value) : e.StaticBody != null);
+        /// <summary>Still in this scene with a static collider, a sleeping body or a sleeping ragdoll.</summary>
+        private bool IsResting(BasicEntity e)
+        {
+            bool hasRagdoll = e.Ragdoll != null && _ragdolls.Contains(e.Ragdoll);
+            if (hasRagdoll && !e.Ragdoll.IsAsleep) return false;
+            if (e.PhysicsScene != this) return hasRagdoll;
+            return e.DynamicBody != null ? !_physics.IsAwake(e.DynamicBody.Value) : e.StaticBody != null;
+        }
+
+        /// <summary>Tells a ragdoll which of its parts touched <paramref name="other"/> and how heavy that was.</summary>
+        private static void NotifyRagdoll(Ragdoll ragdoll, BepuPhysics.BodyHandle? body, PhysicsContact seenFromRagdoll, BasicEntity other,
+            BepuPhysics.BodyHandle? otherBody)
+        {
+            if (ragdoll.Hit == null || body == null) return;
+            int part = ragdoll.PartOf(body.Value);
+            if (part < 0) return;
+            try { ragdoll.Hit(part, seenFromRagdoll, other, MassOf(other, otherBody)); }
+            catch (Exception ex) { EditorBridge.Log($"Ragdoll of '{ragdoll.Owner.Name}' threw on contact: {ex.Message}"); }
+        }
+
+        /// <summary>Mass of a moving body (a dynamic gameobject or a limp ragdoll part); 0 for anything immovable.</summary>
+        private static float MassOf(BasicEntity e, BepuPhysics.BodyHandle? body)
+        {
+            if (body == null) return 0;
+            if (e.DynamicBody?.Value == body.Value.Value) return e.AttachedTrigger ? 0 : e.AttachedMass;
+            if (e.Ragdoll is { IsActive: true } ragdoll)
+            {
+                int part = ragdoll.PartOf(body.Value);
+                if (part >= 0) return ragdoll.PartMass(part);
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Builds the ragdoll of <paramref name="owner"/> from <paramref name="rig"/>, posed as <paramref name="pose"/>
+        /// (model-space bones) and following it until <see cref="Ragdoll.Activate"/>. Replaces any ragdoll it had.
+        /// </summary>
+        internal Ragdoll CreateRagdoll(BasicEntity owner, RagdollRig rig, Matrix[] pose, float mass, float jointFriction)
+        {
+            if (owner.Ragdoll != null) RemoveRagdoll(owner.Ragdoll);
+            if (owner.CollisionGroup == 0) owner.CollisionGroup = ++_lastCollisionGroup;
+            var ragdoll = new Ragdoll(_physics, owner, rig, pose, mass, jointFriction, owner.CollisionGroup);
+            for (int p = 0; p < ragdoll.PartCount; p++) _bodyOwners[ragdoll.BodyOf(p).Value] = owner;
+            // The gameobject's own collider never collides with its parts.
+            if (owner.DynamicBody != null) _physics.SetCollisionGroup(owner.DynamicBody.Value, owner.CollisionGroup);
+            owner.Ragdoll = ragdoll;
+            owner.PhysicsFrame = _frame;
+            _ragdolls.Add(ragdoll);
+            return ragdoll;
+        }
+
+        /// <summary>Removes a ragdoll's bodies and joints; the gameobject's touches with them end on the next step.</summary>
+        internal void RemoveRagdoll(Ragdoll ragdoll)
+        {
+            if (ragdoll == null || !_ragdolls.Remove(ragdoll)) return;
+            for (int p = 0; p < ragdoll.PartCount; p++) _bodyOwners.Remove(ragdoll.BodyOf(p).Value);
+            ragdoll.Dispose();
+            if (ragdoll.Owner.Ragdoll == ragdoll) ragdoll.Owner.Ragdoll = null;
+        }
 
         private BasicEntity OwnerOf(BepuPhysics.BodyHandle? body, BepuPhysics.StaticHandle? staticHandle)
         {
@@ -339,6 +404,8 @@ namespace Engine.Physics
         /// </summary>
         public void DetachAll(IReadOnlyCollection<BasicEntity> keep = null)
         {
+            for (int i = _ragdolls.Count - 1; i >= 0; i--)
+                if (keep == null || !keep.Contains(_ragdolls[i].Owner)) RemoveRagdoll(_ragdolls[i]);
             if (keep == null || keep.Count == 0)
             {
                 for (int i = 0; i < _attached.Count; i++) DestroyBody(_attached[i]);
@@ -362,7 +429,9 @@ namespace Engine.Physics
         {
             // Water is a volume to float in, not a surface to land on.
             bool hasGeometry = e.Model != null || FallbackGeometry != null;
-            PhysicsBodyType desired = !hasGeometry || e.Role == GameObjectRole.Water ? PhysicsBodyType.None : e.PhysicsType;
+            // A limp ragdoll's parts stand in for the gameobject's own collider.
+            bool limp = e.Ragdoll is { IsActive: true, IsDisposed: false };
+            PhysicsBodyType desired = !hasGeometry || e.Role == GameObjectRole.Water || limp ? PhysicsBodyType.None : e.PhysicsType;
             float mass = e.Mass;
             bool trigger = desired != PhysicsBodyType.None && e.Physics?.IsTrigger == true;
             bool freezeRotation = desired == PhysicsBodyType.Dynamic && e.Physics?.FreezeRotation == true;
@@ -435,6 +504,7 @@ namespace Engine.Physics
                 {
                     e.DynamicBody = _physics.AddDynamicConvex(scaled, e.Position, orientation, mass, out e.ColliderOffset, freezeRotation);
                     _bodyOwners[e.DynamicBody.Value.Value] = e;
+                    if (e.CollisionGroup != 0) _physics.SetCollisionGroup(e.DynamicBody.Value, e.CollisionGroup);
                     if (trigger) _physics.SetTrigger(e.DynamicBody.Value, true);
                 }
             }

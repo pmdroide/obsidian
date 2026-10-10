@@ -20,7 +20,10 @@ their materials are flat colours.
 | Y Bot - Bind Pose (no Animator) | the static bind pose, for comparison |
 | UV Checker Cube | the same maps on a static mesh |
 
-The camera has Freecam, so you can fly around in Play.
+The row behind them tests the **Ragdoll** component (one goes limp on Play, a falling ball knocks
+another over); see [Ragdoll_Physics.md](Ragdoll_Physics.md). The camera has Freecam, so you can fly
+around in Play, and the Ragdoll Test script: left click throws a ball, G drops every ragdoll, R stands
+them back up.
 
 ## Animator settings
 

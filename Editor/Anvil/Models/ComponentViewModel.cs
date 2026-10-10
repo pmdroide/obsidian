@@ -50,6 +50,7 @@ public static class ComponentEditorRegistry
         Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
         Register(ScriptBehaviourComponent.TypeId, owner => new ScriptBehaviourComponentViewModel(owner));
         Register(AnimatorComponent.TypeId, owner => new AnimatorComponentViewModel(owner));
+        Register(RagdollComponent.TypeId, owner => new RagdollComponentViewModel(owner));
         Register(InteractableComponent.TypeId, owner => new InteractableComponentViewModel(owner));
     }
 

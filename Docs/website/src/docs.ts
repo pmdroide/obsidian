@@ -44,6 +44,7 @@ const PAGE_METADATA: Record<string, PageMetadata> = {
   'Steam_Multiplayer.md': { topic: 'gameplay', slug: 'steam-multiplayer', title: 'Steam Multiplayer' },
   'Collisions_and_Interaction.md': { topic: 'gameplay', slug: 'collisions-and-interaction', title: 'Collisions & Interaction' },
   'Skeletal_Animation.md': { topic: 'animation', slug: 'skeletal-animation', title: 'Skeletal Animation' },
+  'Ragdoll_Physics.md': { topic: 'animation', slug: 'ragdolls', title: 'Ragdoll Physics' },
   'VistaUI_Architecture.md': { topic: 'ui', slug: 'vista', title: 'Vista UI' },
   'Audio_Architecture.md': { topic: 'sound', slug: 'architecture', title: 'Audio Architecture' },
   'setup_fmod.md': { topic: 'sound', slug: 'setup-fmod', title: 'Setting Up FMOD' },

@@ -31,6 +31,7 @@ public static class ComponentRegistry
         Register<AudioComponent>(AudioComponent.TypeId, "Audio");
         Register<ScriptBehaviourComponent>(ScriptBehaviourComponent.TypeId, "Script Behaviour", allowMultiple: true);
         Register<AnimatorComponent>(AnimatorComponent.TypeId, "Animator");
+        Register<RagdollComponent>(RagdollComponent.TypeId, "Ragdoll");
         Register<InteractableComponent>(InteractableComponent.TypeId, "Interactable");
     }
 

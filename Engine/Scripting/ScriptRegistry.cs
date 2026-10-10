@@ -29,6 +29,7 @@ public static class ScriptRegistry
         Register<ScenePortalScript>(ScenePortalScript.ScriptId, "Scene Portal");
         Register<CompanionOrbScript>(CompanionOrbScript.ScriptId, "Companion Orb");
         Register<PauseMenuScript>(PauseMenuScript.ScriptId, "Pause Menu");
+        Register<RagdollTestScript>(RagdollTestScript.ScriptId, "Ragdoll Test");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

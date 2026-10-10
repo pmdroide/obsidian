@@ -36,6 +36,17 @@ namespace Engine.Physics
         };
     }
 
+    /// <summary>A body's collision group (see <see cref="PhysicsSystem.SetCollisionGroup"/>).</summary>
+    internal struct CollisionGroup
+    {
+        public int Group;
+        /// <summary>Ragdoll part index, or -1 for a body that ignores its whole group.</summary>
+        public int Part;
+        /// <summary>Parts x Parts table of ragdoll part pairs that don't collide; shared by the ragdoll's parts.</summary>
+        public bool[] IgnoredPairs;
+        public int Parts;
+    }
+
     /// <summary>
     /// Collects the pairs that touch during a step, fed by <see cref="NarrowPhaseCallbacks"/>.
     /// A speculative contact (a gap the solver closes within the step) counts as touching, so a
@@ -64,6 +75,27 @@ namespace Engine.Physics
         }
 
         public bool IsTrigger(CollidableReference collidable) => Triggers.Count > 0 && Triggers.Contains(collidable.Packed);
+
+        /// <summary>
+        /// Collision groups by body handle. Keyed by handle rather than <see cref="CollidableReference.Packed"/>,
+        /// which also encodes mobility and so changes when a ragdoll part turns from kinematic to dynamic.
+        /// </summary>
+        public readonly Dictionary<int, CollisionGroup> Groups = new Dictionary<int, CollisionGroup>();
+
+        public bool TryGetGroup(CollidableReference collidable, out CollisionGroup group)
+        {
+            group = default;
+            return Groups.Count > 0 && collidable.Mobility != CollidableMobility.Static &&
+                   Groups.TryGetValue(collidable.BodyHandle.Value, out group);
+        }
+
+        /// <summary>False for two bodies of one collision group, unless they are ragdoll parts allowed to touch.</summary>
+        public bool Collides(CollidableReference a, CollidableReference b)
+        {
+            if (!TryGetGroup(a, out CollisionGroup ga) || !TryGetGroup(b, out CollisionGroup gb) || ga.Group != gb.Group) return true;
+            if (ga.Part < 0 || gb.Part < 0 || ga.IgnoredPairs == null) return false;
+            return !ga.IgnoredPairs[ga.Part * ga.Parts + gb.Part];
+        }
 
         public void Record<TManifold>(CollidablePair pair, ref TManifold manifold, bool trigger)
             where TManifold : unmanaged, IContactManifold<TManifold>

@@ -158,6 +158,7 @@ internal static class AnimationChecks
         var assets = new Assets
         {
             Cube = new ModelDefinition(null, bounds),
+            IsoSphere = new ModelDefinition(null, bounds),
             PlayerYBot = new ModelDefinition(null, bounds),
             PlayerWalking = new ModelDefinition(null, bounds),
         };
@@ -165,7 +166,8 @@ internal static class AnimationChecks
         var entities = scene.BasicEntities;
         BasicEntity Named(string name) => entities.Single(e => e.Name == name);
 
-        Check(entities.Count == 8 && entities.All(e => e.IsEnabled) && scene.DirectionalLights.Single().CastShadows &&
+        // 8 animation gameobjects plus the ragdoll row (RagdollChecks covers those).
+        Check(entities.Count == 12 && entities.All(e => e.IsEnabled) && scene.DirectionalLights.Single().CastShadows &&
               scene.MainCamera?.GetComponent<ScriptBehaviourComponent>() is { ScriptId: Engine.Scripting.FreecamScript.ScriptId },
             "the animation sample scene loads its ground, characters and checker cube with a shadowed sun and a Freecam camera");
 
