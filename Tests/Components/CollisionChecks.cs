@@ -28,6 +28,7 @@ internal static class CollisionChecks
         CheckCollisionEvents();
         CheckTriggers();
         CheckFreezeRotation();
+        CheckColliderSize();
         CheckInteraction();
         CheckEditorAndSaving();
         CheckSampleScene();
@@ -145,6 +146,46 @@ internal static class CollisionChecks
             "Freeze Rotation keeps a body upright under an off-centre impulse but still moves it");
     }
 
+    private static void CheckColliderSize()
+    {
+        using var world = new World();
+        BasicEntity ground = world.Add("Ground", new Vector3(0, 0, -0.5f), new Vector3(10, 10, 0.5f), PhysicsBodyType.Static, recorder: false);
+        BasicEntity box = world.Add("Box", new Vector3(0, 0, 3), new Vector3(0.5f), PhysicsBodyType.Dynamic, 2, recorder: false);
+        PhysicsComponent physics = box.Physics!;
+        Check(physics.ColliderSizeX == 2 && physics.ColliderSizeY == 2 && physics.ColliderSizeZ == 2 &&
+              physics.ColliderStretchFor(box) == Vector3.One, "a new Physics component's collider size is the model's bounds");
+
+        world.Step(120);
+        Check(Math.Abs(box.Position.Z - 0.5f) < 0.05f, "with the default size the box rests on its own bounds");
+
+        physics.ColliderSizeZ = 4;
+        physics.OnChanged(box);
+        box.Position = new Vector3(0, 0, 3);
+        world.Step(120);
+        Check(Math.Abs(box.Position.Z - 1f) < 0.05f, $"a taller collider rebuilds the body and rests higher ({box.Position.Z:0.00})");
+
+        ground.Physics!.ColliderSizeZ = 4;
+        ground.Physics.OnChanged(ground);
+        box.Position = new Vector3(0, 0, 3);
+        world.Step(120);
+        Check(Math.Abs(box.Position.Z - 1.5f) < 0.05f, $"a static mesh collider is stretched about the model's centre too ({box.Position.Z:0.00})");
+
+        var copy = (PhysicsComponent)ComponentRegistry.Copy(physics);
+        Check(copy.ColliderSizeX == 2 && copy.ColliderSizeZ == 4, "the collider size is saved with the component");
+
+        physics.ResetColliderSize();
+        physics.OnChanged(box);
+        ground.Physics.ResetColliderSize();
+        ground.Physics.OnChanged(ground);
+        box.Position = new Vector3(0, 0, 3);
+        world.Step(120);
+        Check(physics.ColliderSizeZ == 2 && ground.Physics.ColliderSizeZ == 2 && Math.Abs(box.Position.Z - 0.5f) < 0.05f,
+            "Default Size fits the collider to the model's bounds again");
+
+        physics.ColliderSizeY = float.NaN;
+        Check(physics.ColliderSizeFor(box).Y == 2, "an invalid size falls back to the model's bounds");
+    }
+
     private static void CheckInteraction()
     {
         using var world = new World();
@@ -260,13 +301,14 @@ internal static class CollisionChecks
             Cube = new ModelDefinition(null, new BoundingBox(-Vector3.One, Vector3.One)),
             IsoSphere = new ModelDefinition(null, new BoundingBox(-Vector3.One, Vector3.One)),
             Capsule = new ModelDefinition(null, new BoundingBox(new Vector3(-0.5f, -0.5f, -1), new Vector3(0.5f, 0.5f, 1))),
+            Cloth = new ModelDefinition(null, new BoundingBox(new Vector3(-1, 0, -1), new Vector3(1, 0, 1))),
         };
         string path = Path.Combine(new EditorBridge().ContentSourceRoot, "Scenes", "CollisionTest.obsc");
         var scene = SceneSerialization.LoadFromFile(path, assets);
         BasicEntity Named(string name) => scene.BasicEntities.Single(e => e.Name == name);
 
         BasicEntity player = Named("Player");
-        Check(scene.BasicEntities.Count == 37 && player.GetComponent<PhysicsComponent>() is
+        Check(scene.BasicEntities.Count == 44 && player.GetComponent<PhysicsComponent>() is
                   { BodyType: PhysicsBodyType.Dynamic, Mass: 80, FreezeRotation: true, IsTrigger: false } &&
               player.GetComponent<ScriptBehaviourComponent>()?.ScriptId == CollisionTestPlayerScript.ScriptId,
             "the collision sample loads with an upright dynamic player capsule running the player script");
@@ -275,7 +317,7 @@ internal static class CollisionChecks
                                                                               Named(n).GetComponent<PhysicsComponent>() is { IsTrigger: false }),
             "its zones are static triggers and its interactables have colliders");
         Check(scene.BasicEntities.SelectMany(e => e.GetComponents<ScriptBehaviourComponent>()).All(s => ScriptRegistry.Find(s.ScriptId) != null) &&
-              scene.BasicEntities.Count(e => e.GetComponent<ScriptBehaviourComponent>() != null) == 7,
+              scene.BasicEntities.Count(e => e.GetComponent<ScriptBehaviourComponent>() != null) == 9,
             "every script in the collision sample is registered");
         Check(new[] { "Light Crate", "Medium Crate", "Heavy Crate", "Anchor Block" }.Select(n => Named(n).Mass).SequenceEqual(new[] { 10f, 60f, 180f, 2000f }),
             "the push lane has crates of increasing mass");

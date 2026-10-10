@@ -353,7 +353,7 @@ namespace Engine.Physics
         public bool RayCast(XnaVector3 origin, XnaVector3 direction, float maxDistance,
             BodyHandle? ignoreBody, StaticHandle? ignoreStatic,
             out float distance, out XnaVector3 normal, out BodyHandle? hitBody, out StaticHandle? hitStatic,
-            bool includeTriggers = false, int ignoreGroup = 0)
+            bool includeTriggers = false, int ignoreGroup = 0, bool staticOnly = false)
         {
             distance = 0;
             normal = XnaVector3.Zero;
@@ -368,6 +368,7 @@ namespace Engine.Physics
                 SkipTriggers = includeTriggers || _contacts.Triggers.Count == 0 ? null : _contacts.Triggers,
                 Groups = ignoreGroup > 0 && _contacts.Groups.Count > 0 ? _contacts : null,
                 IgnoreGroup = ignoreGroup,
+                StaticOnly = staticOnly,
             };
             Simulation.RayCast(MathConverter.ToNumerics(origin), MathConverter.ToNumerics(XnaVector3.Normalize(direction)),
                 maxDistance, ref handler);
@@ -388,12 +389,15 @@ namespace Engine.Physics
             public HashSet<uint> SkipTriggers;
             internal ContactRecorder Groups;
             public int IgnoreGroup;
+            /// <summary>Only static colliders: bodies (and ragdoll parts) are see-through.</summary>
+            public bool StaticOnly;
             public bool HasHit;
             public float T;
             public Vector3 Normal;
             public CollidableReference Hit;
 
             public bool AllowTest(CollidableReference collidable) =>
+                !(StaticOnly && collidable.Mobility != CollidableMobility.Static) &&
                 !(SkipTriggers != null && SkipTriggers.Contains(collidable.Packed)) &&
                 !(Groups != null && Groups.TryGetGroup(collidable, out CollisionGroup group) && group.Group == IgnoreGroup) &&
                 (collidable.Mobility == CollidableMobility.Static
@@ -414,6 +418,143 @@ namespace Engine.Physics
                 HasHit = true;
             }
         }
+
+        ////////////////////////////////////////////////////////////////////////////
+        //  CLOTH
+        ////////////////////////////////////////////////////////////////////////////
+
+        private readonly List<CollidableReference> _clothOverlaps = new List<CollidableReference>();
+        private readonly List<int> _clothTriangles = new List<int>();
+
+        private struct OverlapCollector : IBreakableForEach<CollidableReference>
+        {
+            public List<CollidableReference> Found;
+
+            public bool LoopBody(CollidableReference collidable)
+            {
+                Found.Add(collidable);
+                return true;
+            }
+        }
+
+        private struct LeafCollector : IBreakableForEach<int>
+        {
+            public List<int> Found;
+
+            public bool LoopBody(int leaf)
+            {
+                Found.Add(leaf);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Adds a <see cref="ClothCollider"/> to <paramref name="into"/> for every non-trigger body and static whose
+        /// bounds overlap [<paramref name="min"/>, <paramref name="max"/>]: hulls and boxes as world-space planes,
+        /// meshes as their triangles inside those bounds. Other shapes are skipped. Owners are left to
+        /// <see cref="ScenePhysics.CollectClothColliders"/>.
+        /// </summary>
+        internal void CollectClothColliders(XnaVector3 min, XnaVector3 max, ClothColliderList into)
+        {
+            Vector3 queryMin = MathConverter.ToNumerics(min), queryMax = MathConverter.ToNumerics(max);
+            _clothOverlaps.Clear();
+            var collector = new OverlapCollector { Found = _clothOverlaps };
+            Simulation.BroadPhase.GetOverlaps(queryMin, queryMax, ref collector);
+
+            foreach (CollidableReference collidable in _clothOverlaps)
+            {
+                if (_contacts.IsTrigger(collidable)) continue;
+                RigidPose pose;
+                TypedIndex shape;
+                BoundingBox bounds;
+                ClothCollider collider = into.Add();
+                if (collidable.Mobility == CollidableMobility.Static)
+                {
+                    StaticReference body = Simulation.Statics[collidable.StaticHandle];
+                    pose = body.Pose;
+                    shape = body.Shape;
+                    bounds = body.BoundingBox;
+                    collider.Static = collidable.StaticHandle;
+                }
+                else
+                {
+                    BodyReference body = Simulation.Bodies[collidable.BodyHandle];
+                    pose = body.Pose;
+                    shape = body.Collidable.Shape;
+                    bounds = body.BoundingBox;
+                    collider.Body = collidable.BodyHandle;
+                    collider.LinearVelocity = MathConverter.ToXna(body.Velocity.Linear);
+                    collider.AngularVelocity = MathConverter.ToXna(body.Velocity.Angular);
+                }
+                collider.Center = MathConverter.ToXna(pose.Position);
+                collider.Min = MathConverter.ToXna(bounds.Min);
+                collider.Max = MathConverter.ToXna(bounds.Max);
+
+                if (shape.Type == ConvexHull.Id) AddHullPlanes(ref Simulation.Shapes.GetShape<ConvexHull>(shape.Index), pose, collider);
+                else if (shape.Type == Box.Id) AddBoxPlanes(Simulation.Shapes.GetShape<Box>(shape.Index), pose, collider);
+                else if (shape.Type == Mesh.Id) AddMeshTriangles(ref Simulation.Shapes.GetShape<Mesh>(shape.Index), pose, queryMin, queryMax, collider);
+                if (collider.Planes.Count == 0 && collider.Triangles.Count == 0) into.RemoveLast();
+            }
+        }
+
+        private static void AddHullPlanes(ref ConvexHull hull, in RigidPose pose, ClothCollider collider)
+        {
+            int lanes = Vector<float>.Count;
+            for (int face = 0; face < hull.FaceToVertexIndicesStart.Length; face++)
+            {
+                ref HullBoundingPlanes bundle = ref hull.BoundingPlanes[face / lanes];
+                Vector3Wide.ReadSlot(ref bundle.Normal, face % lanes, out Vector3 normal);
+                AddPlane(collider, pose, normal, bundle.Offset[face % lanes]);
+            }
+        }
+
+        private static void AddBoxPlanes(in Box box, in RigidPose pose, ClothCollider collider)
+        {
+            AddPlane(collider, pose, Vector3.UnitX, box.HalfWidth);
+            AddPlane(collider, pose, -Vector3.UnitX, box.HalfWidth);
+            AddPlane(collider, pose, Vector3.UnitY, box.HalfHeight);
+            AddPlane(collider, pose, -Vector3.UnitY, box.HalfHeight);
+            AddPlane(collider, pose, Vector3.UnitZ, box.HalfLength);
+            AddPlane(collider, pose, -Vector3.UnitZ, box.HalfLength);
+        }
+
+        // A shape-local plane dot(n, p) <= offset, moved to world space.
+        private static void AddPlane(ClothCollider collider, in RigidPose pose, Vector3 localNormal, float localOffset)
+        {
+            Vector3 normal = Vector3.Transform(localNormal, pose.Orientation);
+            collider.Planes.Add(new Microsoft.Xna.Framework.Vector4(normal.X, normal.Y, normal.Z,
+                localOffset + Vector3.Dot(normal, pose.Position)));
+        }
+
+        private void AddMeshTriangles(ref Mesh mesh, in RigidPose pose, Vector3 queryMin, Vector3 queryMax, ClothCollider collider)
+        {
+            // The query box in the mesh's own (unscaled) space: rotate its half extents, then undo the scale.
+            Quaternion inverse = Quaternion.Conjugate(pose.Orientation);
+            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(inverse);
+            Vector3 half = (queryMax - queryMin) * 0.5f;
+            Vector3 center = Vector3.Transform((queryMin + queryMax) * 0.5f - pose.Position, inverse);
+            var localHalf = new Vector3(
+                MathF.Abs(rotation.M11) * half.X + MathF.Abs(rotation.M21) * half.Y + MathF.Abs(rotation.M31) * half.Z,
+                MathF.Abs(rotation.M12) * half.X + MathF.Abs(rotation.M22) * half.Y + MathF.Abs(rotation.M32) * half.Z,
+                MathF.Abs(rotation.M13) * half.X + MathF.Abs(rotation.M23) * half.Y + MathF.Abs(rotation.M33) * half.Z);
+            Vector3 scale = mesh.Scale;
+            if (scale.X == 0 || scale.Y == 0 || scale.Z == 0) return;
+            Vector3 a = (center - localHalf) / scale, b = (center + localHalf) / scale;
+            Vector3 localMin = Vector3.Min(a, b), localMax = Vector3.Max(a, b);
+
+            _clothTriangles.Clear();
+            var leaves = new LeafCollector { Found = _clothTriangles };
+            mesh.Tree.GetOverlaps(localMin, localMax, ref leaves);
+            foreach (int index in _clothTriangles)
+            {
+                ref Triangle triangle = ref mesh.Triangles[index];
+                var world = new ClothTriangle(ToWorld(triangle.A, scale, pose), ToWorld(triangle.B, scale, pose), ToWorld(triangle.C, scale, pose));
+                if (world.IsValid) collider.Triangles.Add(world);
+            }
+        }
+
+        private static XnaVector3 ToWorld(Vector3 local, Vector3 scale, in RigidPose pose) =>
+            MathConverter.ToXna(pose.Position + Vector3.Transform(local * scale, pose.Orientation));
 
         /// <summary>
         /// Teleport a body to a full pose and wake it. <paramref name="resetVelocity"/>

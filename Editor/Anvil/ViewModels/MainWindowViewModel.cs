@@ -575,6 +575,88 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // -------- Build (File > Build / Build and Run) --------
+
+    private System.Threading.CancellationTokenSource? _buildCancel;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BuildCommand), nameof(BuildAndRunCommand), nameof(CancelBuildCommand))]
+    private bool _isBuilding;
+
+    private bool CanBuild => !IsBuilding;
+
+    /// <summary>Asks for the output folder (starting at the last one), then builds.</summary>
+    [RelayCommand(CanExecute = nameof(CanBuild))]
+    private async Task BuildAsync(Window? window)
+    {
+        window ??= (Avalonia.Application.Current?.ApplicationLifetime as
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (window?.StorageProvider is not { } sp) return;
+
+        string current = GameBuilder.ResolveOutputFolder();
+        IStorageFolder? start = null;
+        try
+        {
+            // The default folder may not exist yet: start at the closest existing parent.
+            string? dir = current;
+            while (dir != null && !System.IO.Directory.Exists(dir)) dir = System.IO.Path.GetDirectoryName(dir);
+            if (dir != null) start = await sp.TryGetFolderFromPathAsync(new Uri(dir));
+        }
+        catch { /* no suggestion */ }
+
+        var folders = await sp.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Build Game To",
+            AllowMultiple = false,
+            SuggestedStartLocation = start,
+        });
+        if (folders.Count == 0) return;
+        string folder = folders[0].Path.LocalPath;
+        try { GameBuilder.SaveOutputFolder(folder); }
+        catch (Exception ex) { AddConsoleEntry(ConsoleLevel.Warn, "Couldn't remember the build folder: " + ex.Message, "Anvil:Build"); }
+        await RunBuildAsync(folder, run: false);
+    }
+
+    /// <summary>Builds to the last output folder (Builds/&lt;window name&gt; at first) and starts the game.</summary>
+    [RelayCommand(CanExecute = nameof(CanBuild))]
+    private Task BuildAndRunAsync() => RunBuildAsync(GameBuilder.ResolveOutputFolder(), run: true);
+
+    [RelayCommand(CanExecute = nameof(IsBuilding))]
+    private void CancelBuild() => _buildCancel?.Cancel();
+
+    private async Task RunBuildAsync(string folder, bool run)
+    {
+        if (IsBuilding) return;
+        if (_bridge?.IsSceneDirty == true)
+            AddConsoleEntry(ConsoleLevel.Warn,
+                "The open scene has unsaved changes: the build uses the saved scene files. Save first to include them.",
+                "Anvil:Build");
+
+        IsBuilding = true;
+        _buildCancel = new System.Threading.CancellationTokenSource();
+        try
+        {
+            string? exe = await Task.Run(() => GameBuilder.BuildAsync(folder,
+                (level, message) => Dispatcher.UIThread.Post(() => AddConsoleEntry(level, message, "Anvil:Build")),
+                _buildCancel.Token));
+            if (exe == null || !run) return;
+            if (GameBuilder.TryRun(exe, out string error))
+                AddConsoleEntry(ConsoleLevel.Log, "Started " + System.IO.Path.GetFileName(exe), "Anvil:Build");
+            else
+                AddConsoleEntry(ConsoleLevel.Error, $"Couldn't start {exe}: {error}", "Anvil:Build");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Build failed: " + ex.Message, "Anvil:Build");
+        }
+        finally
+        {
+            _buildCancel.Dispose();
+            _buildCancel = null;
+            IsBuilding = false;
+        }
+    }
+
     // -------- Helpers --------
 
     private static SceneObjectViewModel? FindObject(IEnumerable<SceneObjectViewModel> list, string? id)

@@ -1,3 +1,4 @@
+using Engine.AI;
 using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
@@ -53,6 +54,17 @@ public abstract class ScriptBehaviour
     /// Runs after the new scene's scripts started, e.g. to move to its spawn point.
     /// </summary>
     public virtual void OnSceneLoaded() { }
+
+    // NPC hooks: raised by an NPC component (NpcComponent) on its own gameobject's scripts.
+
+    /// <summary>This NPC noticed <paramref name="target"/> (saw it, heard it close by, or was alerted).</summary>
+    public virtual void OnTargetSpotted(BasicEntity target) { }
+    /// <summary>This NPC gave up on <paramref name="target"/> after losing sight of it for Memory Time.</summary>
+    public virtual void OnTargetLost(BasicEntity target) { }
+    /// <summary>This NPC changed what it does, e.g. Patrolling to Alerted, to switch an animation or a colour.</summary>
+    public virtual void OnNpcStateChanged(NpcState previous, NpcState current) { }
+    /// <summary>This NPC attacked <paramref name="target"/> (Chase reaction, within Attack Range).</summary>
+    public virtual void OnNpcAttack(BasicEntity target) { }
 
     /// <summary>The behaviour whose Start, Update or hook is running (GameUI records it as a layer's owner).</summary>
     internal static ScriptBehaviour Running { get; set; }
@@ -344,6 +356,19 @@ public abstract class ScriptBehaviour
     /// <summary>Uses a gameobject directly (no ray), e.g. from a trigger or a menu.</summary>
     public bool Interact(BasicEntity target) =>
         InteractableComponent.Use(target, new Interaction { Interactor = GameObject, Hit = new RaycastHit { GameObject = target } });
+
+    /// <summary>
+    /// A walkable path from <paramref name="from"/> to <paramref name="to"/> on the scene's navigation grid (A* around
+    /// static colliders, for a character of <paramref name="agentRadius"/>): the ground points to walk through, the
+    /// last one at (or as close as possible to) the goal. False when there is no grid or no walkable ground near the start.
+    /// </summary>
+    public bool FindPath(Vector3 from, Vector3 to, List<Vector3> path, float agentRadius = 0.5f)
+    {
+        path.Clear();
+        var entities = Logic.GameFlow.SceneLogic?.BasicEntities;
+        NavGrid grid = entities == null ? null : Navigation.For(PhysicsScene, entities, new NavGridSettings(agentRadius), from);
+        return grid != null && grid.FindPath(from, to, path, out _);
+    }
 
     /// <summary>First gameobject in the active scene with this name, or null.</summary>
     public BasicEntity FindGameObject(string name) =>

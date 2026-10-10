@@ -86,6 +86,17 @@ clear, rain, sandstorm and snow. The arrows, Z/X, H and T tune intensity, wind,
 haze and time of day. It is the reference for changing the weather from a script.
 See [Weather.md](Weather.md).
 
+### NPC Test
+
+`Engine/Content/Scripts/NpcTestPlayerScript.cs` runs on the **Player** capsule of
+the `Scenes/NpcTest.obsc` sample, a third-person player among four NPCs (a
+patrolling guard, a villager, a critter and a sentry on a lookout). F shouts to
+alert the NPCs nearby and T shows their paths and view cones. Each NPC runs
+**NPC Reporter** (`NpcReporterScript.cs`), which tints it by state and posts its
+sightings to the HUD. The sentry's reporter sends the guard to search where it
+saw the player. It is the reference for the NPC component and its hooks. See
+[NPC_Navigation.md](NPC_Navigation.md).
+
 ### Helpers on a camera
 
 In a camera script, `GameObject` is `null` and `Camera` is the camera. The
@@ -381,6 +392,23 @@ the surfaces were closing just before the step resolved the contact: the impact
 speed on Enter, about zero while resting). A trigger is a Physics component with
 **Is Trigger** ticked: it overlaps instead of colliding. See
 [Collisions_and_Interaction.md](Collisions_and_Interaction.md).
+
+### NPC hooks and paths
+
+An NPC component raises these hooks on the scripts of its own gameobject. See
+[NPC_Navigation.md](NPC_Navigation.md).
+
+| Hook / member | What it does |
+| --- | --- |
+| `OnTargetSpotted(BasicEntity target)` | This NPC noticed its target (saw it, heard it close by, or was alerted). |
+| `OnTargetLost(BasicEntity target)` | This NPC gave up after losing sight of the target for its Memory Time. |
+| `OnNpcStateChanged(NpcState previous, NpcState current)` | This NPC changed what it does, for example from Patrolling to Alerted. |
+| `OnNpcAttack(BasicEntity target)` | This NPC attacked (Chase reaction, within Attack Range). |
+| `FindPath(from, to, path, agentRadius = 0.5f)` | Fills `path` with the ground points of a walkable route on the scene's navigation grid. `false` without a grid. |
+
+Drive an NPC through `GetComponent<NpcComponent>()`. It has `MoveTo`, `Investigate`,
+`Alert`, `Calm`, `CanSee`, and runtime state such as `State`, `CanSeeTarget` and
+`LastKnownTargetPosition`.
 
 ```csharp
 public override void OnCollisionEnter(Collision collision)

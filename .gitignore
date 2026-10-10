@@ -74,3 +74,5 @@ artifacts/
 # Generated files
 /scripts/
 Art/
+# Game builds from Anvil (File > Build)
+Builds/

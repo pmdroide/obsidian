@@ -9,6 +9,7 @@ through a ray. Try it in the `CollisionTest` sample scene (last in the scene lis
 | --- | --- |
 | **Body: Static** | Immovable collider built from the model's triangles. Scripts may still move it (it shoves Dynamic bodies out of the way). |
 | **Body: Dynamic** | Convex hull with mass. Gravity, collisions and the script force helpers apply. |
+| **Size** + **Default Size** | The collider's box (X, Y, Z) in model units, before the gameobject's Scale. The model's collider shape (mesh or hull) is stretched about the model's bounds centre to fill it. A new component starts at the model's bounds; **Default Size** fits it back to them. The selected gameobject shows its collider box in green. A flat axis (zero thickness) can't be stretched. |
 | **Is Trigger** | Overlaps instead of colliding. Nothing is pushed, raycasts pass through, and both sides get `OnTriggerEnter/Stay/Exit`. A Static trigger is the model's **convex hull**, so it is a solid volume: a body fully inside still counts. |
 | **Freeze Rotation** | Dynamic only. Contacts and impulses never tip or spin the body (infinite inertia). Use it for characters and upright props. |
 
@@ -121,6 +122,7 @@ acceleration (about 3200 N), so the physics solver does the pushing and heavy th
 | Prize Cube inside the vault | Interactable on a Dynamic object (use it, or carry it) | Color Cycle |
 | Dominoes and Impact Plate (north-east) | Chain reaction; the plate reports each hit's impact speed, flashes and clicks | Impact Reporter |
 | Ball Dispenser, Ball Chute and Stack Blocks (south-east) | Interactable button spawns physics balls onto a stacked tower (at most 8) | Ball Dispenser |
+| Curtain in a doorway, Cloth Crate, Drape Sheet on the Drape Table (east) | Cloth colliding with the scene: walk through the curtain or throw the crate at it; the sheet drapes over the table on Play ([Cloth.md](Cloth.md)) | Cloth Reporter |
 
 The HUD (`Content/UI/CollisionTest.xml` + `.css`) shows a crosshair that turns green over
 something usable, the action prompt, what the player is touching or carrying, and an event feed.

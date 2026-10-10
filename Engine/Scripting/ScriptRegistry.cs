@@ -24,12 +24,15 @@ public static class ScriptRegistry
         Register<BallDispenserScript>(BallDispenserScript.ScriptId, "Ball Dispenser");
         Register<GateLeverScript>(GateLeverScript.ScriptId, "Gate Lever");
         Register<ColorCycleScript>(ColorCycleScript.ScriptId, "Color Cycle");
+        Register<ClothReporterScript>(ClothReporterScript.ScriptId, "Cloth Reporter");
         Register<WeatherTestScript>(WeatherTestScript.ScriptId, "Weather Test");
         Register<PersistentPlayerScript>(PersistentPlayerScript.ScriptId, "Persistent Player");
         Register<ScenePortalScript>(ScenePortalScript.ScriptId, "Scene Portal");
         Register<CompanionOrbScript>(CompanionOrbScript.ScriptId, "Companion Orb");
         Register<PauseMenuScript>(PauseMenuScript.ScriptId, "Pause Menu");
         Register<RagdollTestScript>(RagdollTestScript.ScriptId, "Ragdoll Test");
+        Register<NpcTestPlayerScript>(NpcTestPlayerScript.ScriptId, "NPC Test Player");
+        Register<NpcReporterScript>(NpcReporterScript.ScriptId, "NPC Reporter");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

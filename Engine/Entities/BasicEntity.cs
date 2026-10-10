@@ -26,6 +26,13 @@ namespace Engine.Entities
         public readonly MaterialEffect Material;
         private MeshMaterialLibrary _materialLibrary;
         private readonly List<MaterialEffect> _materialInstances = new();
+        // LOD component, as registered: the models of levels 1..n and the camera distances they start at.
+        private readonly List<Model> _lodModels = new();
+        private readonly List<float> _lodDistances = new();
+        private float _lodCullDistance;
+
+        /// <summary>Models the library draws for LOD levels 1..n (level 0 is <see cref="Model"/>).</summary>
+        public IReadOnlyList<Model> LodModels => _lodModels;
 
         private int _id;
 
@@ -46,6 +53,7 @@ namespace Engine.Entities
         internal float AttachedMass;
         internal bool AttachedTrigger;
         internal bool AttachedFreezeRotation;
+        internal Vector3 AttachedColliderStretch;
         // Collider centre in entity-local (scaled) space; dynamic bodies sit on their centre of mass.
         internal Vector3 ColliderOffset;
         // Transform last exchanged with the body, used to detect editor/script moves.
@@ -241,22 +249,64 @@ namespace Engine.Entities
         public void RegisterInLibrary(MeshMaterialLibrary library)
         {
             _materialLibrary = library;
+            CollectLevelsOfDetail();
+            RegisterModel(library, Model, 0);
+            for (int i = 0; i < _lodModels.Count; i++)
+                RegisterModel(library, _lodModels[i], i + 1);
+        }
+
+        private void RegisterModel(MeshMaterialLibrary library, Model model, int lodLevel)
+        {
             var component = Components.OfType<MaterialComponent>().FirstOrDefault(c => c.Enabled);
             if (component == null)
             {
-                library.Register(Material, Model, WorldTransform);
+                library.Register(Material, model, WorldTransform, lodLevel);
                 return;
             }
-            if (Model == null) return;
-            foreach (var mesh in Model.Meshes)
+            if (model == null) return;
+            foreach (var mesh in model.Meshes)
                 foreach (var part in mesh.MeshParts)
                 {
                     var source = Material ?? part.Effect as MaterialEffect;
                     var instance = source != null ? source.Clone() : new MaterialEffect(part.Effect);
                     component.ApplyTo(instance);
                     _materialInstances.Add(instance);
-                    library.Register(instance, part, WorldTransform, mesh.BoundingSphere);
+                    library.Register(instance, part, WorldTransform, mesh.BoundingSphere, lodLevel);
                 }
+        }
+
+        // Reads the enabled LOD component into the levels the library draws; without one only the model draws.
+        private void CollectLevelsOfDetail()
+        {
+            _lodModels.Clear();
+            _lodDistances.Clear();
+            _lodCullDistance = 0;
+            WorldTransform.LodLevel = 0;
+            var lod = GetComponent<LodComponent>();
+            if (lod is not { Enabled: true }) return;
+            foreach (var level in lod.ResolveLevels(this))
+            {
+                _lodModels.Add(level.Model);
+                _lodDistances.Add(level.Distance);
+            }
+            _lodCullDistance = lod.ClampedCullDistance;
+        }
+
+        /// <summary>
+        /// Shows the LOD level for a camera at <paramref name="cameraPosition"/> (see <see cref="LodComponent"/>);
+        /// does nothing without an LOD component.
+        /// </summary>
+        public void SelectLevelOfDetail(Vector3 cameraPosition)
+        {
+            if (_lodModels.Count == 0 && _lodCullDistance <= 0) return;
+            // Measured to the centre of the model's bounds.
+            Vector3 center = Position + Vector3.Transform(BoundingBoxOffset * Scale, RotationMatrix);
+            int level = LodComponent.SelectLevel(Vector3.Distance(cameraPosition, center), _lodDistances,
+                _lodCullDistance, WorldTransform.LodLevel);
+            if (level == WorldTransform.LodLevel) return;
+            WorldTransform.LodLevel = level;
+            // Other meshes draw now: redo culling and redraw shadow maps this frame.
+            WorldTransform.HasChanged = true;
         }
 
         public void RefreshMaterials()
@@ -273,6 +323,10 @@ namespace Engine.Entities
             library.DeleteFromRegistry(this);
             foreach (var instance in _materialInstances) instance.Dispose();
             _materialInstances.Clear();
+            _lodModels.Clear();
+            _lodDistances.Clear();
+            _lodCullDistance = 0;
+            WorldTransform.LodLevel = 0;
             _materialLibrary = null;
         }
 
@@ -304,6 +358,10 @@ namespace Engine.Entities
 
         // Posed vertex buffers (Animator component) drawn in place of the shared mesh's; null = static.
         public Animation.SkinnedMeshInstance Skin;
+        // Simulated vertex buffers (Cloth component) drawn in place of the shared mesh's; null = static.
+        public Physics.ClothMeshInstance Cloth;
+        // LOD component: the level of detail that draws (0 = the model, 1..n = its LOD models, -1 = culled).
+        public int LodLevel;
 
         public TransformMatrix(Matrix world, int id)
         {

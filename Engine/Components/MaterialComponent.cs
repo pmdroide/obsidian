@@ -14,6 +14,8 @@ public sealed class MaterialComponent : GameComponent
 {
     public const string TypeId = "material";
     public const float MaxWaveHeight = 10f;
+    public const float MinPuddleSize = 0.1f, MaxPuddleSize = 50f;
+    public const float MinTiling = 0.01f, MaxTiling = 1000f;
     // Keep the initial water-example API; new records persist the existing material type enum.
     [JsonIgnore]
     public MaterialShader Shader
@@ -46,6 +48,17 @@ public sealed class MaterialComponent : GameComponent
     public float Clarity { get; set; } = 4f;
     /// <summary>Water only: shore and wave-crest foam amount, 0..1.</summary>
     public float Foam { get; set; } = 0.5f;
+    /// <summary>Wet Surface only: how wet it is in dry weather, 0..1 (1 also fills its puddles).</summary>
+    public float Wetness { get; set; }
+    /// <summary>Wet Surface only: share of the upward faces puddles cover when soaked, 0..1.</summary>
+    public float PuddleAmount { get; set; } = 0.5f;
+    /// <summary>Wet Surface only: typical puddle size in metres (world space, independent of tiling).</summary>
+    public float PuddleSize { get; set; } = 3f;
+    /// <summary>Wet Surface only: rain soaks the surface beyond <see cref="Wetness"/> and ripples its puddles.</summary>
+    public bool WeatherWetness { get; set; } = true;
+    /// <summary>Texture repeats across the mesh UVs, horizontally and vertically.</summary>
+    public float TilingU { get; set; } = 1f;
+    public float TilingV { get; set; } = 1f;
 
     // null inherits the model's map; empty explicitly removes it.
     public string BaseColorTexture { get; set; }
@@ -84,6 +97,12 @@ public sealed class MaterialComponent : GameComponent
         WaveHeight = material.WaveHeight,
         Clarity = material.WaterClarity,
         Foam = material.WaterFoam,
+        Wetness = material.Wetness,
+        PuddleAmount = material.PuddleAmount,
+        PuddleSize = material.PuddleSize,
+        WeatherWetness = material.WeatherWetness,
+        TilingU = material.TextureTiling.X,
+        TilingV = material.TextureTiling.Y,
     };
 
     public void ApplyTo(MaterialEffect material, ContentManager content = null)
@@ -104,6 +123,11 @@ public sealed class MaterialComponent : GameComponent
         material.WaveHeight = Limit(WaveHeight, 0, MaxWaveHeight);
         material.WaterClarity = Limit(Clarity, 0.05f, 50);
         material.WaterFoam = Limit(Foam, 0, 1);
+        material.Wetness = Limit(Wetness, 0, 1);
+        material.PuddleAmount = Limit(PuddleAmount, 0, 1);
+        material.PuddleSize = Limit(PuddleSize, MinPuddleSize, MaxPuddleSize);
+        material.WeatherWetness = WeatherWetness;
+        material.TextureTiling = new Vector2(Limit(TilingU, MinTiling, MaxTiling), Limit(TilingV, MinTiling, MaxTiling));
         content ??= Globals.content;
         ApplyTexture(BaseColorTexture, content, texture => material.AlbedoMap = texture);
         ApplyTexture(NormalTexture, content, texture => material.NormalMap = texture);

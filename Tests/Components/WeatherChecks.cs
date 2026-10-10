@@ -142,9 +142,9 @@ internal static class WeatherChecks
         string path = Path.Combine(new EditorBridge().ContentSourceRoot, "Scenes", "WeatherTest.obsc");
         var scene = SceneSerialization.LoadFromFile(path, assets);
         var scripts = scene.MainCamera?.GetComponents<ScriptBehaviourComponent>().Select(s => s.ScriptId).ToList();
-        Check(scene.BasicEntities.Count == 58 && scene.PointLights.Count == 4 && scene.DirectionalLights.Count == 1 &&
+        Check(scene.BasicEntities.Count == 59 && scene.PointLights.Count == 4 && scene.DirectionalLights.Count == 1 &&
               scene.BasicEntities.All(e => e.IsEnabled),
-            "the weather sample scene loads its village, pond, trees, dunes, markers and street lamps");
+            "the weather sample scene loads its village, wet plaza, pond, trees, dunes, markers and street lamps");
         Check(scripts != null && scripts.SequenceEqual(new[] { FreecamScript.ScriptId, WeatherTestScript.ScriptId }),
             "the weather sample's camera runs Freecam and the Weather Test script");
         Check(scene.Environment.Weather == WeatherType.Rain && scene.Environment.DayNightCycle &&

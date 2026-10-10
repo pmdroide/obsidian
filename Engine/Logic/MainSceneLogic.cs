@@ -110,6 +110,7 @@ namespace Engine.Logic
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
 
             SceneManager.Assets = assets;
+            LodComponent.FindModel = assets.FindModel;
             SceneManager.SceneChanged += OnSceneChanged;
 
             PlayMode = new PlayModeController(this);

@@ -55,6 +55,13 @@ namespace Engine.Logic
         public float SunDim;
         /// <summary>sRGB colour the day/night sun is tinted towards at full intensity (white = no tint).</summary>
         public Color SunTint = Color.White;
+        /// <summary>
+        /// How wet Wet Surface materials get at full intensity (0..1). Rain soaks them and fills puddles;
+        /// the renderer eases towards it (<see cref="SurfaceWetness"/>) so ground wets and dries over time.
+        /// </summary>
+        public float SurfaceWetness;
+        /// <summary>Raindrop ripples in puddles at full intensity (0..1).</summary>
+        public float PuddleRipples;
 
         /// <summary>Intensity x haze at which <see cref="HazeDistance"/> and <see cref="HazeMax"/> apply.</summary>
         public const float ReferenceHazeStrength = 0.4f;
@@ -75,6 +82,8 @@ namespace Engine.Logic
             HazeMax = 0.6f,
             CloudCoverage = 0.95f,
             SunDim = 0.6f,
+            SurfaceWetness = 1,
+            PuddleRipples = 1,
         };
 
         public static readonly WeatherProfile Sandstorm = new WeatherProfile
@@ -115,6 +124,7 @@ namespace Engine.Logic
             HazeMax = 0.7f,
             CloudCoverage = 0.9f,
             SunDim = 0.5f,
+            SurfaceWetness = 0.3f,
         };
 
         public static WeatherProfile For(WeatherType type) => type switch
@@ -149,6 +159,14 @@ namespace Engine.Logic
             return new Vector3(wind.X, wind.Y, -FallSpeed);
         }
 
+        /// <summary>Wetness Wet Surface materials move towards under these settings (0 = dry).</summary>
+        public static float TargetWetness(EnvironmentSettings settings) =>
+            (For(settings?.Weather ?? WeatherType.None)?.SurfaceWetness ?? 0) * Intensity(settings);
+
+        /// <summary>Strength of the raindrop ripples in puddles under these settings.</summary>
+        public static float TargetRipples(EnvironmentSettings settings) =>
+            (For(settings?.Weather ?? WeatherType.None)?.PuddleRipples ?? 0) * Intensity(settings);
+
         /// <summary>Cloud cover the day/night sky draws: the weather thickens the scene's clouds.</summary>
         public static float SkyCloudCoverage(EnvironmentSettings settings)
         {
@@ -157,5 +175,45 @@ namespace Engine.Logic
             if (profile == null) return clouds;
             return Math.Max(clouds, MathHelper.Lerp(clouds, profile.CloudCoverage, Intensity(settings)));
         }
+    }
+
+    /// <summary>
+    /// Scene-wide wetness of Wet Surface materials. It follows the weather over time: rain soaks the
+    /// ground in about <see cref="WetSeconds"/> and it dries in about <see cref="DrySeconds"/>.
+    /// A newly shown scene starts at its weather's wetness instead of drying out or soaking in.
+    /// </summary>
+    public sealed class SurfaceWetness
+    {
+        public const float WetSeconds = 8;
+        public const float DrySeconds = 40;
+        public const float RippleSeconds = 1.5f;
+
+        private object _scene;
+
+        /// <summary>0 dry .. 1 soaked with full puddles.</summary>
+        public float Wetness { get; private set; }
+        /// <summary>0 still puddles .. 1 heavy raindrop ripples.</summary>
+        public float Ripples { get; private set; }
+
+        /// <param name="scene">Identity of the shown scene; a change snaps to the new weather.</param>
+        /// <param name="seconds">Elapsed time; 0 (paused) holds the current state.</param>
+        public void Update(object scene, EnvironmentSettings settings, double seconds)
+        {
+            float wetness = WeatherProfile.TargetWetness(settings);
+            float ripples = WeatherProfile.TargetRipples(settings);
+            if (!ReferenceEquals(scene, _scene))
+            {
+                _scene = scene;
+                Wetness = wetness;
+                Ripples = ripples;
+                return;
+            }
+            float dt = double.IsFinite(seconds) ? (float)Math.Max(seconds, 0) : 0;
+            Wetness = Approach(Wetness, wetness, dt / (wetness > Wetness ? WetSeconds : DrySeconds));
+            Ripples = Approach(Ripples, ripples, dt / RippleSeconds);
+        }
+
+        private static float Approach(float value, float target, float step) =>
+            value < target ? Math.Min(value + step, target) : Math.Max(value - step, target);
     }
 }

@@ -107,6 +107,9 @@ namespace Engine.Physics
             Current = this;
         }
 
+        /// <summary>Counts <see cref="Update"/> calls, so per-frame caches (the navigation grid) know a frame passed.</summary>
+        public int Frame => _frame;
+
         /// <summary>The scene physics scripts query (raycasts): the most recently created instance.</summary>
         public static ScenePhysics Current { get; private set; }
 
@@ -131,6 +134,47 @@ namespace Engine.Physics
                 Distance = distance,
             };
             return true;
+        }
+
+        /// <summary>
+        /// Closest static collider along a ray: dynamic bodies, ragdoll parts and triggers are see-through.
+        /// What the navigation grid (<see cref="AI.NavGrid"/>) is built from.
+        /// </summary>
+        public bool RaycastStatic(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
+        {
+            hit = default;
+            if (!_physics.RayCast(origin, direction, maxDistance, null, null,
+                    out float distance, out Vector3 normal, out var body, out var staticHandle, staticOnly: true))
+                return false;
+
+            hit = new RaycastHit
+            {
+                GameObject = OwnerOf(body, staticHandle),
+                Point = origin + Vector3.Normalize(direction) * distance,
+                Normal = normal,
+                Distance = distance,
+            };
+            return true;
+        }
+
+        /// <summary>World-space gravity of the simulation (Z-up).</summary>
+        public Vector3 Gravity => _physics.Gravity;
+
+        /// <summary>
+        /// Fills <paramref name="into"/> with every collider whose bounds overlap [<paramref name="min"/>,
+        /// <paramref name="max"/>] that a cloth should stay out of: non-trigger bodies, statics and ragdoll parts,
+        /// except those of <paramref name="ignore"/> (the cloth's own gameobject). Water has no collider.
+        /// </summary>
+        public void CollectClothColliders(Vector3 min, Vector3 max, ClothColliderList into, BasicEntity ignore = null)
+        {
+            into.Clear();
+            _physics.CollectClothColliders(min, max, into);
+            for (int i = into.Count - 1; i >= 0; i--)
+            {
+                ClothCollider collider = into[i];
+                collider.GameObject = OwnerOf(collider.Body, collider.Static);
+                if (ignore != null && collider.GameObject == ignore) into.RemoveAt(i);
+            }
         }
 
         /// <summary>Linear (units/s) and angular (radians/s) velocity of a dynamic body; false without one.</summary>
@@ -435,9 +479,11 @@ namespace Engine.Physics
             float mass = e.Mass;
             bool trigger = desired != PhysicsBodyType.None && e.Physics?.IsTrigger == true;
             bool freezeRotation = desired == PhysicsBodyType.Dynamic && e.Physics?.FreezeRotation == true;
+            Vector3 stretch = e.Physics?.ColliderStretchFor(e) ?? Vector3.One;
 
             bool rebuild = e.AttachedPhysicsType != desired
-                || (desired != PhysicsBodyType.None && (e.AttachedScale != e.Scale || e.AttachedTrigger != trigger))
+                || (desired != PhysicsBodyType.None && (e.AttachedScale != e.Scale || e.AttachedTrigger != trigger
+                    || e.AttachedColliderStretch != stretch))
                 || (desired == PhysicsBodyType.Dynamic && (e.AttachedMass != mass || e.AttachedFreezeRotation != freezeRotation));
             if (!rebuild) return;
 
@@ -446,7 +492,7 @@ namespace Engine.Physics
 
             try
             {
-                Attach(e, desired, mass, trigger, freezeRotation);
+                Attach(e, desired, mass, trigger, freezeRotation, stretch);
             }
             catch (Exception ex)
             {
@@ -469,15 +515,38 @@ namespace Engine.Physics
                 var physics = e.Physics;
                 if (e.DynamicBody == null || physics == null || !physics.Buoyancy) continue;
 
-                // The model's bounds in body space: scaled, then relative to the collider's centre of mass.
-                Vector3 a = e.BoundingBox.Min * e.Scale - e.ColliderOffset;
-                Vector3 b = e.BoundingBox.Max * e.Scale - e.ColliderOffset;
+                // The collider's bounds in body space: scaled, then relative to the collider's centre of mass.
+                ColliderBounds(e, e.AttachedColliderStretch, out Vector3 min, out Vector3 max);
+                Vector3 a = min * e.Scale - e.ColliderOffset;
+                Vector3 b = max * e.Scale - e.ColliderOffset;
                 Buoyancy.Apply(_physics, e.DynamicBody.Value, Vector3.Min(a, b), Vector3.Max(a, b), e.AttachedMass,
                     physics.ClampedBuoyancyStrength, physics.ClampedWaterDrag, _water, time, dt);
             }
         }
 
-        private void Attach(BasicEntity e, PhysicsBodyType type, float mass, bool trigger, bool freezeRotation)
+        /// <summary>
+        /// The collider's box in model space: the model's bounds stretched about their centre by
+        /// <paramref name="stretch"/> (Physics > Collider Size).
+        /// </summary>
+        internal static void ColliderBounds(BasicEntity e, Vector3 stretch, out Vector3 min, out Vector3 max)
+        {
+            Vector3 center = (e.BoundingBox.Min + e.BoundingBox.Max) / 2;
+            Vector3 half = (e.BoundingBox.Max - e.BoundingBox.Min) / 2 * stretch;
+            min = center - half;
+            max = center + half;
+        }
+
+        /// <summary>Points stretched about the model's bounds centre; the same array when there is no stretch.</summary>
+        private static Vector3[] Stretched(BasicEntity e, Vector3[] points, Vector3 stretch)
+        {
+            if (stretch == Vector3.One) return points;
+            Vector3 center = (e.BoundingBox.Min + e.BoundingBox.Max) / 2;
+            var result = new Vector3[points.Length];
+            for (int i = 0; i < points.Length; i++) result[i] = center + (points[i] - center) * stretch;
+            return result;
+        }
+
+        private void Attach(BasicEntity e, PhysicsBodyType type, float mass, bool trigger, bool freezeRotation, Vector3 stretch)
         {
             Geometry g = GetGeometry(e);
             Quaternion orientation = Orientation(e);
@@ -485,14 +554,15 @@ namespace Engine.Physics
             if (type == PhysicsBodyType.Static && !trigger)
             {
                 // The mesh shape carries the (non-uniform) scale; the static carries the pose.
-                e.StaticBody = _physics.AddStaticMesh(g.Vertices, g.Indices, e.Position, orientation, e.Scale);
+                e.StaticBody = _physics.AddStaticMesh(Stretched(e, g.Vertices, stretch), g.Indices, e.Position, orientation, e.Scale);
                 e.ColliderOffset = Vector3.Zero;
                 _staticOwners[e.StaticBody.Value.Value] = e;
             }
             else
             {
-                var scaled = new Vector3[g.HullPoints.Length];
-                for (int i = 0; i < scaled.Length; i++) scaled[i] = g.HullPoints[i] * e.Scale;
+                Vector3[] hull = Stretched(e, g.HullPoints, stretch);
+                var scaled = new Vector3[hull.Length];
+                for (int i = 0; i < scaled.Length; i++) scaled[i] = hull[i] * e.Scale;
                 if (type == PhysicsBodyType.Static)
                 {
                     // A mesh is hollow: a body fully inside would touch no triangle and leave the trigger.
@@ -514,6 +584,7 @@ namespace Engine.Physics
             e.AttachedMass = mass;
             e.AttachedTrigger = trigger;
             e.AttachedFreezeRotation = freezeRotation;
+            e.AttachedColliderStretch = stretch;
             e.PhysicsScene = this;
             MarkSynced(e);
             _attached.Add(e);

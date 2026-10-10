@@ -85,6 +85,9 @@ That includes weather and time-of-day changes made in the Environment panel duri
 The last entry in the scene list. A village street:
 
 - six houses, a tower 88 m away and dunes further back;
+- **wet ground** that soaks and fills with puddles in the rain and dries after it: rocky dirt
+  around the village, a brick street and a cobblestone plaza (WetSurface materials, see
+  [Material_Component.md](Material_Component.md#wet-surfaces));
 - a pond with the water material, and trees;
 - three reference spheres (matte white, matte dark, glossy metal);
 - street lamps with warm point lights for night rain;
@@ -109,8 +112,9 @@ It starts in rain at 15:00 under a slow day/night cycle (30 minutes). The Main C
 ## Limitations
 
 - **No occlusion.** Rain and snow fall through roofs. There is no shelter or height map test yet.
-- **No surface response.** No wet surfaces, puddles, splashes or snow cover. The ground looks the
-  same in every weather.
+- **Surface response is opt-in.** Only materials with the **WetSurface** shader get wet, fill puddles
+  and ripple in the rain (see [Material_Component.md](Material_Component.md#wet-surfaces)). There are
+  no splashes or snow cover.
 - **Particles are lit by the sun and sky only.** Street lamps and other point lights do not light the
   rain.
 - **No sound.** Add rain or wind loops with an Audio component or `PlaySound(..., loop: true)`.
@@ -129,4 +133,5 @@ It starts in rain at 15:00 under a slow day/night cycle (30 minutes). The Main C
 | Play/Stop restore | `Engine/Logic/PlayMode.cs` |
 | Anvil | `Editor/Anvil/Models/EnvironmentViewModel.cs`, Environment panel in `Editor/Anvil/Views/MainWindow.axaml` |
 | Sample | `Engine/Content/Scenes/WeatherTest.obsc`, `Engine/Content/Scripts/WeatherTestScript.cs`, `Engine/Content/UI/WeatherTest.*` |
-| Checks | `Tests/Components/WeatherChecks.cs` (`--graphics` draws each weather on the GPU) |
+| Wet ground | `SurfaceWetness` in `Engine/Logic/Weather.cs`, `ApplyWetSurface` in `Engine/Content/Shaders/GBufferSetup/Gbuffer.fx` |
+| Checks | `Tests/Components/WeatherChecks.cs` (`--graphics` draws each weather on the GPU), `Tests/Components/WetSurfaceChecks.cs` |

@@ -8,6 +8,7 @@
     "Scenes/CollisionTest.obsc",
     "Scenes/WeatherTest.obsc",
     "Scenes/PersistenceTest.obsc",
-    "Scenes/PersistenceTest2.obsc"
+    "Scenes/PersistenceTest2.obsc",
+    "Scenes/NpcTest.obsc"
   ]
 }

@@ -1,5 +1,211 @@
 # Changelog
 
+## Added: LOD (level of detail) component and the LodTest sample (2026-10-10)
+
+**Why:** Every gameobject always drew its full model, however far away it was. The LOD component lets a gameobject draw simpler models in the distance, or nothing at all past a cull distance.
+
+- **New `LodComponent`** (`Engine/Components/LodComponent.cs`, type id `lod`, Inspector > Add Component > **LOD**).
+  - `Levels`: each level is a model key and the camera distance it starts at. `CullDistance` draws nothing from there on (0 = never).
+  - Switching back to a finer level needs the camera 5% closer, so a camera resting on a boundary doesn't flicker.
+  - Works in the editor viewport and in Play. Shadows, picking and every render pass use the current level. Physics, SDFs and bounds keep the gameobject's own model.
+  - Scripts read `CurrentLevel` (0 = own model, 1..n = a level, -1 = culled).
+- **Mesh library.** `MeshLibrary` stores a LOD level per registered instance (`LodLevels`), and `MeshMaterialLibrary.Draw` skips instances that aren't at their gameobject's current level (`TransformMatrix.LodLevel`). `BasicEntity.RegisterInLibrary` registers the LOD models as levels 1..n, and `DeleteFromRegistry` removes them all again. `Renderer.Draw` picks the levels once per frame, before the shadow maps (`MeshMaterialLibrary.SelectLevelsOfDetail`).
+- **Anvil inspector.** `LodComponentViewModel`: one row per level (model picker, distance, Remove), Add Level, and Cull Distance.
+- **Sample:** `Content/Scenes/LodTest.obsc`. A row of spheres turns into cubes at 20 m and is culled at 50 m. It is not in the scene list; open it from the Assets panel.
+- **Docs:** new `Docs/markdown/Level_of_Detail.md`; `Gameobject_Components.md` and `CLAUDE.md` updated.
+- **Checks:** new `Tests/Components/LodChecks.cs`. It covers level selection and hysteresis, culling, add/edit/remove through the bridge and inspector, save/load, cloning and the sample scene. With `--graphics` it also checks the mesh library registration with real models.
+- Note: the built-in `StanfordDragon` and `StanfordDragonLowpoly` aren't a usable LOD pair. Their sizes differ by about 18%, and `dragon_lowpoly` is actually the denser mesh (about 15k triangles against about 500).
+
+- Claude
+
+## Added: Engine wiring document (2026-10-10)
+
+**Why:** No single document explained how the engine is wired at a low level. The topic docs each cover one feature. This one shows who creates what, in which order, on which thread, and how one frame flows through the systems.
+
+- **New `Docs/markdown/Engine_Wiring.md`.** It covers:
+  - Assemblies and how each kind of file reaches the game: mgcb, scripts compiled into `Engine.dll`, loose files.
+  - The thread model, standalone and in Anvil.
+  - The exact boot order, including why `Globals.content` must be set before `Shaders`.
+  - The per-frame Update/Physics/Draw timeline and its one-frame lags.
+  - The static globals.
+  - The scene model, how scenes swap, and the ID/color encoding.
+  - The transform dirty-flag lifecycle.
+  - Components, scripts and Play mode, including scene loads during Play.
+  - BEPU sync and contact dispatch.
+  - The renderer: the `MeshMaterialLibrary` structure, a pass-by-pass render target table, the G-buffer layout, picking, shaders and settings.
+  - Assets and scene files, the editor bridge, input, GameUI and audio.
+  - A "where to start" table.
+- It also lists sharp edges found while mapping the code. No code was changed. The list includes:
+  - Scene files can't save runtime-imported models (`SceneSerialization` resolves keys from the public fields of `Assets` only).
+  - `Input.WasKeyPressed` ignores Anvil-forwarded keys.
+  - The Delete-key path in `EditorLogic` skips component `OnStop` and the physics detach.
+  - The debug-entity picking loop indexes `dirLights`.
+
+- Claude
+
+## Added: NPC pathfinding and behaviour (NPC component), and the NpcTest sample (2026-10-10)
+
+**Why:** The engine had no way to make computer-controlled characters walk around a level or react to the player. This adds pathfinding, sight, and a few basic actions for when an NPC sees the player, plus a scene to try them in.
+
+- **Engine: navigation grid** (`Engine/AI/NavGrid.cs`, `Engine/AI/Navigation.cs`).
+  - `NavGrid` is a height field of 0.25 m cells, built by casting one ray down per cell through the **static** colliders. Dynamic bodies (crates, characters) are ignored.
+  - A cell is walkable when its surface is at most 40° steep and nothing within the agent's clearance is a wall, a ledge or a hole. The clearance is the agent radius plus half a cell. Walking between cells allows steps up to 0.45 m, plus the slope over the distance, so ramps work.
+  - Connected areas are labelled as regions. `FindPath` runs A* (8 neighbours, no corner cutting), then shortens the result to straight walkable segments. A goal it can't reach gives a path to the closest reachable point, with `complete` false.
+  - Also: `TryRandomPoint`, `TryFleePoint`, `LineWalkable`, `NearestWalkable`, `TryGetHeight` and `IsReachable`.
+  - `NavGridSettings` sets the agent radius, step, slope and cell size. 0 or `new NavGridSettings()` means the defaults.
+  - `Navigation.For` shares one grid per physics scene and agent size. It rebuilds the grid when static colliders change, at most every 30 frames. `Navigation.Invalidate()` forces a rebuild.
+- **Engine: physics.** New `ScenePhysics.RaycastStatic`, which uses a new `staticOnly` option of `PhysicsSystem.RayCast`. New `ScenePhysics.Frame`.
+- **Engine: new NPC component** (`Engine/Components/NpcComponent.cs`, type id `npc`, Add Component > **NPC**).
+  - Idle behaviour (`NpcIdleBehaviour`): Stand, Wander (Wander Radius) or Patrol (Patrol Points, a comma-separated list of gameobject names), with a Wait Time at each point.
+  - Sight: a Target name (`Player`), Sight Range, Field of View around +Y, Hearing Range (any direction), and two line-of-sight rays from Eye Height, every 0.1 s.
+  - On sight it is Alerted (it stops and faces the target for Reaction Time), then reacts (`NpcReaction`):
+    - **Chase**: runs after the target and attacks within Attack Range, every Attack Cooldown seconds. An attack is an impulse of Attack Force on the target's body.
+    - **Follow**: keeps Follow Distance.
+    - **Flee**: runs Flee Distance away, again and again.
+    - **Watch**: turns to face the target.
+  - After losing sight for Memory Time, Chase and Follow search the last known position for Search Time. Then every NPC goes back to its idle behaviour, and Stand walks home.
+  - It moves a Dynamic body by velocity, with an acceleration limit. Without one, it moves the gameobject along the grid's ground. It turns about Z from its start rotation.
+  - It heads for the next path corner as soon as it can walk there straight. When stuck, it plans again, and after three tries it drops the path.
+  - Show Debug draws the path, the view cone and the sight line.
+  - Script API: `MoveTo`, `Investigate`, `Alert`, `Calm`, `CanSee`, `TargetObject`, and runtime state (`State`, `CanSeeTarget`, `LastKnownTargetPosition`, `Path`, `PathComplete`, ...). Events: `StateChanged`, `TargetSpotted`, `TargetLost`, `Attacked`.
+- **Scripting:** new `ScriptBehaviour` hooks `OnTargetSpotted`, `OnTargetLost`, `OnNpcStateChanged` and `OnNpcAttack`, which run on the NPC's own scripts. New helper `FindPath(from, to, path, agentRadius)`.
+- **Anvil:** new `NpcComponentViewModel` and an NPC Inspector template, grouped into Movement, Idle, Perception and Reaction. Settings that don't apply (Wander Radius, Patrol Points, Attack/Follow/Flee settings) hide.
+- **Sample:** new `Content/Scenes/NpcTest.obsc`, added at the end of the scene list. It is a 40 x 40 m walled yard with interior walls, a see-through hedge, pillars, crates, and a lookout with a ramp.
+  - **Guard** patrols four posts and chases.
+  - **Villager** wanders and follows.
+  - **Critter** wanders and flees.
+  - **Sentry** stands on the lookout and watches.
+  - New scripts:
+    - **NPC Test Player** (`NpcTestPlayerScript.cs`): third-person movement, F to shout and alert nearby NPCs, T to toggle debug lines, and a hit counter that knocks the player out after 3 hits.
+    - **NPC Reporter** (`NpcReporterScript.cs`): tints the NPC by state, posts to the feed, and has an Alarm Target, which the sentry uses to send the guard.
+    - `NpcTestFeed`.
+  - HUD: `Content/UI/NpcTest.xml` and `.css`.
+- **Tests:** new `Tests/Components/NpcChecks.cs`, with 65 checks:
+  - the grid: walls, clearance, steps, a ramp, dynamic bodies, unreachable goals, random and flee points, caching and rebuilds;
+  - sight;
+  - Play: patrol, chase and attack, losing the target, searching and resuming the patrol, a path around a wall, follow, flee, watch, and a body-less `MoveTo`;
+  - the Inspector, saving and cloning;
+  - a scripted Play run of the sample (patrol, follow, shout, sentry alarm, guard knock-out, Stop).
+  - Default run: 624 checks pass. Not yet looked at in the running engine or editor.
+- **Docs:** new `Docs/markdown/NPC_Navigation.md`; also updated `Gameobject_Components.md`, `Script_Behaviours.md` and `CLAUDE.md`.
+- **Known limits:**
+  - One walking level: the topmost static surface, so no paths under bridges or tables.
+  - Dynamic obstacles are avoided only by physics and replanning.
+  - NPCs don't avoid each other.
+  - Static NPC bodies are not supported, because a moving static rebuilds the grid.
+
+- Claude
+
+## Added: Cloth component with collisions, and a cloth station in CollisionTest (2026-10-10)
+
+**Why:** Nothing in the engine could bend or drape. The collision sample needed cloth that collides with the scene: a curtain to walk through and a sheet that drapes over furniture.
+
+- **Engine: new Cloth component** (`Engine/Components/ClothComponent.cs`, type id `cloth`, Add Component > **Cloth**).
+  - In Play it simulates the gameobject's mesh as cloth. Settings: Pin (`ClothPinMode`: None, TopEdge, TopCorners, Border, saved by name), Mass, Stiffness, Bend, Damping, Friction, Thickness, Wind (multiplies the scene's wind) and Collisions.
+  - Pin and Mass edits apply during Play, and a new Scale rebuilds the cloth.
+  - Scripts can use `AddImpulse`, `ResetCloth` and `Touching`. Stop restores the mesh.
+- **Engine: simulation** (`Engine/Physics/Cloth.cs`).
+  - `ClothTopology` welds vertices that share a position, such as the two sides of a double-sided mesh, into one particle. Every triangle edge becomes a stretch constraint, and the far corners of neighbouring triangles a bend constraint.
+  - `Cloth` runs XPBD in 10 substeps per frame: gravity, quadratic air drag with gusting wind, compliance-based constraints, then collisions.
+  - Contacts are inelastic, with Coulomb-like friction.
+  - Edges resist compression only as weakly as bending, so cloth buckles instead of springing back. This fixed a sheet dropped on its edge bouncing until it tangled.
+- **Engine: collisions.**
+  - `ScenePhysics.CollectClothColliders` / `PhysicsSystem.CollectClothColliders` read BEPU's broad phase around the cloth. Hulls and boxes (dynamic bodies, ragdoll parts) become world-space planes; static meshes become two-sided triangles (`ClothCollider.cs`). Triggers and the cloth's own gameobject are skipped.
+  - The coupling is one-way: bodies push the cloth, and the cloth doesn't push back.
+  - New `ScenePhysics.Gravity`.
+- **Engine: rendering.**
+  - `ClothMeshInstance` gives the model's vertex buffers dynamic copies. Each frame it writes the particles back with recomputed normals and tangent frames, matched to the facing and handedness the pipeline stored.
+  - New `TransformMatrix.Cloth`. `MeshMaterialLibrary` draws that copy in every pass, the same way as `Skin`.
+- **Content:**
+  - New `GameObjects/Cloth/cloth.obj`: a generated, double-sided 2 x 2 m plane in X/Z with 24 x 24 quads. It is in `Content.mgcb` and loaded as `Assets.Cloth` (bounding sphere doubled, so a swinging cloth isn't culled). `.gitignore`'s `*.[Oo]bj` rule hides it, so commit it with `git add -f`, as `capsule.obj` was.
+  - New **Cloth Reporter** script (`Content/Scripts/ClothReporterScript.cs`), which posts to the CollisionTest feed when something starts touching a cloth.
+- **Sample:** east side of `Content/Scenes/CollisionTest.obsc`.
+  - A red **Curtain** pinned at its top edge in a doorway (Curtain Post West/East, Curtain Rail). The player walks through it, it slides over them and falls back behind them.
+  - A 15 kg **Cloth Crate** to carry and throw at the curtain.
+  - A loose **Drape Sheet** that falls onto the **Drape Table** on Play.
+- **Anvil:** new `ClothComponentViewModel` and a Cloth Inspector template (Pin list, numeric fields, Collisions, help text).
+- **Tests:**
+  - New `Tests/Components/ClothChecks.cs` covers:
+    - welding, constraints and pins;
+    - hanging without stretching, a sheet dropped on its edge, draping over a table, and a body walking through a curtain;
+    - wind, impulses and the collider query;
+    - the component, Inspector, saving and cloning;
+    - a scripted Play run of the sample in which the player walks through the curtain.
+  - With `--graphics` it also checks the real model's welding and written frames, two-sided drawing, and drawing the simulated vertices.
+  - `CollisionChecks` now expects 44 gameobjects and 9 scripted ones in the sample.
+  - Default run: 559 checks pass. `--graphics` run: 678 checks pass.
+  - Not yet looked at in the running editor.
+- **Docs:** new `Docs/markdown/Cloth.md`; `Gameobject_Components.md`, `Collisions_and_Interaction.md` (station table), `CLAUDE.md`.
+- **Known limits:** no self-collision or tearing. A body can't stand on cloth (one-way coupling). Raycasts don't hit cloth. Colliders come from the previous physics step.
+
+- Claude
+
+## Added: wet surface shader with puddles and rain response (2026-10-10)
+
+**Why:** Ground looked the same in every weather. Rain should leave bricks, cobblestones and dirt soaked, with puddles that mirror the sky, like a road after a shower.
+
+- **Engine:** new material type **WetSurface** (`MaterialEffect.MaterialTypes.WetSurface` = 7). New `MaterialComponent` fields `Wetness`, `PuddleAmount`, `PuddleSize` and `WeatherWetness`, saved and copied with the component.
+  - `ApplyWetSurface` in `Content/Shaders/GBufferSetup/Gbuffer.fx` runs for every G-buffer technique, so it works with any base color/normal/roughness maps.
+    - It darkens and glosses the surface; cavities soak first.
+    - It pools flat, nearly mirror-smooth puddles on faces that look up. Puddles follow a world-space noise field and the texture's cavities (the Displacement map is used as height, without parallax).
+    - In rain it animates raindrop ripples in the puddles.
+  - Wet pixels are written as material type 0, so lighting treats them like Basic.
+  - New UV tiling (`TilingU/V`) on every material, applied in both G-buffer vertex shaders.
+  - `GBufferRenderModule` passes the new `World`, `View`, tiling and wet parameters.
+  - Rain drives the wetness: `WeatherProfile.SurfaceWetness`/`PuddleRipples` (rain 1, snow 0.3 damp only), `WeatherProfile.TargetWetness/TargetRipples`, and a new `SurfaceWetness` tracker in `Engine/Logic/Weather.cs`.
+    - The renderer updates the tracker each frame: wet in about 8 s, dry in about 40 s, held while paused.
+    - A newly shown scene starts at its weather's wetness.
+- **Environment reflections:** wet pixels set the previously unused albedo alpha. `DeferredEnvironmentMap.fx` then gives them, and only them:
+  - a view-dependent Schlick fresnel (puddles mirror at grazing angles and show the wet ground from above);
+  - the camera-relative view ray;
+  - reflections kept at least ~11° above the horizon, where the probe sees sky rather than its unlit ground.
+  - The existing fresnel for other materials is unchanged: it is effectively always 1, and its incident vector subtracts the camera position twice. Those are pre-existing issues, left alone so other scenes do not change.
+- **Anvil:**
+  - Shader list has **WetSurface**, plus an **Apply Wet Floor Example** button and a wet panel (Wetness, Puddle Amount, Puddle Size, Wet in Rain).
+  - Textures has a **Tiling** U/V row.
+  - Code: `MaterialInfo` in `SceneObjectViewModel.cs` and the Material template in `MainWindow.axaml`.
+- **Content:** CC0 Poly Haven ground sets in `Content/GameObjects/Textures/Ground/` (Bricks = brick_floor, Cobblestone = cobblestone_floor_08, RockyDirt = rocky_trail; BaseColor/Normal/Roughness/Height at 1k, with `LICENSE.txt`), added to `Content.mgcb`.
+- **Sample:** `Content/Scenes/WeatherTest.obsc`
+  - The Ground is wet rocky dirt (tiling 100) and the Street wet herringbone bricks.
+  - A new **Plaza** gameobject is wet cobblestone, front-left of the start camera.
+  - All three follow the rain and dry when the weather script switches to clear skies.
+- **Tests:**
+  - New `Tests/Components/WetSurfaceChecks.cs` covers:
+    - the weather wetness and its easing;
+    - Inspector edits, the example button, cloning and save/load (including older scenes);
+    - the sample scene and the shipped textures;
+    - with `--graphics`, a real G-buffer render: the wet flag, darkening, glossier surface, puddles and Puddle Amount, ripples, Wet in Rain off, no parallax, Basic unaffected, and tiling.
+  - `WeatherChecks` expects 59 gameobjects in the sample.
+  - Default run: 516 checks pass. `--graphics` run: 630 checks pass.
+  - Checked visually in the engine on WeatherTest: rain, a sun-facing open field, the street, the plaza, and drying after the rain.
+- **Docs:** `Docs/markdown/Material_Component.md` (Tiling and a Wet surfaces section), `Docs/markdown/Weather.md` (sample, limitations, code map), `CLAUDE.md`.
+- **Known limits:** puddles close to the camera can look dark. That happens when the scene's environment probe sees dark surroundings in that direction (cube captures have no ambient light) and screen-space reflections miss. Puddles do not raise the surface or affect physics.
+
+- Claude
+
+## Added: Build and Build and Run in Anvil (2026-10-10)
+
+**Why:** You could only get a standalone game by running `dotnet publish` by hand.
+
+- **Anvil:** File menu has **Build...** (Ctrl+Shift+B: pick an output folder, then build), **Build and Run** (Ctrl+B: build to the last folder, `Builds/<window name>` the first time, then start the game) and **Cancel Build** (shown while building). Progress, errors and a warning count go to the Console (source `Anvil:Build`). Building with unsaved scene changes logs a warning, because the build uses the saved files. Commands live in `MainWindowViewModel` (`BuildCommand`, `BuildAndRunCommand`, `CancelBuildCommand`, `IsBuilding`).
+- **New `Editor/Anvil/Services/GameBuilder.cs`:** runs `dotnet publish Engine/Engine.csproj -c Release -r win-x64 --self-contained true`, leaving out LibVLC's x86 natives and the framework's translated resources (about 360 MB instead of 540 MB). Then it renames `Engine.exe` after Game Settings > window name. The app host still finds `Engine.dll`. It refuses output folders inside `Engine/`, because the content globs would ship the build in the next build. The output folder is remembered in `Content/System/BuildSettings.json`, relative to the checkout when inside it.
+- **Repo:** `.gitignore` ignores `Builds/`.
+- **Tests:** new `Tests/Components/BuildChecks.cs` covers executable naming, the remembered folder and the refused folder. `--build` also publishes the real game and checks the exe, the shipped scenes/settings/content and the trimmed natives. All default checks and the `--build` run pass (497 checks). A trimmed build renamed to `My Game.exe` started and ran.
+- **Docs:** `CLAUDE.md`.
+
+- Claude
+
+## Added: editable Physics collider size with a Default Size button (2026-10-10)
+
+**Why:** A Physics collider always matched its model exactly, with no way to make it bigger or smaller.
+
+- **Engine:** `PhysicsComponent` has `ColliderSizeX/Y/Z`: the collider's box in model units, before Scale. Saved with the component. 0 or invalid means the model's bounds, and `OnChanged`/`OnAdded` write the bounds in, so new and older components show real numbers. Also new: `ResetColliderSize()`, `ColliderSizeFor(owner)` and `ColliderStretchFor(owner)`. `ScenePhysics` stretches the mesh or hull about the model's bounds centre to fit the size. It rebuilds the body when the size changes (`BasicEntity.AttachedColliderStretch`), and buoyancy uses the stretched bounds. The renderer draws the selected gameobject's collider box in green (`LineHelperManager.AddBox`).
+- **Anvil:** the Physics inspector has a **Size** row (X/Y/Z) and a **Default Size** button (`PhysicsComponentViewModel.ColliderSizeX/Y/Z`, `ResetColliderSizeCommand`).
+- **Tests:** `CollisionChecks.CheckColliderSize` covers the default size, taller dynamic and static colliders, saving, Default Size, and invalid values. All 489 default checks pass.
+- **Docs:** `Docs/markdown/Collisions_and_Interaction.md`.
+
+- Claude
+
 ## Added: ragdoll physics for skinned gameobjects (2026-10-10)
 
 **Why:** Skinned characters could animate but had no physical body: nothing could knock them over, and they couldn't collapse.

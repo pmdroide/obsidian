@@ -1809,6 +1809,347 @@
         }
       ],
       "IsEnabled": true
+    },
+    {
+      "Id": 38,
+      "Name": "Curtain Post West",
+      "ModelKey": "Cube",
+      "Position": [
+        9.6,
+        1.5,
+        1.2
+      ],
+      "Scale": [
+        0.08,
+        0.08,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "c5a6b46d-458d-4ddb-aca0-13db64fb1cbe",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "819f2e1e-e8b4-451a-953f-c55067969d3f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.16,
+            "Blue": 0.1,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 39,
+      "Name": "Curtain Post East",
+      "ModelKey": "Cube",
+      "Position": [
+        12.4,
+        1.5,
+        1.2
+      ],
+      "Scale": [
+        0.08,
+        0.08,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b93df91c-272d-479a-8d00-6bb05f6dbd4b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "65c249e4-7cc8-4a27-8cb0-8b50a14c8e38",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.24,
+            "Green": 0.16,
+            "Blue": 0.1,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 40,
+      "Name": "Curtain Rail",
+      "ModelKey": "Cube",
+      "Position": [
+        11,
+        1.5,
+        2.37
+      ],
+      "Scale": [
+        1.48,
+        0.05,
+        0.05
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "950f5484-a4d9-4f5a-b670-4642348c7f14",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.75,
+            "Green": 0.6,
+            "Blue": 0.3,
+            "Roughness": 0.35,
+            "Metallic": 0.8,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 41,
+      "Name": "Curtain",
+      "ModelKey": "Cloth",
+      "Position": [
+        11,
+        1.5,
+        1.2
+      ],
+      "Scale": [
+        1.25,
+        1,
+        1.1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5d8e88e0-7c9c-460c-b54e-b1c5bdb25d1b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.55,
+            "Green": 0.06,
+            "Blue": 0.08,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "cloth",
+          "InstanceId": "32857115-cd07-404a-abca-04e15fb08b2f",
+          "Data": {
+            "Pin": "TopEdge",
+            "Mass": 1.5,
+            "Stiffness": 0.95,
+            "Bend": 0.2,
+            "Damping": 0.1,
+            "Friction": 0.6,
+            "Thickness": 0.03,
+            "Wind": 0.15,
+            "Collisions": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "bed186fe-0eee-442d-bee9-ab5e7deb3b4f",
+          "Data": {
+            "ScriptId": "cloth-reporter",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 42,
+      "Name": "Cloth Crate",
+      "ModelKey": "Cube",
+      "Position": [
+        11,
+        -1.2,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a76f38a2-7039-448c-8248-a3b5cd54b22d",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 15,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "59153993-6abb-4204-9067-2d5333b6c0ed",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.16,
+            "Green": 0.55,
+            "Blue": 0.55,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 43,
+      "Name": "Drape Table",
+      "ModelKey": "Cube",
+      "Position": [
+        11.2,
+        5.2,
+        0.45
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.45
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d732c351-ef12-4602-ab18-1d785195f419",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "b8564116-a761-4e35-812d-c27a3f031373",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.36,
+            "Green": 0.24,
+            "Blue": 0.15,
+            "Roughness": 0.55,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 44,
+      "Name": "Drape Sheet",
+      "ModelKey": "Cloth",
+      "Position": [
+        11.2,
+        5.2,
+        1.5
+      ],
+      "Scale": [
+        0.8,
+        1,
+        0.8
+      ],
+      "Rotation": [
+        -0.70710677,
+        0,
+        0,
+        0.70710677
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "efb26b9d-c7a6-4a43-90f8-c9e68c907e2c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.86,
+            "Green": 0.82,
+            "Blue": 0.72,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "cloth",
+          "InstanceId": "54dd2966-71c6-4866-b964-f45db2e2c10a",
+          "Data": {
+            "Pin": "None",
+            "Mass": 0.6,
+            "Stiffness": 0.95,
+            "Bend": 0.15,
+            "Damping": 0.1,
+            "Friction": 0.8,
+            "Thickness": 0.025,
+            "Wind": 0.1,
+            "Collisions": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "6f28a7c5-d8b1-4a6f-8a14-c67a27919748",
+          "Data": {
+            "ScriptId": "cloth-reporter",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
     }
   ],
   "PointLights": [],

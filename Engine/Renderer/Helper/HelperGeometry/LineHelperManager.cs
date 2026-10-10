@@ -144,6 +144,19 @@ namespace Engine.Renderer.Helper.HelperGeometry
             AddLineStartEnd(vertices[7], vertices[4], 1);
         }
 
+        /// <summary>A box given in model space, transformed by <paramref name="world"/>, for one frame.</summary>
+        public void AddBox(Vector3 min, Vector3 max, Matrix world, Color color)
+        {
+            Vector3[] c = new BoundingBox(min, max).GetCorners();
+            for (int i = 0; i < c.Length; i++) c[i] = Vector3.Transform(c[i], world);
+            for (int i = 0; i < 4; i++)
+            {
+                AddLineStartEnd(c[i], c[(i + 1) % 4], 1, color, color);
+                AddLineStartEnd(c[i + 4], c[(i + 1) % 4 + 4], 1, color, color);
+                AddLineStartEnd(c[i], c[i + 4], 1, color, color);
+            }
+        }
+
         public void AddBoundingBox(BasicEntity basicEntity)
         {
             Vector3[] vertices = new Vector3[8];

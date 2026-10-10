@@ -33,6 +33,9 @@ public static class ComponentRegistry
         Register<AnimatorComponent>(AnimatorComponent.TypeId, "Animator");
         Register<RagdollComponent>(RagdollComponent.TypeId, "Ragdoll");
         Register<InteractableComponent>(InteractableComponent.TypeId, "Interactable");
+        Register<ClothComponent>(ClothComponent.TypeId, "Cloth");
+        Register<NpcComponent>(NpcComponent.TypeId, "NPC");
+        Register<LodComponent>(LodComponent.TypeId, "LOD");
     }
 
     /// <summary>Definitions in registration order (the Add Component menu order).</summary>

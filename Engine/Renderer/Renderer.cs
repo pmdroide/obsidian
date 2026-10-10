@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Engine.Entities;
 using Engine.Logic;
+using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
 using Engine.Renderer.Helper;
@@ -46,6 +47,9 @@ namespace Engine.Renderer
 
         private ShadowMapRenderModule _shadowMapRenderModule;
         private GBufferRenderModule _gBufferRenderModule;
+        // Wet Surface materials soak and dry with the scene's weather
+        private readonly SurfaceWetness _surfaceWetness = new SurfaceWetness();
+        private double _wetSurfaceTime;
         private TemporalAntialiasingRenderModule _temporalAntialiasingRenderModule;
         private DeferredEnvironmentMapRenderModule _deferredEnvironmentMapRenderModule;
 
@@ -337,6 +341,14 @@ namespace Engine.Renderer
             _lighting = lighting;
             _lightingSettings = lightingSettings;
 
+            // Paused (pause menu): puddles keep their wetness and ripples hold still.
+            double wetSeconds = GameFlow.Paused ? 0 : gameTime.ElapsedGameTime.TotalSeconds;
+            _surfaceWetness.Update(scene, scene?.Environment, wetSeconds);
+            _wetSurfaceTime = (_wetSurfaceTime + wetSeconds) % 3600;
+            _gBufferRenderModule.SceneWetness = _surfaceWetness.Wetness;
+            _gBufferRenderModule.SceneRipples = _surfaceWetness.Ripples;
+            _gBufferRenderModule.Time = (float)_wetSurfaceTime;
+
             //Reset the stat counter, so we can count stats/information for this frame only
             ResetStats();
 
@@ -353,6 +365,9 @@ namespace Engine.Renderer
 
             //Update the mesh data for changes in physics etc.
             meshMaterialLibrary.FlagMovedObjects(entities);
+
+            //LOD components: pick each gameobject's level for this camera before any pass draws
+            meshMaterialLibrary.SelectLevelsOfDetail(entities, camera.Position);
 
             //Check if we changed some drastic stuff for which we need to reload some elements
             CheckRenderChanges(directionalLights);
@@ -573,6 +588,13 @@ namespace Engine.Renderer
                             HelperGeometryManager.GetInstance()
                                 .AddBoundingBox(editorData.SelectedObject as BasicEntity);
                         }
+
+                    // Physics > Collider Size, so it can be fitted by eye.
+                    if (editorData.SelectedObject is BasicEntity { Physics: { Enabled: true } physics } selected)
+                    {
+                        ScenePhysics.ColliderBounds(selected, physics.ColliderStretchFor(selected), out Vector3 min, out Vector3 max);
+                        HelperGeometryManager.GetInstance().AddBox(min, max, selected.WorldTransform.World, Color.LimeGreen);
+                    }
                 }
             }
 

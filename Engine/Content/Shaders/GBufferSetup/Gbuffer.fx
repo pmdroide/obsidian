@@ -9,6 +9,8 @@
 
 #include "../Common/helper.fx"
 
+float4x4  World;
+float4x4  View;
 float4x4  WorldView;
 float4x4  WorldViewProj;
 float3x3  WorldViewIT; //Inverse Transposed
@@ -30,6 +32,17 @@ float3 SurfaceTint = float3(1, 1, 1);
 float2 ComponentSurface;
 bool ComponentRoughnessMap = false;
 bool ComponentMetallicMap = false;
+// Texture repeats across the mesh UVs.
+float2 TextureTiling = float2(1, 1);
+
+// Wet Surface material type (see WriteBuffers)
+bool WetSurface = false;
+// x: wetness (material + weather), y: puddle amount, z: 1 / puddle size in metres,
+// w: 1 = puddle height from DisplacementMap, 0 = from the albedo brightness
+float4 WetParams = float4(0, 0.5, 0.33, 0);
+// Raindrop ripples in the puddles (0 = still water)
+float Ripples = 0;
+// (Time, the ripple clock, is declared in helper.fx)
 
 Texture2D<float4> Texture;
 
@@ -78,6 +91,7 @@ struct DrawBasic_VSOut
     float3 Normal : NORMAL0;
     float2 TexCoord : TEXCOORD1;
     float Depth : TEXCOORD2;
+    float3 WorldPos : TEXCOORD6;
 };
 
 struct DrawNormals_VSIn
@@ -95,6 +109,7 @@ struct DrawNormals_VSOut
     float3x3 WorldToTangentSpace : TEXCOORD3;
     float2 TexCoord : TEXCOORD1;
     float Depth : TEXCOORD0;
+    float3 WorldPos : TEXCOORD6;
 };
 
 struct Render_IN
@@ -105,6 +120,9 @@ struct Render_IN
     float2 Depth : DEPTH;
     float Metallic : TEXCOORD1;
     float roughness : TEXCOORD2;
+    float3 WorldPos : TEXCOORD3;
+    // Interpolated mesh normal (view space) before normal mapping
+    float3 GeoNormal : TEXCOORD4;
 };
 
 struct PixelShaderOutput
@@ -123,7 +141,8 @@ DrawBasic_VSOut DrawBasic_VertexShader(DrawBasic_VSIn input)
     DrawBasic_VSOut Output;
     Output.Position = mul(input.Position, WorldViewProj);
 	Output.Normal = mul(input.Normal, WorldViewIT);//mul(float4(input.Normal, 0), World).xyz;
-    Output.TexCoord = input.TexCoord;
+    Output.TexCoord = input.TexCoord * TextureTiling;
+    Output.WorldPos = mul(input.Position, World).xyz;
 
 	//Linear Depth buffer instead of Z / W
 	Output.Depth = mul(input.Position, WorldView).z / -FarClip;//float2(Output.Position.z, Output.Position.w);
@@ -137,7 +156,8 @@ DrawNormals_VSOut DrawNormals_VertexShader(DrawNormals_VSIn input)
 	Output.WorldToTangentSpace[0] = mul(input.Tangent, WorldViewIT);//mul(normalize(float4(input.Tangent, 0)), World).xyz;
     Output.WorldToTangentSpace[1] = mul(input.Binormal, WorldViewIT);//mul(normalize(float4(input.Binormal, 0)), World).xyz;
     Output.WorldToTangentSpace[2] = mul(input.Normal, WorldViewIT);//mul(normalize(float4(input.Normal, 0)), World).xyz;
-    Output.TexCoord = input.TexCoord;
+    Output.TexCoord = input.TexCoord * TextureTiling;
+    Output.WorldPos = mul(input.Position, World).xyz;
 
 	//Linear Depth buffer instead of Z / W
 	Output.Depth = mul(input.Position, WorldView).z / -FarClip;//float2(Output.Position.z, Output.Position.w);
@@ -150,6 +170,105 @@ float3 GetNormalMap(float2 TexCoord)
 	return NormalMap.Sample(TextureSamplerTrilinear, TexCoord).rgb - float3(0.5f, 0.5f, 0.5f);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  WET SURFACE
+
+float WetHash(float2 p)
+{
+    float3 p3 = frac(p.xyx * 0.1031f);
+    p3 += dot(p3, p3.yzx + 33.33f);
+    return frac((p3.x + p3.y) * p3.z);
+}
+
+float WetNoise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float2 u = f * f * (3 - 2 * f);
+    return lerp(lerp(WetHash(i), WetHash(i + float2(1, 0)), u.x),
+                lerp(WetHash(i + float2(0, 1)), WetHash(i + float2(1, 1)), u.x), u.y);
+}
+
+// 0..1, centred on 0.5
+float WetFbm(float2 p)
+{
+    float value = 0;
+    float amplitude = 0.5f;
+    [unroll]
+    for (int i = 0; i < 4; i++)
+    {
+        value += amplitude * WetNoise(p);
+        // Rotate each octave so the value-noise grid does not show
+        p = mul(p, float2x2(1.6f, 1.2f, -1.2f, 1.6f)) + 7.31f;
+        amplitude *= 0.5f;
+    }
+    return value / 0.9375f;
+}
+
+// One layer of raindrop rings, one drop per cell (p in cells). Returns the water slope (world XY).
+float2 RippleLayer(float2 p, float time, float density)
+{
+    float2 cell = floor(p);
+    float seed = WetHash(cell);
+    float cycle = time * 1.3f + seed;
+    float phase = frac(cycle);
+    // Every cycle the cell's drop lands somewhere else, or not at all in light rain
+    float2 rnd = float2(WetHash(cell + floor(cycle) * 7.13f), WetHash(cell + floor(cycle) * 3.71f + 19.1f));
+    float alive = step(WetHash(cell + floor(cycle) * 5.31f + 41.7f), density);
+    float2 delta = frac(p) - 0.25f - rnd * 0.5f;
+    float d = length(delta) + 0.0001f;
+    float x = d - phase * 0.3f;
+    // A few rings travelling outwards that fade as they grow
+    float envelope = saturate(1 - abs(x + 0.05f) * 10) * (1 - phase) * (1 - phase);
+    float slope = sin(x * 70) * envelope;
+    return delta / d * slope * alive;
+}
+
+void ApplyWetSurface(inout Render_IN input, float2 texCoord)
+{
+    float wetness = WetParams.x;
+    float3 viewUp = normalize(mul(float3(0, 0, 1), (float3x3)View));
+    float3 geoNormal = normalize(input.GeoNormal);
+    // Water only pools on faces that look up; walls just get damp
+    float upFacing = smoothstep(0.75f, 0.95f, dot(geoNormal, viewUp));
+
+    // 0 = cavity (mortar, gaps between stones) .. 1 = top of a brick or stone
+    float height = WetParams.w > 0.5f
+        ? DisplacementMap.Sample(TextureSampler, texCoord).r
+        : saturate(dot(input.Color.rgb, float3(0.3f, 0.59f, 0.11f)) * 2);
+
+    // Puddles fill the low parts of a world-space noise field, cavities first
+    float field = lerp(WetFbm(input.WorldPos.xy * WetParams.z), height, 0.3f);
+    float coverage = WetParams.y * saturate(wetness * 2 - 1);
+    float level = coverage > 0 ? lerp(0.3f, 0.65f, coverage) : -1;
+    float puddle = saturate((level - field) / 0.03f) * upFacing;
+    float rim = saturate((level + 0.06f - field) / 0.06f) * upFacing;
+
+    // Porous surfaces darken and their micro surface fills with water; cavities soak first
+    float damp = saturate(max(wetness * (1.4f - 0.6f * height) * lerp(0.6f, 1, upFacing), rim));
+
+    input.Color.rgb *= lerp(1, 0.45f, damp);
+    input.Color.rgb *= lerp(1, 0.6f, puddle);
+    input.roughness = lerp(input.roughness, 0.25f, damp * 0.8f);
+    // Not lower: the sun's highlight on a sharper mirror overflows the half-float light buffer
+    input.roughness = lerp(input.roughness, 0.06f, puddle);
+    input.Metallic = lerp(input.Metallic, 0, puddle);
+
+    // A water film softens the normal map; puddles have a flat (rippling) water surface
+    float3 normal = normalize(lerp(input.Normal, geoNormal, damp * 0.3f));
+    float3 waterNormal = viewUp;
+    float distance = input.Depth.x * FarClip;
+    [branch]
+    if (Ripples > 0.001f && puddle > 0 && distance < 40)
+    {
+        float2 p = input.WorldPos.xy / 0.3f;
+        float2 slope = RippleLayer(p, Time, Ripples) + RippleLayer(p * 1.37f + 5.2f, Time + 0.43f, Ripples);
+        slope *= Ripples * saturate(1 - distance / 40);
+        waterNormal = normalize(mul(normalize(float3(-slope * 0.9f, 1)), (float3x3)View));
+    }
+    input.Normal = normalize(lerp(normal, waterNormal, puddle));
+}
+
 //See BufferSetup.dgml for overview
 PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
 {       
@@ -159,6 +278,9 @@ PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
         input.roughness = ComponentRoughnessMap ? RoughnessMap.Sample(TextureSampler, texCoord).r : ComponentSurface.x;
         input.Metallic = ComponentMetallicMap ? MetallicMap.Sample(TextureSampler, texCoord).r : ComponentSurface.y;
     }
+    [branch]
+    if (WetSurface)
+        ApplyWetSurface(input, texCoord);
     float4 finalValue = input.Color;
 
     //Deferred MRT
@@ -167,8 +289,8 @@ PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
 
     Out.Color = finalValue;
 
-	//Free
-	Out.Color.a = 0; //encodeMetallicMattype(input.Metallic, MaterialType);
+	//Flags Wet Surface pixels for the view-dependent fresnel in DeferredEnvironmentMap
+	Out.Color.a = WetSurface ? 1 : 0; //encodeMetallicMattype(input.Metallic, MaterialType);
 
 	//Only use rg with this encoding
     Out.Normal.rg =  encode(input.Normal).xy; //
@@ -207,6 +329,8 @@ PixelShaderOutput DrawTexture_PixelShader(DrawBasic_VSOut input)
     float4 outputColor = textureColor; //* input.Color;
  
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
     renderParams.Normal = normalize(input.Normal);
     renderParams.Depth = input.Depth;
@@ -227,6 +351,8 @@ PixelShaderOutput DrawTextureSpecular_PixelShader(DrawBasic_VSOut input)
     float RoughnessTexture = RoughnessMap.Sample(TextureSampler, input.TexCoord).r;
 
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
     renderParams.Normal = normalize(input.Normal);
     renderParams.Depth = input.Depth;
@@ -248,6 +374,8 @@ PixelShaderOutput DrawTextureSpecularMetallic_PixelShader(DrawBasic_VSOut input)
     float metallicTexture = MetallicMap.Sample(TextureSampler, input.TexCoord).r;
 
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
     renderParams.Normal = normalize(input.Normal);
     renderParams.Depth = input.Depth;
@@ -274,6 +402,8 @@ PixelShaderOutput DrawTextureSpecularNormal_PixelShader(DrawNormals_VSOut input)
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
     renderParams.Normal = normalMap;
     renderParams.Depth = input.Depth;
@@ -300,6 +430,8 @@ PixelShaderOutput DrawTextureSpecularNormalMetallic_PixelShader(DrawNormals_VSOu
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
     renderParams.Normal = normalMap;
     renderParams.Depth = input.Depth;
@@ -326,6 +458,8 @@ PixelShaderOutput DrawTextureNormal_PixelShader(DrawNormals_VSOut input)
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
     renderParams.Normal = normalMap;
     renderParams.Depth = input.Depth;
@@ -348,6 +482,8 @@ PixelShaderOutput DrawNormal_PixelShader(DrawNormals_VSOut input)
 	normalMap = normalize(mul(normalMap, worldSpace));
 
 	renderParams.Position = input.Position;
+	renderParams.WorldPos = input.WorldPos;
+	renderParams.GeoNormal = input.WorldToTangentSpace[2];
 	renderParams.Color = outputColor;
 	renderParams.Normal = normalMap;
 	renderParams.Depth = input.Depth;
@@ -370,6 +506,8 @@ PixelShaderOutput DrawTextureMask_PixelShader(DrawBasic_VSOut input)
         clip(-1);
  
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
     renderParams.Normal = normalize(input.Normal);
     renderParams.Depth = input.Depth;
@@ -394,6 +532,8 @@ PixelShaderOutput DrawTextureSpecularMask_PixelShader(DrawBasic_VSOut input)
     float RoughnessTexture = RoughnessMap.Sample(TextureSampler, input.TexCoord).r;
 
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
     renderParams.Normal = normalize(input.Normal);
     renderParams.Depth = input.Depth;
@@ -425,6 +565,8 @@ PixelShaderOutput DrawTextureSpecularNormalMask_PixelShader(DrawNormals_VSOut in
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
     renderParams.Normal = normalMap;
     renderParams.Depth = input.Depth;
@@ -458,6 +600,8 @@ PixelShaderOutput DrawTextureNormalMask_PixelShader(DrawNormals_VSOut input)
 	normalMap = normalize(mul(normalMap, worldSpace));
 
 	renderParams.Position = input.Position;
+	renderParams.WorldPos = input.WorldPos;
+	renderParams.GeoNormal = input.WorldToTangentSpace[2];
 	renderParams.Color = outputColor;
 	renderParams.Normal = normalMap;
 	renderParams.Depth = input.Depth;
@@ -475,6 +619,8 @@ PixelShaderOutput DrawBasic_PixelShader(DrawBasic_VSOut input)
 
          
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
     renderParams.Normal = normalize(input.Normal);
     renderParams.Depth = input.Depth;
@@ -514,6 +660,8 @@ PixelShaderOutput DrawTextureDisplacement_PixelShader(DrawNormals_VSOut input)
     normalMap = normalize(mul(normalMap, worldToTangent));
 
     renderParams.Position = input.Position;
+    renderParams.WorldPos = input.WorldPos;
+    renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
     renderParams.Normal = normalMap;
     renderParams.Depth = input.Depth;
