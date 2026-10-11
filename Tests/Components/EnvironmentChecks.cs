@@ -92,6 +92,9 @@ internal static class EnvironmentChecks
         main.SetInspectorViewCommand.Execute("Environment");
         Check(main.IsInspectorEnvironmentView && !main.IsInspectorSelectionView && !main.IsInspectorLightingView,
             "Environment button opens the Environment Inspector section");
+        main.SetInspectorViewCommand.Execute("World");
+        Check(main.IsInspectorWorldView && !main.IsInspectorEnvironmentView && !main.IsInspectorSelectionView,
+            "World button opens the World Inspector section (voxel world)");
     }
 
     public static void RunGraphics(GraphicsDevice device, ContentManager content)

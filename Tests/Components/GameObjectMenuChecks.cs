@@ -1,5 +1,6 @@
 using System.Reflection;
 using Anvil.ViewModels;
+using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Logic;
@@ -37,11 +38,20 @@ internal static class GameObjectMenuChecks
               logic.PointLights[^1] is SpotLight { SpotAngle: 60f } spot && spot.Direction == -Vector3.UnitZ,
             "GameObject > Light creates a visible directional light, a point light and a downward spot light");
 
-        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light" }),
+        vm.AddParticleSystemCommand.Execute(null);
+        Drain();
+        Check(logic.BasicEntities.Count == entities + 3 && logic.BasicEntities[^1] is
+              {
+                  Name: "Particle System", ModelDefinition: var marker, Scale: { X: 0.15f }
+              } particles && ReferenceEquals(marker, assets.IsoSphere) &&
+              particles.Components.Single() is ParticleSystemComponent,
+            "GameObject > Effects > Particle System creates a small marker sphere with a Particle System");
+
+        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System" }),
             "the Hierarchy + menu offers the same objects as the GameObject menu");
         foreach (var option in vm.AddableObjects) option.AddCommand.Execute(null);
         Drain();
-        Check(logic.BasicEntities.Count == entities + 4 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4,
+        Check(logic.BasicEntities.Count == entities + 6 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4,
             "every Hierarchy + menu entry creates its object");
 
         void Drain() =>

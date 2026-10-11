@@ -464,7 +464,8 @@ namespace Engine.Editor
             });
         }
 
-        public void EnqueueAddBasicEntity(string modelKey, Vector3 position)
+        public void EnqueueAddBasicEntity(string modelKey, Vector3 position, string name = null, Vector3? scale = null,
+            IReadOnlyList<string> componentTypes = null)
         {
             Log($"EnqueueAddBasicEntity modelKey={modelKey} pos={position}");
             _pendingOps.Enqueue(() =>
@@ -500,6 +501,13 @@ namespace Engine.Editor
                         material = null;
 
                     BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
+                    if (entity != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(name)) entity.Name = name;
+                        if (scale is { } size) entity.Scale = size;
+                        foreach (string type in componentTypes ?? Array.Empty<string>())
+                            if (ComponentRegistry.Find(type) is { } definition) entity.AddComponent(definition.Create(entity));
+                    }
                     Log($"AddBasicEntity ok: id={entity?.Id}");
                 }
                 catch (Exception ex) { Log("AddBasicEntity threw: " + ex); }
@@ -767,6 +775,43 @@ namespace Engine.Editor
                 if (_scene == null) { Log("NewScene: scene-logic null"); return; }
                 try { _scene.SceneManager.NewScene(); }
                 catch (Exception ex) { Log("NewScene threw: " + ex); }
+            });
+        }
+
+        public void EnqueueResetProject(Action<string> deleteSource, Action<ProjectReset.Result> onCompleted)
+        {
+            Log("EnqueueResetProject");
+            _pendingOps.Enqueue(() =>
+            {
+                var result = new ProjectReset.Result();
+                try
+                {
+                    if (_scene == null || _assets == null) throw new InvalidOperationException("the engine isn't ready");
+                    // Stop would swap the scene being edited back in over the new one.
+                    if (Mode != GameMode.Edit) throw new InvalidOperationException("stop Play first");
+
+                    // An empty scene first, so no gameobject still uses an imported model.
+                    _scene.SceneManager.NewScene(Path.GetFileNameWithoutExtension(ProjectReset.FirstScene));
+                    foreach (string key in new List<string>(_assets.DynamicModels.Keys))
+                        _assets.UnregisterModel(key);
+
+                    ProjectReset.Options options = ProjectReset.Options.ForThisCheckout();
+                    options.DeleteSource = deleteSource;
+                    result = ProjectReset.Run(options);
+                    SceneList.Load();
+
+                    _scene.AddDefaultSun();
+                    string firstScene = Path.Combine(options.ContentRoot,
+                        ProjectReset.FirstScene.Replace('/', Path.DirectorySeparatorChar));
+                    if (!_scene.SceneManager.SaveScene(firstScene))
+                        result.Errors.Add($"couldn't save {ProjectReset.FirstScene}");
+                }
+                catch (Exception ex)
+                {
+                    Log("ResetProject threw: " + ex);
+                    result.Errors.Add(ex.Message);
+                }
+                onCompleted?.Invoke(result);
             });
         }
 

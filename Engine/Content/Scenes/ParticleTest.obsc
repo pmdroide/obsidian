@@ -1,0 +1,1931 @@
+{
+  "Version": 2,
+  "Name": "ParticleTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [1, 0, -0.25],
+      "Scale": [25, 12, 0.25],
+      "Material": {
+        "DiffuseColor": [0.2, 0.2, 0.22],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a7fe2995-bc48-5f9a-bccb-d161a3f4774c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Firewood 1",
+      "ModelKey": "Cube",
+      "Position": [-15, 0, 0.11],
+      "Rotation": [0.0, 0.0, 0.258819, 0.965926],
+      "Scale": [0.75, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.24, 0.14, 0.08],
+        "Roughness": 0.9
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Firewood 2",
+      "ModelKey": "Cube",
+      "Position": [-15, 0, 0.11],
+      "Rotation": [0.0, 0.0, -0.258819, 0.965926],
+      "Scale": [0.75, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.24, 0.14, 0.08],
+        "Roughness": 0.9
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Firewood 3",
+      "ModelKey": "Cube",
+      "Position": [-15, 0, 0.21000000000000002],
+      "Rotation": [0.0, 0.0, 0.707107, 0.707107],
+      "Scale": [0.75, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.24, 0.14, 0.08],
+        "Roughness": 0.9
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Fire Stone 1",
+      "ModelKey": "IsoSphere",
+      "Position": [-14.05, 0.0, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Fire Stone 2",
+      "ModelKey": "IsoSphere",
+      "Position": [-14.328, 0.672, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Fire Stone 3",
+      "ModelKey": "IsoSphere",
+      "Position": [-15.0, 0.95, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Fire Stone 4",
+      "ModelKey": "IsoSphere",
+      "Position": [-15.672, 0.672, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Fire Stone 5",
+      "ModelKey": "IsoSphere",
+      "Position": [-15.95, 0.0, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Fire Stone 6",
+      "ModelKey": "IsoSphere",
+      "Position": [-15.672, -0.672, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Fire Stone 7",
+      "ModelKey": "IsoSphere",
+      "Position": [-15.0, -0.95, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Fire Stone 8",
+      "ModelKey": "IsoSphere",
+      "Position": [-14.328, -0.672, 0.06],
+      "Scale": [0.16, 0.14, 0.11],
+      "Material": {
+        "DiffuseColor": [0.32, 0.31, 0.3],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Campfire",
+      "ModelKey": "IsoSphere",
+      "Position": [-15, 0, 0.25],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.55, 0.2],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "e019b5f0-603b-55f3-8806-7ab607297ddb",
+          "Data": {
+            "Main": {
+              "Duration": 2,
+              "StartLifetime": {
+                "Min": 0.55,
+                "Max": 1.0
+              },
+              "StartSpeed": {
+                "Min": 0.5,
+                "Max": 1.2
+              },
+              "StartSize": {
+                "Min": 0.45,
+                "Max": 0.85
+              },
+              "StartRotation": {
+                "Min": -20,
+                "Max": 20
+              },
+              "StartColor": [255, 170, 70, 255],
+              "StartColor2": [255, 110, 30, 255],
+              "MaxParticles": 200
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 55
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 10,
+              "Radius": 0.35
+            },
+            "ForceOverLifetime": {
+              "Enabled": true,
+              "Force": [0, 0, 2.2],
+              "Space": "World"
+            },
+            "Noise": {
+              "Enabled": true,
+              "Strength": 0.35,
+              "Frequency": 1.2,
+              "ScrollSpeed": 1.5
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.12,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.55,
+                    "Color": [255, 140, 60, 200]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [120, 30, 10, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.55
+                  },
+                  {
+                    "Time": 0.35,
+                    "Value": 1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 0.25
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -40,
+                "Max": 40
+              }
+            },
+            "Renderer": {
+              "Texture": "Flame",
+              "Blend": "Additive",
+              "Brightness": 3.5,
+              "SoftParticles": 0.2
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Campfire Smoke",
+      "ModelKey": "IsoSphere",
+      "Position": [-15, 0, 1.4],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.4, 0.4, 0.42],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "ae459a81-b19c-5f89-92f7-65daa0cad793",
+          "Data": {
+            "Main": {
+              "Duration": 5,
+              "Prewarm": true,
+              "StartLifetime": {
+                "Min": 4,
+                "Max": 6
+              },
+              "StartSpeed": {
+                "Min": 0.6,
+                "Max": 1.0
+              },
+              "StartSize": {
+                "Min": 0.7,
+                "Max": 1.1
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [70, 68, 66, 170],
+              "StartColor2": [110, 105, 100, 140],
+              "SimulationSpace": "World",
+              "MaxParticles": 120
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 9
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 12,
+              "Radius": 0.25
+            },
+            "ForceOverLifetime": {
+              "Enabled": true,
+              "Force": [0, 0, 0.25],
+              "Space": "World"
+            },
+            "ExternalForces": {
+              "Enabled": true,
+              "Wind": 0.8,
+              "Response": 0.6
+            },
+            "Noise": {
+              "Enabled": true,
+              "Strength": 0.25,
+              "Frequency": 0.6,
+              "ScrollSpeed": 0.4
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 3
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -20,
+                "Max": 20
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.5
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Campfire Embers",
+      "ModelKey": "IsoSphere",
+      "Position": [-15, 0, 0.4],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.55, 0.2],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "57ed4346-95ca-5a27-893c-39f353fec1a9",
+          "Data": {
+            "Main": {
+              "Duration": 3,
+              "StartLifetime": {
+                "Min": 1.5,
+                "Max": 3
+              },
+              "StartSpeed": {
+                "Min": 1.2,
+                "Max": 2.8
+              },
+              "StartSize": {
+                "Min": 0.035,
+                "Max": 0.07
+              },
+              "StartColor": [255, 190, 90, 255],
+              "StartColor2": [255, 120, 40, 255],
+              "GravityModifier": -0.08,
+              "SimulationSpace": "World",
+              "MaxParticles": 150
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 14
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 18,
+              "Radius": 0.3
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 0.6
+            },
+            "ExternalForces": {
+              "Enabled": true,
+              "Wind": 0.5,
+              "Response": 0.8
+            },
+            "Noise": {
+              "Enabled": true,
+              "Strength": 1.2,
+              "Frequency": 1.3,
+              "ScrollSpeed": 1
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.7,
+                    "Color": [255, 200, 150, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 80, 20, 0]
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 7
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "Spark Deflector",
+      "ModelKey": "Cube",
+      "Position": [-3.9, 0, 1.7],
+      "Rotation": [0.0, -0.258819, 0.0, 0.965926],
+      "Scale": [1.1, 1.0, 0.05],
+      "Material": {
+        "DiffuseColor": [0.55, 0.56, 0.6],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a46586a7-b094-5923-bc54-c023c7bc4086",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "Spark Fountain",
+      "ModelKey": "IsoSphere",
+      "Position": [-6, 0, 0.1],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.8, 0.4],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "cf37d4fa-8028-5df0-baef-1891fe7d398e",
+          "Data": {
+            "Main": {
+              "Duration": 5,
+              "StartLifetime": {
+                "Min": 1.6,
+                "Max": 2.6
+              },
+              "StartSpeed": {
+                "Min": 7,
+                "Max": 10
+              },
+              "StartSize": {
+                "Min": 0.045,
+                "Max": 0.075
+              },
+              "StartColor": [255, 225, 150, 255],
+              "StartColor2": [255, 170, 80, 255],
+              "GravityModifier": 1,
+              "SimulationSpace": "World",
+              "MaxParticles": 600
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 110
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 14,
+              "Radius": 0.05
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.6,
+                    "Color": [255, 190, 120, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 60, 20, 0]
+                  }
+                ]
+              }
+            },
+            "Collision": {
+              "Enabled": true,
+              "Type": "World",
+              "Bounce": 0.45,
+              "Dampen": 0.25,
+              "LifetimeLoss": 0.12,
+              "RadiusScale": 1,
+              "MinKillSpeed": 0.3
+            },
+            "Renderer": {
+              "RenderMode": "StretchedBillboard",
+              "Texture": "Spark",
+              "Blend": "Additive",
+              "Brightness": 6,
+              "LengthScale": 1,
+              "SpeedScale": 0.035
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "Fireworks Launcher",
+      "ModelKey": "IsoSphere",
+      "Position": [3, 0, 0.2],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.45, 0.6, 1.0],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "8db54f9e-2309-5fd8-889a-af32a5ccd7bf",
+          "Data": {
+            "Main": {
+              "Duration": 4,
+              "StartLifetime": {
+                "Min": 1.1,
+                "Max": 1.4
+              },
+              "StartSpeed": {
+                "Min": 13,
+                "Max": 15.5
+              },
+              "StartSize": {
+                "Min": 0.14,
+                "Max": 0.14
+              },
+              "StartColor": [255, 60, 90, 255],
+              "StartColor2": [90, 120, 255, 255],
+              "GravityModifier": 1,
+              "SimulationSpace": "World",
+              "MaxParticles": 20
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 1,
+                    "Max": 1
+                  },
+                  "Cycles": 0,
+                  "Interval": 0.85,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 12,
+              "Radius": 0.2
+            },
+            "SubEmitters": {
+              "Enabled": true,
+              "Emitters": [
+                {
+                  "Trigger": "Trail",
+                  "Target": "Firework Trail",
+                  "Count": {
+                    "Min": 70,
+                    "Max": 70
+                  },
+                  "InheritVelocity": 0.15,
+                  "InheritColor": false
+                },
+                {
+                  "Trigger": "Death",
+                  "Target": "Firework Burst",
+                  "Count": {
+                    "Min": 120,
+                    "Max": 170
+                  },
+                  "InheritVelocity": 0.2,
+                  "InheritColor": true
+                }
+              ]
+            },
+            "Renderer": {
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 6
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "Firework Trail",
+      "ModelKey": "IsoSphere",
+      "Position": [2.4, 0, 0.2],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.8, 0.4],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "804c7220-1517-5317-bb04-caaa58554dba",
+          "Data": {
+            "Main": {
+              "Duration": 1,
+              "Looping": false,
+              "PlayOnAwake": false,
+              "StartLifetime": {
+                "Min": 0.35,
+                "Max": 0.7
+              },
+              "StartSpeed": {
+                "Min": 0,
+                "Max": 0.4
+              },
+              "StartSize": {
+                "Min": 0.07,
+                "Max": 0.11
+              },
+              "StartColor": [255, 200, 120, 255],
+              "StartColor2": [255, 150, 80, 255],
+              "GravityModifier": 0.25,
+              "SimulationSpace": "World",
+              "MaxParticles": 3000
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Sphere",
+              "Radius": 0.03
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 120, 60, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 0.3
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 4
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "Firework Burst",
+      "ModelKey": "IsoSphere",
+      "Position": [3.6, 0, 0.2],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.45, 0.6, 1.0],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "0381e1ef-8aad-5a44-81f3-d78145f6545f",
+          "Data": {
+            "Main": {
+              "Duration": 1,
+              "Looping": false,
+              "PlayOnAwake": false,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 2.0
+              },
+              "StartSpeed": {
+                "Min": 5,
+                "Max": 7
+              },
+              "StartSize": {
+                "Min": 0.09,
+                "Max": 0.13
+              },
+              "GravityModifier": 0.35,
+              "SimulationSpace": "World",
+              "MaxParticles": 4000
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Sphere",
+              "Radius": 0.1,
+              "RadiusThickness": 0
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 1.3
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.6,
+                    "Color": [255, 255, 255, 220]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 0.4
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "RenderMode": "StretchedBillboard",
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 8,
+              "LengthScale": 1,
+              "SpeedScale": 0.06
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "Magic Vortex",
+      "ModelKey": "IsoSphere",
+      "Position": [11, 0, 0.1],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.6, 0.45, 1.0],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "cf479242-6a96-5dbe-8f5b-e57882ba7d7e",
+          "Data": {
+            "Main": {
+              "Duration": 5,
+              "StartLifetime": {
+                "Min": 2.2,
+                "Max": 3.2
+              },
+              "StartSpeed": {
+                "Min": 0,
+                "Max": 0
+              },
+              "StartSize": {
+                "Min": 0.07,
+                "Max": 0.14
+              },
+              "StartColor": [120, 220, 255, 255],
+              "StartColor2": [200, 120, 255, 255],
+              "MaxParticles": 500
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 90
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Circle",
+              "Radius": 1.3,
+              "RadiusThickness": 0.15
+            },
+            "VelocityOverLifetime": {
+              "Enabled": true,
+              "Linear": [0, 0, 0.9],
+              "Space": "Local",
+              "Orbital": [0, 0, 160],
+              "Radial": -0.25
+            },
+            "Noise": {
+              "Enabled": true,
+              "Strength": 0.25,
+              "Frequency": 1,
+              "ScrollSpeed": 0.6
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.8,
+                    "Color": [255, 255, 255, 200]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.4
+                  },
+                  {
+                    "Time": 0.3,
+                    "Value": 1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 0
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": 90,
+                "Max": 270
+              }
+            },
+            "Renderer": {
+              "Texture": "Star",
+              "Blend": "Additive",
+              "Brightness": 5
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 22,
+      "Name": "Magic Rings",
+      "ModelKey": "IsoSphere",
+      "Position": [11, 0, 0.08],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.6, 0.45, 1.0],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "7b0e6f20-a456-53b8-870c-e9e35d03c891",
+          "Data": {
+            "Main": {
+              "Duration": 1.2,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 1.2
+              },
+              "StartSpeed": {
+                "Min": 0,
+                "Max": 0
+              },
+              "StartSize": {
+                "Min": 0.6,
+                "Max": 0.6
+              },
+              "StartColor": [140, 200, 255, 255],
+              "StartColor2": [140, 200, 255, 255],
+              "MaxParticles": 10
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 1,
+                    "Max": 1
+                  },
+                  "Cycles": 1,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": false
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.5
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 7
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "RenderMode": "HorizontalBillboard",
+              "Texture": "Ring",
+              "Blend": "Additive",
+              "Brightness": 3,
+              "SoftParticles": 0.05
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 23,
+      "Name": "Comet",
+      "ModelKey": "IsoSphere",
+      "Position": [13.6, 0, 1.7],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.92, 0.75],
+        "Roughness": 0.4,
+        "EmissiveStrength": 4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "7d9c77b8-29f8-508e-9ad2-5a7a04b5291e",
+          "Data": {
+            "Main": {
+              "StartLifetime": {
+                "Min": 0.8,
+                "Max": 1.2
+              },
+              "StartSpeed": {
+                "Min": 0,
+                "Max": 0.3
+              },
+              "StartSize": {
+                "Min": 0.12,
+                "Max": 0.2
+              },
+              "StartColor": [255, 240, 200, 255],
+              "StartColor2": [255, 240, 200, 255],
+              "SimulationSpace": "World",
+              "MaxParticles": 600
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 15,
+              "RateOverDistance": 30
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Sphere",
+              "Radius": 0.08
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [150, 120, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 0
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 5
+            },
+            "HideMesh": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 24,
+      "Name": "Explosion Crater",
+      "ModelKey": "IsoSphere",
+      "Position": [19, 0, -0.1],
+      "Scale": [1.4, 1.4, 0.15],
+      "Material": {
+        "DiffuseColor": [0.12, 0.11, 0.1],
+        "Roughness": 0.95
+      },
+      "Components": [],
+      "IsEnabled": true
+    },
+    {
+      "Id": 25,
+      "Name": "Explosion Fireball",
+      "ModelKey": "IsoSphere",
+      "Position": [19, 0, 0.6],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.35, 0.25],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "0999393b-e6f9-5863-93a1-3fb3722ce354",
+          "Data": {
+            "Main": {
+              "Duration": 2,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 0.5,
+                "Max": 0.9
+              },
+              "StartSpeed": {
+                "Min": 2,
+                "Max": 4.5
+              },
+              "StartSize": {
+                "Min": 1.0,
+                "Max": 1.6
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [255, 200, 120, 255],
+              "StartColor2": [255, 120, 50, 255],
+              "SimulationSpace": "World",
+              "MaxParticles": 100
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 25,
+                    "Max": 30
+                  },
+                  "Cycles": 1,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Sphere",
+              "Radius": 0.4
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 4
+            },
+            "ForceOverLifetime": {
+              "Enabled": true,
+              "Force": [0, 0, 2],
+              "Space": "World"
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.4,
+                    "Color": [255, 160, 80, 220]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [90, 30, 10, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.5
+                  },
+                  {
+                    "Time": 0.3,
+                    "Value": 1.1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 1.6
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -60,
+                "Max": 60
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Additive",
+              "Brightness": 4,
+              "SoftParticles": 0.6
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 26,
+      "Name": "Explosion Smoke",
+      "ModelKey": "IsoSphere",
+      "Position": [19, 0, 0.6],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.35, 0.33, 0.32],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "8fd0fb17-1a35-52ff-a90d-70e95e3e4a57",
+          "Data": {
+            "Main": {
+              "Duration": 2,
+              "Looping": false,
+              "StartDelay": {
+                "Min": 0.15,
+                "Max": 0.15
+              },
+              "StartLifetime": {
+                "Min": 3,
+                "Max": 5
+              },
+              "StartSpeed": {
+                "Min": 1,
+                "Max": 2.5
+              },
+              "StartSize": {
+                "Min": 1.2,
+                "Max": 2
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [60, 58, 56, 200],
+              "StartColor2": [95, 90, 86, 170],
+              "SimulationSpace": "World",
+              "MaxParticles": 80
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 18,
+                    "Max": 22
+                  },
+                  "Cycles": 1,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Hemisphere",
+              "Radius": 0.6
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 1.5
+            },
+            "ForceOverLifetime": {
+              "Enabled": true,
+              "Force": [0, 0, 0.9],
+              "Space": "World"
+            },
+            "ExternalForces": {
+              "Enabled": true,
+              "Wind": 0.7,
+              "Response": 0.4
+            },
+            "Noise": {
+              "Enabled": true,
+              "Strength": 0.3,
+              "Frequency": 0.4,
+              "ScrollSpeed": 0.4
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.1,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 2.4
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -15,
+                "Max": 15
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.8
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 27,
+      "Name": "Explosion Debris",
+      "ModelKey": "IsoSphere",
+      "Position": [19, 0, 0.3],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.8, 0.4],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "cbb374f7-ae11-561e-8641-f129c8ba4978",
+          "Data": {
+            "Main": {
+              "Duration": 2,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 2.4
+              },
+              "StartSpeed": {
+                "Min": 6,
+                "Max": 12
+              },
+              "StartSize": {
+                "Min": 0.05,
+                "Max": 0.09
+              },
+              "StartColor": [255, 210, 140, 255],
+              "StartColor2": [255, 140, 60, 255],
+              "GravityModifier": 1,
+              "SimulationSpace": "World",
+              "MaxParticles": 300
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 80,
+                    "Max": 100
+                  },
+                  "Cycles": 1,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Hemisphere",
+              "Radius": 0.3,
+              "RandomizeDirection": 0.2
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 0.7,
+                    "Color": [255, 170, 100, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 60, 20, 0]
+                  }
+                ]
+              }
+            },
+            "Collision": {
+              "Enabled": true,
+              "Type": "World",
+              "Bounce": 0.35,
+              "Dampen": 0.3,
+              "LifetimeLoss": 0.2,
+              "MinKillSpeed": 0.4
+            },
+            "Renderer": {
+              "RenderMode": "StretchedBillboard",
+              "Texture": "Spark",
+              "Blend": "Additive",
+              "Brightness": 6,
+              "LengthScale": 1,
+              "SpeedScale": 0.04
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 28,
+      "Name": "Explosion Shockwave",
+      "ModelKey": "IsoSphere",
+      "Position": [19, 0, 0.08],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.35, 0.25],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "aa596e5c-f1b9-53c7-9f50-02823f0ec946",
+          "Data": {
+            "Main": {
+              "Duration": 2,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 0.6,
+                "Max": 0.6
+              },
+              "StartSpeed": {
+                "Min": 0,
+                "Max": 0
+              },
+              "StartSize": {
+                "Min": 1,
+                "Max": 1
+              },
+              "StartColor": [255, 220, 180, 220],
+              "StartColor2": [255, 220, 180, 220],
+              "MaxParticles": 4
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 1,
+                    "Max": 1
+                  },
+                  "Cycles": 1,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": false
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.3
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 12
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "RenderMode": "HorizontalBillboard",
+              "Texture": "Ring",
+              "Blend": "Additive",
+              "Brightness": 2,
+              "SoftParticles": 0.05
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 29,
+      "Name": "Explosion Flash",
+      "ModelKey": "IsoSphere",
+      "Position": [19, 0, 1.0],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.35, 0.25],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "73b020b7-aab4-518a-b254-dae7af889e3b",
+          "Data": {
+            "Main": {
+              "Duration": 2,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 0.25,
+                "Max": 0.25
+              },
+              "StartSpeed": {
+                "Min": 0,
+                "Max": 0
+              },
+              "StartSize": {
+                "Min": 6,
+                "Max": 6
+              },
+              "StartColor": [255, 200, 140, 255],
+              "StartColor2": [255, 200, 140, 255],
+              "MaxParticles": 4
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 1,
+                    "Max": 1
+                  },
+                  "Cycles": 1,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": false
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 180, 100, 0]
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 6,
+              "SoftParticles": 1
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 30,
+      "Name": "Impact Sparks",
+      "ModelKey": "IsoSphere",
+      "Position": [19, -3, 0.2],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [1.0, 0.8, 0.4],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "4536dc0e-e7f3-5a85-ae1a-9d651c2cddd9",
+          "Data": {
+            "Main": {
+              "Duration": 1,
+              "Looping": false,
+              "PlayOnAwake": false,
+              "StartLifetime": {
+                "Min": 0.6,
+                "Max": 1.2
+              },
+              "StartSpeed": {
+                "Min": 2,
+                "Max": 5
+              },
+              "StartSize": {
+                "Min": 0.04,
+                "Max": 0.07
+              },
+              "StartColor": [255, 230, 170, 255],
+              "StartColor2": [255, 160, 80, 255],
+              "GravityModifier": 1,
+              "SimulationSpace": "World",
+              "MaxParticles": 1500
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Sphere",
+              "Radius": 0.05
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 80, 20, 0]
+                  }
+                ]
+              }
+            },
+            "Collision": {
+              "Enabled": true,
+              "Type": "World",
+              "Bounce": 0.3,
+              "Dampen": 0.3,
+              "LifetimeLoss": 0.3,
+              "MinKillSpeed": 0.3
+            },
+            "Renderer": {
+              "RenderMode": "StretchedBillboard",
+              "Texture": "Spark",
+              "Blend": "Additive",
+              "Brightness": 6,
+              "LengthScale": 1,
+              "SpeedScale": 0.04
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 100,
+      "Name": "Campfire Light",
+      "Position": [-15, 0, 1.1],
+      "Radius": 9,
+      "Color": [255, 150, 70, 255],
+      "Intensity": 5
+    },
+    {
+      "Id": 101,
+      "Name": "Vortex Light",
+      "Position": [11, 0, 1.6],
+      "Radius": 6,
+      "Color": [150, 170, 255, 255],
+      "Intensity": 2
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 200,
+      "Name": "Sun",
+      "Direction": [-0.45, 0.35, -0.82],
+      "Position": [0, 0, 10],
+      "Color": [255, 236, 214, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 80,
+      "ShadowDepth": 160,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [2, 0, 4],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 18,
+    "CycleDurationMinutes": 120,
+    "CloudCoverage": 0.3,
+    "CloudSpeed": 1,
+    "WindSpeed": 2.5,
+    "WindDirection": 70
+  },
+  "MainCamera": {
+    "Position": [2, -22, 5.5],
+    "Forward": [0, 0.9959, -0.0905],
+    "FieldOfView": 0.95,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "e12e8c5b-b7c7-5d66-b05b-1759c4a6937e",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "a1d66aab-d8b8-53ae-b4b3-2129c1bffffc",
+        "Data": {
+          "ScriptId": "particle-test",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

@@ -34,6 +34,8 @@ public static class ScriptRegistry
         Register<NpcTestPlayerScript>(NpcTestPlayerScript.ScriptId, "NPC Test Player");
         Register<NpcReporterScript>(NpcReporterScript.ScriptId, "NPC Reporter");
         Register<VoxelTestScript>(VoxelTestScript.ScriptId, "Voxel Test");
+        Register<ParticleTestScript>(ParticleTestScript.ScriptId, "Particle Test");
+        Register<SmokeTestScript>(SmokeTestScript.ScriptId, "Smoke Test");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

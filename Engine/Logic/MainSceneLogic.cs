@@ -90,7 +90,7 @@ namespace Engine.Logic
         private ScenePhysics _scenePhysics;
 
         /// <summary>
-        /// The scene's voxel world (Inspector > Environment > Voxel World): generated, drawn and collidable.
+        /// The scene's voxel world (Inspector > World > Voxel World): generated, drawn and collidable.
         /// Null until <see cref="Initialize"/>; checks may set a GPU-free one.
         /// </summary>
         public VoxelSystem Voxels { get; set; }
@@ -339,7 +339,15 @@ namespace Engine.Logic
 
             _sdfGenerator = new SdfGenerator();
 
-            // One sun so an imported model is visible in the empty viewport.
+            AddDefaultSun();
+        }
+
+        /// <summary>
+        /// One sun so an imported model is visible in an empty viewport (the boot scene and the
+        /// first scene of a new project, see EditorBridge.EnqueueResetProject).
+        /// </summary>
+        public void AddDefaultSun()
+        {
             AddDirectionalLight(direction: new Vector3(0.2f, 0.2f, -1),
                 intensity: 100,
                 color: Color.White,
@@ -372,6 +380,8 @@ namespace Engine.Logic
 
             // Scripts tick only in Play mode.
             PlayMode?.UpdateScripts(gameTime);
+            // Particle systems also play while editing, so effects show in Anvil's viewport (Play runs them as components).
+            if (PlayMode?.Mode != GameMode.Play) ParticleSystemComponent.UpdatePreviews(ActiveScene?.BasicEntities, gameTime);
 
             //VolumeTexture.RotationMatrix = testEntity.WorldTransform.InverseWorld;
             //VolumeTexture.Scale = testEntity.WorldTransform.Scale;

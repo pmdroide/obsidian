@@ -153,7 +153,8 @@ Engine.Update
 │   │   ├─ ApplyPendingSceneLoad()      ← GameFlow.LoadScene queued last frame
 │   │   ├─ Input.Update(gameTime, Camera)   ← snapshot keyboard/mouse; drives the editor camera
 │   │   ├─ GameInput.Update(dt)         ← script-facing input, gamepads, menu repeat
-│   │   ├─ PlayMode.UpdateScripts(gameTime) ← component OnUpdate (Play only)
+│   │   ├─ PlayMode.UpdateScripts(gameTime) ← component OnUpdate (Play only; particle systems step here)
+│   │   ├─ ParticleSystemComponent.UpdatePreviews(...) ← Edit only: Play On Awake particle systems preview
 │   │   └─ dev hotkeys (F1 render mode; Space/L/X/M outside Play)
 │   ├─ _audio.UpdateListener(Camera)
 │   ├─ _renderer.Update(...)            ← editor mouse-moved timer, SDF generator
@@ -324,7 +325,8 @@ Renderer.Draw (end) → FrustumCullingFinalizeFrame → HasChanged = false
   - `Restore` deserialises by `Type`.
   - `Copy` is `Restore(Capture)` with a fresh Guid.
   - The same records are used for scene files, bridge snapshots and cloning.
-- Registration order (= Add Component menu order): `material`, `physics`, `audio`, `script-behaviour` (multiple), `animator`, `ragdoll`, `interactable`, `cloth`, `npc`.
+- Registration order (= Add Component menu order): `material`, `physics`, `audio`, `script-behaviour` (multiple), `animator`, `ragdoll`, `interactable`, `cloth`, `npc`, `lod`, `particles`.
+- `ParticleSystemComponent` (`particles`) is the one component that also runs outside Play: `MainSceneLogic.Update` calls `UpdatePreviews` in Edit mode, and `PlayModeController.Stop` (`OnStop`) clears the preview so Play restarts from scratch. Its settings are nested module objects (`Main`, `Emission`, `Shape`, ...) with property-level JSON converters for `Vector3`/`Color` (components serialise with default options, which skip XNA fields). The simulation is `Engine/Particles/ParticleSimulation.cs` (CPU, GPU-free); it hides the gameobject's marker mesh during Play through `TransformMatrix.Hidden`. With the `Volumetric` module on, each step ends by updating a `ParticleVolume` (`Engine/Particles/ParticleVolume.cs`): a density grid splatted from the particles, or (Source Voxels) a Counter-Strike 2 style flood fill from the emitter that `ParticleStepContext.RaycastStatic` (`ScenePhysics.RaycastStatic`) keeps out of Static colliders, with one sun ray per voxel (`SunDirection`). Scripts carve bullet tunnels/blast holes (`CarveTunnel`/`CarveHole`, static `CarveTunnels`/`CarveHoles`) and query `Opacity`/`VolumeOpacity`; `NpcComponent.CanSee` refuses sight through smoke above `SmokeBlocksSight`.
 - The main camera has its own `Components` list, which accepts only `ScriptBehaviourComponent` (`Camera.SupportsComponent`). Its hooks receive `owner == null`.
 
 ### 7.3 `PlayModeController` (`Engine/Logic/PlayMode.cs`)
@@ -445,7 +447,7 @@ A deferred renderer. It renders a G-buffer, accumulates lights, composes, then d
 
 ### 9.1 Modules (`Renderer.Load`, in creation order)
 
-`BloomFilter` → `LightAccumulationModule` (owns `PointLightRenderModule`) → `ShadowMapRenderModule` → `GBufferRenderModule` → `TemporalAntialiasingRenderModule` → `DeferredEnvironmentMapRenderModule` → `DecalRenderModule` → `SubsurfaceScatterRenderModule` (unused in Draw) → `ForwardRenderModule` → `WaterRenderModule` → `WeatherRenderModule` → `HelperGeometryRenderModule` → `DistanceFieldRenderModule` → `FroxelRenderModule` → `ColorGradingFilter` → `AutoExposureFilter`, plus the LUT texture.
+`BloomFilter` → `LightAccumulationModule` (owns `PointLightRenderModule`) → `ShadowMapRenderModule` → `GBufferRenderModule` → `TemporalAntialiasingRenderModule` → `DeferredEnvironmentMapRenderModule` → `DecalRenderModule` → `SubsurfaceScatterRenderModule` (unused in Draw) → `ForwardRenderModule` → `WaterRenderModule` → `WeatherRenderModule` → `ParticleRenderModule` → `HelperGeometryRenderModule` → `DistanceFieldRenderModule` → `FroxelRenderModule` → `ColorGradingFilter` → `AutoExposureFilter`, plus the LUT texture.
 
 Modules that draw meshes implement `IRenderModule.Apply(world, view, viewProjection)`. `MeshMaterialLibrary` calls it for each instance.
 
@@ -516,7 +518,7 @@ Two things depend on the material:
 | 14 | `DrawEnvironmentMap` | adds into the still-bound Diffuse/Specular | env cubemap, sky, baked probe SH (`Texture3D`s), SSR |
 | 15 | `Compose` | `Composed` (`HalfVector4`) | Albedo, Diffuse, Specular, `BlurFinal` (AO), froxels |
 | 16 | `DrawForward` | `Composed` (after `ReconstructDepth` into its depth buffer) | `RenderType.Forward`, up to 40 point lights as arrays |
-| 17 | Water, then weather (haze + particles) | `Composed` | Depth, env cubemap, sun |
+| 17 | Water, then particle systems (`ParticleRenderModule`: one instanced quad per particle, systems far to near, no depth buffer; Volumetric systems upload their `ParticleVolume` to a `Texture3D` and raymarch it with the `Volume` technique on a scissored full-screen triangle, premultiplied), then weather (haze + particles) | `Composed` | Depth (occlusion + ray end), env cubemap, sun, volume + 32³ noise 3D textures |
 | 18 | TAA | `TAA_1`/`TAA_2` ping-pong; with `g_taa_tonemapped`, inverse-tonemapped back into `Composed` | previous TAA buffer, Depth, reprojection matrix |
 | 19 | Bloom | Mip0..Mip5 chain → `_renderTargetBloom` | current output |
 | 20 | Auto exposure | 256² luminance chain → 1×1 ping-pong | current output |
@@ -607,6 +609,16 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 → ≤ 6 frames later the snapshot carries the value back; SetIfChanged sees no change
 ```
 
+**Inspector panels**
+- The right-hand inspector shows one panel at a time, chosen by `MainWindowViewModel.InspectorView`: `Selection`, `PostProcessing`, `Lighting` (the inspector header tabs), `Environment` and `World` (the viewport toolbar buttons, side by side), `Input` and `Steam` (Window menu).
+- `Environment` (sky, fog, weather, wind) and `World` (the voxel world) both bind to `MainWindowViewModel.Environment` (`EnvironmentViewModel`), because the voxel settings are part of `EnvironmentSettings` and go through the same `IEditorBridge.EnqueueMutateEnvironment` call.
+
+**Delete Project (Edit > Project Settings)**
+- `ProjectSettingsWindow` only collects the confirmation (the project name typed). `MainWindowViewModel.ResetProject` then calls `IEditorBridge.EnqueueResetProject(MoveToRecycleBin, done)`, refused during Play because Stop would swap the old scene back in.
+- On the game thread: `SceneManager.NewScene("Main")` (so no gameobject still uses an imported model) → `Assets.UnregisterModel` for every `DynamicModels` key → `ProjectReset.Run` → `SceneList.Load()` → `AddDefaultSun()` → `SaveScene(Scenes/Main.obsc)`.
+- `ProjectReset.Run` removes each top-most item outside `KeptPaths` through the callback (Recycle Bin), its Content.mgcb entries (`ContentManifest.Unregister(rel, manifestPath)`) and its built copies under `Content/bin/Windows`, `Content/bin/Windows/Content`, the running executable's `Content` and `Engine/bin/*/*/Content` (never a folder that holds one of those roots). Without the built copies, `Assets.ReimportExistingModels` would bring imported models back at the next boot.
+- Settings are **written** to defaults, not deleted: `GameInfo.ResolveContentFile` would otherwise fall back to the stale copy next to the executable.
+
 **Hosting facts**
 - `MonoGameHost` sets `Environment.CurrentDirectory` to the Engine assembly folder before it creates the engine, so `Content/` resolves.
 - It reparents the engine window under a `STATIC` container window as `WS_CHILD`, with no caption or border and `WS_EX_TOOLWINDOW`.
@@ -674,5 +686,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Change scene file format | `SceneSerialization` DTOs (bump `CurrentVersion`, keep loading v1–v2) |
 | Draw geometry that isn't a gameobject | `MeshMaterialLibrary.Register(material, part, transform, sphere)` / `Unregister`, as `VoxelSystem.Upload` / `Release` do |
 | Change the voxel world | `Engine/Voxels/` (`VoxelGenerator`, `VoxelMesher`, `VoxelTextures`, `VoxelSystem`), settings in `EnvironmentSettings`; see [Voxel_World.md](Voxel_World.md) |
+| Change particle systems | `Engine/Particles/` (`ParticleModules`, `ParticleSimulation`, `ParticleTextures`, `ParticleVolume`), `ParticleSystemComponent`, `ParticleRenderModule` + `Shaders/Forward/Particles.fx` (techniques `Particles` and `Volume`); see [Particle_Systems.md](Particle_Systems.md) |
+| Change volumetric / CS2 voxel smoke | `ParticleVolume` (flood fill order `FillOrder`, edge/fade in `Pack`, carves), `ParticleVolumetricModule`, `ParticleRenderModule.DrawVolume` + `VolumePS` in `Particles.fx`; sample `Content/Scenes/SmokeTest.obsc` + `Content/Scripts/SmokeTestScript.cs` + `UI/SmokeTest` |
 | Change picking or gizmos | `IdAndOutlineRenderer`, `EditorRender`, `EditorLogic.Update/GizmoControl`, `IdGenerator` |
 | Debug "Anvil viewport wrong size" | `Engine.ApplyPendingResize`, `MonoGameHost.ResizeEngineToContainer` |

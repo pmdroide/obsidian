@@ -1,0 +1,26 @@
+<!--
+  ParticleTest scene HUD (Vista). Driven by Engine/Content/Scripts/ParticleTestScript.cs, which fills
+  #count, #state, #fireworks, #explosion and #bounces. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Effects</div>
+        <div id="title">Particle Test</div>
+        <div id="count"></div>
+        <div id="state"></div>
+        <div id="rule"></div>
+        <div id="fireworks"></div>
+        <div id="explosion"></div>
+        <div id="bounces"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-effects" class="keys-line">Space explosion  ·  Click sparks where you point  ·  F fireworks on / off</div>
+        <div id="keys-control" class="keys-line">P pause / resume every system  ·  R restart every system</div>
+        <div id="keys-move" class="keys-line">Hold right mouse to look  ·  WASD move  ·  E / Q up / down  ·  Shift faster</div>
+    </div>
+
+</div>

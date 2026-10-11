@@ -10,6 +10,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Engine.Components;
 using Engine.Editor;
 using XnaColor = Microsoft.Xna.Framework.Color;
 using XnaVector3 = Microsoft.Xna.Framework.Vector3;
@@ -128,13 +129,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
         nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
-        nameof(IsInspectorSteamView), nameof(IsInspectorInputView))]
+        nameof(IsInspectorWorldView), nameof(IsInspectorSteamView), nameof(IsInspectorInputView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
     public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
     public bool IsInspectorLightingView => InspectorView == "Lighting";
     public bool IsInspectorEnvironmentView => InspectorView == "Environment";
+    /// <summary>World generation (voxel world); its settings live on <see cref="Environment"/>.</summary>
+    public bool IsInspectorWorldView => InspectorView == "World";
     public bool IsInspectorSteamView => InspectorView == "Steam";
     public bool IsInspectorInputView => InspectorView == "Input";
 
@@ -254,6 +257,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Directional Light", _ => AddDirectionalLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -449,6 +453,18 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge.EnqueueAddSpotLight(_bridge.SpawnPoint, new XnaVector3(0, 0, -1), radius: 25f, color: XnaColor.White, intensity: 40f, spotAngle: 60f);
     }
 
+    /// <summary>
+    /// A small sphere carrying a Particle System: the sphere marks and selects the emitter while editing and is
+    /// hidden in Play (Particle System > Hide Mesh).
+    /// </summary>
+    [RelayCommand]
+    private void AddParticleSystem()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("IsoSphere", _bridge.SpawnPoint, "Particle System", new XnaVector3(0.15f),
+            new[] { ParticleSystemComponent.TypeId });
+    }
+
     [RelayCommand]
     private void AddDirectionalLight()
     {
@@ -573,6 +589,58 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             AddConsoleEntry(ConsoleLevel.Error, "Couldn't save game settings: " + ex.Message, "Anvil:GameSettings");
         }
+    }
+
+    // -------- Project settings (Edit > Project Settings, Delete Project) --------
+
+    [RelayCommand]
+    private async Task OpenProjectSettingsAsync(Window? owner)
+    {
+        if (owner == null) return;
+        var vm = new ProjectSettingsViewModel(IsPlaying);
+        var dialog = new Views.ProjectSettingsWindow { DataContext = vm };
+        if (await dialog.ShowDialog<bool>(owner)) ResetProject();
+    }
+
+    /// <summary>
+    /// Turns the project into a new, empty one (<see cref="Engine.Recources.ProjectReset"/>): the
+    /// bridge swaps in an empty scene, the project's content goes to the Recycle Bin and the
+    /// settings go back to their defaults.
+    /// </summary>
+    private void ResetProject()
+    {
+        if (_bridge == null) return;
+        if (IsPlaying)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Stop Play before deleting the project.", "Anvil:Project");
+            return;
+        }
+        AddConsoleEntry(ConsoleLevel.Log, "Deleting the project...", "Anvil:Project");
+        _bridge.EnqueueResetProject(MoveToRecycleBin, result => Dispatcher.UIThread.Post(() =>
+        {
+            ProjectName = Engine.Recources.GameInfo.Read().WindowTitle;
+            RefreshAssetTree();
+            foreach (string error in result.Errors)
+                AddConsoleEntry(ConsoleLevel.Error, "Delete Project: " + error, "Anvil:Project");
+            AddConsoleEntry(result.Succeeded ? ConsoleLevel.Log : ConsoleLevel.Warn,
+                $"Project deleted: {result.Removed.Count} item(s) moved to the Recycle Bin, " +
+                $"{result.ManifestEntriesRemoved.Count} Content.mgcb entr(ies) removed, settings reset. " +
+                $"New project scene: {Engine.Recources.ProjectReset.FirstScene}.",
+                "Anvil:Project");
+        }));
+    }
+
+    /// <summary>Moves a file or folder to the Recycle Bin (Delete in the Assets panel, Delete Project).</summary>
+    private static void MoveToRecycleBin(string full)
+    {
+        if (System.IO.Directory.Exists(full))
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(full,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        else if (System.IO.File.Exists(full))
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(full,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
     }
 
     // -------- Build (File > Build / Build and Run) --------
@@ -1058,14 +1126,7 @@ public partial class MainWindowViewModel : ViewModelBase
             node.RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
         try
         {
-            if (System.IO.Directory.Exists(full))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(full,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-            else if (System.IO.File.Exists(full))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(full,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            MoveToRecycleBin(full);
 
             var removed = Engine.Recources.ContentManifest.Unregister(node.RelativePath);
             if (removed.Count > 0)

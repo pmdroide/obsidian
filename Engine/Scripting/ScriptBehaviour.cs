@@ -307,7 +307,7 @@ public abstract class ScriptBehaviour
     public Logic.EnvironmentSettings SceneEnvironment => Logic.GameFlow.SceneLogic?.ActiveScene?.Environment;
 
     /// <summary>
-    /// The scene's voxel world (Inspector > Environment > Voxel World), or null when it has none. Read blocks,
+    /// The scene's voxel world (Inspector > World > Voxel World), or null when it has none. Read blocks,
     /// raycast the grid and dig or build: <c>Voxels.SetBlock(hit.Adjacent, VoxelBlock.Brick)</c>. Edited chunks
     /// are remeshed (and their colliders rebuilt) before the next physics step; Stop regenerates the world.
     /// Fetch it each frame: changing the voxel settings (e.g. <c>SceneEnvironment.VoxelSeed</c>) replaces it.

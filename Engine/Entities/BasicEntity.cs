@@ -360,6 +360,8 @@ namespace Engine.Entities
         public Animation.SkinnedMeshInstance Skin;
         // Simulated vertex buffers (Cloth component) drawn in place of the shared mesh's; null = static.
         public Physics.ClothMeshInstance Cloth;
+        // Not drawn at all (shadows and picking included): a Particle System's marker mesh during Play.
+        public bool Hidden;
         // LOD component: the level of detail that draws (0 = the model, 1..n = its LOD models, -1 = culled).
         public int LodLevel;
 

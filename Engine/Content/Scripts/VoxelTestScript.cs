@@ -14,7 +14,7 @@ namespace Engine.Scripting;
 /// <summary>
 /// First-person builder of the VoxelTest sample scene. Runs on the "Player" capsule (a Dynamic body with
 /// Freeze Rotation) and drives the main camera from its head. The world is the scene's voxel world
-/// (Inspector > Environment > Voxel World), reached through <see cref="ScriptBehaviour.Voxels"/>.
+/// (Inspector > World > Voxel World), reached through <see cref="ScriptBehaviour.Voxels"/>.
 ///   W A S D        move            Shift   run            Space   jump (fly: up, Ctrl down)
 ///   Hold right mouse  look (or the arrow keys)            V       fly on/off
 ///   Left mouse     dig (hold to keep digging)             Right click / F   place the selected block

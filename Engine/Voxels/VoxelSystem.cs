@@ -16,7 +16,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Engine.Voxels
 {
     /// <summary>
-    /// Keeps the active scene's voxel world (Inspector > Environment > Voxel World) in step with its
+    /// Keeps the active scene's voxel world (Inspector > World > Voxel World) in step with its
     /// <see cref="EnvironmentSettings"/>, once per frame before the physics step (<see cref="MainSceneLogic.UpdatePhysics"/>):
     /// <list type="bullet">
     /// <item>When the settings change it generates and meshes a new world: on a worker thread while editing

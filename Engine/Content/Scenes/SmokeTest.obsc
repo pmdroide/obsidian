@@ -1,0 +1,1282 @@
+{
+  "Version": 2,
+  "Name": "SmokeTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [0, 0, -0.25],
+      "Scale": [30, 20, 0.25],
+      "Material": {
+        "DiffuseColor": [0.46, 0.42, 0.36],
+        "Roughness": 0.9
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "8e3690f2-ea51-5c14-85cd-8f4952245b75",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Room North Wall",
+      "ModelKey": "Cube",
+      "Position": [9, 4.15, 1.6],
+      "Scale": [5.3, 0.15, 1.6],
+      "Material": {
+        "DiffuseColor": [0.62, 0.56, 0.46],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e1979785-f939-5453-aa62-7b44464724be",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Room South Wall",
+      "ModelKey": "Cube",
+      "Position": [9, -4.15, 1.6],
+      "Scale": [5.3, 0.15, 1.6],
+      "Material": {
+        "DiffuseColor": [0.62, 0.56, 0.46],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bec98662-7c79-5d52-bd75-1bd2cc775887",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Room East Wall",
+      "ModelKey": "Cube",
+      "Position": [14.15, 0, 1.6],
+      "Scale": [0.15, 4.3, 1.6],
+      "Material": {
+        "DiffuseColor": [0.62, 0.56, 0.46],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3030771e-e87e-5738-b630-3b3a28acfc68",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Room West Wall N",
+      "ModelKey": "Cube",
+      "Position": [3.85, 2.75, 1.6],
+      "Scale": [0.15, 1.55, 1.6],
+      "Material": {
+        "DiffuseColor": [0.62, 0.56, 0.46],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "8c07bdde-73c7-5e42-bf62-613acf7229aa",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Room West Wall S",
+      "ModelKey": "Cube",
+      "Position": [3.85, -2.75, 1.6],
+      "Scale": [0.15, 1.55, 1.6],
+      "Material": {
+        "DiffuseColor": [0.62, 0.56, 0.46],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a31e4016-419a-5679-9e0d-5f81bd63bbc8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Room Door Lintel",
+      "ModelKey": "Cube",
+      "Position": [3.85, 0, 2.8],
+      "Scale": [0.15, 1.2, 0.4],
+      "Material": {
+        "DiffuseColor": [0.62, 0.56, 0.46],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "be79e02f-e284-525b-8a1e-212d0ae53a24",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Room Roof",
+      "ModelKey": "Cube",
+      "Position": [9, 0, 3.35],
+      "Scale": [5.3, 4.45, 0.15],
+      "Material": {
+        "DiffuseColor": [0.42, 0.4, 0.37],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "ec1cc985-0a35-5052-a0c1-6bec4b5d3848",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Corridor North Wall",
+      "ModelKey": "Cube",
+      "Position": [-1.15, 1.35, 1.6],
+      "Scale": [4.85, 0.15, 1.6],
+      "Material": {
+        "DiffuseColor": [0.42, 0.4, 0.37],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "51b9de8b-6015-53fa-8096-776e2505d7c2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Corridor South Wall",
+      "ModelKey": "Cube",
+      "Position": [-1.15, -1.35, 1.6],
+      "Scale": [4.85, 0.15, 1.6],
+      "Material": {
+        "DiffuseColor": [0.42, 0.4, 0.37],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d0de062f-8dfa-5b02-8f4c-3a8ff94bb0e6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Crate 1",
+      "ModelKey": "Cube",
+      "Position": [-11, -2.5, 0.6],
+      "Scale": [0.6, 0.6, 0.6],
+      "Material": {
+        "DiffuseColor": [0.36, 0.26, 0.16],
+        "Roughness": 0.8
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "54ad8ed5-79a9-5a50-a4b6-811e0effaea6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Crate 2",
+      "ModelKey": "Cube",
+      "Position": [-10.2, -2.6, 0.6],
+      "Scale": [0.6, 0.6, 0.6],
+      "Material": {
+        "DiffuseColor": [0.36, 0.26, 0.16],
+        "Roughness": 0.8
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e97a0c62-4c01-5acb-b590-6f7a17fd2c1e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Crate 3",
+      "ModelKey": "Cube",
+      "Position": [-10.6, -2.5, 1.8],
+      "Scale": [0.6, 0.6, 0.6],
+      "Material": {
+        "DiffuseColor": [0.36, 0.26, 0.16],
+        "Roughness": 0.8
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0f2260c9-34a4-5f88-b742-8b1434d3fa7f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Crate 4",
+      "ModelKey": "Cube",
+      "Position": [-15, -10, 0.6],
+      "Scale": [0.6, 0.6, 0.6],
+      "Material": {
+        "DiffuseColor": [0.36, 0.26, 0.16],
+        "Roughness": 0.8
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "63132567-3760-5d89-ae3f-f2ed6ccb931c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Smoke Stack Chimney",
+      "ModelKey": "Cube",
+      "Position": [-16, 8, 2],
+      "Scale": [0.6, 0.6, 2],
+      "Material": {
+        "DiffuseColor": [0.3, 0.2, 0.17],
+        "Roughness": 0.9
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3fa567ff-b5cb-5fe4-acf4-7b072449e62b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "Smoke Mid",
+      "ModelKey": "IsoSphere",
+      "Position": [-13, -6, 0.08],
+      "Scale": [0.09, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.16, 0.2, 0.14],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "0d995d97-6e4c-5afe-a95c-95c5776d1129",
+          "Data": {
+            "Main": {
+              "Duration": 18,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 2.2
+              },
+              "StartSpeed": {
+                "Min": 1.2,
+                "Max": 2.6
+              },
+              "StartSize": {
+                "Min": 0.25,
+                "Max": 0.45
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [206, 207, 212, 255],
+              "StartColor2": [182, 184, 190, 255],
+              "SimulationSpace": "World",
+              "PlayOnAwake": true,
+              "MaxParticles": 200
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 5,
+                    "Max": 7
+                  },
+                  "Cycles": 12,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 35,
+              "Radius": 0.05
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 1.5
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 210]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 2.6
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -30,
+                "Max": 30
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1,
+              "RandomStartFrame": true
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.4
+            },
+            "Volumetric": {
+              "Enabled": true,
+              "Source": "Voxels",
+              "DrawParticles": true,
+              "Density": 4,
+              "NoiseErosion": 0.5,
+              "NoiseScale": 0.7,
+              "NoiseSpeed": 0.25,
+              "Steps": 48,
+              "RefillTime": 2.5,
+              "VoxelSize": 0.35,
+              "Volume": 110,
+              "MaxRadius": 7,
+              "ExpandTime": 1.4,
+              "FadeTime": 3,
+              "Flatten": 1.5
+            },
+            "HideMesh": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "Smoke Corridor",
+      "ModelKey": "IsoSphere",
+      "Position": [-1, 0, 0.08],
+      "Scale": [0.09, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.16, 0.2, 0.14],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "e04c73c7-b448-56f9-b6bd-7cc02e357442",
+          "Data": {
+            "Main": {
+              "Duration": 18,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 2.2
+              },
+              "StartSpeed": {
+                "Min": 1.2,
+                "Max": 2.6
+              },
+              "StartSize": {
+                "Min": 0.25,
+                "Max": 0.45
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [206, 207, 212, 255],
+              "StartColor2": [182, 184, 190, 255],
+              "SimulationSpace": "World",
+              "PlayOnAwake": true,
+              "MaxParticles": 200
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 5,
+                    "Max": 7
+                  },
+                  "Cycles": 12,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 35,
+              "Radius": 0.05
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 1.5
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 210]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 2.6
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -30,
+                "Max": 30
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1,
+              "RandomStartFrame": true
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.4
+            },
+            "Volumetric": {
+              "Enabled": true,
+              "Source": "Voxels",
+              "DrawParticles": true,
+              "Density": 4,
+              "NoiseErosion": 0.5,
+              "NoiseScale": 0.7,
+              "NoiseSpeed": 0.25,
+              "Steps": 48,
+              "RefillTime": 2.5,
+              "VoxelSize": 0.35,
+              "Volume": 110,
+              "MaxRadius": 7,
+              "ExpandTime": 1.4,
+              "FadeTime": 3,
+              "Flatten": 1.5
+            },
+            "HideMesh": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "Smoke Room",
+      "ModelKey": "IsoSphere",
+      "Position": [10, 1, 0.08],
+      "Scale": [0.09, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.16, 0.2, 0.14],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "d4feaa41-d79b-57d3-8b2d-6f6a3c2c7992",
+          "Data": {
+            "Main": {
+              "Duration": 18,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 2.2
+              },
+              "StartSpeed": {
+                "Min": 1.2,
+                "Max": 2.6
+              },
+              "StartSize": {
+                "Min": 0.25,
+                "Max": 0.45
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [206, 207, 212, 255],
+              "StartColor2": [182, 184, 190, 255],
+              "SimulationSpace": "World",
+              "PlayOnAwake": true,
+              "MaxParticles": 200
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 5,
+                    "Max": 7
+                  },
+                  "Cycles": 12,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 35,
+              "Radius": 0.05
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 1.5
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 210]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 2.6
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -30,
+                "Max": 30
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1,
+              "RandomStartFrame": true
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.4
+            },
+            "Volumetric": {
+              "Enabled": true,
+              "Source": "Voxels",
+              "DrawParticles": true,
+              "Density": 4,
+              "NoiseErosion": 0.5,
+              "NoiseScale": 0.7,
+              "NoiseSpeed": 0.25,
+              "Steps": 48,
+              "RefillTime": 2.5,
+              "VoxelSize": 0.35,
+              "Volume": 110,
+              "MaxRadius": 7,
+              "ExpandTime": 1.4,
+              "FadeTime": 3,
+              "Flatten": 1.5
+            },
+            "HideMesh": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "Thrown Smoke",
+      "ModelKey": "IsoSphere",
+      "Position": [-6, -10, 0.08],
+      "Scale": [0.09, 0.09, 0.09],
+      "Material": {
+        "DiffuseColor": [0.16, 0.2, 0.14],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "b01f315a-9c94-5f94-a7d5-63550a9cfe88",
+          "Data": {
+            "Main": {
+              "Duration": 18,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 1.2,
+                "Max": 2.2
+              },
+              "StartSpeed": {
+                "Min": 1.2,
+                "Max": 2.6
+              },
+              "StartSize": {
+                "Min": 0.25,
+                "Max": 0.45
+              },
+              "StartRotation": {
+                "Min": 0,
+                "Max": 360
+              },
+              "StartColor": [206, 207, 212, 255],
+              "StartColor2": [182, 184, 190, 255],
+              "SimulationSpace": "World",
+              "PlayOnAwake": false,
+              "MaxParticles": 200
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0,
+              "Bursts": [
+                {
+                  "Time": 0,
+                  "Count": {
+                    "Min": 5,
+                    "Max": 7
+                  },
+                  "Cycles": 12,
+                  "Interval": 0.1,
+                  "Probability": 1
+                }
+              ]
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 35,
+              "Radius": 0.05
+            },
+            "LimitVelocity": {
+              "Enabled": true,
+              "Speed": 0,
+              "Dampen": 0,
+              "Drag": 1.5
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 210]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 2.6
+                  }
+                ]
+              }
+            },
+            "RotationOverLifetime": {
+              "Enabled": true,
+              "AngularVelocity": {
+                "Min": -30,
+                "Max": 30
+              }
+            },
+            "TextureSheetAnimation": {
+              "Enabled": true,
+              "TilesX": 4,
+              "TilesY": 4,
+              "Cycles": 1,
+              "RandomStartFrame": true
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.4
+            },
+            "Volumetric": {
+              "Enabled": true,
+              "Source": "Voxels",
+              "DrawParticles": true,
+              "Density": 4,
+              "NoiseErosion": 0.5,
+              "NoiseScale": 0.7,
+              "NoiseSpeed": 0.25,
+              "Steps": 48,
+              "RefillTime": 2.5,
+              "VoxelSize": 0.35,
+              "Volume": 110,
+              "MaxRadius": 7,
+              "ExpandTime": 1.4,
+              "FadeTime": 3,
+              "Flatten": 1.5
+            },
+            "HideMesh": false,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "Smoke Stack",
+      "ModelKey": "IsoSphere",
+      "Position": [-16, 8, 4.2],
+      "Scale": [0.15, 0.15, 0.15],
+      "Material": {
+        "DiffuseColor": [0.3, 0.3, 0.3],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "e3a5f57c-96ce-502b-9f92-9bed57c20175",
+          "Data": {
+            "Main": {
+              "Duration": 5,
+              "Prewarm": true,
+              "StartLifetime": {
+                "Min": 5,
+                "Max": 7
+              },
+              "StartSpeed": {
+                "Min": 0.8,
+                "Max": 1.2
+              },
+              "StartSize": {
+                "Min": 0.8,
+                "Max": 1.2
+              },
+              "StartColor": [92, 90, 88, 210],
+              "StartColor2": [120, 117, 114, 180],
+              "SimulationSpace": "World",
+              "MaxParticles": 160
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 12
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Cone",
+              "Angle": 10,
+              "Radius": 0.3
+            },
+            "ForceOverLifetime": {
+              "Enabled": true,
+              "Force": [0, 0, 0.3],
+              "Space": "World"
+            },
+            "ExternalForces": {
+              "Enabled": true,
+              "Wind": 0.8,
+              "Response": 0.6
+            },
+            "Noise": {
+              "Enabled": true,
+              "Strength": 0.3,
+              "Frequency": 0.5,
+              "ScrollSpeed": 0.4
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 0]
+                  },
+                  {
+                    "Time": 0.15,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 0.6
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 3
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "Texture": "SmokeSheet",
+              "Blend": "Alpha",
+              "Lit": true,
+              "SortMode": "Distance",
+              "SoftParticles": 0.5
+            },
+            "Volumetric": {
+              "Enabled": true,
+              "Source": "Particles",
+              "Density": 2.5,
+              "NoiseErosion": 0.45,
+              "NoiseScale": 1.0,
+              "NoiseSpeed": 0.5,
+              "Steps": 48,
+              "Resolution": 32
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "HE Blast",
+      "ModelKey": "IsoSphere",
+      "Position": [0, -12, 0.5],
+      "Scale": [0.1, 0.1, 0.1],
+      "Material": {
+        "DiffuseColor": [0.8, 0.4, 0.1],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "particles",
+          "InstanceId": "b56202cc-2f26-5aba-8e45-33d20d620b73",
+          "Data": {
+            "Main": {
+              "Duration": 1,
+              "Looping": false,
+              "StartLifetime": {
+                "Min": 0.15,
+                "Max": 0.35
+              },
+              "StartSpeed": {
+                "Min": 4,
+                "Max": 9
+              },
+              "StartSize": {
+                "Min": 0.3,
+                "Max": 0.8
+              },
+              "StartColor": [255, 205, 130, 255],
+              "StartColor2": [255, 140, 60, 255],
+              "SimulationSpace": "World",
+              "PlayOnAwake": false,
+              "MaxParticles": 400
+            },
+            "Emission": {
+              "Enabled": true,
+              "RateOverTime": 0
+            },
+            "Shape": {
+              "Enabled": true,
+              "Shape": "Sphere",
+              "Radius": 0.2
+            },
+            "ColorOverLifetime": {
+              "Enabled": true,
+              "Color": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Color": [255, 255, 255, 255]
+                  },
+                  {
+                    "Time": 1,
+                    "Color": [255, 255, 255, 0]
+                  }
+                ]
+              }
+            },
+            "SizeOverLifetime": {
+              "Enabled": true,
+              "Size": {
+                "Keys": [
+                  {
+                    "Time": 0,
+                    "Value": 1
+                  },
+                  {
+                    "Time": 1,
+                    "Value": 0.2
+                  }
+                ]
+              }
+            },
+            "Renderer": {
+              "Texture": "Glow",
+              "Blend": "Additive",
+              "Brightness": 4
+            },
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 100,
+      "Name": "Room Lamp",
+      "Position": [11, 0, 2.8],
+      "Radius": 8,
+      "Color": [255, 214, 160, 255],
+      "Intensity": 2
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 200,
+      "Name": "Sun",
+      "Direction": [-0.45, 0.35, -0.82],
+      "Position": [0, 0, 10],
+      "Color": [255, 244, 228, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 80,
+      "ShadowDepth": 160,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [-2, -6, 4],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 14,
+    "CycleDurationMinutes": 120,
+    "CloudCoverage": 0.25,
+    "CloudSpeed": 1,
+    "WindSpeed": 1,
+    "WindDirection": 70
+  },
+  "MainCamera": {
+    "Position": [-22, -16, 6.5],
+    "Forward": [0.8173, 0.5449, -0.1873],
+    "FieldOfView": 0.95,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "b0fe4f75-3268-5a53-a88e-bef0337a11b9",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "429946cc-1a45-5d0d-be32-94502b812d50",
+        "Data": {
+          "ScriptId": "smoke-test",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

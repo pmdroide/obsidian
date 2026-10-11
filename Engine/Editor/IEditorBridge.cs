@@ -174,7 +174,11 @@ namespace Engine.Editor
         void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity);
         void EnqueueAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle);
         void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity);
-        void EnqueueAddBasicEntity(string modelKey, Vector3 position);
+        /// <param name="name">Gameobject name; null keeps the default.</param>
+        /// <param name="scale">Null keeps 1.</param>
+        /// <param name="componentTypes">Registered component ids (<see cref="ComponentRegistry"/>) to attach, e.g. a Particle System.</param>
+        void EnqueueAddBasicEntity(string modelKey, Vector3 position, string name = null, Vector3? scale = null,
+            IReadOnlyList<string> componentTypes = null);
         void EnqueueDelete(int id);
 
         // Gizmo mode (Translate/Rotate/Scale). Set to null to suppress all gizmo
@@ -193,6 +197,13 @@ namespace Engine.Editor
         void EnqueueNewScene();
         void EnqueueLoadScene(string path);
         void EnqueueSaveScene(string path);
+        /// <summary>
+        /// Edit > Project Settings > Delete Project: swaps in an empty scene, forgets imported models,
+        /// runs <see cref="Recources.ProjectReset"/> on this checkout (source files go through
+        /// <paramref name="deleteSource"/>, e.g. the Recycle Bin) and saves the new project's
+        /// first scene. Edit mode only. The callback runs on the game thread.
+        /// </summary>
+        void EnqueueResetProject(Action<string> deleteSource, Action<Recources.ProjectReset.Result> onCompleted);
         string CurrentScenePath { get; }
         string CurrentSceneName { get; }
         bool IsSceneDirty { get; }

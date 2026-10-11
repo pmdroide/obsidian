@@ -1,0 +1,159 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Anvil.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="Anvil.Views.ProjectSettingsWindow"
+        x:DataType="vm:ProjectSettingsViewModel"
+        Icon="/Assets/Icon.ico"
+        Title="Project Settings"
+        Width="460"
+        SizeToContent="Height"
+        MaxHeight="860"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource AnvilPanelBackgroundBrush}"
+        FontFamily="{StaticResource AnvilFontFamily}"
+        Foreground="{StaticResource AnvilTextPrimaryBrush}">
+
+    <Design.DataContext>
+        <vm:ProjectSettingsViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+        </Style>
+        <Style Selector="TextBlock.value">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Border.divider">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{StaticResource AnvilBorderBrush}" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="80" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <!-- Destructive action: red, white text. -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{StaticResource AnvilErrorBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C43F3B" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.danger:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#A83431" />
+        </Style>
+        <Style Selector="Button.danger:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#5A2A2E" />
+            <Setter Property="Foreground" Value="#B08A8C" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="*,Auto">
+    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20,20,20,0" Spacing="18">
+
+        <!-- Project -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Project" Classes="section" />
+            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Name" Classes="label" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ProjectName}" Classes="value" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Content folder" Classes="label" />
+                <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContentRoot}" FontSize="11"
+                                     TextWrapping="Wrap" Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Scenes in build" Classes="label" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SceneCount}" Classes="value" />
+            </Grid>
+            <TextBlock Text="The window name, intro videos and scene order are edited in Game Settings."
+                       Classes="hint" />
+        </StackPanel>
+
+        <Border Classes="divider" />
+
+        <!-- Danger zone -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Danger Zone" Classes="section" Foreground="{StaticResource AnvilErrorBrush}" />
+            <Border BorderBrush="{StaticResource AnvilErrorBrush}" BorderThickness="1" CornerRadius="4" Padding="14">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Delete Project" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Classes="hint" FontSize="11" Foreground="{StaticResource AnvilTextMutedBrush}"
+                               Text="Deletes every scene, UI document, audio and video file, imported model, texture and skybox, with their Content.mgcb entries and built copies. The game, intro, scene list and Steam settings go back to their defaults. You get a new project with one empty scene, Scenes/Main.obsc." />
+                    <TextBlock Classes="hint"
+                               Text="Kept: shaders, fonts, editor gizmos, the built-in models and the scripts (they are compiled into the engine). Deleted source files go to the Recycle Bin." />
+
+                    <TextBlock Text="{Binding PlanError}" IsVisible="{Binding HasPlanError}" Classes="hint"
+                               Foreground="{StaticResource AnvilErrorBrush}" />
+                    <TextBlock Text="Stop Play to delete the project." IsVisible="{Binding IsPlayBlocking}" Classes="hint"
+                               Foreground="{StaticResource AnvilWarnBrush}" />
+
+                    <Button Content="Delete Project..." Classes="danger" HorizontalAlignment="Left"
+                            Command="{Binding BeginDeleteCommand}" IsEnabled="{Binding CanDelete}"
+                            IsVisible="{Binding !IsConfirmingDelete}" />
+
+                    <!-- Confirmation: lists what goes and asks for the project name. -->
+                    <StackPanel Spacing="8" IsVisible="{Binding IsConfirmingDelete}">
+                        <TextBlock Text="{Binding PlanSummary}" Classes="value" FontSize="11" />
+                        <Border Background="{StaticResource AnvilInputBackgroundBrush}" CornerRadius="3"
+                                BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1"
+                                MaxHeight="150" IsVisible="{Binding HasPlannedRemovals}">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding PlannedRemovals}" Margin="8,6">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Text="{Binding}" FontSize="11" FontFamily="Consolas"
+                                                       Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                        <TextBlock Text="{Binding ConfirmationPrompt}" Classes="label" />
+                        <TextBox Classes="field" Text="{Binding ConfirmationText, Mode=TwoWay}"
+                                 PlaceholderText="{Binding ConfirmationPhrase}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                            <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" />
+                            <Button Content="Delete Project" Classes="danger"
+                                    IsEnabled="{Binding IsConfirmationValid}" Click="ConfirmDelete_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+    </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Margin="20,18,20,20" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Close" IsCancel="True" Click="Close_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

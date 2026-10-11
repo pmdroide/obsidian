@@ -357,7 +357,9 @@
                         <MenuItem Header="Undo" />
                         <MenuItem Header="Redo" />
                         <Separator />
-                        <MenuItem Header="Preferences..." />
+                        <MenuItem Header="Project Settings..."
+                                  Command="{Binding OpenProjectSettingsCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
                     </MenuItem>
                     <!-- Spawns at the camera focus (IEditorBridge.SpawnPoint). The parameter is an
                          Assets model field name. Every gameobject needs a mesh, so there is no
@@ -378,6 +380,10 @@
                                       Command="{Binding AddPointLightCommand}" />
                             <MenuItem Header="Spot Light"
                                       Command="{Binding AddSpotLightCommand}" />
+                        </MenuItem>
+                        <MenuItem Header="Effects">
+                            <MenuItem Header="Particle System"
+                                      Command="{Binding AddParticleSystemCommand}" />
                         </MenuItem>
                     </MenuItem>
                     <MenuItem Header="Game Settings"
@@ -513,6 +519,10 @@
                                 Command="{Binding SetInspectorViewCommand}" CommandParameter="Environment"
                                 Classes.active="{Binding IsInspectorEnvironmentView}"
                                 ToolTip.Tip="Skybox and day / night cycle" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="World" Classes="environmentButton" Margin="4,0,0,0"
+                                Command="{Binding SetInspectorViewCommand}" CommandParameter="World"
+                                Classes.active="{Binding IsInspectorWorldView}"
+                                ToolTip.Tip="World generation (voxel world)" VerticalAlignment="Center" />
 
                         <Rectangle Grid.Column="2" Width="1" Margin="10,4"
                                    Fill="{StaticResource AnvilBorderBrush}" />
@@ -1672,6 +1682,664 @@
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
+                                        <DataTemplate DataType="m:ParticleSystemComponentViewModel" x:DataType="m:ParticleSystemComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Sparkles" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="6" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <CheckBox Content="Hide Mesh in Play" IsChecked="{Binding HideMesh, Mode=TwoWay}" FontSize="11" ToolTip.Tip="The gameobject's mesh marks the emitter while editing and is hidden in Play" />
+                                                    <Expander IsExpanded="True" Header="Main">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Seconds of one emission cycle; bursts are timed within it">
+                                                                <TextBlock Grid.Column="0" Text="Duration" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Duration, Mode=TwoWay}"
+                                                                               Minimum="0.05" Maximum="3600" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <CheckBox Content="Looping" IsChecked="{Binding Looping, Mode=TwoWay}" FontSize="11" />
+                                                            <CheckBox Content="Prewarm" IsChecked="{Binding Prewarm, Mode=TwoWay}" FontSize="11" ToolTip.Tip="Looping systems start as if a whole cycle had already run" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Seconds before the first emission">
+                                                                <TextBlock Grid.Column="0" Text="Start Delay" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding StartDelay, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="3600" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*" ColumnSpacing="4" ToolTip.Tip="Seconds each particle lives (random between the two)">
+                                                                <TextBlock Grid.Column="0" Text="Start Lifetime" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding StartLifetimeMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0.01" Maximum="3600" Increment="0.5" FormatString="0.##" ToolTip.Tip="Min" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding StartLifetimeMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0.01" Maximum="3600" Increment="0.5" FormatString="0.##" ToolTip.Tip="Max" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*" ColumnSpacing="4" ToolTip.Tip="Metres per second along the shape's direction">
+                                                                <TextBlock Grid.Column="0" Text="Start Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding StartSpeedMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-10000" Maximum="10000" Increment="0.5" FormatString="0.##" ToolTip.Tip="Min" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding StartSpeedMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-10000" Maximum="10000" Increment="0.5" FormatString="0.##" ToolTip.Tip="Max" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*" ColumnSpacing="4" ToolTip.Tip="Metres across">
+                                                                <TextBlock Grid.Column="0" Text="Start Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding StartSizeMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0" Maximum="10000" Increment="0.1" FormatString="0.##" ToolTip.Tip="Min" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding StartSizeMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0" Maximum="10000" Increment="0.1" FormatString="0.##" ToolTip.Tip="Max" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*" ColumnSpacing="4" ToolTip.Tip="Degrees">
+                                                                <TextBlock Grid.Column="0" Text="Start Rotation" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding StartRotationMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-36000" Maximum="36000" Increment="15" FormatString="0" ToolTip.Tip="Min" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding StartRotationMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-36000" Maximum="36000" Increment="15" FormatString="0" ToolTip.Tip="Max" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Each particle picks a colour between Start Color and Color 2 (alpha = opacity)">
+                                                                <TextBlock Grid.Column="0" Text="Start Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                                    <Border Width="44" Height="18" CornerRadius="3"
+                                                                            Background="{Binding StartColor, Converter={StaticResource ColorToBrush}}"
+                                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                    <Button.Flyout>
+                                                                        <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                        <Flyout Opening="OwnedFlyout_Opening">
+                                                                            <ColorPicker x:DataType="m:ParticleSystemComponentViewModel" Color="{Binding StartColor, Mode=TwoWay}" />
+                                                                        </Flyout>
+                                                                    </Button.Flyout>
+                                                                </Button>
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Color 2" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                                    <Border Width="44" Height="18" CornerRadius="3"
+                                                                            Background="{Binding StartColor2, Converter={StaticResource ColorToBrush}}"
+                                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                    <Button.Flyout>
+                                                                        <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                        <Flyout Opening="OwnedFlyout_Opening">
+                                                                            <ColorPicker x:DataType="m:ParticleSystemComponentViewModel" Color="{Binding StartColor2, Mode=TwoWay}" />
+                                                                        </Flyout>
+                                                                    </Button.Flyout>
+                                                                </Button>
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Share of the scene's gravity; negative rises">
+                                                                <TextBlock Grid.Column="0" Text="Gravity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding GravityModifier, Mode=TwoWay}"
+                                                                               Minimum="-100" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Local particles move with the gameobject, World ones stay where they were born">
+                                                                <TextBlock Grid.Column="0" Text="Space" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SimulationSpaces}"
+                                                                          SelectedItem="{Binding SimulationSpace, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Sim Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SimulationSpeed, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <CheckBox Content="Play On Awake" IsChecked="{Binding PlayOnAwake, Mode=TwoWay}" FontSize="11" ToolTip.Tip="Plays with Play and in the editor; otherwise scripts or sub-emitters start it" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Max Particles" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MaxParticles, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100000" Increment="100" FormatString="0" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="True" Header="Emission">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding EmissionEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Rate / Second" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RateOverTime, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100000" Increment="1" FormatString="0.#" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Particles per metre the gameobject moves">
+                                                                <TextBlock Grid.Column="0" Text="Rate / Metre" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RateOverDistance, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100000" Increment="1" FormatString="0.#" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="*,*,*,*,*,Auto" ColumnSpacing="4">
+                                                                <TextBlock Grid.Column="0" Text="Time" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="1" Text="Min" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="2" Text="Max" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="3" Text="Cycles" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="4" Text="Interval" Classes="muted" FontSize="10" />
+                                                            </Grid>
+                                                            <ItemsControl ItemsSource="{Binding Bursts}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="m:ParticleBurstRowViewModel" x:DataType="m:ParticleBurstRowViewModel">
+                                                                        <Grid ColumnDefinitions="*,*,*,*,*,Auto" ColumnSpacing="4" Margin="0,0,0,4">
+                                                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Time, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="3600" Increment="0.1" FormatString="0.##" ToolTip.Tip="Seconds into the cycle" />
+                                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CountMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="100000" Increment="1" FormatString="0" ToolTip.Tip="Particles (min)" />
+                                                                            <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding CountMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="100000" Increment="1" FormatString="0" ToolTip.Tip="Particles (max)" />
+                                                                            <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding Cycles, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="10000" Increment="1" FormatString="0" ToolTip.Tip="Repeats per cycle; 0 = until the cycle ends" />
+                                                                            <NumericUpDown Grid.Column="4" Classes="field" Value="{Binding Interval, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0.01" Maximum="3600" Increment="0.05" FormatString="0.##" ToolTip.Tip="Seconds between repeats" />
+                                                                            <Button Grid.Column="5" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <Button Content="Add Burst" Command="{Binding AddBurstCommand}" HorizontalAlignment="Stretch" />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="True" Header="Shape">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding ShapeEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Shape" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.ShapeTypes}"
+                                                                          SelectedItem="{Binding ShapeType, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Cone opening in degrees">
+                                                                <TextBlock Grid.Column="0" Text="Angle" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Angle, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="90" Increment="5" FormatString="0.#" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Radius, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="10000" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="1 emits from the whole volume, 0 from the surface/rim">
+                                                                <TextBlock Grid.Column="0" Text="Thickness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RadiusThickness, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Degrees of the circle used">
+                                                                <TextBlock Grid.Column="0" Text="Arc" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Arc, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="360" Increment="15" FormatString="0" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4">
+                                                                <TextBlock Grid.Column="0" Text="Box Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BoxX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0" Maximum="100000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding BoxY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0" Maximum="100000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding BoxZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="0" Maximum="100000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4" ToolTip.Tip="Shape offset (local metres)">
+                                                                <TextBlock Grid.Column="0" Text="Position" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ShapePositionX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding ShapePositionY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding ShapePositionZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4" ToolTip.Tip="Shape rotation (local degrees)">
+                                                                <TextBlock Grid.Column="0" Text="Rotation" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ShapeRotationX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding ShapeRotationY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding ShapeRotationZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Blends each direction towards a random one">
+                                                                <TextBlock Grid.Column="0" Text="Randomize" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RandomizeDirection, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Local axes, Z up: Cone, Box and Edge emit along +Z, Circle and Sphere outwards. The gameobject's rotation turns the shape; its scale is ignored." />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Velocity over Lifetime">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding VelocityEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4" ToolTip.Tip="Metres per second added every frame">
+                                                                <TextBlock Grid.Column="0" Text="Linear" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LinearX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding LinearY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding LinearZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Space" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SimulationSpaces}"
+                                                                          SelectedItem="{Binding VelocitySpace, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4" ToolTip.Tip="Degrees per second around the gameobject's local axes">
+                                                                <TextBlock Grid.Column="0" Text="Orbital" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding OrbitalX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding OrbitalY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding OrbitalZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Metres per second away from the gameobject">
+                                                                <TextBlock Grid.Column="0" Text="Radial" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Radial, Mode=TwoWay}"
+                                                                               Minimum="-1000" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <TextBlock Text="Speed Modifier (multiplies own velocity)" Classes="muted" FontSize="11" />
+                                                            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4">
+                                                                <TextBlock Grid.Column="0" Text="Time" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="1" Text="Value" Classes="muted" FontSize="10" />
+                                                            </Grid>
+                                                            <ItemsControl ItemsSource="{Binding SpeedKeys}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="m:ParticleCurveKeyRowViewModel" x:DataType="m:ParticleCurveKeyRowViewModel">
+                                                                        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4" Margin="0,0,0,4">
+                                                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Time, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" ToolTip.Tip="Share of the lifetime, 0..1" />
+                                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Value, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="-1000" Maximum="1000" Increment="0.1" FormatString="0.##" ToolTip.Tip="Multiplier" />
+                                                                            <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <Button Content="Add Key" Command="{Binding AddSpeedKeyCommand}" HorizontalAlignment="Stretch" />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Limit Velocity">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding LimitEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Above this (m/s) particles slow down; 0 = no limit">
+                                                                <TextBlock Grid.Column="0" Text="Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LimitSpeed, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Share of the excess speed removed">
+                                                                <TextBlock Grid.Column="0" Text="Dampen" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LimitDampen, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Air resistance per second">
+                                                                <TextBlock Grid.Column="0" Text="Drag" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Drag, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1000" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Force over Lifetime">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding ForceEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4" ToolTip.Tip="Acceleration, m/s²">
+                                                                <TextBlock Grid.Column="0" Text="Force" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ForceX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding ForceY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding ForceZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-100000" Maximum="100000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Space" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SimulationSpaces}"
+                                                                          SelectedItem="{Binding ForceSpace, Mode=TwoWay}" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="External Forces">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding ExternalEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Multiplies the scene's wind (Environment &gt; Wind)">
+                                                                <TextBlock Grid.Column="0" Text="Wind" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Wind, Mode=TwoWay}"
+                                                                               Minimum="-100" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="How fast particles pick up the wind, per second">
+                                                                <TextBlock Grid.Column="0" Text="Response" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WindResponse, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Noise">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding NoiseEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Metres per second of wander">
+                                                                <TextBlock Grid.Column="0" Text="Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding NoiseStrength, Mode=TwoWay}"
+                                                                               Minimum="-1000" Maximum="1000" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Swirls per metre">
+                                                                <TextBlock Grid.Column="0" Text="Frequency" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding NoiseFrequency, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Scroll Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding NoiseScrollSpeed, Mode=TwoWay}"
+                                                                               Minimum="-100" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Color over Lifetime">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding ColorEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4">
+                                                                <TextBlock Grid.Column="0" Text="Time" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="1" Text="Color" Classes="muted" FontSize="10" />
+                                                            </Grid>
+                                                            <ItemsControl ItemsSource="{Binding ColorKeys}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="m:ParticleGradientKeyRowViewModel" x:DataType="m:ParticleGradientKeyRowViewModel">
+                                                                        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4" Margin="0,0,0,4">
+                                                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Time, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" ToolTip.Tip="Share of the lifetime, 0..1" />
+                                                                            <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                                                <Border Width="44" Height="18" CornerRadius="3"
+                                                                                        Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                                                                        BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                                <Button.Flyout>
+                                                                                    <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                                    <Flyout Opening="OwnedFlyout_Opening">
+                                                                                        <ColorPicker x:DataType="m:ParticleGradientKeyRowViewModel" Color="{Binding Color, Mode=TwoWay}" />
+                                                                                    </Flyout>
+                                                                                </Button.Flyout>
+                                                                            </Button>
+                                                                            <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <Button Content="Add Key" Command="{Binding AddColorKeyCommand}" HorizontalAlignment="Stretch" />
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Multiplies the start colour; alpha fades. Keys blend in a straight line." />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Size over Lifetime">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding SizeEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4">
+                                                                <TextBlock Grid.Column="0" Text="Time" Classes="muted" FontSize="10" />
+                                                                <TextBlock Grid.Column="1" Text="Size" Classes="muted" FontSize="10" />
+                                                            </Grid>
+                                                            <ItemsControl ItemsSource="{Binding SizeKeys}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="m:ParticleCurveKeyRowViewModel" x:DataType="m:ParticleCurveKeyRowViewModel">
+                                                                        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4" Margin="0,0,0,4">
+                                                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding Time, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" ToolTip.Tip="Share of the lifetime, 0..1" />
+                                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Value, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                           Minimum="-1000" Maximum="1000" Increment="0.1" FormatString="0.##" ToolTip.Tip="Multiplier" />
+                                                                            <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <Button Content="Add Key" Command="{Binding AddSizeKeyCommand}" HorizontalAlignment="Stretch" />
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Multiplies the start size." />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Rotation over Lifetime">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding RotationEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*,*" ColumnSpacing="4" ToolTip.Tip="Degrees per second">
+                                                                <TextBlock Grid.Column="0" Text="Spin" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding AngularVelocityMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-36000" Maximum="36000" Increment="15" FormatString="0" ToolTip.Tip="Min" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding AngularVelocityMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                               Minimum="-36000" Maximum="36000" Increment="15" FormatString="0" ToolTip.Tip="Max" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Collision">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding CollisionEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Plane: a floor at a height. World: every Physics collider (a ray per particle)">
+                                                                <TextBlock Grid.Column="0" Text="Type" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.CollisionTypes}"
+                                                                          SelectedItem="{Binding CollisionType, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Plane only: world Z of the floor">
+                                                                <TextBlock Grid.Column="0" Text="Plane Height" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding PlaneHeight, Mode=TwoWay}"
+                                                                               Minimum="-100000" Maximum="100000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Bounce" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Bounce, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="2" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Speed along the surface lost per hit">
+                                                                <TextBlock Grid.Column="0" Text="Dampen" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CollisionDampen, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Share of the lifetime each hit uses up (1 dies on contact)">
+                                                                <TextBlock Grid.Column="0" Text="Lifetime Loss" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LifetimeLoss, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Collision radius as a share of half the size">
+                                                                <TextBlock Grid.Column="0" Text="Radius Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RadiusScale, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Slower than this after a hit, a particle dies">
+                                                                <TextBlock Grid.Column="0" Text="Min Kill Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MinKillSpeed, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100000" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Texture Sheet Animation">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding SheetEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Tiles X" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding TilesX, Mode=TwoWay}"
+                                                                               Minimum="1" Maximum="64" Increment="1" FormatString="0" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Tiles Y" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding TilesY, Mode=TwoWay}"
+                                                                               Minimum="1" Maximum="64" Increment="1" FormatString="0" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Times the sheet plays over a lifetime">
+                                                                <TextBlock Grid.Column="0" Text="Cycles" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SheetCycles, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <CheckBox Content="Random Start Frame" IsChecked="{Binding RandomStartFrame, Mode=TwoWay}" FontSize="11" />
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Frames are read left to right, top to bottom. The built-in Smoke Sheet texture is 4 x 4." />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Sub Emitters">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding SubEmittersEnabled, Mode=TwoWay}" FontSize="11" />
+                                                            <Grid ColumnDefinitions="*" ColumnSpacing="4">
+                                                            </Grid>
+                                                            <ItemsControl ItemsSource="{Binding SubEmitters}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="m:ParticleSubEmitterRowViewModel" x:DataType="m:ParticleSubEmitterRowViewModel">
+                                                                        <StackPanel Spacing="4" Margin="0,0,0,8">
+                                                                            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="4">
+                                                                                <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
+                                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SubEmitterTriggers}"
+                                                                                          SelectedItem="{Binding Trigger, Mode=TwoWay}" ToolTip.Tip="When it emits" />
+                                                                                <TextBox Grid.Column="1" Classes="field" Text="{Binding Target, Mode=TwoWay}" Watermark="Gameobject name"
+                                                                                         ToolTip.Tip="Gameobject with the Particle System that emits (Play On Awake off, Rate 0)" />
+                                                                                <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
+                                                                            </Grid>
+                                                                            <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="4">
+                                                                                <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding CountMin, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                               Minimum="0" Maximum="100000" Increment="1" FormatString="0" ToolTip.Tip="Particles per event, min (per second for Trail)" />
+                                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CountMax, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                               Minimum="0" Maximum="100000" Increment="1" FormatString="0" ToolTip.Tip="Particles per event, max (per second for Trail)" />
+                                                                                <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding InheritVelocity, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                               Minimum="-10" Maximum="10" Increment="0.1" FormatString="0.##" ToolTip.Tip="Share of the parent particle's velocity" />
+                                                                                <CheckBox Grid.Column="3" Content="Color" IsChecked="{Binding InheritColor, Mode=TwoWay}" FontSize="11"
+                                                                                          ToolTip.Tip="Tint with the parent particle&apos;s colour" />
+                                                                            </Grid>
+                                                                        </StackPanel>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <Button Content="Add Sub Emitter" Command="{Binding AddSubEmitterCommand}" HorizontalAlignment="Stretch" />
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Each target is another gameobject with a Particle System (Play On Awake off, Rate 0, World space). It emits from its own shape where this system's particles are born, trail, collide or die." />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="True" Header="Renderer">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Render Mode" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.RenderModes}"
+                                                                          SelectedItem="{Binding RenderMode, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Additive glows (fire, sparks); Alpha covers (smoke, dust)">
+                                                                <TextBlock Grid.Column="0" Text="Blend" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.BlendModes}"
+                                                                          SelectedItem="{Binding Blend, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Texture" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.Textures}"
+                                                                          SelectedItem="{Binding Texture, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Custom only: a texture built by Content.mgcb, without extension">
+                                                                <TextBlock Grid.Column="0" Text="Custom Texture" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <TextBox Grid.Column="1" Classes="field" Text="{Binding TexturePath, Mode=TwoWay}" Watermark="Content path, no extension" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Draw order inside this system (Alpha blending looks best sorted by distance)">
+                                                                <TextBlock Grid.Column="0" Text="Sort Mode" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SortModes}"
+                                                                          SelectedItem="{Binding SortMode, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Multiplies the colour; above 1 blooms">
+                                                                <TextBlock Grid.Column="0" Text="Brightness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Brightness, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1000" Increment="0.25" FormatString="0.##" />
+                                                            </Grid>
+                                                            <CheckBox Content="Lit" IsChecked="{Binding Lit, Mode=TwoWay}" FontSize="11" ToolTip.Tip="Shaded by the sun and sky (smoke, dust) instead of full colour" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Metres over which particles fade into geometry">
+                                                                <TextBlock Grid.Column="0" Text="Soft Particles" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SoftParticles, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Metres in front of the camera over which particles fade in">
+                                                                <TextBlock Grid.Column="0" Text="Camera Fade" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CameraFade, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Stretched only: length as a multiple of the size">
+                                                                <TextBlock Grid.Column="0" Text="Length Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LengthScale, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Stretched only: extra length per m/s">
+                                                                <TextBlock Grid.Column="0" Text="Speed Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SpeedScale, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1000" Increment="0.01" FormatString="0.###" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <Expander IsExpanded="False" Header="Volumetric">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding VolumetricEnabled, Mode=TwoWay}" FontSize="11"
+                                                                      ToolTip.Tip="Draw the system as a lit, raymarched volume instead of billboards" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Particles: each particle adds a soft ball of density. Voxels: a Counter-Strike 2 style smoke that floods the room from the emitter, blocked by Static colliders">
+                                                                <TextBlock Grid.Column="0" Text="Source" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.VolumeSources}"
+                                                                          SelectedItem="{Binding VolumeSource, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <CheckBox Content="Draw Particles" IsChecked="{Binding VolumeDrawParticles, Mode=TwoWay}" FontSize="11"
+                                                                      ToolTip.Tip="Also draw the particles as billboards (e.g. the jet of smoke from a grenade)" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Extinction per metre at full density: higher is thicker">
+                                                                <TextBlock Grid.Column="0" Text="Density" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeDensity, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="How far the detail noise eats into the volume (wispy edges)">
+                                                                <TextBlock Grid.Column="0" Text="Noise Erosion" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeNoiseErosion, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Noise features per metre">
+                                                                <TextBlock Grid.Column="0" Text="Noise Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeNoiseScale, Mode=TwoWay}"
+                                                                               Minimum="0.001" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Metres per second the noise rises (rolling smoke)">
+                                                                <TextBlock Grid.Column="0" Text="Noise Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeNoiseSpeed, Mode=TwoWay}"
+                                                                               Minimum="-100" Maximum="100" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Most raymarch samples per pixel (quality vs. cost)">
+                                                                <TextBlock Grid.Column="0" Text="Steps" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeSteps, Mode=TwoWay}"
+                                                                               Minimum="8" Maximum="128" Increment="8" FormatString="0" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Seconds a bullet tunnel or blast hole takes to fill in (CarveTunnel / CarveHole)">
+                                                                <TextBlock Grid.Column="0" Text="Refill Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeRefillTime, Mode=TwoWay}"
+                                                                               Minimum="0.01" Maximum="1000" Increment="0.25" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" IsVisible="{Binding IsParticleSource}" ToolTip.Tip="Grid cells along the longest side of the particles' bounds">
+                                                                <TextBlock Grid.Column="0" Text="Resolution" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VolumeResolution, Mode=TwoWay}"
+                                                                               Minimum="4" Maximum="62" Increment="4" FormatString="0" />
+                                                            </Grid>
+                                                            <StackPanel Spacing="6" IsVisible="{Binding IsVoxelSource}">
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Edge of one voxel, metres">
+                                                                    <TextBlock Grid.Column="0" Text="Voxel Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelSize, Mode=TwoWay}"
+                                                                                   Minimum="0.05" Maximum="4" Increment="0.05" FormatString="0.##" />
+                                                                </Grid>
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Cubic metres the smoke fills: a corridor gets a long smoke, a room a round one">
+                                                                    <TextBlock Grid.Column="0" Text="Volume" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelVolume, Mode=TwoWay}"
+                                                                                   Minimum="0" Maximum="100000" Increment="10" FormatString="0.#" />
+                                                                </Grid>
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Furthest the smoke spreads from the emitter, metres">
+                                                                    <TextBlock Grid.Column="0" Text="Max Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelMaxRadius, Mode=TwoWay}"
+                                                                                   Minimum="0.25" Maximum="100" Increment="0.5" FormatString="0.##" />
+                                                                </Grid>
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Seconds the smoke takes to bloom to its full volume">
+                                                                    <TextBlock Grid.Column="0" Text="Expand Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelExpandTime, Mode=TwoWay}"
+                                                                                   Minimum="0.01" Maximum="1000" Increment="0.1" FormatString="0.##" />
+                                                                </Grid>
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Seconds it takes to dissipate once the system stops emitting (Duration sets how long it holds)">
+                                                                    <TextBlock Grid.Column="0" Text="Fade Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelFadeTime, Mode=TwoWay}"
+                                                                                   Minimum="0.01" Maximum="1000" Increment="0.25" FormatString="0.##" />
+                                                                </Grid>
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Cost of spreading upwards: above 1 the smoke spreads wider than tall">
+                                                                    <TextBlock Grid.Column="0" Text="Flatten" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelFlatten, Mode=TwoWay}"
+                                                                                   Minimum="0.1" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                                </Grid>
+                                                            </StackPanel>
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Renderer Lit, Brightness and Blend apply to the volume. Voxels use Start Color and flood while the system emits (Duration), then fade. Scripts: CarveTunnel(from, to) for bullets, CarveHole(center, radius) for blasts, Opacity(from, to) for line of sight." />
+                                                        </StackPanel>
+                                                    </Expander>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Unity-style particle system. Particles start from the Shape at this gameobject and change over their lifetime through the modules. Play On Awake systems also play while editing. Scripts: GetComponent&lt;ParticleSystemComponent&gt;().Play() / Stop() / Emit(n) / EmitAt(position, n)." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
                                         <DataTemplate DataType="m:ScriptBehaviourComponentViewModel" x:DataType="m:ScriptBehaviourComponentViewModel">
                                             <Expander IsExpanded="True" Header="{Binding DisplayName}">
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -2450,8 +3118,19 @@
                                                    TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                     </StackPanel>
                                 </StackPanel>
+                                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- World panel - opened by the viewport toolbar's World button. World
+                             generation settings are part of the scene environment. -->
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      IsVisible="{Binding IsInspectorWorldView}">
+                            <StackPanel Spacing="14" Margin="12" DataContext="{Binding Environment}"
+                                        x:DataType="m:EnvironmentViewModel" IsEnabled="{Binding IsReady}">
+                                <TextBlock Text="World" FontSize="13" FontWeight="SemiBold" />
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Voxel World" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <TextBlock Text="Voxel World" FontSize="12" FontWeight="SemiBold" />
                                     <CheckBox Content="Generate a voxel world" IsChecked="{Binding VoxelsEnabled, Mode=TwoWay}" FontSize="11" />
                                     <StackPanel Spacing="8" IsVisible="{Binding VoxelsEnabled}">
                                         <Grid ColumnDefinitions="90,*" ColumnSpacing="8">

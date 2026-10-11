@@ -55,6 +55,7 @@ public static class ComponentEditorRegistry
         Register(ClothComponent.TypeId, owner => new ClothComponentViewModel(owner));
         Register(NpcComponent.TypeId, owner => new NpcComponentViewModel(owner));
         Register(LodComponent.TypeId, owner => new LodComponentViewModel(owner));
+        Register(ParticleSystemComponent.TypeId, owner => new ParticleSystemComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

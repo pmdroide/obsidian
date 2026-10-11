@@ -495,7 +495,7 @@ namespace Engine.Renderer.Helper
 
                         TransformMatrix transform = meshLib.GetWorldMatrices()[index];
                         // LOD component: only the gameobject's current level draws (-1 = culled by distance).
-                        if (meshLib.LodLevels[index] != transform.LodLevel) continue;
+                        if (meshLib.LodLevels[index] != transform.LodLevel || transform.Hidden) continue;
                         Matrix localWorldMatrix = transform.World;
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,

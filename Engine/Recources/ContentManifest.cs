@@ -105,13 +105,16 @@ namespace Engine.Recources
         /// Removes the entry for <paramref name="relPath"/> and, when it names a folder,
         /// every entry beneath it. Returns the paths that were removed.
         /// </summary>
-        public static IReadOnlyList<string> Unregister(string relPath)
+        public static IReadOnlyList<string> Unregister(string relPath) => Unregister(relPath, ManifestPath);
+
+        /// <summary><see cref="Unregister(string)"/> on the manifest at <paramref name="manifestPath"/>.</summary>
+        public static IReadOnlyList<string> Unregister(string relPath, string manifestPath)
         {
             var removed = new List<string>();
             string target = Normalize(relPath);
             if (target.Length == 0) return removed;
 
-            Edit(lines =>
+            Edit(manifestPath, lines =>
             {
                 var kept = new List<string>(lines.Count);
                 bool skipping = false;
@@ -168,9 +171,10 @@ namespace Engine.Recources
 
         // -------- Helpers --------
 
-        private static void Edit(Func<List<string>, bool> mutate)
+        private static void Edit(Func<List<string>, bool> mutate) => Edit(ManifestPath, mutate);
+
+        private static void Edit(string path, Func<List<string>, bool> mutate)
         {
-            string path = ManifestPath;
             EditMutex.WaitOne();
             try
             {

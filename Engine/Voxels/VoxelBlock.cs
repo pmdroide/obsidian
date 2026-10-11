@@ -22,7 +22,7 @@ namespace Engine.Voxels
         Lamp,
     }
 
-    /// <summary>The shape of the generated terrain (Inspector > Environment > Voxel World). Saved by name: never rename one.</summary>
+    /// <summary>The shape of the generated terrain (Inspector > World > Voxel World). Saved by name: never rename one.</summary>
     public enum VoxelTerrain
     {
         Flat,

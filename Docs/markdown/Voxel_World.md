@@ -2,7 +2,7 @@
 
 A scene can have a **voxel world**: block terrain generated from a few settings, drawn by the deferred
 renderer and solid for physics. It is part of the scene's environment. Turn it on in Anvil under
-**Hierarchy > Environment > Voxel World**. It is saved in the `.obsc`, shown in both Edit and Play, and
+**World > Voxel World** (the World button in the viewport toolbar, beside Environment). It is saved in the `.obsc`, shown in both Edit and Play, and
 scripts can dig and build in it during Play.
 
 ## Settings

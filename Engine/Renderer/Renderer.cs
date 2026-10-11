@@ -61,6 +61,7 @@ namespace Engine.Renderer
         private ForwardRenderModule _forwardRenderModule;
         private WaterRenderModule _waterRenderModule;
         private WeatherRenderModule _weatherRenderModule;
+        private ParticleRenderModule _particleRenderModule;
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
@@ -218,6 +219,7 @@ namespace Engine.Renderer
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
             _waterRenderModule = new WaterRenderModule(content);
             _weatherRenderModule = new WeatherRenderModule(content);
+            _particleRenderModule = new ParticleRenderModule(content);
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
             _froxelRenderModule = new FroxelRenderModule(shaderManager, "Shaders/Deferred/Froxel");
@@ -471,6 +473,10 @@ namespace Engine.Renderer
                 }
                 _waterRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, _viewProjection,
                     camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
+
+                // Particle System components: fire, smoke, sparks... fading into the depth they read.
+                _particleRenderModule.Draw(_graphicsDevice, entities, camera, _view, _viewProjection,
+                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip);
 
                 // Rain, sandstorm or snow: haze and particles over the opaque and transparent scene.
                 // Paused (pause menu): the particles hang in the air.
@@ -1921,6 +1927,7 @@ namespace Engine.Renderer
             _decalRenderModule?.Dispose();
             _waterRenderModule?.Dispose();
             _weatherRenderModule?.Dispose();
+            _particleRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();

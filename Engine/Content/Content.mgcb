@@ -395,6 +395,12 @@
 /processorParam:DebugMode=Auto
 /build:Shaders/Forward/Water.fx
 
+#begin Shaders/Forward/Particles.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Forward/Particles.fx
+
 #begin Shaders/Forward/Weather.fx
 /importer:EffectImporter
 /processor:EffectProcessor

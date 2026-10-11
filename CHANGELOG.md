@@ -1,5 +1,90 @@
 # Changelog
 
+## Added: Volumetric particle systems and Counter-Strike 2 style voxel smoke (2026-10-11)
+
+**Why:** Smoke made of billboards looks flat up close, can't be walked into and can't be shot through. A Volumetric option draws a particle system as a lit volume, and a Voxels source recreates the CS2 smoke grenade: it floods the space around it, stays out of walls, and bullets and HE grenades open holes in it.
+
+- **Engine:**
+  - New **Volumetric** module on the Particle System (`ParticleVolumetricModule`, saved as `Volumetric`). Settings: Enabled, Source (`ParticleVolumeSource.Particles` / `Voxels`), Draw Particles, Density, Noise Erosion/Scale/Speed, Steps, Refill Time. Particles source: Resolution. Voxels source: Voxel Size, Volume, Max Radius, Expand Time, Fade Time, Flatten.
+  - New `Engine/Particles/ParticleVolume.cs` (GPU-free) holds the density grid and is updated at the end of each simulation step.
+    - Particles source: each particle adds a soft ball of density to a grid fitted around the particles.
+    - Voxels source: a flood fill from the emitter over 26 neighbours. A step only happens when `ScenePhysics.RaycastStatic` finds no Static collider between two voxel centres. Fill order is ellipsoidal distance, or path length around walls, plus a slow noise for billows. Each voxel casts one ray to the sun, so smoke under a roof gets only sky light.
+    - The smoke blooms over Expand Time, holds while the system emits (Duration), then dissipates from the outside in over Fade Time.
+    - Holes are capsules (at most 16) that shrink as they refill.
+  - `ParticleSystemComponent` gains `CarveTunnel`, `CarveHole`, `Opacity`, `Volume`, `HasVolume`, and the scene-wide statics `CarveTunnels`, `CarveHoles`, `VolumeOpacity`.
+  - `ParticleStepContext` gains `RaycastStatic` and `SunDirection`.
+  - A voxel smoke keeps its system playing (`IsAlive`) until it has faded.
+  - `Play()` now restarts emission on a finished cycle whose particles are still fading out. Before, it did nothing.
+  - `ParticleRenderModule` uploads each volume into a `Texture3D` (only when it changes) and draws it with the new `Volume` technique in `Shaders/Forward/Particles.fx`. Volumes are interleaved far to near with the billboard systems.
+    - The `Volume` technique is a scissored full-screen raymarch up to the scene depth, jittered per pixel and frame (TAA smooths it).
+    - It uses a tiling 32³ detail noise (Worley + value noise, domain-warped) and analytic carves.
+    - Lighting: the sky, plus the sun marched through the volume with a multiple-scattering term and a Henyey-Greenstein phase. Output is premultiplied.
+  - `NpcComponent.CanSee`: smoke hiding more than `SmokeBlocksSight` (90%) of the view blocks sight. Hearing still works.
+  - `PhysicsSystem.RayCast` returns no hit on a disposed system instead of throwing.
+- **Anvil:** a **Volumetric** expander in the Particle System inspector. The voxel settings show only for the Voxels source, and Resolution only for the Particles source.
+- **Sample:** `Content/Scenes/SmokeTest.obsc`, added to the scene list. It has smokes in the open, in a corridor and in a roofed room, a thrown smoke, a Particles-source smoke stack and an HE flash. It comes with `Content/Scripts/SmokeTestScript.cs` (`smoke-test`; G throw, Click shoot, H HE blast, R restart, V volumetric on/off) and `UI/SmokeTest.xml/.css` (crosshair and HUD).
+- **Checks:** in `Tests/Components/ParticleChecks.cs`.
+  - Headless: particles splatting, voxel bloom count, walls/floor/corridor/roof, sunlight, tunnels and holes refilling, dissipation lifecycle, component and scene-wide API, save/load, inspector, sample scene.
+  - `--graphics`: the Volume technique, depth occlusion, lit, and the Particles source.
+  - All component checks pass, with and without `--graphics`. The look was checked on offscreen renders through the real shader. The full SmokeTest scene was not run in Anvil.
+- **Docs:** `Docs/markdown/Particle_Systems.md` (Volumetric section, script API, how it works, limits), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Edit > Project Settings with Delete Project (2026-10-11)
+
+**Why:** There was no way to start over from an empty project in Anvil. Edit > Preferences was an empty placeholder, so it became Project Settings, with a red Delete Project button.
+
+- **Anvil:**
+  - **Edit > Project Settings...** (replaces the unused Preferences...). The new `ProjectSettingsWindow` + `ProjectSettingsViewModel` show the project name, Content folder and scene count.
+  - A red **Danger Zone** in that window has **Delete Project...**. It lists every item that would be removed, needs the project name typed to confirm, and is disabled during Play.
+  - Deleted source files go to the Recycle Bin. `MainWindowViewModel.MoveToRecycleBin` is now shared with Delete in the Assets panel.
+- **New `Engine/Recources/ProjectReset.cs`:**
+  - `Plan` (read-only) lists what a reset removes. `Run` removes each item with its Content.mgcb entries and its built copies (mgcb output, the executable's `Content`, `Engine/bin/*/*/Content`).
+  - `Run` writes default settings: GameInfo, no intro videos, Steam off, no icon or build folder, and a scene list with only `Scenes/Main.obsc`.
+  - `KeptPaths` keeps what the engine loads at boot: shaders, fonts, `System`, the built-in models in `GameObjects` and the scripts. Scripts are compiled into Engine.dll, so deleting them would break the build.
+- **Engine:**
+  - `IEditorBridge.EnqueueResetProject` swaps in an empty "Main" scene, unregisters every imported model, runs the reset, adds the default sun and saves `Scenes/Main.obsc`.
+  - `MainSceneLogic.AddDefaultSun()` is split out of the boot scene setup.
+  - `ContentManifest.Unregister(relPath, manifestPath)` is a new overload.
+- **Checks:**
+  - `Tests/Components/ProjectResetChecks.cs`: the plan on the real Content (read-only), a full reset of a fake project in a temp folder (files, manifest, built copies, the guard on a user `Content` folder, default settings), and the dialog's confirmation and Play lock.
+  - Delete Project was never run on the real project.
+- **Docs:** `CLAUDE.md` (recipe), `Engine_Wiring.md` section 11.
+
+- Claude
+
+## Changed: Anvil World panel for the voxel world (2026-10-11)
+
+**Why:** World generation is a separate job from the sky, fog and weather settings, so it gets its own place next to Environment.
+
+- **Anvil:** a **World** button in the viewport toolbar, next to **Environment**. It opens a new **World** inspector panel (`MainWindowViewModel.IsInspectorWorldView`, `InspectorView == "World"`).
+- The **Voxel World** section moved out of the Environment panel into the World panel. It still binds to `EnvironmentViewModel` and saves in `EnvironmentSettings`, so scenes and scripts are unchanged.
+- **Docs:** `Voxel_World.md`, `CLAUDE.md`, the doc comments that pointed to "Environment > Voxel World", and the inspector panels in `Engine_Wiring.md` (section 11).
+
+- Claude
+
+## Added: Unity-style particle systems (Particle System component) and the ParticleTest sample (2026-10-11)
+
+**Why:** The engine had no general particle effects (only the weather's rain/sand/snow). A gameobject can now carry a Particle System modelled on Unity's: modules for emission, shape, motion, colour/size over lifetime, collisions, flipbooks and sub-emitters, editable in Anvil's inspector, previewed while editing and drivable from scripts.
+
+- **New `Engine/Particles/`:**
+  - `ParticleModules`: the module settings (Main, Emission + Bursts, Shape, Velocity/Limit Velocity/Force over Lifetime, External Forces, Noise, Color/Size/Rotation over Lifetime, Collision, Texture Sheet Animation, Sub Emitters, Renderer), `ParticleRange` (constant or random between two), `ParticleCurve`, `ParticleGradient`, and compact `[x,y,z]`/`[r,g,b,a]` JSON converters. Enums are saved by name.
+  - `ParticleSimulation`: the CPU simulation of one system (GPU-free). Looping cycles with rate over time, rate over distance and bursts; particles born mid-frame are pre-aged; Local space follows the gameobject; Plane and World (physics raycast) collisions with a `Collided` event; Birth/Trail/Collision/Death sub-emitters; Play/Stop/Pause/Clear/Emit/EmitAt/Prewarm.
+  - `ParticleTextures`: built-in textures painted at startup (Soft Circle, Glow, Spark, Smoke, a 4 x 4 Smoke Sheet flipbook, Flame, Star, Ring, Square) with mipmaps; Custom loads a content texture and falls back to Soft Circle.
+- **New `Engine/Components/ParticleSystemComponent.cs`** (type id `particles`, Add Component > Particle System): the script API (`Play`, `Stop`, `Pause`, `Restart`, `Emit`, `EmitAt`, `Simulate`, `ParticleCollided`, `ParticleCount`, `IsAlive`...), Play lifecycle, and an edit-mode preview of Play On Awake systems. **Hide Mesh** hides the gameobject's marker mesh during Play.
+- **Rendering:** new `ParticleRenderModule` + `Content/Shaders/Forward/Particles.fx` (in `Content.mgcb`), drawn after water and before the weather: one instance buffer per frame, instanced quads (Billboard, Stretched, Horizontal, Vertical), Alpha or Additive, per-system sort modes, HDR brightness for bloom, optional sun + sky lighting, soft particles and occlusion from the linear G-buffer depth.
+- **Engine:**
+  - `TransformMatrix.Hidden` (skipped by `MeshMaterialLibrary.Draw`, shadows and picking included).
+  - `MainSceneLogic.Update` runs `ParticleSystemComponent.UpdatePreviews` outside Play.
+  - `IEditorBridge.EnqueueAddBasicEntity` takes an optional name, scale and component ids (generic, used by the new menu entry).
+- **Anvil:** a Particle System inspector (`ParticleSystemComponentViewModel` + template in `MainWindow.axaml`) with one expander per module, colour pickers, and rows for bursts, gradient/curve keys and sub-emitters; **GameObject > Effects > Particle System** and the Hierarchy **+** menu add a small marker sphere with a Particle System.
+- **Sample:** `Content/Scenes/ParticleTest.obsc` (appended to the scene list): campfire (flames, lit flipbook smoke in the scene wind, embers), a spark fountain bouncing off the ground and a deflector, fireworks built from Trail/Death sub-emitters, a magic vortex with ground rings and a comet trailing by distance, and a five-system explosion. `Content/Scripts/ParticleTestScript.cs` (Space explosion, Click sparks, F fireworks, P pause, R restart) with the HUD `Content/UI/ParticleTest.xml/.css`.
+- **Docs:** `Docs/markdown/Particle_Systems.md`; `Engine_Wiring.md` (frame order, component order, render modules and pass table).
+- **Checks:** `Tests/Components/ParticleChecks.cs` (simulation, every module, sub-emitters, saving, bridge + inspector, Play lifecycle and preview, sample scene) and a `--graphics` check that every texture and render mode draws through the real shader and particles behind geometry are hidden. `GameObjectMenuChecks` covers the new menu entry.
+
+- Claude
+
 ## Added: Voxel world (Environment > Voxel World) and the VoxelTest sample (2026-10-11)
 
 **Why:** The engine had no way to make block terrain. A scene can now generate a voxel world from a few Environment settings. It is drawn by the deferred renderer, solid for physics, and editable from scripts. A sample scene shows digging and building in first person.
