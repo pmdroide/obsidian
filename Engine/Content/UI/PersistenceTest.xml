@@ -1,0 +1,26 @@
+<!--
+  PersistenceTest HUD (Vista). Opened once by Engine/Content/Scripts/PersistentPlayerScript.cs on the
+  persistent Player, so this layer stays open across scene loads. The script fills #scene, #stats, #route,
+  #companion and #feed (PersistenceTestFeed). Designed on a 1080-high canvas. Every element needs an
+  explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Persistent gameobjects</div>
+        <div id="scene"></div>
+        <div id="stats"></div>
+        <div id="route"></div>
+        <div id="companion"></div>
+        <div id="rule"></div>
+        <div id="feed-label" class="eyebrow">Events</div>
+        <div id="feed"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-move" class="keys-line">WASD move  ·  Shift run  ·  Space jump  ·  Hold right mouse (or arrows) orbit  ·  Wheel zoom</div>
+        <div id="keys-goal" class="keys-line">Walk into the glowing portal to change scenes  ·  R reload the scene  ·  Esc pause</div>
+    </div>
+
+</div>

@@ -77,6 +77,7 @@ namespace Engine
         {
             _steam = new global::Engine.Steam.SteamService();
             _steam.Start();
+            global::Engine.Steam.SteamService.Current = _steam;
 
             //Initialize graphics and content
             _graphics = new GraphicsDeviceManager(this);
@@ -256,7 +257,11 @@ namespace Engine
         {
             try
             {
-                if (disposing) _steam?.Dispose();
+                if (disposing)
+                {
+                    if (global::Engine.Steam.SteamService.Current == _steam) global::Engine.Steam.SteamService.Current = null;
+                    _steam?.Dispose();
+                }
             }
             finally { base.Dispose(disposing); }
         }

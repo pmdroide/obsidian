@@ -9,6 +9,7 @@ Solution projects:
 - `Engine/Engine.csproj` - MonoGame WindowsDX executable and core engine.
 - `Editor/Anvil/Anvil.csproj` - Avalonia editor shell that embeds the engine viewport.
 - `Vista/Vista.csproj` - lightweight XML/CSS UI renderer built on AngleSharp + MonoGame.
+- `ContentPipeline/ContentPipeline.csproj` - MonoGame pipeline extension (`SkinnedModelProcessor`), net8.0 because mgcb runs on .NET 8. `Engine.csproj` builds it before the content build; `Content.mgcb` loads it via `/reference`.
 
 ## Quick Commands
 
@@ -36,7 +37,7 @@ Notes:
 - `Docs/Importing Structure.md` - best summary of the asset/content pipeline.
 - `Engine/Program.cs` - standalone engine entry point.
 - `Engine/Engine.cs` - MonoGame `Game` subclass; creates graphics, physics, `ScreenManager`, and `EditorBridge`.
-- `Engine/Logic/ScreenManager.cs` - central coordinator for load/init/update/draw across renderer, scene logic, GUI, editor logic, debug screen, intro video, and Vista UI.
+- `Engine/Logic/ScreenManager.cs` - central coordinator for load/init/update/draw across renderer, scene logic, GUI, editor logic, debug screen (stats), intro video, and script UI (`GameUI`).
 - `Engine/Logic/MainSceneLogic.cs` - owns the live scene lists: entities, decals, lights, debug entities, camera, environment sample, and editor-side add/delete helpers.
 - `Engine/Logic/EditorLogic.cs` - in-engine editor mode, selection, gizmos, delete/copy behavior.
 - `Engine/Logic/GameFlow.cs` - script API for the scene list: queued `LoadScene(index/name)`, `Quit`, `EscapeQuits`, `PlayStopped`.
@@ -45,8 +46,9 @@ Notes:
 - `Engine/Recources/SceneList.cs` - build order of scenes (`Content/System/SceneList.json`); index 0 boots the standalone game.
 - `Engine/Renderer/Renderer.cs` - main render pipeline and render target ownership.
 - `Engine/Renderer/RenderModules/` - individual rendering modules: G-buffer, deferred lighting, froxels, shadows, TAA, bloom, decals, SDFs, forward pass, editor outlines.
-- `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type.
-- `Engine/Components/` - gameobject components (`GameComponent`, `ComponentRegistry`, Material, Physics, Audio). See "Adding a Gameobject Component".
+- `Engine/Entities/` - scene object types like `BasicEntity`, `Camera`, lights, decals, transformable base type. `SpotLight` derives from `PointLight` and lives in the scene's `PointLights` list; every point light shader multiplies by a spot cone (point lights pass outer cosine -2).
+- `Engine/Components/` - gameobject components (`GameComponent`, `ComponentRegistry`, Material, Physics, Audio, Animator). See "Adding a Gameobject Component".
+- `Engine/Animation/` - skeletal animation: `SkinningData` (skeleton + clips from `Model.Tag`), `AnimationPlayer` (sampling, retargeting by bone name), `SkinnedMeshInstance` (CPU skinning into per-entity vertex buffers that `MeshMaterialLibrary` draws via `TransformMatrix.Skin`).
 - `Engine/Recources/` - asset, shader, settings, stats, materials, model wrappers. Keep the existing `Recources` spelling.
 - `Engine/Content/Content.mgcb` - MonoGame content manifest.
 - `Engine/Content/` - models, textures, shaders, fonts, video, Sponza assets, UI XML/CSS.
@@ -60,6 +62,17 @@ Notes:
 - `Vista/UI/UIManager.cs` - loads XML/CSS, builds UI tree, updates layout, draws via SpriteBatch.
 - `Vista/UI/UIElement.cs` - DOM-backed layout node and draw logic (absolute layout, gradients, borders, text, transitions, hit testing).
 - `Docs/markdown/Scenes_and_Game_Flow.md`, `Docs/markdown/VistaUI_Architecture.md` - scene list/GameFlow/GameInput/GameUI and the supported Vista CSS.
+- `Docs/markdown/Skeletal_Animation.md` - Animator component, the AnimationTest sample scene, and how skinned models are built and drawn.
+- `Engine/Physics/RagdollRig.cs` + `Ragdoll.cs` + `Engine/Components/RagdollComponent.cs` - ragdolls for skinned gameobjects: `RagdollRig` splits a model into parts (convex hulls of each main bone's vertices, joint limits from bone names), `Ragdoll` owns the BEPU bodies/joints (kinematic while animated, dynamic when limp; `ScenePhysics.CreateRagdoll` drives it around each step), the component handles Play, impacts and the skin. Bodies of one gameobject share a collision group (`PhysicsSystem.SetCollisionGroup`). Sample: the ragdoll row of `Content/Scenes/AnimationTest.obsc` + `Content/Scripts/RagdollTestScript.cs`; see `Docs/markdown/Ragdoll_Physics.md`.
+- `Engine/Physics/Cloth.cs` + `ClothCollider.cs` + `ClothMeshInstance.cs` + `Engine/Components/ClothComponent.cs` - cloth: a mesh's welded vertices simulated as XPBD particles (10 substeps, stretch/bend constraints, air drag + scene wind, `ClothPinMode` pins following the gameobject) that collide one-way with the BEPU colliders `ScenePhysics.CollectClothColliders` gathers (hulls/boxes as planes, static meshes as two-sided triangles, triggers skipped). `ClothMeshInstance` writes the particles into per-gameobject vertex buffers drawn via `TransformMatrix.Cloth` (like `Skin`). Mesh: `Assets.Cloth` (`Content/GameObjects/Cloth/cloth.obj`, double-sided 24x24 plane in X/Z). Sample: the Curtain/Drape Sheet station of `Content/Scenes/CollisionTest.obsc` + `Content/Scripts/ClothReporterScript.cs`; see `Docs/markdown/Cloth.md`.
+- `Engine/AI/NavGrid.cs` + `Navigation.cs` + `Engine/Components/NpcComponent.cs` - NPCs: `NavGrid` is a 0.25 m height field cast down through the **static** colliders only (`ScenePhysics.RaycastStatic`; dynamic bodies are see-through), eroded by agent radius + half a cell (walls, ledges, holes), with step/slope limits, regions and A* + string pulling (`FindPath`, `TryRandomPoint`, `TryFleePoint`). `Navigation.For` caches one grid per physics scene and agent size, rebuilding (at most every 30 frames) when a static moves; `Navigation.Invalidate()` forces it. `NpcComponent` (type id `npc`) = idle (`NpcIdleBehaviour` Stand/Wander/Patrol by gameobject names) + sight (range, FOV around +Y, hearing range, line-of-sight rays every 0.1 s) + reaction (`NpcReaction` Chase+attack impulse/Follow/Flee/Watch) + search after losing the target; moves a Dynamic body by velocity (or the gameobject directly without one). Script hooks `OnTargetSpotted/OnTargetLost/OnNpcStateChanged/OnNpcAttack`, API `MoveTo/Investigate/Alert/Calm/CanSee`, `ScriptBehaviour.FindPath`. Sample: `Content/Scenes/NpcTest.obsc` (`NpcTestPlayerScript`, `NpcReporterScript`, `UI/NpcTest`); see `Docs/markdown/NPC_Navigation.md`.
+- `Engine/Components/LodComponent.cs` - level of detail (type id `lod`): `Levels` (model key + camera distance) and `CullDistance`. `BasicEntity.RegisterInLibrary` registers the model as level 0 and each LOD model as level 1..n (`MeshLibrary.LodLevels`); `Renderer.Draw` calls `MeshMaterialLibrary.SelectLevelsOfDetail` before the shadow maps, which sets `TransformMatrix.LodLevel` (-1 = culled) and `Draw` skips other levels. Visual only (physics/SDF/bounds use the own model); works in edit mode and Play. Sample: `Content/Scenes/LodTest.obsc`; see `Docs/markdown/Level_of_Detail.md`.
+- `Engine/Physics/ScenePhysics.cs` + `PhysicsContact.cs` - BEPU bodies per gameobject, raycasts, and collision/trigger Enter/Stay/Exit events dispatched to Script Behaviours (`OnCollisionEnter`, `OnTriggerEnter`, ...). `Engine/Components/InteractableComponent.cs` + `ScriptBehaviour.FindInteractable/Interact/CameraRay` - raycast interaction. Sample: `Content/Scenes/CollisionTest.obsc` (first-person player `Content/Scripts/CollisionTestPlayerScript.cs` + station scripts); see `Docs/markdown/Collisions_and_Interaction.md`.
+- `Engine/Logic/Weather.cs` + `Engine/Renderer/RenderModules/WeatherRenderModule.cs` + `Content/Shaders/Forward/Weather.fx` - scene weather (rain, sandstorm, snow) from `EnvironmentSettings.Weather`/`WeatherIntensity`/`WeatherHaze`/`WindSpeed`/`WindDirection`: GPU particles in a camera-wrapped box plus a depth haze, drawn after water. Per-type look is `WeatherProfile`. Scripts use `ScriptBehaviour.SceneEnvironment`; PlayMode restores the environment on Stop. Sample: `Content/Scenes/WeatherTest.obsc` + `Content/Scripts/WeatherTestScript.cs`; see `Docs/markdown/Weather.md`.
+- Wet Surface material type (`MaterialEffect.MaterialTypes.WetSurface` = 7, Inspector > Material > Shader > WetSurface): soaked albedo/roughness, world-space puddles that fill texture cavities (Displacement map = height, no parallax) and raindrop ripples, all in `ApplyWetSurface` in `Content/Shaders/GBufferSetup/Gbuffer.fx`. Rain drives it through `SurfaceWetness` (`Engine/Logic/Weather.cs`, eased by the renderer; `WeatherProfile.SurfaceWetness`/`PuddleRipples`). Wet pixels set albedo alpha so `DeferredEnvironmentMap.fx` uses a view-dependent fresnel for them. Materials also have UV `TilingU/V`. CC0 ground textures: `Content/GameObjects/Textures/Ground/`. Sample: the Ground/Street/Plaza of `Content/Scenes/WeatherTest.obsc`; see `Docs/markdown/Material_Component.md`.
+- `Engine/Logic/PersistentGameObjects.cs` - persistent gameobjects (`BasicEntity.Persistent`, saved / Inspector > Persistent, or `ScriptBehaviour.DontDestroyOnLoad()`): on `GameFlow.LoadScene` during Play they move into the new scene still running (scripts, bodies, HUD layers they opened); the new scene's own copy is left out; Anvil's Stop returns them to the edited scene. Carried objects get `ScriptBehaviour.OnSceneLoaded()`. `GameFlow.LoadScene(..., carryPersistent: false)` leaves them behind. Sample: `Content/Scenes/PersistenceTest.obsc` <-> `PersistenceTest2.obsc` (`Content/Scripts/PersistentPlayerScript.cs`, `ScenePortalScript.cs`, `CompanionOrbScript.cs`); see `Docs/markdown/Persistent_GameObjects.md`.
+- `GameFlow.Paused` - freezes Play: `PlayModeController.UpdateScripts` runs only script behaviours whose `ScriptBehaviour.UpdateWhilePaused` is true, `MainSceneLogic.UpdatePhysics` doesn't step, weather particles stop; scene loads and Stop unpause. `Content/Scripts/PauseMenuScript.cs` (+ `Content/UI/PauseMenu.xml`/`.css`) is the pause menu on the PersistenceTest Player; menu settings rows are shared with the main menu in `Content/Scripts/MenuSettings.cs`.
+- `Engine/Steam/SteamP2PSession.cs` - Steam lobby + `SteamNetworkingMessages` peer-to-peer session for scripts (`SteamService.Current` is the engine's Steam session). Sample: `Content/Scenes/MultiplayerTest.obsc` + `Content/Scripts/MultiplayerTestScript.cs`; see `Docs/markdown/Steam_Multiplayer.md`.
 
 ## Runtime Flow
 
@@ -67,11 +80,11 @@ Standalone engine:
 
 1. `Engine/Program.cs` creates `Engine.Engine` and calls `Run()`.
 2. `Engine.Engine` sets content root to `Content`, creates `EditorBridge`, `ScreenManager`, graphics, and BEPU physics.
-3. `ScreenManager.Load()` loads `Globals.content`, `Shaders`, `ShaderManager`, `Assets`, renderer modules, scene/debug/gui/video content, and Vista UI.
+3. `ScreenManager.Load()` loads `Globals.content`, `Shaders`, `ShaderManager`, `Assets`, renderer modules, scene/debug/gui/video content, and the UI fonts for `GameUI`.
 4. `ScreenManager.Initialize()` initializes renderer, scene, GUI, editor logic, debug UI, and binds the bridge to scene/editor/assets.
-5. When the intro video ends, `MainSceneLogic.StartFirstScene()` loads scene list entry 0 (`Content/System/SceneList.json`, the MainMenu sample) and starts Play. Anvil skips this.
-6. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene (queued `GameFlow` scene loads apply first, then `Input`/`GameInput`, then scripts), renderer SDFs, debug screen, `GameUI` layers, Vista debug UI, then drains bridge operations and publishes snapshots.
-7. `ScreenManager.Draw()` draws intro video or the main renderer, `GameUI` layers, legacy GUI, debug overlay, and Vista UI.
+5. `VideoIntroLogic` plays the intro videos of `Content/System/IntroVideos.json` (`IntroVideoList`, Anvil > Game Settings > Intro Videos) in order; Enter skips one. When the last ends, `MainSceneLogic.StartFirstScene()` loads scene list entry 0 (`Content/System/SceneList.json`, the MainMenu sample) and starts Play. Anvil skips this.
+6. Per frame: `ScreenManager.Update()` updates logic, shader hot reload in debug, editor logic, scene (queued `GameFlow` scene loads apply first, then `Input`/`GameInput`, then scripts), renderer SDFs, debug screen, `GameUI` layers, then drains bridge operations and publishes snapshots.
+7. `ScreenManager.Draw()` draws intro video or the main renderer, `GameUI` layers, then the `DebugScreen` stats/console on top.
 
 Anvil editor:
 
@@ -125,18 +138,31 @@ Important types:
 
 ## Common Change Recipes
 
+- Build the standalone game: Anvil > File > **Build...** (Ctrl+Shift+B, asks for the folder) or **Build and Run** (Ctrl+B, last folder, `Builds/<window name>` at first; `Builds/` is git-ignored). `Editor/Anvil/Services/GameBuilder.cs` runs a self-contained win-x64 Release `dotnet publish` of `Engine/Engine.csproj` and renames `Engine.exe` after Game Settings > window name; the folder is remembered in `Content/System/BuildSettings.json`. Builds ship saved files only, and loose runtime files need `CopyToPublishDirectory` in `Engine.csproj`.
 - Change the startup scene or build order: Anvil > Game Settings > Scenes, or `Engine/Content/System/SceneList.json` (index 0 boots the standalone game). Scripts switch scenes with `GameFlow.LoadScene(...)`; in Anvil, Stop returns to the edited scene.
 - Add a game menu or HUD: a Vista document in `Engine/Content/UI/<Name>.xml` + `.css`, opened with `GameUI.Open("UI/<Name>")` from a script behaviour (reference: `Engine/Content/Scripts/MainMenuScript.cs`). The document is parsed as HTML (always close `div`s); layout is absolute.
 - Add an engine asset: update `Content.mgcb`, then add a load/register field in `Assets.cs`.
+- Add an animated (skinned) model: `Content.mgcb` entry with `/processor:SkinnedModelProcessor` (Mixamo: `RotationX=90`, `Scale=0.01`, `GenerateTangentFrames=True`; copy the `GameObjects/Player` entries), a `ModelDefinition` field loaded with `Assets.LoadSkinnedModel`, then an Animator component (Source = content path of another FBX to share its clips). Sample: `Content/Scenes/AnimationTest.obsc`. After changing the processor, delete the model's `.xnb`/`.mgcontent` so mgcb rebuilds it.
+- Make a skinned gameobject fall like a ragdoll: add a **Ragdoll** component (works with or without an Animator; the ground needs a Physics component). Go limp with Active on Start, an Impact speed, or `GetComponent<RagdollComponent>().Activate()` from a script; `Deactivate()` stands it back up. Tune joint limits in `RagdollJointLimits.For` and bone-name matching in `RagdollRig.JointFor`.
+- Add cloth (curtain, banner, sheet): a gameobject with the **Cloth** model (Scale X = width, Z = height; rotate -90° about X to lay it flat) + a **Cloth** component (Pin, Mass, Stiffness, Bend, Wind, Collisions). It collides with Physics colliders but never pushes them. Tune the solver in `Engine/Physics/Cloth.cs` (`Compliance`, `Substeps`, `ApplyAir`).
+- Add an NPC: a Dynamic capsule (Freeze Rotation, +Y = forward) + an **NPC** component (Behaviour, Patrol Points by name, Target `Player`, Sight Range/Field of View/Hearing, On Sight reaction). The floor and walls need **Static** Physics: the navigation grid is built from them. React in its scripts with `OnTargetSpotted`/`OnNpcStateChanged`; drive it with `GetComponent<NpcComponent>().MoveTo/Investigate/Alert`. Tune the grid in `NavGridSettings`/`NavGrid` and the behaviour in `NpcComponent.Think`.
+- Draw simpler models far away: Inspector > Add Component > **LOD**, one level per simpler model (model key + distance it starts at), optional Cull Distance. LOD models share the gameobject's material and transform, so model them at the same size/pivot/UVs. Tune the switch hysteresis in `LodComponent.Hysteresis`.
+- Give a script Inspector settings: public fields or `[SerializeField]` private fields (`bool`/`int`/`float`/`double`/`string`/enum/`Vector2`/`Vector3`/`Color`, or `BasicEntity` for a gameobject reference saved by scene ID and resolved via `MainSceneLogic.FindGameObjectById`) on the `ScriptBehaviour`, optionally `[Range]`, `[Tooltip]`, `[HideInInspector]`, `[FormerlySerializedAs]`. Values live per attachment in `ScriptBehaviourComponent.Fields` and are applied before `Start` (`Engine/Scripting/ScriptFields.cs`). Use `[NonSerialized]` for public runtime state.
+- Keep a gameobject (e.g. the player) across scene loads: tick Inspector > Persistent (saved) or call `DontDestroyOnLoad()` from its script (this Play session only); move it to the new scene's spawn in `OnSceneLoaded()`. Reference: `Engine/Content/Scripts/PersistentPlayerScript.cs`.
+- Add a pause menu: attach the **Pause Menu** script to a persistent gameobject (the player); one instance then pauses every scene. A custom one sets `GameFlow.Paused` and overrides `UpdateWhilePaused => true` (reference: `Engine/Content/Scripts/PauseMenuScript.cs`).
+- Spawn gameobjects at runtime from a script: `Spawn("Capsule", position)` / `Destroy(entity)` on `ScriptBehaviour`. Spawned objects are flagged `BasicEntity.IsRuntimeSpawned`, never saved, and removed when the script stops. Built-in model keys are the public `ModelDefinition` fields on `Assets` (`Assets.FindModel`).
 - Add a gameobject component (Inspector > Add Component): see "Adding a Gameobject Component" below.
+- React to contacts or let the player use objects: override `OnCollisionEnter/Stay/Exit`, `OnTriggerEnter/Stay/Exit` or `OnInteract` on a `ScriptBehaviour`; triggers are Physics > Is Trigger (Static triggers are convex hulls), usable objects get an Interactable component plus a non-trigger Physics component. Reference: the CollisionTest sample scripts.
 - Add a gameobject role: append a value to `Engine/Entities/GameObjectRole.cs` (saved by name, so never rename one) and handle it where it matters; `ScenePhysics`/`WaterVolume` handle `Water`.
+- Add or tune a weather: edit/add a `WeatherProfile` in `Engine/Logic/Weather.cs` (new `WeatherType` values are saved by name, so never rename one), then list it in `EnvironmentViewModel.WeatherTypes`/`WeatherTypeValues`.
+- Make a ground look wet (bricks, stone, dirt): Material component with base color/normal/roughness maps (+ a height map in Displacement), Shader **WetSurface** (or **Apply Wet Floor Example**), Tiling for large meshes. **Wet in Rain** lets the scene weather soak it. Tune the look in `ApplyWetSurface` (`Gbuffer.fx`) and the rain response in `WeatherProfile`/`SurfaceWetness`.
 - Change water waves: the swell lives in both `Engine/Content/Shaders/Forward/Water.fx` (`Swell`) and `Engine/Physics/WaterWaves.cs` (buoyancy); keep them identical.
 - Add an editor-backed scene property: extend snapshot/mutation structs in `IEditorBridge.cs`, populate it in `EditorBridge.BuildSnapshot()`, reconcile it in `BridgeReconciler`, and expose it through `SceneObjectViewModel`/XAML.
 - Add an Anvil command: add command in `MainWindowViewModel`, bind it from `MainWindow.axaml`, and route engine work through `IEditorBridge`.
 - Fix Anvil selection/focus problems: inspect `BridgeReconciler`, `SceneObjectViewModel.SuppressPush`, `MainWindowViewModel.ReconcilerActive`, and `EditorBridge.PublishEveryNFrames`.
 - Change embedded viewport behavior: inspect `MonoGameHost.cs`, especially HWND reparenting, resize debounce, and `RunOneFrame()` loop.
 - Change in-engine editor gizmos/selection: inspect `EditorLogic.cs`, `EditorRender`, and ID/outline render modules.
-- Change Vista overlay UI: edit `Engine/Content/UI/debug.xml`, `Engine/Content/UI/debug.css`, and `ScreenManager.UpdateVistaUI(...)`.
+- Change the debug stats overlay: edit `Engine/Logic/DebugScreen.cs` (detail level `GameSettings.u_showdisplayinfo`: 0 off, 1 FPS, 3 full). Anvil's viewport **Stats** button toggles it (`MainWindowViewModel.IsStatsVisible`).
 
 ## Adding a Gameobject Component
 
@@ -184,7 +210,7 @@ Physics is the reference for a component that another system reads: `ScenePhysic
 
 ## Testing Status
 
-`Tests/Components` is a framework-free integration check app (not in `Engine.slnx`) covering components, the editor bridge/reconciler, environment, Steam and input. Add `--graphics` for GPU material checks. Otherwise use targeted builds/runs:
+`Tests/Components` is a framework-free integration check app (not in `Engine.slnx`) covering components, the editor bridge/reconciler, environment, Steam and input. Add `--graphics` for GPU material checks, `--build` to also publish the real game (File > Build). Otherwise use targeted builds/runs:
 
 ```powershell
 dotnet build Engine.slnx /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign
@@ -226,3 +252,4 @@ For game-ready meshes:
 ## In the end of the session
 Write what was changed, added or/and removed in the `CHANGELOG.md`.
 Also sign who did it in the changelog, for example: "- Claude", "- Codex" at the end of the text.
+Make sure to always update the [Engine_Wiring.md](Engine_Wiring.md).

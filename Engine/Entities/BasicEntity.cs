@@ -26,6 +26,13 @@ namespace Engine.Entities
         public readonly MaterialEffect Material;
         private MeshMaterialLibrary _materialLibrary;
         private readonly List<MaterialEffect> _materialInstances = new();
+        // LOD component, as registered: the models of levels 1..n and the camera distances they start at.
+        private readonly List<Model> _lodModels = new();
+        private readonly List<float> _lodDistances = new();
+        private float _lodCullDistance;
+
+        /// <summary>Models the library draws for LOD levels 1..n (level 0 is <see cref="Model"/>).</summary>
+        public IReadOnlyList<Model> LodModels => _lodModels;
 
         private int _id;
 
@@ -44,6 +51,9 @@ namespace Engine.Entities
         internal PhysicsBodyType AttachedPhysicsType;
         internal Vector3 AttachedScale;
         internal float AttachedMass;
+        internal bool AttachedTrigger;
+        internal bool AttachedFreezeRotation;
+        internal Vector3 AttachedColliderStretch;
         // Collider centre in entity-local (scaled) space; dynamic bodies sit on their centre of mass.
         internal Vector3 ColliderOffset;
         // Transform last exchanged with the body, used to detect editor/script moves.
@@ -52,6 +62,10 @@ namespace Engine.Entities
         // The ScenePhysics that owns this entity's body; null without one.
         internal ScenePhysics PhysicsScene;
         internal int PhysicsFrame;
+        // The Ragdoll component's bodies (ScenePhysics.CreateRagdoll); null without one.
+        internal Ragdoll Ragdoll;
+        // Collision group shared by this gameobject's own body and its ragdoll parts; 0 until it has a ragdoll.
+        internal int CollisionGroup;
 
         public override Vector3 Position
         {
@@ -109,15 +123,35 @@ namespace Engine.Entities
         /// <summary>What this gameobject is for (Inspector > Role); e.g. Water makes it a volume to float in.</summary>
         public GameObjectRole Role { get; set; } = GameObjectRole.Default;
 
+        /// <summary>Created by a script during Play (<c>ScriptBehaviour.Spawn</c>); never saved with the scene.</summary>
+        public bool IsRuntimeSpawned { get; internal set; }
+
+        /// <summary>
+        /// Inspector > Persistent (saved): when a script loads another scene during Play, this gameobject moves
+        /// into it with its components and scripts still running. See <c>Logic.PersistentGameObjects</c>.
+        /// </summary>
+        public bool Persistent { get; set; }
+
+        /// <summary>Set by <c>ScriptBehaviour.DontDestroyOnLoad</c> for the current Play session only; cleared on Stop.</summary>
+        public bool RuntimePersistent { get; internal set; }
+
+        /// <summary>True when the next scene load during Play carries this gameobject over.</summary>
+        public bool IsPersistent => Persistent || RuntimePersistent;
+
         public override TransformableObject Clone {
             get
             {
                 //Not very clean...
-                return new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
+                var copy = new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
                 {
                     Components = Components.Select(ComponentRegistry.Copy).ToList(),
                     Role = Role,
+                    Persistent = Persistent,
                 };
+                // Script fields that reference this gameobject reference the copy instead, like Unity.
+                foreach (var script in copy.Components.OfType<ScriptBehaviourComponent>())
+                    script.RemapGameObjectReferences(Id, copy.Id);
+                return copy;
             }  
         }
 
@@ -215,22 +249,64 @@ namespace Engine.Entities
         public void RegisterInLibrary(MeshMaterialLibrary library)
         {
             _materialLibrary = library;
+            CollectLevelsOfDetail();
+            RegisterModel(library, Model, 0);
+            for (int i = 0; i < _lodModels.Count; i++)
+                RegisterModel(library, _lodModels[i], i + 1);
+        }
+
+        private void RegisterModel(MeshMaterialLibrary library, Model model, int lodLevel)
+        {
             var component = Components.OfType<MaterialComponent>().FirstOrDefault(c => c.Enabled);
             if (component == null)
             {
-                library.Register(Material, Model, WorldTransform);
+                library.Register(Material, model, WorldTransform, lodLevel);
                 return;
             }
-            if (Model == null) return;
-            foreach (var mesh in Model.Meshes)
+            if (model == null) return;
+            foreach (var mesh in model.Meshes)
                 foreach (var part in mesh.MeshParts)
                 {
                     var source = Material ?? part.Effect as MaterialEffect;
                     var instance = source != null ? source.Clone() : new MaterialEffect(part.Effect);
                     component.ApplyTo(instance);
                     _materialInstances.Add(instance);
-                    library.Register(instance, part, WorldTransform, mesh.BoundingSphere);
+                    library.Register(instance, part, WorldTransform, mesh.BoundingSphere, lodLevel);
                 }
+        }
+
+        // Reads the enabled LOD component into the levels the library draws; without one only the model draws.
+        private void CollectLevelsOfDetail()
+        {
+            _lodModels.Clear();
+            _lodDistances.Clear();
+            _lodCullDistance = 0;
+            WorldTransform.LodLevel = 0;
+            var lod = GetComponent<LodComponent>();
+            if (lod is not { Enabled: true }) return;
+            foreach (var level in lod.ResolveLevels(this))
+            {
+                _lodModels.Add(level.Model);
+                _lodDistances.Add(level.Distance);
+            }
+            _lodCullDistance = lod.ClampedCullDistance;
+        }
+
+        /// <summary>
+        /// Shows the LOD level for a camera at <paramref name="cameraPosition"/> (see <see cref="LodComponent"/>);
+        /// does nothing without an LOD component.
+        /// </summary>
+        public void SelectLevelOfDetail(Vector3 cameraPosition)
+        {
+            if (_lodModels.Count == 0 && _lodCullDistance <= 0) return;
+            // Measured to the centre of the model's bounds.
+            Vector3 center = Position + Vector3.Transform(BoundingBoxOffset * Scale, RotationMatrix);
+            int level = LodComponent.SelectLevel(Vector3.Distance(cameraPosition, center), _lodDistances,
+                _lodCullDistance, WorldTransform.LodLevel);
+            if (level == WorldTransform.LodLevel) return;
+            WorldTransform.LodLevel = level;
+            // Other meshes draw now: redo culling and redraw shadow maps this frame.
+            WorldTransform.HasChanged = true;
         }
 
         public void RefreshMaterials()
@@ -247,6 +323,10 @@ namespace Engine.Entities
             library.DeleteFromRegistry(this);
             foreach (var instance in _materialInstances) instance.Dispose();
             _materialInstances.Clear();
+            _lodModels.Clear();
+            _lodDistances.Clear();
+            _lodCullDistance = 0;
+            WorldTransform.LodLevel = 0;
             _materialLibrary = null;
         }
 
@@ -275,6 +355,13 @@ namespace Engine.Entities
         public Vector3 Scale;
 
         public Matrix World;
+
+        // Posed vertex buffers (Animator component) drawn in place of the shared mesh's; null = static.
+        public Animation.SkinnedMeshInstance Skin;
+        // Simulated vertex buffers (Cloth component) drawn in place of the shared mesh's; null = static.
+        public Physics.ClothMeshInstance Cloth;
+        // LOD component: the level of detail that draws (0 = the model, 1..n = its LOD models, -1 = culled).
+        public int LodLevel;
 
         public TransformMatrix(Matrix world, int id)
         {

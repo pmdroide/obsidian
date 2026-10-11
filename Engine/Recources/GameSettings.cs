@@ -10,7 +10,7 @@ namespace Engine.Recources
         public static int g_screenheight = 720;
         public static bool g_vsync = false;
         public static int g_fixedfps = 0;
-        public static int u_showdisplayinfo = 3;
+        public static int u_showdisplayinfo = 3; //Debug stats (DebugScreen): 0 off, 1 FPS only, 2+ full. Anvil's viewport Stats button toggles 0/3.
         public static bool p_physics = true; //Master switch: simulate physics bodies outside editor mode (Play)
         public static Renderer.Renderer.RenderModes g_rendermode = Renderer.Renderer.RenderModes.Deferred;
 
@@ -21,7 +21,6 @@ namespace Engine.Recources
 
         //UI
         public static bool ui_enabled = true;
-        public static bool ui_vista_enabled = true;
 
         //Renderer
 

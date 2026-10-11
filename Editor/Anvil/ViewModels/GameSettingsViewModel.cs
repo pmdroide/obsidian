@@ -37,9 +37,34 @@ public partial class SceneListEntryViewModel : ObservableObject
     }
 }
 
+/// <summary>One row of Game Settings > Intro Videos: a Content-relative video in play order.</summary>
+public partial class IntroVideoEntryViewModel : ObservableObject
+{
+    [ObservableProperty] private int _index;
+    public string Entry { get; }
+    public string Name => IntroVideoList.DisplayName(Entry);
+    public bool Exists { get; }
+    public string IndexLabel => Index.ToString("00");
+    public string Note => !Exists ? "Missing" : Index == 0 ? "Plays first" : "";
+
+    public IntroVideoEntryViewModel(string entry, int index)
+    {
+        Entry = entry;
+        _index = index;
+        Exists = File.Exists(IntroVideoList.ResolvePath(entry));
+    }
+
+    partial void OnIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IndexLabel));
+        OnPropertyChanged(nameof(Note));
+    }
+}
+
 /// <summary>
 /// Backs the Game Settings dialog: the standalone game's window title, icon, size,
-/// resizability, fullscreen, VSync and FPS cap, and the scene list (build order).
+/// resizability, fullscreen, VSync and FPS cap, the intro videos (play order) and the
+/// scene list (build order).
 /// Nothing is written until <see cref="Apply"/> runs (dialog confirmed); the picked image
 /// is only decoded for the preview until then.
 /// </summary>
@@ -88,8 +113,29 @@ public partial class GameSettingsViewModel : ViewModelBase
 
     public bool HasNoScenes => Scenes.Count == 0;
 
+    // -------- Intro videos (Content/System/IntroVideos.json) --------
+
+    /// <summary>Videos the standalone game plays before scene 0, in order. Enter skips one.</summary>
+    public ObservableCollection<IntroVideoEntryViewModel> IntroVideos { get; } = new();
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RemoveIntroVideoCommand), nameof(MoveIntroVideoUpCommand), nameof(MoveIntroVideoDownCommand))]
+    private IntroVideoEntryViewModel? _selectedIntroVideo;
+
+    [ObservableProperty] private string _introVideoMessage = "";
+
+    public bool HasNoIntroVideos => IntroVideos.Count == 0;
+
     public GameSettingsViewModel()
     {
+        foreach (string entry in IntroVideoList.Read().Videos)
+            IntroVideos.Add(new IntroVideoEntryViewModel(entry, IntroVideos.Count));
+        IntroVideos.CollectionChanged += (_, _) =>
+        {
+            for (int i = 0; i < IntroVideos.Count; i++) IntroVideos[i].Index = i;
+            OnPropertyChanged(nameof(HasNoIntroVideos));
+        };
+
         foreach (string entry in SceneList.Read().Scenes)
             Scenes.Add(new SceneListEntryViewModel(entry, Scenes.Count));
         Scenes.CollectionChanged += (_, _) =>
@@ -209,6 +255,67 @@ public partial class GameSettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task AddIntroVideosAsync(Window? window)
+    {
+        if (window?.StorageProvider is not { } sp) return;
+        IStorageFolder? start = null;
+        try { start = await sp.TryGetFolderFromPathAsync(new Uri(Path.Combine(GameInfo.SourceContentRoot, "Video"))); }
+        catch { /* no Video folder yet */ }
+        var files = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Add Intro Videos",
+            AllowMultiple = true,
+            SuggestedStartLocation = start,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Video") { Patterns = IntroVideoList.Extensions.Select(e => "*" + e).ToArray() },
+            },
+        });
+
+        var outside = new System.Collections.Generic.List<string>();
+        foreach (var file in files)
+        {
+            string? entry = IntroVideoList.ToEntry(file.Path.LocalPath);
+            if (entry == null) { outside.Add(Path.GetFileName(file.Path.LocalPath)); continue; }
+            if (IntroVideos.Any(v => string.Equals(v.Entry, entry, StringComparison.OrdinalIgnoreCase))) continue;
+            IntroVideos.Add(new IntroVideoEntryViewModel(entry, IntroVideos.Count));
+            SelectedIntroVideo = IntroVideos[^1];
+        }
+        IntroVideoMessage = outside.Count == 0 ? ""
+            : $"Not added (outside Engine/Content): {string.Join(", ", outside)}. Put videos under Content/Video.";
+    }
+
+    private bool HasSelectedIntroVideo => SelectedIntroVideo != null;
+
+    [RelayCommand(CanExecute = nameof(HasSelectedIntroVideo))]
+    private void RemoveIntroVideo()
+    {
+        if (SelectedIntroVideo is not { } video) return;
+        int index = IntroVideos.IndexOf(video);
+        IntroVideos.Remove(video);
+        SelectedIntroVideo = IntroVideos.Count == 0 ? null : IntroVideos[Math.Min(index, IntroVideos.Count - 1)];
+    }
+
+    private bool CanMoveIntroVideoUp => SelectedIntroVideo != null && IntroVideos.IndexOf(SelectedIntroVideo) > 0;
+    private bool CanMoveIntroVideoDown => SelectedIntroVideo != null && IntroVideos.IndexOf(SelectedIntroVideo) < IntroVideos.Count - 1;
+
+    [RelayCommand(CanExecute = nameof(CanMoveIntroVideoUp))]
+    private void MoveIntroVideoUp() => MoveSelectedIntroVideo(-1);
+
+    [RelayCommand(CanExecute = nameof(CanMoveIntroVideoDown))]
+    private void MoveIntroVideoDown() => MoveSelectedIntroVideo(1);
+
+    private void MoveSelectedIntroVideo(int delta)
+    {
+        if (SelectedIntroVideo is not { } video) return;
+        int index = IntroVideos.IndexOf(video);
+        IntroVideos.Move(index, index + delta);
+        SelectedIntroVideo = video;
+        MoveIntroVideoUpCommand.NotifyCanExecuteChanged();
+        MoveIntroVideoDownCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
     private void ClearIcon()
     {
         _pendingIcon = null;
@@ -218,8 +325,8 @@ public partial class GameSettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Writes GameInfo.json (and the converted .ico when a new image was picked) and
-    /// SceneList.json into Engine/Content. Returns the saved title. Must run on the UI thread.
+    /// Writes GameInfo.json (and the converted .ico when a new image was picked),
+    /// IntroVideos.json and SceneList.json into Engine/Content. Returns the saved title. Must run on the UI thread.
     /// The running engine picks up the new scene list immediately (same process).
     /// </summary>
     public string Apply()
@@ -245,6 +352,7 @@ public partial class GameSettingsViewModel : ViewModelBase
             VSync = VSync,
             FpsCap = Math.Max(0, (int)FpsCap),
         });
+        IntroVideoList.Save(new IntroVideoList.Data { Videos = IntroVideos.Select(v => v.Entry).ToList() });
         SceneList.Save(new SceneList.Data { Scenes = Scenes.Select(s => s.Entry).ToList() });
         return title;
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using BepuPhysics;
@@ -50,6 +51,15 @@ namespace Engine.Physics
         // IThreadDispatcher can be slotted in here later without touching callers.
         private readonly IThreadDispatcher _threadDispatcher = null;
 
+        private readonly ContactRecorder _contacts = new ContactRecorder();
+
+        /// <summary>
+        /// Touching pairs and trigger overlaps found by the last <see cref="Step"/>, one entry per
+        /// pair (its deepest contact). BEPU does not re-test a pair whose bodies all sleep, so a
+        /// resting pair is missing here until something wakes it.
+        /// </summary>
+        public IReadOnlyList<PhysicsContact> Contacts => _contacts.Contacts;
+
         /// <param name="gravity">World-space gravity in engine (Z-up) coordinates, e.g. (0,0,-9.81).</param>
         public PhysicsSystem(XnaVector3 gravity)
         {
@@ -57,9 +67,10 @@ namespace Engine.Physics
             BufferPool = new BufferPool();
             Simulation = Simulation.Create(
                 BufferPool,
-                new NarrowPhaseCallbacks(new SpringSettings(30, 1)),
+                new NarrowPhaseCallbacks(new SpringSettings(30, 1)) { Contacts = _contacts },
                 new PoseIntegratorCallbacks(MathConverter.ToNumerics(gravity)),
                 new SolveDescription(8, 1));
+            _contacts.Simulation = Simulation;
         }
 
         /// <summary>Advance the simulation by <paramref name="dt"/> seconds.</summary>
@@ -69,8 +80,49 @@ namespace Engine.Physics
             // it). MonoGame's very first Update tick — and any paused/0ms frame — reports
             // dt == 0, so skip those instead of throwing.
             if (dt <= 0f) return;
+            _contacts.Begin(dt);
             Simulation.Timestep(dt, _threadDispatcher);
         }
+
+        ////////////////////////////////////////////////////////////////////////////
+        //  TRIGGERS
+        ////////////////////////////////////////////////////////////////////////////
+
+        /// <summary>
+        /// A trigger reports overlaps in <see cref="Contacts"/> but never pushes or is pushed
+        /// (no contact constraint), and raycasts skip it unless asked to include triggers.
+        /// </summary>
+        public void SetTrigger(BodyHandle handle, bool trigger) =>
+            SetTrigger(new CollidableReference(CollidableMobility.Dynamic, handle), trigger);
+
+        public void SetTrigger(StaticHandle handle, bool trigger) => SetTrigger(new CollidableReference(handle), trigger);
+
+        private void SetTrigger(CollidableReference collidable, bool trigger)
+        {
+            if (trigger) _contacts.Triggers.Add(collidable.Packed);
+            else _contacts.Triggers.Remove(collidable.Packed);
+        }
+
+        /// <summary>False while the body sleeps (BEPU skips its pairs until something wakes it).</summary>
+        public bool IsAwake(BodyHandle handle) => Simulation.Bodies[handle].Awake;
+
+        ////////////////////////////////////////////////////////////////////////////
+        //  COLLISION GROUPS
+        ////////////////////////////////////////////////////////////////////////////
+
+        /// <summary>
+        /// Puts a body in collision group <paramref name="group"/> (above 0): bodies of one group never
+        /// collide, except two ragdoll parts (<paramref name="part"/> 0 and up) whose pair is not set in
+        /// <paramref name="ignoredPairs"/> (a parts x parts table). Part -1 collides with nothing in its group.
+        /// </summary>
+        internal void SetCollisionGroup(BodyHandle handle, int group, int part = -1, bool[] ignoredPairs = null, int parts = 0) =>
+            _contacts.Groups[handle.Value] = new CollisionGroup { Group = group, Part = part, IgnoredPairs = ignoredPairs, Parts = parts };
+
+        internal void ClearCollisionGroup(BodyHandle handle) => _contacts.Groups.Remove(handle.Value);
+
+        /// <summary>Whether the collision groups let two bodies touch (checks).</summary>
+        internal bool GroupsCollide(BodyHandle a, BodyHandle b) =>
+            _contacts.Collides(new CollidableReference(CollidableMobility.Dynamic, a), new CollidableReference(CollidableMobility.Dynamic, b));
 
         ////////////////////////////////////////////////////////////////////////////
         //  SHAPES
@@ -123,6 +175,21 @@ namespace Engine.Physics
         }
 
         /// <summary>
+        /// Static collider shaped as the convex hull of <paramref name="localPoints"/> (entity-local,
+        /// scale applied), or their bounding box when no hull can be built. Unlike a triangle mesh
+        /// it is solid, so a body fully inside still touches it (trigger volumes).
+        /// <paramref name="localCenter"/> is the collider's centre in entity-local space, as for
+        /// <see cref="AddDynamicConvex"/>.
+        /// </summary>
+        public StaticHandle AddStaticConvex(XnaVector3[] localPoints, XnaVector3 entityPosition, XnaQuaternion orientation, out XnaVector3 localCenter)
+        {
+            if (!TryCreateHull(localPoints, 1, out TypedIndex shape, out _, out Vector3 center))
+                CreateBoundsBox(localPoints, 1, out shape, out _, out center);
+            localCenter = MathConverter.ToXna(center);
+            return AddStatic(entityPosition + XnaVector3.Transform(localCenter, orientation), orientation, shape);
+        }
+
+        /// <summary>
         /// Add a dynamic box rigid body (creates a dedicated box shape sized
         /// <paramref name="width"/>x<paramref name="height"/>x<paramref name="length"/>).
         /// Used by the verification scaffold; a general entity-driven body factory can
@@ -149,17 +216,34 @@ namespace Engine.Physics
         /// too few or too many points). The collider is centred on its own centre of
         /// mass, so <paramref name="localCenter"/> returns that centre in entity-local
         /// space: body position = entity position + orientation * localCenter.
+        /// <paramref name="lockRotation"/> gives the body infinite inertia, so contacts and
+        /// impulses never tip or spin it (character controllers).
         /// </summary>
-        public BodyHandle AddDynamicConvex(XnaVector3[] localPoints, XnaVector3 entityPosition, XnaQuaternion orientation, float mass, out XnaVector3 localCenter)
+        public BodyHandle AddDynamicConvex(XnaVector3[] localPoints, XnaVector3 entityPosition, XnaQuaternion orientation, float mass, out XnaVector3 localCenter,
+            bool lockRotation = false)
         {
             if (!TryCreateHull(localPoints, mass, out TypedIndex shape, out BodyInertia inertia, out Vector3 center))
                 CreateBoundsBox(localPoints, mass, out shape, out inertia, out center);
+            if (lockRotation) inertia.InverseInertiaTensor = default;
 
             localCenter = MathConverter.ToXna(center);
             XnaVector3 position = entityPosition + XnaVector3.Transform(localCenter, orientation);
             var pose = new RigidPose(MathConverter.ToNumerics(position), MathConverter.ToNumerics(orientation));
             return Simulation.Bodies.Add(
                 BodyDescription.CreateDynamic(pose, inertia, new CollidableDescription(shape), new BodyActivityDescription(0.01f)));
+        }
+
+        /// <summary>
+        /// Registers the convex hull of <paramref name="localPoints"/> (or their bounding box) as a shape, with
+        /// the inertia of <paramref name="mass"/> and the hull's centre in the points' space. The shape is
+        /// centred on that centre. The caller owns the shape until a body using it is removed.
+        /// </summary>
+        internal TypedIndex CreateConvexShape(XnaVector3[] localPoints, float mass, out BodyInertia inertia, out XnaVector3 localCenter)
+        {
+            if (!TryCreateHull(localPoints, mass, out TypedIndex shape, out inertia, out Vector3 center))
+                CreateBoundsBox(localPoints, mass, out shape, out inertia, out center);
+            localCenter = MathConverter.ToXna(center);
+            return shape;
         }
 
         private bool TryCreateHull(XnaVector3[] points, float mass, out TypedIndex shape, out BodyInertia inertia, out Vector3 center)
@@ -261,12 +345,15 @@ namespace Engine.Physics
         }
 
         /// <summary>
-        /// Closest hit along a ray against every body and static, skipping the ignored ones.
+        /// Closest hit along a ray against every body and static, skipping the ignored ones and,
+        /// unless <paramref name="includeTriggers"/>, triggers.
         /// <paramref name="direction"/> need not be normalized; <paramref name="distance"/> is in world units.
         /// </summary>
+        /// <param name="ignoreGroup">Skips every body in this collision group (a ragdoll and its gameobject); 0 for none.</param>
         public bool RayCast(XnaVector3 origin, XnaVector3 direction, float maxDistance,
             BodyHandle? ignoreBody, StaticHandle? ignoreStatic,
-            out float distance, out XnaVector3 normal, out BodyHandle? hitBody, out StaticHandle? hitStatic)
+            out float distance, out XnaVector3 normal, out BodyHandle? hitBody, out StaticHandle? hitStatic,
+            bool includeTriggers = false, int ignoreGroup = 0, bool staticOnly = false)
         {
             distance = 0;
             normal = XnaVector3.Zero;
@@ -274,7 +361,15 @@ namespace Engine.Physics
             hitStatic = null;
             if (direction == XnaVector3.Zero || !(maxDistance > 0)) return false;
 
-            var handler = new ClosestHitHandler { IgnoreBody = ignoreBody, IgnoreStatic = ignoreStatic };
+            var handler = new ClosestHitHandler
+            {
+                IgnoreBody = ignoreBody,
+                IgnoreStatic = ignoreStatic,
+                SkipTriggers = includeTriggers || _contacts.Triggers.Count == 0 ? null : _contacts.Triggers,
+                Groups = ignoreGroup > 0 && _contacts.Groups.Count > 0 ? _contacts : null,
+                IgnoreGroup = ignoreGroup,
+                StaticOnly = staticOnly,
+            };
             Simulation.RayCast(MathConverter.ToNumerics(origin), MathConverter.ToNumerics(XnaVector3.Normalize(direction)),
                 maxDistance, ref handler);
             if (!handler.HasHit) return false;
@@ -291,15 +386,23 @@ namespace Engine.Physics
         {
             public BodyHandle? IgnoreBody;
             public StaticHandle? IgnoreStatic;
+            public HashSet<uint> SkipTriggers;
+            internal ContactRecorder Groups;
+            public int IgnoreGroup;
+            /// <summary>Only static colliders: bodies (and ragdoll parts) are see-through.</summary>
+            public bool StaticOnly;
             public bool HasHit;
             public float T;
             public Vector3 Normal;
             public CollidableReference Hit;
 
             public bool AllowTest(CollidableReference collidable) =>
-                collidable.Mobility == CollidableMobility.Static
+                !(StaticOnly && collidable.Mobility != CollidableMobility.Static) &&
+                !(SkipTriggers != null && SkipTriggers.Contains(collidable.Packed)) &&
+                !(Groups != null && Groups.TryGetGroup(collidable, out CollisionGroup group) && group.Group == IgnoreGroup) &&
+                (collidable.Mobility == CollidableMobility.Static
                     ? !(IgnoreStatic.HasValue && collidable.StaticHandle.Value == IgnoreStatic.Value.Value)
-                    : !(IgnoreBody.HasValue && collidable.BodyHandle.Value == IgnoreBody.Value.Value);
+                    : !(IgnoreBody.HasValue && collidable.BodyHandle.Value == IgnoreBody.Value.Value));
 
             public bool AllowTest(CollidableReference collidable, int childIndex) => true;
 
@@ -315,6 +418,143 @@ namespace Engine.Physics
                 HasHit = true;
             }
         }
+
+        ////////////////////////////////////////////////////////////////////////////
+        //  CLOTH
+        ////////////////////////////////////////////////////////////////////////////
+
+        private readonly List<CollidableReference> _clothOverlaps = new List<CollidableReference>();
+        private readonly List<int> _clothTriangles = new List<int>();
+
+        private struct OverlapCollector : IBreakableForEach<CollidableReference>
+        {
+            public List<CollidableReference> Found;
+
+            public bool LoopBody(CollidableReference collidable)
+            {
+                Found.Add(collidable);
+                return true;
+            }
+        }
+
+        private struct LeafCollector : IBreakableForEach<int>
+        {
+            public List<int> Found;
+
+            public bool LoopBody(int leaf)
+            {
+                Found.Add(leaf);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Adds a <see cref="ClothCollider"/> to <paramref name="into"/> for every non-trigger body and static whose
+        /// bounds overlap [<paramref name="min"/>, <paramref name="max"/>]: hulls and boxes as world-space planes,
+        /// meshes as their triangles inside those bounds. Other shapes are skipped. Owners are left to
+        /// <see cref="ScenePhysics.CollectClothColliders"/>.
+        /// </summary>
+        internal void CollectClothColliders(XnaVector3 min, XnaVector3 max, ClothColliderList into)
+        {
+            Vector3 queryMin = MathConverter.ToNumerics(min), queryMax = MathConverter.ToNumerics(max);
+            _clothOverlaps.Clear();
+            var collector = new OverlapCollector { Found = _clothOverlaps };
+            Simulation.BroadPhase.GetOverlaps(queryMin, queryMax, ref collector);
+
+            foreach (CollidableReference collidable in _clothOverlaps)
+            {
+                if (_contacts.IsTrigger(collidable)) continue;
+                RigidPose pose;
+                TypedIndex shape;
+                BoundingBox bounds;
+                ClothCollider collider = into.Add();
+                if (collidable.Mobility == CollidableMobility.Static)
+                {
+                    StaticReference body = Simulation.Statics[collidable.StaticHandle];
+                    pose = body.Pose;
+                    shape = body.Shape;
+                    bounds = body.BoundingBox;
+                    collider.Static = collidable.StaticHandle;
+                }
+                else
+                {
+                    BodyReference body = Simulation.Bodies[collidable.BodyHandle];
+                    pose = body.Pose;
+                    shape = body.Collidable.Shape;
+                    bounds = body.BoundingBox;
+                    collider.Body = collidable.BodyHandle;
+                    collider.LinearVelocity = MathConverter.ToXna(body.Velocity.Linear);
+                    collider.AngularVelocity = MathConverter.ToXna(body.Velocity.Angular);
+                }
+                collider.Center = MathConverter.ToXna(pose.Position);
+                collider.Min = MathConverter.ToXna(bounds.Min);
+                collider.Max = MathConverter.ToXna(bounds.Max);
+
+                if (shape.Type == ConvexHull.Id) AddHullPlanes(ref Simulation.Shapes.GetShape<ConvexHull>(shape.Index), pose, collider);
+                else if (shape.Type == Box.Id) AddBoxPlanes(Simulation.Shapes.GetShape<Box>(shape.Index), pose, collider);
+                else if (shape.Type == Mesh.Id) AddMeshTriangles(ref Simulation.Shapes.GetShape<Mesh>(shape.Index), pose, queryMin, queryMax, collider);
+                if (collider.Planes.Count == 0 && collider.Triangles.Count == 0) into.RemoveLast();
+            }
+        }
+
+        private static void AddHullPlanes(ref ConvexHull hull, in RigidPose pose, ClothCollider collider)
+        {
+            int lanes = Vector<float>.Count;
+            for (int face = 0; face < hull.FaceToVertexIndicesStart.Length; face++)
+            {
+                ref HullBoundingPlanes bundle = ref hull.BoundingPlanes[face / lanes];
+                Vector3Wide.ReadSlot(ref bundle.Normal, face % lanes, out Vector3 normal);
+                AddPlane(collider, pose, normal, bundle.Offset[face % lanes]);
+            }
+        }
+
+        private static void AddBoxPlanes(in Box box, in RigidPose pose, ClothCollider collider)
+        {
+            AddPlane(collider, pose, Vector3.UnitX, box.HalfWidth);
+            AddPlane(collider, pose, -Vector3.UnitX, box.HalfWidth);
+            AddPlane(collider, pose, Vector3.UnitY, box.HalfHeight);
+            AddPlane(collider, pose, -Vector3.UnitY, box.HalfHeight);
+            AddPlane(collider, pose, Vector3.UnitZ, box.HalfLength);
+            AddPlane(collider, pose, -Vector3.UnitZ, box.HalfLength);
+        }
+
+        // A shape-local plane dot(n, p) <= offset, moved to world space.
+        private static void AddPlane(ClothCollider collider, in RigidPose pose, Vector3 localNormal, float localOffset)
+        {
+            Vector3 normal = Vector3.Transform(localNormal, pose.Orientation);
+            collider.Planes.Add(new Microsoft.Xna.Framework.Vector4(normal.X, normal.Y, normal.Z,
+                localOffset + Vector3.Dot(normal, pose.Position)));
+        }
+
+        private void AddMeshTriangles(ref Mesh mesh, in RigidPose pose, Vector3 queryMin, Vector3 queryMax, ClothCollider collider)
+        {
+            // The query box in the mesh's own (unscaled) space: rotate its half extents, then undo the scale.
+            Quaternion inverse = Quaternion.Conjugate(pose.Orientation);
+            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(inverse);
+            Vector3 half = (queryMax - queryMin) * 0.5f;
+            Vector3 center = Vector3.Transform((queryMin + queryMax) * 0.5f - pose.Position, inverse);
+            var localHalf = new Vector3(
+                MathF.Abs(rotation.M11) * half.X + MathF.Abs(rotation.M21) * half.Y + MathF.Abs(rotation.M31) * half.Z,
+                MathF.Abs(rotation.M12) * half.X + MathF.Abs(rotation.M22) * half.Y + MathF.Abs(rotation.M32) * half.Z,
+                MathF.Abs(rotation.M13) * half.X + MathF.Abs(rotation.M23) * half.Y + MathF.Abs(rotation.M33) * half.Z);
+            Vector3 scale = mesh.Scale;
+            if (scale.X == 0 || scale.Y == 0 || scale.Z == 0) return;
+            Vector3 a = (center - localHalf) / scale, b = (center + localHalf) / scale;
+            Vector3 localMin = Vector3.Min(a, b), localMax = Vector3.Max(a, b);
+
+            _clothTriangles.Clear();
+            var leaves = new LeafCollector { Found = _clothTriangles };
+            mesh.Tree.GetOverlaps(localMin, localMax, ref leaves);
+            foreach (int index in _clothTriangles)
+            {
+                ref Triangle triangle = ref mesh.Triangles[index];
+                var world = new ClothTriangle(ToWorld(triangle.A, scale, pose), ToWorld(triangle.B, scale, pose), ToWorld(triangle.C, scale, pose));
+                if (world.IsValid) collider.Triangles.Add(world);
+            }
+        }
+
+        private static XnaVector3 ToWorld(Vector3 local, Vector3 scale, in RigidPose pose) =>
+            MathConverter.ToXna(pose.Position + Vector3.Transform(local * scale, pose.Orientation));
 
         /// <summary>
         /// Teleport a body to a full pose and wake it. <paramref name="resetVelocity"/>
@@ -356,6 +596,8 @@ namespace Engine.Physics
         public void RemoveStatic(StaticHandle handle)
         {
             Simulation.Statics.GetDescription(handle, out var description);
+            // Handles are reused, so a later collider must not inherit the trigger flag.
+            SetTrigger(handle, false);
             Simulation.Statics.Remove(handle);
             // RemoveAndDispose returns the mesh's triangle buffer to the pool.
             Simulation.Shapes.RemoveAndDispose(description.Shape, BufferPool);
@@ -364,6 +606,8 @@ namespace Engine.Physics
         public void RemoveDynamic(BodyHandle handle)
         {
             Simulation.Bodies.GetDescription(handle, out var description);
+            SetTrigger(handle, false);
+            ClearCollisionGroup(handle);
             Simulation.Bodies.Remove(handle);
             Simulation.Shapes.RemoveAndDispose(description.Collidable.Shape, BufferPool);
         }
@@ -422,14 +666,17 @@ namespace Engine.Physics
     }
 
     /// <summary>
-    /// Minimal contact callbacks (all dynamic pairs collide). Ported from the
-    /// BepuPhysics demos' default callbacks.
+    /// Minimal contact callbacks (pairs with a dynamic body collide, unless their collision
+    /// groups say otherwise). Ported from the BepuPhysics demos' default callbacks. Pairs
+    /// involving a trigger get no contact constraint; every pair's contacts are reported to
+    /// <see cref="Contacts"/>.
     /// </summary>
     public struct NarrowPhaseCallbacks : INarrowPhaseCallbacks
     {
         public SpringSettings ContactSpringiness;
         public float MaximumRecoveryVelocity;
         public float FrictionCoefficient;
+        internal ContactRecorder Contacts;
 
         public NarrowPhaseCallbacks(SpringSettings contactSpringiness, float maximumRecoveryVelocity = 2f, float frictionCoefficient = 1f)
         {
@@ -451,7 +698,8 @@ namespace Engine.Physics
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllowContactGeneration(int workerIndex, CollidableReference a, CollidableReference b, ref float speculativeMargin)
         {
-            return a.Mobility == CollidableMobility.Dynamic || b.Mobility == CollidableMobility.Dynamic;
+            if (a.Mobility != CollidableMobility.Dynamic && b.Mobility != CollidableMobility.Dynamic) return false;
+            return Contacts == null || Contacts.Collides(a, b);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -467,7 +715,11 @@ namespace Engine.Physics
             pairMaterial.FrictionCoefficient = FrictionCoefficient;
             pairMaterial.MaximumRecoveryVelocity = MaximumRecoveryVelocity;
             pairMaterial.SpringSettings = ContactSpringiness;
-            return true;
+            if (Contacts == null) return true;
+            bool trigger = Contacts.IsTrigger(pair.A) || Contacts.IsTrigger(pair.B);
+            Contacts.Record(pair, ref manifold, trigger);
+            // No constraint: triggers overlap freely.
+            return !trigger;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

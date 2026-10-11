@@ -58,7 +58,8 @@ namespace Engine.Renderer.Helper
         /// <param name="mat">if "null" it will be taken from the model!</param>
         /// <param name="model"></param>
         /// <param name="worldMatrix"></param>
-        public void Register(MaterialEffect mat, Model model, TransformMatrix worldMatrix)
+        /// <param name="lodLevel">Level of detail these meshes draw at (<see cref="TransformMatrix.LodLevel"/>); 0 = the gameobject's own model.</param>
+        public void Register(MaterialEffect mat, Model model, TransformMatrix worldMatrix, int lodLevel = 0)
         {
             if (model == null) return;
 
@@ -73,12 +74,12 @@ namespace Engine.Renderer.Helper
                 for (int i = 0; i < mesh.MeshParts.Count; i++)
                 {
                     ModelMeshPart meshPart = mesh.MeshParts[i];
-                    Register(mat, meshPart, worldMatrix, mesh.BoundingSphere);
+                    Register(mat, meshPart, worldMatrix, mesh.BoundingSphere, lodLevel);
                 }
             }
         }
 
-        public void Register(MaterialEffect mat, ModelMeshPart mesh, TransformMatrix worldMatrix, BoundingSphere boundingSphere) //These should be ordered by likeness, so I don't get opaque -> transparent -> opaque
+        public void Register(MaterialEffect mat, ModelMeshPart mesh, TransformMatrix worldMatrix, BoundingSphere boundingSphere, int lodLevel = 0) //These should be ordered by likeness, so I don't get opaque -> transparent -> opaque
         {
             bool found = false;
 
@@ -101,7 +102,7 @@ namespace Engine.Renderer.Helper
                 MaterialLibrary matLib = MaterialLib[i];
                 if (matLib.HasMaterial(mat))
                 {
-                    matLib.Register(mesh, worldMatrix, boundingSphere);
+                    matLib.Register(mesh, worldMatrix, boundingSphere, lodLevel);
                     found = true;
                     break;
                 }
@@ -112,7 +113,7 @@ namespace Engine.Renderer.Helper
             {
                 MaterialLib[Index] = new MaterialLibrary();
                 MaterialLib[Index].SetMaterial(ref mat);
-                MaterialLib[Index].Register(mesh, worldMatrix, boundingSphere);
+                MaterialLib[Index].Register(mesh, worldMatrix, boundingSphere, lodLevel);
                 MaterialLibPointer[Index] = Index;
                 Index++;
             }
@@ -168,18 +169,36 @@ namespace Engine.Renderer.Helper
 
         public void DeleteFromRegistry(BasicEntity basicEntity)
         {
-            if (basicEntity.Model == null) return; //nothing to delete
+            DeleteFromRegistry(basicEntity, basicEntity.Model);
+            // The LOD component's models (registered as levels 1..n).
+            foreach (Model lodModel in basicEntity.LodModels)
+                DeleteFromRegistry(basicEntity, lodModel);
+        }
+
+        private void DeleteFromRegistry(BasicEntity basicEntity, Model model)
+        {
+            if (model == null) return; //nothing to delete
 
             //delete the individual meshes!
-            for (int index = 0; index < basicEntity.Model.Meshes.Count; index++)
+            for (int index = 0; index < model.Meshes.Count; index++)
             {
-                var mesh = basicEntity.Model.Meshes[index];
+                var mesh = model.Meshes[index];
                 for (int i = 0; i < mesh.MeshParts.Count; i++)
                 {
                     ModelMeshPart meshPart = mesh.MeshParts[i];
                     DeleteFromRegistry(basicEntity.Material, meshPart, basicEntity.WorldTransform);
                 }
             }
+        }
+
+        /// <summary>
+        /// Picks each LOD gameobject's level from its distance to the camera. Done once per frame before
+        /// the shadow maps, so every pass (shadows, G-buffer, picking) draws the same level.
+        /// </summary>
+        public void SelectLevelsOfDetail(List<BasicEntity> entities, Vector3 cameraPosition)
+        {
+            for (int i = 0; i < entities.Count; i++)
+                entities[i].SelectLevelOfDetail(cameraPosition);
         }
 
         private void DeleteFromRegistry(MaterialEffect mat, ModelMeshPart mesh, TransformMatrix worldMatrix)
@@ -444,6 +463,7 @@ namespace Engine.Renderer.Helper
                     int vertexOffset = meshLib.GetMesh().VertexOffset;
                     //int vCount = meshLib.GetMesh().NumVertices;
                     int startIndex = meshLib.GetMesh().StartIndex;
+                    VertexBuffer sharedVertices = null;
                     // Water draws a subdivided copy of the mesh so the waves can move its vertices.
                     if (renderType == RenderType.Water && renderModule is WaterRenderModule water &&
                         water.BindMesh(graphicsDevice, meshLib.GetMesh(), out primitiveCount))
@@ -453,7 +473,8 @@ namespace Engine.Renderer.Helper
                     }
                     else
                     {
-                        graphicsDevice.SetVertexBuffer(meshLib.GetMesh().VertexBuffer);
+                        sharedVertices = meshLib.GetMesh().VertexBuffer;
+                        graphicsDevice.SetVertexBuffer(sharedVertices);
                         graphicsDevice.Indices = (meshLib.GetMesh().IndexBuffer);
                         primitiveCount = meshLib.GetMesh().PrimitiveCount;
                     }
@@ -466,14 +487,25 @@ namespace Engine.Renderer.Helper
                         //if (!meshLib.GetWorldMatrices()[index].Rendered) continue;
                         if (!meshLib.Rendered[index]) continue;
 
-                        Matrix localWorldMatrix = meshLib.GetWorldMatrices()[index].World;
+                        TransformMatrix transform = meshLib.GetWorldMatrices()[index];
+                        // LOD component: only the gameobject's current level draws (-1 = culled by distance).
+                        if (meshLib.LodLevels[index] != transform.LodLevel) continue;
+                        Matrix localWorldMatrix = transform.World;
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,
                                 outlineId, outlined)) continue;
                         GameStats.MeshDraws++;
-                        
+
+                        // Animated instances and cloth draw their own posed copy of the shared vertices.
+                        VertexBuffer skinned = sharedVertices != null
+                            ? transform.Skin?.Resolve(sharedVertices) ?? transform.Cloth?.Resolve(sharedVertices)
+                            : null;
+                        if (skinned != null) graphicsDevice.SetVertexBuffer(skinned);
+
                         graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex,
                                 primitiveCount);
+
+                        if (skinned != null) graphicsDevice.SetVertexBuffer(sharedVertices);
                     }
                 }
 
@@ -874,7 +906,7 @@ namespace Engine.Renderer.Helper
             return _meshLib;
         }
 
-        public void Register(ModelMeshPart mesh, TransformMatrix worldMatrix, BoundingSphere boundingSphere)
+        public void Register(ModelMeshPart mesh, TransformMatrix worldMatrix, BoundingSphere boundingSphere, int lodLevel = 0)
         {
             bool found = false;
             //Check if we already have a model like that, if yes put it in there!
@@ -883,7 +915,7 @@ namespace Engine.Renderer.Helper
                 MeshLibrary meshLib = _meshLib[i];
                 if (meshLib.HasMesh(mesh))
                 {
-                    meshLib.Register(worldMatrix);
+                    meshLib.Register(worldMatrix, lodLevel);
                     found = true;
                     break;
                 }
@@ -895,7 +927,7 @@ namespace Engine.Renderer.Helper
                 _meshLib[Index] = new MeshLibrary();
                 _meshLib[Index].SetMesh(mesh);
                 _meshLib[Index].SetBoundingSphere(boundingSphere);
-                _meshLib[Index].Register(worldMatrix);
+                _meshLib[Index].Register(worldMatrix, lodLevel);
                 Index++;
             }
 
@@ -946,6 +978,8 @@ namespace Engine.Renderer.Helper
         private Vector3[] _worldBoundingCenters = new Vector3[InitialLibrarySize];
         //the local mode - either rendered or not!
         public bool[] Rendered = new bool[InitialLibrarySize];
+        //the level of detail each instance draws at (TransformMatrix.LodLevel), 0 = the gameobject's own model
+        public int[] LodLevels = new int[InitialLibrarySize];
 
         public int Index;
 
@@ -1027,10 +1061,11 @@ namespace Engine.Renderer.Helper
         }
 
         //Basically no chance we have the same model already. We should be fine just adding it to the list if we did everything else right.
-        public void Register(TransformMatrix world)
+        public void Register(TransformMatrix world, int lodLevel = 0)
         {
             _worldMatrices[Index] = world;
             Rendered[Index] = true;
+            LodLevels[Index] = lodLevel;
             _worldBoundingCenters[Index] = world.TransformMatrixSubModel(MeshBoundingSphere.Center);
 
             Index++;
@@ -1050,6 +1085,10 @@ namespace Engine.Renderer.Helper
                 bool[] tempRendered = new bool[Index + 1];
                 Rendered.CopyTo(tempRendered, 0);
                 Rendered = tempRendered;
+
+                int[] tempLevels = new int[Index + 1];
+                LodLevels.CopyTo(tempLevels, 0);
+                LodLevels = tempLevels;
             }
         }
 
@@ -1067,6 +1106,7 @@ namespace Engine.Renderer.Helper
                         //slide down one
                         _worldMatrices[j] = _worldMatrices[j + 1];
                         Rendered[j] = Rendered[j + 1];
+                        LodLevels[j] = LodLevels[j + 1];
                         _worldBoundingCenters[j] = _worldBoundingCenters[j + 1];
                     }
                     Index--;

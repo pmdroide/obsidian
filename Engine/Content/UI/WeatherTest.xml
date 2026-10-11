@@ -1,0 +1,26 @@
+<!--
+  WeatherTest scene HUD (Vista). Driven by Engine/Content/Scripts/WeatherTestScript.cs, which fills
+  #weather, #intensity, #wind, #time and #cycle. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Environment</div>
+        <div id="title">Weather Test</div>
+        <div id="weather"></div>
+        <div id="intensity"></div>
+        <div id="wind"></div>
+        <div id="rule"></div>
+        <div id="time"></div>
+        <div id="cycle"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-weather" class="keys-line">1 clear  ·  2 rain  ·  3 sandstorm  ·  4 snow  ·  C auto-cycle</div>
+        <div id="keys-tune" class="keys-line">Up / Down intensity  ·  Left / Right wind direction  ·  Z / X wind speed  ·  H haze  ·  T time of day</div>
+        <div id="keys-move" class="keys-line">Hold right mouse to look  ·  WASD move  ·  E / Q up / down  ·  Shift faster</div>
+    </div>
+
+</div>

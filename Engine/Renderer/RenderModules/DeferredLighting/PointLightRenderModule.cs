@@ -39,6 +39,9 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         public EffectParameter deferredPointLightParameter_Time;
         public EffectParameter deferredPointLightParameter_FarClip;
         public EffectParameter deferredPointLightParameter_LightVolumeDensity;
+        public EffectParameter deferredPointLightParameter_SpotDirection;
+        public EffectParameter deferredPointLightParameter_SpotCosOuter;
+        public EffectParameter deferredPointLightParameter_SpotCosInner;
 
         public EffectParameter deferredPointLightParameter_VolumeTexParam;
         public EffectParameter deferredPointLightParameter_VolumeTexSizeParam;
@@ -172,6 +175,9 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             deferredPointLightParameter_Time = _pointLightShader.Parameters["Time"];
             deferredPointLightParameter_FarClip = _pointLightShader.Parameters["FarClip"];
             deferredPointLightParameter_LightVolumeDensity = _pointLightShader.Parameters["lightVolumeDensity"];
+            deferredPointLightParameter_SpotDirection = _pointLightShader.Parameters["spotDirection"];
+            deferredPointLightParameter_SpotCosOuter = _pointLightShader.Parameters["spotCosOuter"];
+            deferredPointLightParameter_SpotCosInner = _pointLightShader.Parameters["spotCosInner"];
 
             deferredPointLightParameter_VolumeTexParam = _pointLightShader.Parameters["VolumeTex"];
             deferredPointLightParameter_VolumeTexSizeParam = _pointLightShader.Parameters["VolumeTexSize"];
@@ -264,6 +270,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             deferredPointLightParameter_LightColor.SetValue(light.ColorV3);
             deferredPointLightParameter_LightRadius.SetValue(light.Radius);
             deferredPointLightParameter_LightIntensity.SetValue(light.Intensity);
+            ApplySpotCone(light as SpotLight, _view);
 
             //Compute whether we are inside or outside and use 
             float cameraToCenter = Vector3.Distance(cameraOrigin, light.Position);
@@ -302,6 +309,23 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             }
 
             //Draw the sphere
+        }
+
+        // Spot lights restrict the sphere to a cone; point lights get an outer cosine of -2, which
+        // the shader's SpotConeFactor treats as lit in every direction.
+        private void ApplySpotCone(SpotLight spot, Matrix view)
+        {
+            if (spot != null)
+            {
+                deferredPointLightParameter_SpotDirection?.SetValue(Vector3.Normalize(Vector3.TransformNormal(spot.Direction, view)));
+                deferredPointLightParameter_SpotCosOuter?.SetValue(spot.CosOuter);
+                deferredPointLightParameter_SpotCosInner?.SetValue(spot.CosInner);
+            }
+            else
+            {
+                deferredPointLightParameter_SpotCosOuter?.SetValue(-2f);
+                deferredPointLightParameter_SpotCosInner?.SetValue(-1f);
+            }
         }
 
         // Returns true when a technique was applied and the sphere should be drawn; false when the

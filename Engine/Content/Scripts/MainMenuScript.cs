@@ -28,30 +28,16 @@ public sealed class MainMenuScript : ScriptBehaviour
 
     private enum Page { Title, Main, Scenes, Settings, Credits }
 
-    private sealed class Setting
-    {
-        public string Name, Description;
-        public string[] Values;
-        public Func<int> Get;
-        public Action<int> Set;
-        /// <summary>Changes engine-wide GameSettings (restored when Play stops inside Anvil).</summary>
-        public bool EngineWide = true;
-    }
-
-    // Engine-wide values changed from the menu inside Anvil, put back when Play stops.
-    private static readonly Dictionary<string, Action> EditorRestore = new();
-    private static bool _restoreHooked;
     // The interface scale survives scene switches within a session.
     private static readonly float[] UiScales = { 0.9f, 1f, 1.1f, 1.25f };
     private static int _uiScaleIndex = 1;
-    private static readonly int[] FpsCaps = { 0, 30, 60, 120, 144 };
 
     private UIManager _ui;
     private UIElement _press;
     private Page _page = Page.Title;
     private readonly Dictionary<Page, List<IElement>> _rows = new();
     private readonly Dictionary<Page, int> _selected = new();
-    private List<Setting> _settings;
+    private List<MenuSetting> _settings;
     private int _sceneScroll;
     private bool _quitOpen;
     private int _quitChoice;
@@ -148,14 +134,14 @@ public sealed class MainMenuScript : ScriptBehaviour
 
         IElement settingsList = _ui.Query("#settings-list");
         _rows[Page.Settings] = new List<IElement>();
-        foreach (Setting setting in _settings)
+        foreach (MenuSetting setting in _settings)
         {
             IElement row = Div("option setting");
             row.AppendChild(Div("hl"));
             row.AppendChild(Div("bar"));
             row.AppendChild(Div("label", setting.Name));
             row.AppendChild(Div("arrow arrow-left", "‹"));
-            row.AppendChild(Div("value", setting.Values[setting.Get()]));
+            row.AppendChild(Div("value", setting.ValueText));
             row.AppendChild(Div("arrow arrow-right", "›"));
             settingsList?.AppendChild(row);
             _rows[Page.Settings].Add(row);
@@ -286,7 +272,7 @@ public sealed class MainMenuScript : ScriptBehaviour
         }
         _ui.SetText("#scenes-desc", scenes);
 
-        Setting setting = _settings.ElementAtOrDefault(Selected(Page.Settings));
+        MenuSetting setting = _settings.ElementAtOrDefault(Selected(Page.Settings));
         _ui.SetText("#settings-desc", setting?.Description ?? "");
     }
 
@@ -498,36 +484,10 @@ public sealed class MainMenuScript : ScriptBehaviour
     //  SETTINGS
     ////////////////////////////////////////////////////////////////////////////////
 
-    private List<Setting> CreateSettings() => new()
+    private List<MenuSetting> CreateSettings()
     {
-        Toggle("Performance overlay", "The FPS, frame time and memory panels in the top-left corner.",
-            () => GameSettings.ui_vista_enabled, v =>
-            {
-                GameSettings.ui_vista_enabled = v;
-                // The legacy profiler text (DebugScreen) goes with it; 3 is its default detail level.
-                GameSettings.u_showdisplayinfo = v ? 3 : 0;
-            }),
-        Toggle("VSync", "Wait for the display's refresh. A frame rate cap takes precedence.",
-            () => GameSettings.g_vsync, v => GameSettings.g_vsync = v),
-        new Setting
-        {
-            Name = "Frame rate cap",
-            Description = "Limits frames per second. Unlimited lets the GPU run as fast as it can.",
-            Values = new[] { "Unlimited", "30", "60", "120", "144" },
-            Get = () => Math.Max(0, Array.IndexOf(FpsCaps, GameSettings.g_fixedfps)),
-            Set = i => GameSettings.g_fixedfps = FpsCaps[i],
-        },
-        Toggle("Anti-aliasing", "Temporal anti-aliasing (TAA) smooths edges and shimmer.",
-            () => GameSettings.g_taa, v => GameSettings.g_taa = v),
-        Toggle("Ambient occlusion", "Screen-space ambient occlusion darkens creases and contact shadows.",
-            () => GameSettings.g_ssao_draw, v => GameSettings.g_ssao_draw = v),
-        Toggle("Bloom", "The glow around bright light, like the ember core.",
-            () => GameSettings.g_BloomEnable, v => GameSettings.g_BloomEnable = v),
-        Toggle("Volumetric fog", "Froxel fog, with the low sun's shafts between the monoliths.",
-            () => GameSettings.g_FroxelFogEnabled, v => GameSettings.g_FroxelFogEnabled = v),
-        Toggle("Reflections", "Screen-space reflections on the obsidian pool and the glossy stone.",
-            () => GameSettings.g_SSReflection, v => GameSettings.g_SSReflection = v),
-        new Setting
+        List<MenuSetting> settings = MenuSettings.Graphics();
+        settings.Add(new MenuSetting
         {
             Name = "Interface scale",
             Description = "Scales this menu. Vista lays it out on a 1080-high canvas and scales it to the window.",
@@ -539,44 +499,18 @@ public sealed class MainMenuScript : ScriptBehaviour
                 if (_ui != null) _ui.ReferenceHeight = 1080f / UiScales[i];
             },
             EngineWide = false,
-        },
-    };
-
-    private static Setting Toggle(string name, string description, Func<bool> get, Action<bool> set) => new()
-    {
-        Name = name,
-        Description = description,
-        Values = new[] { "Off", "On" },
-        Get = () => get() ? 1 : 0,
-        Set = i => set(i == 1),
-    };
+        });
+        return settings;
+    }
 
     private void ChangeSetting(int index, int direction)
     {
-        Setting setting = _settings.ElementAtOrDefault(index);
+        MenuSetting setting = _settings.ElementAtOrDefault(index);
         if (setting == null) return;
-        RememberForEditor(setting);
-        int count = setting.Values.Length;
-        int value = ((setting.Get() + direction) % count + count) % count;
-        setting.Set(value);
+        int value = setting.Step(direction);
         Sound(direction > 0 ? 1.3f : 1.1f, 0.3f);
         IElement valueText = _rows[Page.Settings][index].QuerySelector(".value");
         if (valueText != null) valueText.TextContent = setting.Values[value];
-    }
-
-    private static void RememberForEditor(Setting setting)
-    {
-        if (!GameFlow.IsEditor || !setting.EngineWide || EditorRestore.ContainsKey(setting.Name)) return;
-        int original = setting.Get();
-        Action<int> set = setting.Set;
-        EditorRestore[setting.Name] = () => set(original);
-        if (_restoreHooked) return;
-        _restoreHooked = true;
-        GameFlow.PlayStopped += () =>
-        {
-            foreach (Action restore in EditorRestore.Values) restore();
-            EditorRestore.Clear();
-        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////

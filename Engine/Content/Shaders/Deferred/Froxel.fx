@@ -55,6 +55,9 @@ float3 PointLightColors[MAX_FROXEL_POINT_LIGHTS];
 float PointLightRadii[MAX_FROXEL_POINT_LIGHTS];
 float PointLightCastShadows[MAX_FROXEL_POINT_LIGHTS];
 float PointLightShadowMapSize[MAX_FROXEL_POINT_LIGHTS];
+//Spot cone per light: view space axis, and (cos outer, cos inner) of the half angles. Point lights use (-2, -1).
+float3 PointLightSpotDirectionsVS[MAX_FROXEL_POINT_LIGHTS];
+float2 PointLightSpotCos[MAX_FROXEL_POINT_LIGHTS];
 
 Texture2D AlbedoMap;
 Texture2D NormalMap;
@@ -343,6 +346,13 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         float falloff = saturate(1.0 - distToLight / radius);
         falloff *= falloff;
         float attenuation = falloff / max(distToLight * distToLight, 0.01);
+
+        //Spot cone, mirrors SpotConeFactor in DeferredPointLight.fx
+        float2 spotCos = PointLightSpotCos[li];
+        float spotT = saturate((dot(-lightDirPt, PointLightSpotDirectionsVS[li]) - spotCos.x) / max(spotCos.y - spotCos.x, 0.0001f));
+        attenuation *= spotT * spotT;
+        if (attenuation <= 0.0)
+            continue;
 
         float cosTheta = dot(-lightDirPt, viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);

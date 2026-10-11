@@ -30,7 +30,16 @@ internal static class MaterialGraphicsChecks
             using var content = new ContentManager(services,
                 Path.Combine(AppContext.BaseDirectory, "Content"));
             EnvironmentChecks.RunGraphics(graphics, content);
+            WeatherChecks.RunGraphics(graphics, content);
+            WetSurfaceChecks.RunGraphics(graphics, content);
             AutoExposureChecks.RunGraphics(graphics, content);
+            AnimationChecks.RunGraphics(graphics, content);
+            RagdollChecks.RunGraphics(graphics, content);
+            ClothChecks.RunGraphics(graphics, content);
+            SpotLightChecks.RunGraphics(content);
+            PersistenceChecks.RunGraphics(graphics, content);
+            PauseChecks.RunGraphics(graphics, content);
+            LodChecks.RunGraphics(graphics, content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);

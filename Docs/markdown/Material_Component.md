@@ -1,4 +1,4 @@
-# Material component and water example
+# Material component, water and wet surfaces
 
 Select a mesh in Anvil, then choose **Add Component > Material**. Use **Basic**
 for an opaque surface, or **Apply Water Example** for a teal water preset. For a
@@ -22,12 +22,14 @@ model's original map and the component's default surface behavior. New component
 inherit model maps. Assigned roughness and metallic textures take precedence over
 their sliders; they work independently of base color and normal maps. Mask is an
 alpha cutout map, and displacement uses the existing parallax shader with base
-color and normal maps. Textures use the MonoGame content pipeline, so newly copied
+color and normal maps (Wet Surface uses it as puddle height instead). **Tiling**
+(U, V) repeats every map across the mesh UVs, so a large flattened Cube can carry a
+ground texture at its real-world scale; 1 keeps the model's UVs. Textures use the MonoGame content pipeline, so newly copied
 images need a content build before they can load. Missing maps are logged and
 leave the original map in place. Texture choices save in scenes and copy with objects.
 
 **Shader** is a separate section with the existing shader choices, including
-Water. The water preset and wave controls live there. These are registered engine
+Water and WetSurface. The water preset, wave controls and wet surface controls live there. These are registered engine
 shaders; arbitrary `.fx` files need renderer integration before appearing as choices.
 
 Water moves its mesh with four Gerstner swell waves: the surface rises and falls,
@@ -60,7 +62,8 @@ component to restore the original materials; Stop preserves the authored materia
 The original Material inspector's color picker, sliders, transparency checkbox,
 and type selector are now the addable component's controls. Adding Material
 starts with the object's existing settings. The selector retains Basic, Hologram,
-ProjectHologram, Emissive, SubsurfaceScattering, and ForwardShaded, and adds Water.
+ProjectHologram, Emissive, SubsurfaceScattering, and ForwardShaded, and adds Water
+and WetSurface.
 There is one Material section, shown only while the component is attached.
 Components save in `.obsc` files and copy independently
 when duplicating objects. Older scenes continue loading without them.
@@ -70,7 +73,52 @@ The shader is `Engine/Content/Shaders/Forward/Water.fx`, built by `Content.mgcb`
 supplies the settings. New shader options require registration in the component
 material type enum and editor dropdown, material application, and a renderer pass.
 
+## Wet surfaces
+
+**WetSurface** (Shader list) turns a ground material such as bricks, cobblestone or
+stone/dirt into a rain-soaked one, like a road after a shower. It works with any
+Base Color / Normal / Roughness maps; **Apply Wet Floor Example** sets it up fully
+soaked. The look is written into the G-buffer, so it lights like a Basic material:
+
+- **Damp:** the surface darkens like wet stone and turns glossier; cavities (dark
+  parts of the Base Color, or the low parts of the Displacement map) soak first.
+- **Puddles:** on faces that look up, water fills the low parts of a world-space
+  noise field and the texture's cavities. Puddles are flat, nearly mirror-smooth
+  water with a damp rim. Placement is in world space and does not repeat with Tiling.
+- **Reflections:** puddles reflect through screen-space reflections and the
+  environment cubemap. Wet pixels use a view-dependent Fresnel: seen from above they
+  show the dark ground under the water, at grazing angles they mirror the sky and
+  surroundings.
+- **Rain:** with **Wet in Rain** on, the scene's weather soaks the surface beyond its
+  own **Wetness**, fills its puddles and drops ripples into them. Rain wets surfaces in
+  about 8 s and they dry in about 40 s after it stops; snow only dampens. A newly
+  loaded scene starts as wet as its weather.
+
+| Field | Meaning |
+| --- | --- |
+| Wetness (dry weather) | How wet it is without rain, 0..1. Puddles appear above 0.5. |
+| Puddle Amount | How much of the upward faces puddles cover when soaked, 0..1. |
+| Puddle Size (m) | Typical puddle size in metres. |
+| Wet in Rain | Follow the scene weather (see above). |
+
+For puddles that follow the texture's grooves, set the Displacement slot to a height
+map (white = high). It is then used only as puddle height, without parallax. The
+WeatherTest sample uses Poly Haven (CC0) ground sets in
+`Engine/Content/GameObjects/Textures/Ground/` (`*_BaseColor`, `*_Normal`,
+`*_Roughness`, `*_Height`): RockyDirt on the ground, Bricks on the street and
+Cobblestone on the plaza.
+
+The G-buffer shader (`Shaders/GBufferSetup/Gbuffer.fx`, `ApplyWetSurface`) does the
+damp, puddle and ripple work; `GBufferRenderModule` passes the material settings
+and the weather (`SurfaceWetness` in `Engine/Logic/Weather.cs`, updated by the
+renderer). Wet pixels set the otherwise unused albedo alpha, which
+`Shaders/Deferred/DeferredEnvironmentMap.fx` reads to switch to the view-dependent
+Fresnel. Limits: puddles do not raise the surface or affect physics, and very
+close puddles can look dark when the scene's environment probe sees dark
+surroundings in that direction and screen-space reflections miss.
+
 Run `dotnet run --project Tests/Components/Components.csproj -- --graphics` to
 check persistence, inspector edits, actual water pixels/animation/reflections,
-opaque depth occlusion, Standard texture tint/roughness, restoration, and disposal.
+opaque depth occlusion, Standard texture tint/roughness, wet surface G-buffer output
+and tiling (`Tests/Components/WetSurfaceChecks.cs`), restoration, and disposal.
 The graphics checks use a hidden native window and require WindowsDX graphics.

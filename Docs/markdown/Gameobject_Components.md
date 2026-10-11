@@ -17,6 +17,47 @@ components remain compatible. Audio assets anywhere under `Engine/Content` are
 copied into builds. Anvil also copies newly imported audio into its runtime
 content directory on first playback, so assigning a new asset needs no rebuild.
 
+**Animator** plays a skeletal clip on a skinned model in Play mode (Source, Clip, Speed, Loop,
+In Place). See `Skeletal_Animation.md` and the `AnimationTest` sample scene.
+
+**Ragdoll** gives a skinned model a rigid body per main bone. In Play they follow the animation until
+the ragdoll goes limp: on start, when a body hits it faster than **Impact** m/s, or when a script calls
+`Activate()`. It has **Mass** (the whole body, kg), **Friction** (joint stiffness) and **Active on Start**.
+See [Ragdoll_Physics.md](Ragdoll_Physics.md).
+
+**Cloth** simulates the gameobject's mesh as cloth in Play. Use it on the **Cloth** model, a subdivided
+double-sided plane. **Pin** holds the top edge, its corners or the outline in place, following the
+gameobject. With **Collisions** the cloth stays out of every Physics collider around it, and bodies push
+it aside. It also has Mass, Stiffness, Bend, Damping, Friction, Thickness and Wind (a multiplier of the
+scene's wind). See [Cloth.md](Cloth.md).
+
+**Physics** has two contact options besides Body and Mass. **Is Trigger** makes the
+collider overlap instead of collide: scripts get `OnTriggerEnter/Stay/Exit`, nothing is
+pushed and raycasts pass through. A Static trigger uses the model's convex hull, so a body
+fully inside still counts. **Freeze Rotation** (Dynamic only) stops contacts and impulses from
+tipping or spinning the body, for characters and upright props.
+
+**Interactable** marks a gameobject the player can use. It has a **Prompt** (the text a HUD
+shows while aiming at it) and a **Range** in metres from the camera. A script finds it with
+`FindInteractable(CameraRay, ...)` and uses it with `Interact(hit)`, which runs `OnInteract`
+on the gameobject's own scripts. Rays only hit colliders, so add a Physics component too.
+See [Collisions_and_Interaction.md](Collisions_and_Interaction.md) and the `CollisionTest`
+sample scene.
+
+**NPC** makes the gameobject a computer-controlled character in Play. It works best on a Dynamic capsule
+with Freeze Rotation, and its +Y is its forward. It walks a navigation grid built from the scene's Static
+colliders, going around walls, up ramps and never off ledges. While idle it stands, wanders or patrols
+named gameobjects. It watches for its **Target** (the gameobject named `Player`) with a view cone,
+hearing and line-of-sight rays. When it sees the target, it reacts: **Chase** (and shove it within
+range), **Follow**, **Flee** or **Watch**. When it loses the target, it searches where it last saw it.
+Its scripts get `OnTargetSpotted`, `OnTargetLost`, `OnNpcStateChanged` and `OnNpcAttack`. See
+[NPC_Navigation.md](NPC_Navigation.md) and the `NpcTest` sample scene.
+
+**LOD** (level of detail) draws simpler models as the camera moves away. Each level has a **Model** and
+the camera distance it starts at; **Cull Distance** stops drawing the gameobject entirely (0 never culls).
+It works in the editor and in Play, shadows included; physics and bounds keep the gameobject's own model.
+See [Level_of_Detail.md](Level_of_Detail.md) and the `LodTest` sample scene.
+
 ## Roles and buoyancy
 
 Every mesh gameobject has a **Role** under its name in the Inspector. **Default**

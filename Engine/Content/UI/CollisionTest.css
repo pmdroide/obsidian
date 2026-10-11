@@ -1,0 +1,151 @@
+/*
+  CollisionTest HUD. Design canvas: 1080 units high (GameUI scales it to the window).
+  Layout is absolute; fonts are heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Palette
+    panel    rgba(8, 10, 14, 0.74)
+    text     #F1ECE4
+    muted    rgba(241, 236, 228, 0.62)
+    accent   #62C968               goal-zone green
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #F1ECE4;
+    font-family: body;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- crosshair + prompt */
+
+#crosshair {
+    left: 50%;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    margin-top: -7px;
+}
+
+/* A green ring while the crosshair is on something to use, carry or shove. */
+#crosshair.active { border: 1px solid #62C968; }
+
+#dot {
+    left: 5px;
+    top: 5px;
+    width: 4px;
+    height: 4px;
+    background-color: rgba(241, 236, 228, 0.85);
+}
+
+#prompt {
+    left: 50%;
+    top: 50%;
+    width: 700px;
+    height: 34px;
+    margin-left: -350px;
+    margin-top: 34px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+#prompt.visible { opacity: 1; }
+
+/* ---------------------------------------------------------------- panel */
+
+/* Top right, clear of the engine's performance overlay in the top-left corner. */
+#panel {
+    right: 40px;
+    top: 40px;
+    width: 600px;
+    height: 470px;
+    background-color: rgba(8, 10, 14, 0.74);
+}
+
+#accent {
+    width: 3px;
+    height: 100%;
+    background-color: #62C968;
+}
+
+.eyebrow {
+    left: 30px;
+    top: 24px;
+    width: 400px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+#title {
+    left: 30px;
+    top: 48px;
+    width: 540px;
+    height: 40px;
+    font-family: heading;
+}
+
+#touching {
+    left: 30px;
+    top: 104px;
+    width: 540px;
+    height: 28px;
+    white-space: nowrap;
+}
+
+#carrying {
+    left: 30px;
+    top: 136px;
+    width: 540px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 236, 228, 0.78);
+}
+
+#rule {
+    left: 30px;
+    top: 178px;
+    width: 540px;
+    height: 1px;
+    background-color: rgba(241, 236, 228, 0.14);
+}
+
+#feed-label { top: 196px; }
+
+#feed {
+    left: 30px;
+    top: 226px;
+    width: 540px;
+    height: 230px;
+    line-height: 1.3;
+    white-space: pre-line;
+    color: rgba(241, 236, 228, 0.86);
+}
+
+/* ---------------------------------------------------------------- key hints */
+
+#keys {
+    left: 40px;
+    bottom: 36px;
+    width: 1100px;
+    height: 104px;
+}
+
+.keys-line {
+    left: 0;
+    width: 1100px;
+    height: 28px;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+#keys-move { top: 0; }
+#keys-act { top: 34px; }
+#keys-crates { top: 68px; color: rgba(241, 236, 228, 0.62); }

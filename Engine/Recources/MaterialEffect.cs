@@ -32,6 +32,13 @@ namespace Engine.Recources
         public float WaveHeight = 0.5f;
         public float WaterClarity = 4f;
         public float WaterFoam = 0.5f;
+        // Wet Surface: soaked albedo/roughness plus world-space puddles that reflect like water.
+        public float Wetness;
+        public float PuddleAmount = 0.5f;
+        public float PuddleSize = 3f;
+        public bool WeatherWetness = true;
+        // Texture repeats across the mesh UVs (all G-buffer techniques).
+        public Vector2 TextureTiling = Vector2.One;
 
         public bool HasDiffuse;
         public bool HasRoughnessMap;
@@ -123,6 +130,7 @@ namespace Engine.Recources
             SubsurfaceScattering = 4,
             ForwardShaded = 5,
             Water = 6,
+            WetSurface = 7,
         }
 
         public MaterialTypes Type
@@ -186,6 +194,10 @@ namespace Engine.Recources
                 (Opacity != b.Opacity || WaveScale != b.WaveScale ||
                  WaveSpeed != b.WaveSpeed || WaveStrength != b.WaveStrength || WaveHeight != b.WaveHeight ||
                  WaterClarity != b.WaterClarity || WaterFoam != b.WaterFoam)) return false;
+            if (Type == MaterialTypes.WetSurface &&
+                (Wetness != b.Wetness || PuddleAmount != b.PuddleAmount ||
+                 PuddleSize != b.PuddleSize || WeatherWetness != b.WeatherWetness)) return false;
+            if (TextureTiling != b.TextureTiling) return false;
 
             if (HasDiffuse != b.HasDiffuse) return false;
 
@@ -242,6 +254,11 @@ namespace Engine.Recources
                 WaveHeight = WaveHeight,
                 WaterClarity = WaterClarity,
                 WaterFoam = WaterFoam,
+                Wetness = Wetness,
+                PuddleAmount = PuddleAmount,
+                PuddleSize = PuddleSize,
+                WeatherWetness = WeatherWetness,
+                TextureTiling = TextureTiling,
                 HasDiffuse = HasDiffuse,
                 HasRoughnessMap = HasRoughnessMap,
                 HasMask = HasMask,

@@ -1,0 +1,24 @@
+<!--
+  NpcTest HUD (Vista). Opened by Engine/Content/Scripts/NpcTestPlayerScript.cs on the Player. The script fills
+  #npcs (each NPC's state), #status (hits taken) and #feed (NpcTestFeed). Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">NPC pathfinding</div>
+        <div id="title">Who sees you?</div>
+        <div id="npcs"></div>
+        <div id="status"></div>
+        <div id="rule"></div>
+        <div id="feed-label" class="eyebrow">Events</div>
+        <div id="feed"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-move" class="keys-line">WASD move  ·  Shift run  ·  Space jump  ·  Hold right mouse (or arrows) orbit  ·  Wheel zoom</div>
+        <div id="keys-goal" class="keys-line">F shout (nearby NPCs notice you)  ·  T show paths and view cones  ·  R reload  ·  Esc pause</div>
+    </div>
+
+</div>

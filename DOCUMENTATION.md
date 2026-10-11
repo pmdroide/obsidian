@@ -20,13 +20,18 @@
 - Vista, a custom UI that uses XML for structure and CSS for styling
 - Anvil Game Editor (AvaloniaUI)
 
-## Structure
+## Current Issues
 
-- Main file is Engine.cs
+- Imported models don't save. Scene files only recognise the built-in models listed on Assets, so objects using a model imported in the editor are skipped on save and on load.
+- Some hotkeys ignore Anvil. Input.WasKeyPressed doesn't see keys forwarded from Anvil, so in-engine hotkeys like Delete, Insert and Ctrl+C only work when the engine window itself has focus.
+- The Delete key cleans up less than the hierarchy's delete. It skips stopping the object's components and removing its physics body.
+- Debug-object picking is broken. The selection loop for debug objects reads from the wrong list (directional lights).
 
-## How to modify the scene
-How to manipulate the scene
-- See the Main / MainLogic.cs for details. Manipulate and add scene objects in Initialize() and Update();
+Other rough spots:
+- Turning off CPU culling stops moved objects from updating.
+- Material batching is off by default.
+The final image is drawn twice per frame.
+- Shader hot reload points at an old, hard-coded mgcb.exe path, so in practice it doesn't work.
 
 ## Controls:
 - " ^ " / the key above TAB : debug console with suggestions (tab to autocomplete)
@@ -38,10 +43,6 @@ How to manipulate the scene
 - right mouse drag : rotate the camera
 - F1 : Cycle through render targets (albedo, normals, depth etc.)
 - X/M : Audio test
-
-## Render pipelines
-- Deferred (Main)
-- Forward
 
 ## Current target
 - WindowsDX

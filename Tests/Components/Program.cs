@@ -482,17 +482,32 @@ if (args.Contains("--audio"))
 
 ScriptBehaviourChecks.Run();
 GameObjectMenuChecks.Run();
+SpotLightChecks.Run();
+ScriptFieldChecks.Run();
 SampleSceneChecks.Run();
 SampleSceneChecks.RunGodRays();
 FreecamChecks.Run();
 EnvironmentChecks.Run();
+WeatherChecks.Run();
+WetSurfaceChecks.Run();
 WaterChecks.Run();
 SteamChecks.Run();
 InputDeviceChecks.Run();
 GameFlowChecks.Run();
 VistaChecks.Run();
+AnimationChecks.Run();
+RagdollChecks.Run();
+MultiplayerChecks.Run();
+CollisionChecks.Run();
+ClothChecks.Run();
+NpcChecks.Run();
+LodChecks.Run();
+PersistenceChecks.Run();
+PauseChecks.Run();
+BuildChecks.Run();
 if (args.Contains("--input-native")) InputDeviceChecks.RunNative();
 if (args.Contains("--steam-native")) SteamChecks.RunNative();
+if (args.Contains("--build")) BuildChecks.RunPublish();
 Console.WriteLine("All component checks passed.");
 if (args.Contains("--graphics")) MaterialGraphicsChecks.Run();
 

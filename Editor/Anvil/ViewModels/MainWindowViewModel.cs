@@ -62,6 +62,24 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleAudio() => IsAudioEnabled = !IsAudioEnabled;
 
+    // Engine debug stats (DebugScreen) in the viewport's top-left corner.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatsToggleTip))]
+    private bool _isStatsVisible = true;
+
+    public string StatsToggleTip => IsStatsVisible ? "Hide debug stats" : "Show debug stats";
+    partial void OnIsStatsVisibleChanged(bool value) => PushStatsVisible();
+
+    [RelayCommand]
+    private void ToggleStats() => IsStatsVisible = !IsStatsVisible;
+
+    // 3 = DebugScreen's full detail level, 0 = off.
+    private void PushStatsVisible()
+    {
+        bool visible = IsStatsVisible;
+        _bridge?.EnqueueGameThreadAction(() => Engine.Recources.GameSettings.u_showdisplayinfo = visible ? 3 : 0);
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilteredConsole))]
     private string _consoleFilter = "All";
@@ -217,6 +235,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_bridge != null) return;
         _bridge = bridge;
         bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
+        PushStatsVisible();
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
@@ -234,6 +253,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Sphere", _ => AddEntity("IsoSphere"), _bridge));
         AddableObjects.Add(new AddableObjectType("Directional Light", _ => AddDirectionalLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -422,6 +442,14 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void AddSpotLight()
+    {
+        if (_bridge == null) return;
+        // Points straight down (engine convention: -Z is down); rotate it with the gizmo or inspector.
+        _bridge.EnqueueAddSpotLight(_bridge.SpawnPoint, new XnaVector3(0, 0, -1), radius: 25f, color: XnaColor.White, intensity: 40f, spotAngle: 60f);
+    }
+
+    [RelayCommand]
     private void AddDirectionalLight()
     {
         if (_bridge == null) return;
@@ -536,13 +564,96 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ProjectName = vm.Apply();
             AddConsoleEntry(ConsoleLevel.Log,
-                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\") " +
+                $"Game settings saved to {Engine.Recources.GameInfo.FileName} (window name \"{ProjectName}\"), " +
+                $"{Engine.Recources.IntroVideoList.FileName} ({vm.IntroVideos.Count} intro videos) " +
                 $"and {Engine.Recources.SceneList.FileName} ({vm.Scenes.Count} scenes)",
                 "Anvil:GameSettings");
         }
         catch (Exception ex)
         {
             AddConsoleEntry(ConsoleLevel.Error, "Couldn't save game settings: " + ex.Message, "Anvil:GameSettings");
+        }
+    }
+
+    // -------- Build (File > Build / Build and Run) --------
+
+    private System.Threading.CancellationTokenSource? _buildCancel;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BuildCommand), nameof(BuildAndRunCommand), nameof(CancelBuildCommand))]
+    private bool _isBuilding;
+
+    private bool CanBuild => !IsBuilding;
+
+    /// <summary>Asks for the output folder (starting at the last one), then builds.</summary>
+    [RelayCommand(CanExecute = nameof(CanBuild))]
+    private async Task BuildAsync(Window? window)
+    {
+        window ??= (Avalonia.Application.Current?.ApplicationLifetime as
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (window?.StorageProvider is not { } sp) return;
+
+        string current = GameBuilder.ResolveOutputFolder();
+        IStorageFolder? start = null;
+        try
+        {
+            // The default folder may not exist yet: start at the closest existing parent.
+            string? dir = current;
+            while (dir != null && !System.IO.Directory.Exists(dir)) dir = System.IO.Path.GetDirectoryName(dir);
+            if (dir != null) start = await sp.TryGetFolderFromPathAsync(new Uri(dir));
+        }
+        catch { /* no suggestion */ }
+
+        var folders = await sp.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Build Game To",
+            AllowMultiple = false,
+            SuggestedStartLocation = start,
+        });
+        if (folders.Count == 0) return;
+        string folder = folders[0].Path.LocalPath;
+        try { GameBuilder.SaveOutputFolder(folder); }
+        catch (Exception ex) { AddConsoleEntry(ConsoleLevel.Warn, "Couldn't remember the build folder: " + ex.Message, "Anvil:Build"); }
+        await RunBuildAsync(folder, run: false);
+    }
+
+    /// <summary>Builds to the last output folder (Builds/&lt;window name&gt; at first) and starts the game.</summary>
+    [RelayCommand(CanExecute = nameof(CanBuild))]
+    private Task BuildAndRunAsync() => RunBuildAsync(GameBuilder.ResolveOutputFolder(), run: true);
+
+    [RelayCommand(CanExecute = nameof(IsBuilding))]
+    private void CancelBuild() => _buildCancel?.Cancel();
+
+    private async Task RunBuildAsync(string folder, bool run)
+    {
+        if (IsBuilding) return;
+        if (_bridge?.IsSceneDirty == true)
+            AddConsoleEntry(ConsoleLevel.Warn,
+                "The open scene has unsaved changes: the build uses the saved scene files. Save first to include them.",
+                "Anvil:Build");
+
+        IsBuilding = true;
+        _buildCancel = new System.Threading.CancellationTokenSource();
+        try
+        {
+            string? exe = await Task.Run(() => GameBuilder.BuildAsync(folder,
+                (level, message) => Dispatcher.UIThread.Post(() => AddConsoleEntry(level, message, "Anvil:Build")),
+                _buildCancel.Token));
+            if (exe == null || !run) return;
+            if (GameBuilder.TryRun(exe, out string error))
+                AddConsoleEntry(ConsoleLevel.Log, "Started " + System.IO.Path.GetFileName(exe), "Anvil:Build");
+            else
+                AddConsoleEntry(ConsoleLevel.Error, $"Couldn't start {exe}: {error}", "Anvil:Build");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Build failed: " + ex.Message, "Anvil:Build");
+        }
+        finally
+        {
+            _buildCancel.Dispose();
+            _buildCancel = null;
+            IsBuilding = false;
         }
     }
 

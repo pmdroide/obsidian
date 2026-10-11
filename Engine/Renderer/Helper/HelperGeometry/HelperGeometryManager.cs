@@ -70,5 +70,10 @@ namespace Engine.Renderer.Helper.HelperGeometry
         {
             _lineHelperManager.AddBoundingBox(basicEntity);
         }
+
+        public void AddBox(Vector3 min, Vector3 max, Matrix world, Color color)
+        {
+            _lineHelperManager.AddBox(min, max, world, color);
+        }
     }
 }

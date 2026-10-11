@@ -32,6 +32,8 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _lightRadiusParam;
         private EffectParameter _lightIntensityParam;
         private EffectParameter _lightColorParam;
+        private EffectParameter _lightSpotDirectionParam;
+        private EffectParameter _lightSpotCosParam;
 
         private EffectParameter _tiledListLengthParam;
 
@@ -41,6 +43,8 @@ namespace Engine.Renderer.RenderModules
         private float[] LightRadius;
         private float[] LightIntensity;
         private Vector3[] LightColor;
+        private Vector3[] LightSpotDirectionWS;
+        private Vector2[] LightSpotCos;
 
         private int[][] TiledList;
         private float[] TiledListLength;
@@ -71,6 +75,8 @@ namespace Engine.Renderer.RenderModules
             _lightRadiusParam = _shader.Parameters["LightRadius"];
             _lightIntensityParam = _shader.Parameters["LightIntensity"];
             _lightColorParam = _shader.Parameters["LightColor"];
+            _lightSpotDirectionParam = _shader.Parameters["LightSpotDirectionWS"];
+            _lightSpotCosParam = _shader.Parameters["LightSpotCos"];
 
             _tiledListLengthParam = _shader.Parameters["TiledListLength"];
 
@@ -228,6 +234,8 @@ namespace Engine.Renderer.RenderModules
                 LightColor = new Vector3[count];
                 LightIntensity = new float[count];
                 LightRadius = new float[count];
+                LightSpotDirectionWS = new Vector3[count];
+                LightSpotCos = new Vector2[count];
             }
 
             //Fill
@@ -244,6 +252,10 @@ namespace Engine.Renderer.RenderModules
                 LightColor[lightsInBounds] = light.ColorV3;
                 LightIntensity[lightsInBounds] = light.Intensity;
                 LightRadius[lightsInBounds] = light.Radius;
+                //Point lights: outer cosine -2 lights every direction (see SpotConeFactor in Forward.fx)
+                SpotLight spot = light as SpotLight;
+                LightSpotDirectionWS[lightsInBounds] = spot?.Direction ?? Vector3.UnitZ;
+                LightSpotCos[lightsInBounds] = spot != null ? new Vector2(spot.CosOuter, spot.CosInner) : new Vector2(-2, -1);
                 lightsInBounds++;
             }
 
@@ -253,6 +265,8 @@ namespace Engine.Renderer.RenderModules
             _lightColorParam.SetValue(LightColor);
             _lightIntensityParam.SetValue(LightIntensity);
             _lightRadiusParam.SetValue(LightRadius);
+            _lightSpotDirectionParam?.SetValue(LightSpotDirectionWS);
+            _lightSpotCosParam?.SetValue(LightSpotCos);
         }
         
 

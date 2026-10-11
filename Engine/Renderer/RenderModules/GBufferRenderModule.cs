@@ -15,6 +15,8 @@ namespace Engine.Renderer.RenderModules
         private Effect _gbufferShader;
         private EffectPass _clearGBufferPass;
 
+        private EffectParameter _World;
+        private EffectParameter _View;
         private EffectParameter _WorldView;
         private EffectParameter _WorldViewProj;
         private EffectParameter _WorldViewIT;
@@ -36,6 +38,11 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _ComponentSurface;
         private EffectParameter _ComponentRoughnessMap;
         private EffectParameter _ComponentMetallicMap;
+        private EffectParameter _TextureTiling;
+        private EffectParameter _WetSurface;
+        private EffectParameter _WetParams;
+        private EffectParameter _Ripples;
+        private EffectParameter _Time;
 
         private EffectTechnique _DrawTextureDisplacement;
         private EffectTechnique _DrawTextureSpecularNormalMask;
@@ -81,12 +88,25 @@ namespace Engine.Renderer.RenderModules
         }
 
 
+        /// <summary>Weather wetness (<see cref="Logic.SurfaceWetness"/>) for Wet Surface materials that follow the weather.</summary>
+        public float SceneWetness { get; set; }
+        /// <summary>Weather raindrop ripples in Wet Surface puddles.</summary>
+        public float SceneRipples { get; set; }
+
+        /// <summary>Seconds that animate the puddle ripples.</summary>
+        public float Time
+        {
+            set { _Time?.SetValue(value); }
+        }
+
         public void Initialize(GraphicsDevice graphicsDevice)
         {
             _clearGBufferPass = _clearShader.Techniques["Clear"].Passes[0];
 
             _fullScreenTriangle = new FullScreenTriangle(graphicsDevice);
             
+            _World = _gbufferShader.Parameters["World"];
+            _View = _gbufferShader.Parameters["View"];
             _WorldView = _gbufferShader.Parameters["WorldView"];
             _WorldViewProj = _gbufferShader.Parameters["WorldViewProj"];
             _WorldViewIT = _gbufferShader.Parameters["WorldViewIT"];
@@ -110,6 +130,11 @@ namespace Engine.Renderer.RenderModules
             _ComponentSurface = _gbufferShader.Parameters["ComponentSurface"];
             _ComponentRoughnessMap = _gbufferShader.Parameters["ComponentRoughnessMap"];
             _ComponentMetallicMap = _gbufferShader.Parameters["ComponentMetallicMap"];
+            _TextureTiling = _gbufferShader.Parameters["TextureTiling"];
+            _WetSurface = _gbufferShader.Parameters["WetSurface"];
+            _WetParams = _gbufferShader.Parameters["WetParams"];
+            _Ripples = _gbufferShader.Parameters["Ripples"];
+            _Time = _gbufferShader.Parameters["Time"];
 
             //Techniques
 
@@ -158,6 +183,8 @@ namespace Engine.Renderer.RenderModules
         public void Apply(Matrix localWorldMatrix, Matrix? view, Matrix viewProjection)
         {
             Matrix worldView = localWorldMatrix * (Matrix)view;
+            _World.SetValue(localWorldMatrix);
+            _View.SetValue((Matrix)view);
             _WorldView.SetValue(worldView);
             _WorldViewProj.SetValue(localWorldMatrix * viewProjection);
 
@@ -183,6 +210,19 @@ namespace Engine.Renderer.RenderModules
             _ComponentSurface.SetValue(new Vector2(material.Roughness,
                 material.Type == MaterialEffect.MaterialTypes.Emissive
                     ? Math.Clamp(material.EmissiveStrength / 8f, 0, 1) : material.Metallic));
+            bool wet = material.Type == MaterialEffect.MaterialTypes.WetSurface && !GameSettings.d_defaultmaterial;
+            _WetSurface.SetValue(wet);
+            _TextureTiling.SetValue(GameSettings.d_defaultmaterial ? Vector2.One : material.TextureTiling);
+            if (wet)
+            {
+                // The displacement map is the height puddles fill (cavities first); no parallax.
+                if (material.HasDisplacement)
+                    _Material_DisplacementMap.SetValue(material.DisplacementMap);
+                float wetness = material.WeatherWetness ? Math.Max(material.Wetness, SceneWetness) : material.Wetness;
+                _WetParams.SetValue(new Vector4(wetness, material.PuddleAmount, 1f / Math.Max(material.PuddleSize, 0.1f),
+                    material.HasDisplacement ? 1 : 0));
+                _Ripples.SetValue(material.WeatherWetness ? SceneRipples : 0f);
+            }
             if (GameSettings.d_defaultmaterial)
             {
                 _Material_DiffuseColor.SetValue(Color.Gray.ToVector3());
@@ -195,7 +235,7 @@ namespace Engine.Renderer.RenderModules
             }
             else
             {
-                if (material.HasDisplacement && material.HasDiffuse && material.HasNormalMap)
+                if (material.HasDisplacement && material.HasDiffuse && material.HasNormalMap && !wet)
                 {
                     _Material_Texture.SetValue(material.AlbedoMap);
                     _Material_NormalMap.SetValue(material.NormalMap);
@@ -335,6 +375,9 @@ namespace Engine.Renderer.RenderModules
                     else
                         _Material_MaterialType.SetValue(0);
                 }
+                // Wet Surface bakes its look into the G-buffer and lights like a basic material.
+                else if (wet)
+                    _Material_MaterialType.SetValue(0);
                 else
                 _Material_MaterialType.SetValue(material.MaterialTypeNumber);
             }

@@ -35,6 +35,11 @@ float lightIntensity = 1.0f;
 //Density of our light volume if we render it that way
 float lightVolumeDensity = 1;
 
+//Spot light cone, view space axis. Point lights keep spotCosOuter = -2, which lights every direction.
+float3 spotDirection = float3(0, 0, -1);
+float spotCosOuter = -2;
+float spotCosInner = -1;
+
 float ShadowMapSize = 512;
 float ShadowMapRadius = 3;
 float DepthBias = 0.02;
@@ -135,12 +140,21 @@ float4 LoadShadowMap(float3 vec3);
 float GetVariableBias(float nDotL);
 float ShadowCheck(float distance, float3 texCoord);
 float integrateVolume(float d2, float d1, float radius);
+float SpotConeFactor(float3 lightToSurface);
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//  HELPER FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//Check helper.fx for more helper functions
+
+	//Smooth falloff between the outer and inner cone. lightToSurface is normalized.
+	//Mirrors SpotLight.ConeFactor on the CPU side.
+	float SpotConeFactor(float3 lightToSurface)
+	{
+		float t = saturate((dot(lightToSurface, spotDirection) - spotCosOuter) / max(spotCosInner - spotCosOuter, 0.0001f));
+		return t * t;
+	}
 
 	void LightingCalculation(in int3 texCoordInt, in float distanceToLight, in float3 lightVector, in float3 cameraDirection, inout float3 diffuseOutput, inout float3 specularOutput)
 	{
@@ -166,6 +180,7 @@ float integrateVolume(float d2, float d1, float radius);
 
 		//normalize light vector
 		lightVector /= distanceToLight;
+		attenuation *= SpotConeFactor(-lightVector);
 
 		float NdL = saturate(dot(normal, lightVector));
 		float3 diffuseLight = 0;
@@ -202,6 +217,7 @@ float integrateVolume(float d2, float d1, float radius);
 
 		//normalize light vector
 		lightVector /= distanceToLight;
+		attenuation *= SpotConeFactor(-lightVector);
 		//compute diffuse light
 		float NdL = saturate(dot(normal, lightVector));
 		float3 lightVectorWS = -mul(float4(lightVector, 0), InverseView).xyz;
@@ -248,6 +264,7 @@ float integrateVolume(float d2, float d1, float radius);
 
 		//normalize light vector
 		lightVector /= distanceToLight;
+		attenuation *= SpotConeFactor(-lightVector);
 		//compute diffuse light
 		float NdL = saturate(dot(normal, lightVector));
 
@@ -707,7 +724,11 @@ PixelShaderOutput VolumetricPixelShaderFunction(VertexShaderOutput input)
 
 	output.Diffuse = 0;
 	output.Specular = 0;
-	float volumetricStrength = totalVolumePassed * 0.0004 * lightIntensity * lightVolumeDensity;
+	//Spot lights: weight the analytic integral by the cone at B, the point of the ray closest to the light
+	float3 lightToB = b_vector - lightPosition;
+	float coneB = SpotConeFactor(lightToB * rsqrt(max(dot(lightToB, lightToB), 0.00000001f)));
+
+	float volumetricStrength = totalVolumePassed * 0.0004 * lightIntensity * lightVolumeDensity * coneB;
 	output.Volume = float4(volumetricStrength * lightColor, saturate(volumetricStrength * 0.5f));
 
 	[branch]
@@ -862,7 +883,7 @@ PixelShaderOutput VolumetricPixelShaderFunctionShadowed(VertexShaderOutput input
 				previousLightDistance = lightDistance;
 				float dist = saturate( lightDistance / lightRadius * 1.1f) - 1;
 				dist = dist*dist;
-				visibility += ShadowCheck(lightDistance / lightRadius, lightVectorWS) * saturate(dist*dist);//1 - dist*dist / (lightRadius*lightRadius));
+				visibility += ShadowCheck(lightDistance / lightRadius, lightVectorWS) * saturate(dist*dist) * SpotConeFactor(-lightVectorRay);//1 - dist*dist / (lightRadius*lightRadius));
 			}
 		}
 		visibility /= steps;

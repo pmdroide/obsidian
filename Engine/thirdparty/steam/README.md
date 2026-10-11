@@ -49,6 +49,12 @@ Online lobbies also require `Status.IsLoggedOn`. The existing service pumps
 Steamworks.NET callbacks; no achievements are unlocked and no lobbies are
 created by this connection panel.
 
+Lobbies and peer-to-peer messages are already wrapped by
+`Engine.Steam.SteamP2PSession` (`SteamMatchmaking` + `SteamNetworkingMessages`).
+Scripts reach the engine's session through `SteamService.Current`. The
+`Scenes/MultiplayerTest.obsc` sample uses both; see
+`Docs/markdown/Steam_Multiplayer.md`.
+
 Before shipping a real game, set your own Steam App ID through the editor,
 configure achievements in Steamworks, and
 launch the published game through Steam. Do not upload `steam_appid.txt` to a

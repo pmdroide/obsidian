@@ -370,6 +370,17 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueSetPersistent(int entityId, bool persistent)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = LookupEntityById(entityId);
+                if (entity == null || entity.Persistent == persistent) return;
+                entity.Persistent = persistent;
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
         public void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null)
         {
             if (mutate == null) return;
@@ -420,6 +431,21 @@ namespace Engine.Editor
                     Log($"AddPointLight ok: id={light?.Id}");
                 }
                 catch (Exception ex) { Log("AddPointLight threw: " + ex); }
+            });
+        }
+
+        public void EnqueueAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle)
+        {
+            Log($"EnqueueAddSpotLight pos={position} dir={direction} radius={radius} angle={spotAngle}");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene == null) { Log("AddSpotLight: scene is null"); return; }
+                try
+                {
+                    SpotLight light = _scene.EditorAddSpotLight(position, direction, radius, color, intensity, spotAngle);
+                    Log($"AddSpotLight ok: id={light?.Id}");
+                }
+                catch (Exception ex) { Log("AddSpotLight threw: " + ex); }
             });
         }
 
@@ -915,25 +941,30 @@ namespace Engine.Editor
                     light: null,
                     material: matSnap,
                     components: be.Components.Select(ComponentRegistry.Capture).ToArray(),
-                    role: be.Role));
+                    role: be.Role,
+                    isPersistent: be.Persistent));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)
             {
                 PointLight p = _scene.PointLights[i];
+                SpotLight spot = p as SpotLight;
                 LightSnapshot ls = new LightSnapshot(
                     color: p.Color,
                     intensity: p.Intensity,
                     radius: p.Radius,
                     castShadows: p.CastShadows,
                     isDirectional: false,
-                    direction: Vector3.Zero);
+                    direction: spot?.Direction ?? Vector3.Zero,
+                    isSpot: spot != null,
+                    spotAngle: spot?.SpotAngle ?? 0f,
+                    innerSpotAngle: spot?.InnerSpotAngle ?? 0f);
                 list.Add(new EditorObjectSnapshot(
                     id: p.Id,
-                    name: p.Name ?? ("PointLight " + p.Id),
-                    kind: EditorObjectKind.PointLight,
+                    name: p.Name ?? (p.GetType().Name + " " + p.Id),
+                    kind: spot != null ? EditorObjectKind.SpotLight : EditorObjectKind.PointLight,
                     position: p.Position,
-                    rotation: Matrix.Identity,
+                    rotation: spot?.RotationMatrix ?? Matrix.Identity,
                     scale: Vector3.One,
                     isEnabled: p.IsEnabled,
                     light: ls,

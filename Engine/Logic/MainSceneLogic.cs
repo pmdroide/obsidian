@@ -110,6 +110,7 @@ namespace Engine.Logic
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
 
             SceneManager.Assets = assets;
+            LodComponent.FindModel = assets.FindModel;
             SceneManager.SceneChanged += OnSceneChanged;
 
             PlayMode = new PlayModeController(this);
@@ -124,6 +125,8 @@ namespace Engine.Logic
         // Anvil only: the scene being edited when a script first switched scenes during Play.
         // Stop returns to it, so playing through a menu never replaces the user's scene.
         private Scene _editScene;
+        // Persistent gameobjects carried from scene to scene during Play.
+        private readonly PersistentGameObjects _persistent = new PersistentGameObjects();
 
         /// <summary>
         /// Standalone start: loads entry 0 of the scene list (Anvil > Game Settings > Scenes) and
@@ -143,11 +146,14 @@ namespace Engine.Logic
             return true;
         }
 
-        /// <summary>Applies a scene load queued with <see cref="GameFlow.LoadScene(int)"/>, keeping Play running.</summary>
+        /// <summary>Applies a scene load queued with <see cref="GameFlow.LoadScene(int, bool)"/>, keeping Play running.</summary>
         private void ApplyPendingSceneLoad()
         {
             string path = GameFlow.TakePendingScene();
+            bool carry = GameFlow.TakePendingCarriesPersistent();
             if (path == null) return;
+            // A paused game resumes in the new scene.
+            GameFlow.Paused = false;
 
             Scene loaded;
             try { loaded = SceneSerialization.LoadFromFile(path, _assets); }
@@ -164,13 +170,43 @@ namespace Engine.Logic
                 if (playing)
                 {
                     if (GameFlow.IsEditor && _editScene == null) _editScene = ActiveScene;
+                    if (carry)
+                    {
+                        // Persistent gameobjects leave first, so the departing scene's Stop leaves them running.
+                        _persistent.TakeFrom(ActiveScene, ReferenceEquals(ActiveScene, _editScene), PlayMode);
+                        if (MeshMaterialLibrary != null)
+                            foreach (var entity in _persistent.Entities) entity.Dispose(MeshMaterialLibrary);
+                    }
                     // Stops the departing scene's scripts and rewinds its transforms.
                     PlayMode.Stop();
+                    if (!carry) LeavePersistentBehind();
+                    _persistent.PrepareArrival(loaded);
                 }
                 SceneManager.SetActiveScene(loaded);
-                if (playing) PlayMode.Play();
+                if (playing)
+                {
+                    _persistent.Arrive(loaded);
+                    if (MeshMaterialLibrary != null)
+                        foreach (var entity in _persistent.Entities) entity.RegisterInLibrary(MeshMaterialLibrary);
+                    PlayMode.Play(_persistent.Entities);
+                    _persistent.NotifySceneLoaded();
+                }
             }
             finally { _switchingScene = false; }
+        }
+
+        /// <summary>
+        /// A load with <c>carryPersistent: false</c>: the persistent gameobjects stopped with the departing scene
+        /// and unload with it. Inside Anvil, carried ones from the edited scene go back there now, as Stop would.
+        /// </summary>
+        private void LeavePersistentBehind()
+        {
+            if (_editScene != null && !ReferenceEquals(ActiveScene, _editScene))
+            {
+                foreach (var entity in _persistent.ReturnHome(ActiveScene, _editScene))
+                    if (MeshMaterialLibrary != null) entity.Dispose(MeshMaterialLibrary);
+            }
+            else _persistent.Clear();
         }
 
         private void OnPlayModeChanged(GameMode mode)
@@ -179,6 +215,7 @@ namespace Engine.Logic
 
             GameUI.CloseAll();
             GameFlow.EscapeQuits = true;
+            GameFlow.Paused = false;
             GameFlow.TakePendingScene();
             GameFlow.RaisePlayStopped();
 
@@ -187,8 +224,13 @@ namespace Engine.Logic
             if (editScene != null && !ReferenceEquals(editScene, ActiveScene))
             {
                 EditorBridge.Log($"GameFlow: Play stopped, returning to '{editScene.Name}'");
+                // Their components already stopped with the scene; the edited scene's go back in place.
+                foreach (var entity in _persistent.ReturnHome(ActiveScene, editScene))
+                    if (MeshMaterialLibrary != null) entity.Dispose(MeshMaterialLibrary);
                 SceneManager.SetActiveScene(editScene);
             }
+            // Standalone (or never switched): carried gameobjects simply stay in the scene they're in.
+            _persistent.Clear();
         }
 
         /// <summary>
@@ -199,8 +241,14 @@ namespace Engine.Logic
         /// </summary>
         private void OnSceneChanged(Scene oldScene, Scene newScene)
         {
-            // A load from outside the game (Anvil's Open Scene) replaces the scene for good.
-            if (!_switchingScene) _editScene = null;
+            // A load from outside the game (Anvil's Open Scene) replaces the scene for good,
+            // carried gameobjects included (they are in the departing scene and dispose with it).
+            if (!_switchingScene)
+            {
+                _editScene = null;
+                _persistent.Clear();
+            }
+            IReadOnlyCollection<BasicEntity> carried = _switchingScene ? _persistent.Entities : null;
 
             if (oldScene != null)
                 foreach (var entity in oldScene.BasicEntities)
@@ -212,7 +260,8 @@ namespace Engine.Logic
 
             // Detach the old scene's physics bodies; the new scene's entities get
             // theirs from their physics component on the next physics update.
-            _scenePhysics?.DetachAll();
+            // Carried persistent gameobjects keep theirs (and their velocity).
+            _scenePhysics?.DetachAll(carried);
 
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
@@ -250,8 +299,9 @@ namespace Engine.Logic
             try { PlayMode?.Stop(); }
             catch (Exception ex) { EditorBridge.Log("PlayMode.Stop on scene change threw: " + ex); }
 
-            // Layers belong to the departed scene's scripts (which closed theirs in Stop).
-            GameUI.CloseAll();
+            // Layers belong to the departed scene's scripts (which closed theirs in Stop),
+            // except those opened by carried gameobjects' scripts, which are still running.
+            GameUI.CloseAll(carried);
         }
 
         // Boots an empty scene: just a camera, environment sample, and one sun-like
@@ -377,6 +427,8 @@ namespace Engine.Logic
         /// <param name="time">Total game time in seconds, so buoyancy follows the waves the water shader draws.</param>
         public void UpdatePhysics(float dt, float time = 0)
         {
+            // Paused: bodies hold their pose and velocity until the game resumes.
+            if (GameFlow.Paused && PlayMode?.Mode == GameMode.Play) return;
             bool simulate = !GameSettings.e_enableeditor && GameSettings.p_physics;
             _scenePhysics?.Update(BasicEntities, dt, simulate, time);
         }
@@ -526,6 +578,13 @@ namespace Engine.Logic
             return AddPointLight(position, radius, color, intensity, castShadows: false);
         }
 
+        internal SpotLight EditorAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle)
+        {
+            SpotLight light = new SpotLight(position, radius, color, intensity, direction, spotAngle, innerSpotAngle: spotAngle * 0.75f);
+            PointLights.Add(light);
+            return light;
+        }
+
         internal DirectionalLight EditorAddDirectionalLight(Vector3 direction, Color color, float intensity)
         {
             return AddDirectionalLight(direction: direction, intensity: (int)intensity, color: color);
@@ -537,6 +596,39 @@ namespace Engine.Logic
             if (material != null)
                 return AddEntity(model, material, position, 0, 0, 0, 1f);
             return AddEntity(model, position, 0, 0, 0, 1f);
+        }
+
+        /// <summary>
+        /// Adds a gameobject from a model key ("Capsule") for the current Play session. It is
+        /// flagged <see cref="BasicEntity.IsRuntimeSpawned"/> so saving skips it. Null for an unknown key.
+        /// </summary>
+        internal BasicEntity SpawnRuntimeEntity(string modelKey, Vector3 position, string name)
+        {
+            ModelDefinition model = _assets?.FindModel(modelKey);
+            if (model == null)
+            {
+                EditorBridge.Log($"Spawn: unknown model key '{modelKey}'");
+                return null;
+            }
+            // Like the editor's Add, a model whose geometry never loaded shows the error mesh.
+            if (model.Model == null && _assets.ErrorModel != null) model = _assets.ErrorModel;
+            BasicEntity entity = AddEntity(model, position, 0, 0, 0, 1f);
+            entity.IsRuntimeSpawned = true;
+            if (!string.IsNullOrEmpty(name)) entity.Name = name;
+            return entity;
+        }
+
+        /// <summary>
+        /// The gameobject with this ID in the active scene, or null. A scene's reference to its own copy of a
+        /// persistent gameobject that was left out on load finds the carried one instead (script GameObject fields).
+        /// </summary>
+        public BasicEntity FindGameObjectById(int id)
+        {
+            BasicEntity carried = _persistent.ReplacementFor(id);
+            if (carried != null && BasicEntities.Contains(carried)) return carried;
+            for (int i = 0; i < BasicEntities.Count; i++)
+                if (BasicEntities[i].Id == id) return BasicEntities[i];
+            return null;
         }
 
         internal bool EditorDelete(int id)

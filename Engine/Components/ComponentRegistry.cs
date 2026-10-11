@@ -30,6 +30,12 @@ public static class ComponentRegistry
         Register<PhysicsComponent>(PhysicsComponent.TypeId, "Physics");
         Register<AudioComponent>(AudioComponent.TypeId, "Audio");
         Register<ScriptBehaviourComponent>(ScriptBehaviourComponent.TypeId, "Script Behaviour", allowMultiple: true);
+        Register<AnimatorComponent>(AnimatorComponent.TypeId, "Animator");
+        Register<RagdollComponent>(RagdollComponent.TypeId, "Ragdoll");
+        Register<InteractableComponent>(InteractableComponent.TypeId, "Interactable");
+        Register<ClothComponent>(ClothComponent.TypeId, "Cloth");
+        Register<NpcComponent>(NpcComponent.TypeId, "NPC");
+        Register<LodComponent>(LodComponent.TypeId, "LOD");
     }
 
     /// <summary>Definitions in registration order (the Add Component menu order).</summary>

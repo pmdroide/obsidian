@@ -14,6 +14,10 @@ public partial class EnvironmentViewModel : ObservableObject
     private IEditorBridge? _bridge;
     private bool _suppress;
     public string[] SkyModes { get; } = { "Custom skybox", "Day / night cycle" };
+    // Same order as WeatherTypeValues.
+    public string[] WeatherTypes { get; } = { "None", "Rain", "Sandstorm", "Snow" };
+    private static readonly WeatherType[] WeatherTypeValues =
+        { WeatherType.None, WeatherType.Rain, WeatherType.Sandstorm, WeatherType.Snow };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCustomSkybox), nameof(IsDayNightCycle))]
@@ -34,6 +38,13 @@ public partial class EnvironmentViewModel : ObservableObject
     [ObservableProperty] private double _starBrightness = 1;
     [ObservableProperty] private double _dayExposure = -1;
     [ObservableProperty] private double _nightExposure = -2.5;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasWeather))]
+    private int _selectedWeather;
+    [ObservableProperty] private double _weatherIntensity = 0.7;
+    [ObservableProperty] private double _weatherHaze = 0.6;
+    [ObservableProperty] private double _windSpeed = 4;
+    [ObservableProperty] private double _windDirection = 45;
     [ObservableProperty] private string _skyboxName = "Default skybox";
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty]
@@ -48,6 +59,7 @@ public partial class EnvironmentViewModel : ObservableObject
     public bool IsCustomSkybox => SelectedSkyMode == 0;
     public bool IsDayNightCycle => SelectedSkyMode == 1;
     public bool CanChooseSkybox => IsReady && !IsBusy;
+    public bool HasWeather => SelectedWeather > 0;
 
     public void AttachBridge(IEditorBridge bridge)
     {
@@ -55,6 +67,8 @@ public partial class EnvironmentViewModel : ObservableObject
         _bridge = bridge;
         IsReady = true;
         bridge.SceneChanged += () => Dispatcher.UIThread.Post(Reload);
+        // Stop restores the environment scripts changed during Play.
+        bridge.ModeChanged += _ => Dispatcher.UIThread.Post(Reload);
         Reload();
     }
 
@@ -71,6 +85,11 @@ public partial class EnvironmentViewModel : ObservableObject
             CloudCoverage = settings.CloudCoverage;
             CloudSpeed = settings.CloudSpeed;
             ApplySkyLook(settings);
+            SelectedWeather = Math.Max(0, Array.IndexOf(WeatherTypeValues, settings.Weather));
+            WeatherIntensity = settings.WeatherIntensity;
+            WeatherHaze = settings.WeatherHaze;
+            WindSpeed = settings.WindSpeed;
+            WindDirection = settings.WindDirection;
             SkyboxName = string.IsNullOrEmpty(settings.SkyboxPath) ? "Default skybox" : Path.GetFileName(settings.SkyboxPath);
             StatusMessage = string.Empty;
         }
@@ -99,6 +118,15 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnStarBrightnessChanged(double value) => Push(s => s.StarBrightness = (float)value);
     partial void OnDayExposureChanged(double value) => Push(s => s.DayExposure = (float)value);
     partial void OnNightExposureChanged(double value) => Push(s => s.NightExposure = (float)value);
+    partial void OnSelectedWeatherChanged(int value)
+    {
+        // The ComboBox reports -1 while its items are being replaced.
+        if (value >= 0 && value < WeatherTypeValues.Length) Push(s => s.Weather = WeatherTypeValues[value]);
+    }
+    partial void OnWeatherIntensityChanged(double value) => Push(s => s.WeatherIntensity = (float)value);
+    partial void OnWeatherHazeChanged(double value) => Push(s => s.WeatherHaze = (float)value);
+    partial void OnWindSpeedChanged(double value) => Push(s => s.WindSpeed = (float)value);
+    partial void OnWindDirectionChanged(double value) => Push(s => s.WindDirection = (float)value);
 
     private void ApplySkyLook(EnvironmentSettings settings)
     {

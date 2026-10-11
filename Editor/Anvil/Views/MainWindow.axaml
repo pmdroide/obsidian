@@ -27,6 +27,12 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
+    <!-- Build shortcuts (File menu). -->
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+B" Command="{Binding BuildAndRunCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding BuildCommand}" />
+    </Window.KeyBindings>
+
     <Window.Resources>
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
         <conv:ColorToBrushConverter x:Key="ColorToBrush" />
@@ -339,6 +345,12 @@
                         <MenuItem Header="Save As..." Command="{Binding SaveSceneAsCommand}"
                                   CommandParameter="{Binding $parent[Window]}" />
                         <Separator />
+                        <MenuItem Header="Build..." Command="{Binding BuildCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" InputGesture="Ctrl+Shift+B" />
+                        <MenuItem Header="Build and Run" Command="{Binding BuildAndRunCommand}" InputGesture="Ctrl+B" />
+                        <MenuItem Header="Cancel Build" Command="{Binding CancelBuildCommand}"
+                                  IsVisible="{Binding IsBuilding}" />
+                        <Separator />
                         <MenuItem Header="Exit" />
                     </MenuItem>
                     <MenuItem Header="Edit">
@@ -364,6 +376,8 @@
                                       Command="{Binding AddDirectionalLightCommand}" />
                             <MenuItem Header="Point Light"
                                       Command="{Binding AddPointLightCommand}" />
+                            <MenuItem Header="Spot Light"
+                                      Command="{Binding AddSpotLightCommand}" />
                         </MenuItem>
                     </MenuItem>
                     <MenuItem Header="Game Settings"
@@ -519,7 +533,9 @@
                             <Button Classes="iconButton" ToolTip.Tip="Layers">
                                 <controls:LucideIcon Icon="Layers" />
                             </Button>
-                            <Button Classes="iconButton" ToolTip.Tip="Stats">
+                            <Button Classes="iconButton" Classes.active="{Binding IsStatsVisible}"
+                                    Command="{Binding ToggleStatsCommand}" ToolTip.Tip="{Binding StatsToggleTip}"
+                                    AutomationProperties.Name="Debug stats">
                                 <controls:LucideIcon Icon="Monitor" />
                             </Button>
                         </StackPanel>
@@ -920,6 +936,9 @@
                                         </Grid>
                                         <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsWaterRole}"
                                                    Text="Water volume: bodies with Buoyancy float below its top surface, riding its waves. It builds no collider." />
+                                        <CheckBox Content="Persistent" IsChecked="{Binding Persistent, Mode=TwoWay}" FontSize="11"
+                                                  IsVisible="{Binding HasRole}"
+                                                  ToolTip.Tip="Keep this gameobject, with its scripts still running, when a script loads another scene during Play (like Unity's DontDestroyOnLoad)." />
                                     </StackPanel>
                                 </Border>
 
@@ -1040,13 +1059,40 @@
                                                            ShowButtonSpinner="False" FormatString="0.##" />
                                         </Grid>
                                         <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
-                                              IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Point}">
+                                              IsVisible="{Binding HasRadius}">
                                             <TextBlock Grid.Column="0" Text="Radius"
                                                        Classes="muted" FontSize="11"
                                                        VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Column="1" Classes="field"
                                                            Value="{Binding Radius, Mode=TwoWay}"
                                                            ShowButtonSpinner="False" FormatString="0.#" />
+                                        </Grid>
+                                        <!-- Spot cone: full angles in degrees; the edge fades from Inner to Spot Angle. -->
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                              IsVisible="{Binding IsSpot}">
+                                            <TextBlock Grid.Column="0" Text="Spot Angle"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="1" Maximum="179"
+                                                    Value="{Binding SpotAngle, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding SpotAngle, StringFormat={}{0:0}°}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                              IsVisible="{Binding IsSpot}">
+                                            <TextBlock Grid.Column="0" Text="Inner"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="{Binding SpotAngle}"
+                                                    Value="{Binding InnerSpotAngle, Mode=TwoWay}"
+                                                    MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding InnerSpotAngle, StringFormat={}{0:0}°}"
+                                                       Classes="muted" FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
                                         </Grid>
                                         <CheckBox Content="Cast Shadows"
                                                   IsChecked="{Binding CastShadows, Mode=TwoWay}"
@@ -1155,6 +1201,12 @@
                                                     <Expander Header="Textures" IsExpanded="True">
                                                         <StackPanel Spacing="8" Margin="0,8,0,0">
                                                             <TextBlock Text="Choose a texture or drag one from Assets." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                            <Grid ColumnDefinitions="60,*,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Tiling" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                                           ToolTip.Tip="How often the textures repeat across the mesh UVs (U, V)" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Minimum="0.01" Maximum="1000" Increment="1" Value="{Binding TilingU, Mode=TwoWay}" FormatString="0.##" />
+                                                                <NumericUpDown Grid.Column="2" Classes="field" Minimum="0.01" Maximum="1000" Increment="1" Value="{Binding TilingV, Mode=TwoWay}" FormatString="0.##" />
+                                                            </Grid>
                                                             <ItemsControl ItemsSource="{Binding TextureSlots}">
                                                                 <ItemsControl.ItemTemplate>
                                                                     <DataTemplate DataType="m:MaterialTextureSlotViewModel" x:DataType="m:MaterialTextureSlotViewModel">
@@ -1191,9 +1243,22 @@
                                                                     <ComboBoxItem>SubsurfaceScattering</ComboBoxItem>
                                                                     <ComboBoxItem>ForwardShaded</ComboBoxItem>
                                                                     <ComboBoxItem>Water</ComboBoxItem>
+                                                                    <ComboBoxItem>WetSurface</ComboBoxItem>
                                                                 </ComboBox>
                                                             </Grid>
                                                             <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
+                                                            <Button Content="Apply Wet Floor Example" Command="{Binding WetFloorExampleCommand}" HorizontalAlignment="Stretch" />
+                                                            <StackPanel Spacing="8" IsVisible="{Binding IsWetSurface}">
+                                                                <TextBlock Text="Wetness (dry weather)" Classes="muted" FontSize="11" />
+                                                                <Slider Minimum="0" Maximum="1" Value="{Binding Wetness, Mode=TwoWay}" />
+                                                                <TextBlock Text="Puddle Amount" Classes="muted" FontSize="11" />
+                                                                <Slider Minimum="0" Maximum="1" Value="{Binding PuddleAmount, Mode=TwoWay}" />
+                                                                <TextBlock Text="Puddle Size (m)" Classes="muted" FontSize="11" />
+                                                                <NumericUpDown Classes="field" Minimum="0.1" Maximum="50" Increment="0.5" Value="{Binding PuddleSize, Mode=TwoWay}" FormatString="0.0" />
+                                                                <CheckBox Content="Wet in Rain" IsChecked="{Binding WeatherWetness, Mode=TwoWay}" FontSize="11"
+                                                                          ToolTip.Tip="Rain soaks the surface beyond Wetness, fills its puddles and ripples them; it dries after the rain" />
+                                                                <TextBlock Text="Darkens and glosses the surface and pools mirror-like puddles on faces that look up. Puddles fill the dark parts of the Base Color first, or the low parts of the Displacement texture when one is set (used as height, no parallax). Puddle placement is world space, so it does not repeat with Tiling." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                            </StackPanel>
                                                             <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
                                                                 <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
                                                                 <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
@@ -1240,6 +1305,24 @@
                                                                Text="Immovable mesh collider. Other bodies collide with it." />
                                                     <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsDynamic}"
                                                                Text="Falls with gravity and collides (convex hull). Simulated in Play mode." />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Grid Grid.Column="1" ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                            <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding ColliderSizeX, Mode=TwoWay}"
+                                                                           ShowButtonSpinner="False" FormatString="0.###" ToolTip.Tip="X" />
+                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ColliderSizeY, Mode=TwoWay}"
+                                                                           ShowButtonSpinner="False" FormatString="0.###" ToolTip.Tip="Y" />
+                                                            <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding ColliderSizeZ, Mode=TwoWay}"
+                                                                           ShowButtonSpinner="False" FormatString="0.###" ToolTip.Tip="Z" />
+                                                        </Grid>
+                                                    </Grid>
+                                                    <Button Content="Default Size" Command="{Binding ResetColliderSizeCommand}" HorizontalAlignment="Stretch" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Collider box in model units (before Scale), shown in green on the selected gameobject. The collider shape is stretched to fill it; Default Size fits it to the model again." />
+                                                    <CheckBox Content="Is Trigger" IsChecked="{Binding IsTrigger, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsTrigger}"
+                                                               Text="Overlaps instead of colliding: scripts get OnTriggerEnter/Stay/Exit, nothing is pushed and raycasts pass through. A Static trigger is the model's convex hull." />
+                                                    <CheckBox Content="Freeze Rotation" IsChecked="{Binding FreezeRotation, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <CheckBox Content="Buoyancy" IsChecked="{Binding Buoyancy, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <StackPanel Spacing="8" IsVisible="{Binding IsDynamic}">
                                                         <StackPanel Spacing="8" IsVisible="{Binding Buoyancy}">
@@ -1261,6 +1344,334 @@
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
+                                        <DataTemplate DataType="m:AnimatorComponentViewModel" x:DataType="m:AnimatorComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="PersonStanding" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Source" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding ClipSource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="This model" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Clip" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding ClipName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Longest clip" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Speed, Mode=TwoWay}"
+                                                                       Minimum="-10" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
+                                                    <CheckBox Content="In Place" IsChecked="{Binding InPlace, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Plays a skeletal clip in Play mode (the bind pose shows while editing). Source is the content path of another skinned model with the same bone names, e.g. GameObjects/Player/Walking; empty uses this model's own clips. In Place removes the clip's forward travel." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:RagdollComponentViewModel" x:DataType="m:RagdollComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Bone" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Mass" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Mass, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="10000" Increment="5" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Impact" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactThreshold, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Friction" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding JointFriction, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Active on Start" IsChecked="{Binding ActiveOnStart, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Rigid bodies for the bones of a skinned model. In Play they follow the animation (other bodies bounce off them) until the ragdoll goes limp: on start, when a body hits it faster than Impact m/s (0 = never), or from a script (GetComponent&lt;RagdollComponent&gt;().Activate()). Mass is the whole body's, in kg; Friction stiffens the joints." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:InteractableComponentViewModel" x:DataType="m:InteractableComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Hand" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Prompt" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding Prompt, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Interact" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Range, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Scripts aim at it with FindInteractable(CameraRay, ...) and use it with Interact(hit), which runs OnInteract on this gameobject's scripts. Rays only hit colliders, so add a Physics component too. Range is in metres from the camera." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:ClothComponentViewModel" x:DataType="m:ClothComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Flag" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Pin" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:ClothComponentViewModel.PinModes}"
+                                                                  SelectedItem="{Binding Pin, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Mass" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Mass, Mode=TwoWay}"
+                                                                       Minimum="0.01" Maximum="1000" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Stiffness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Stiffness, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Bend" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Bend, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Damping" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Damping, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Friction" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Friction, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="2" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Thickness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Thickness, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="0.5" Increment="0.01" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Wind" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Wind, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Collisions" IsChecked="{Binding Collisions, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Simulates this mesh as cloth in Play (use the Cloth model: a subdivided double-sided plane). Pin holds the top row (model Z), its two ends or the outline in place, following the gameobject. With Collisions it stays out of every Physics collider around it, bodies push it but it doesn't push back. Stiffness keeps its size, Bend resists folding, Thickness is the gap it keeps (m), Wind scales the scene's wind." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:NpcComponentViewModel" x:DataType="m:NpcComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Footprints" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Text="MOVEMENT" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Walk Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WalkSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="50" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Run Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RunSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="50" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Degrees per second.">
+                                                        <TextBlock Grid.Column="0" Text="Turn Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding TurnSpeed, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="3600" Increment="30" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Largest change of speed per second (m/s²).">
+                                                        <TextBlock Grid.Column="0" Text="Acceleration" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Acceleration, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="500" Increment="1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Clearance kept from walls on paths (m); 0 uses the collider's half width.">
+                                                        <TextBlock Grid.Column="0" Text="Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Radius, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="3" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Text="IDLE" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Behaviour" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:NpcComponentViewModel.IdleBehaviours}"
+                                                                  SelectedItem="{Binding Idle, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsWander}">
+                                                        <TextBlock Grid.Column="0" Text="Wander Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WanderRadius, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="500" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsPatrol}" ToolTip.Tip="Names of the gameobjects to walk between, separated by commas, in order (a loop).">
+                                                        <TextBlock Grid.Column="0" Text="Patrol Points" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding PatrolPoints, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Post 1, Post 2, Post 3" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Seconds spent at each wander or patrol point.">
+                                                        <TextBlock Grid.Column="0" Text="Wait Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WaitTime, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="120" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Text="PERCEPTION" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Name of the gameobject it watches for.">
+                                                        <TextBlock Grid.Column="0" Text="Target" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Player" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Sight Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SightRange, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="500" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Width of the view cone in degrees, around its +Y.">
+                                                        <TextBlock Grid.Column="0" Text="Field of View" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FieldOfView, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="360" Increment="5" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Notices the target in any direction this close (still not through walls).">
+                                                        <TextBlock Grid.Column="0" Text="Hearing Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding HearingRange, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="500" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Above the gameobject's origin; sight rays start here.">
+                                                        <TextBlock Grid.Column="0" Text="Eye Height" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EyeHeight, Mode=TwoWay}"
+                                                                       Minimum="-100" Maximum="100" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Seconds between noticing the target and reacting.">
+                                                        <TextBlock Grid.Column="0" Text="Reaction Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ReactionTime, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Seconds it keeps going after losing sight of the target.">
+                                                        <TextBlock Grid.Column="0" Text="Memory Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MemoryTime, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="60" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Text="REACTION" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="On Sight" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:NpcComponentViewModel.Reactions}"
+                                                                  SelectedItem="{Binding Reaction, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsChase}">
+                                                        <TextBlock Grid.Column="0" Text="Attack Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding AttackRange, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="50" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsChase}">
+                                                        <TextBlock Grid.Column="0" Text="Attack Cooldown" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding AttackCooldown, Mode=TwoWay}"
+                                                                       Minimum="0.05" Maximum="30" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsChase}" ToolTip.Tip="Impulse given to the target's Dynamic body (N·s).">
+                                                        <TextBlock Grid.Column="0" Text="Attack Force" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding AttackForce, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100000" Increment="25" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsFollow}">
+                                                        <TextBlock Grid.Column="0" Text="Follow Distance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FollowDistance, Mode=TwoWay}"
+                                                                       Minimum="0.5" Maximum="100" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsFlee}">
+                                                        <TextBlock Grid.Column="0" Text="Flee Distance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FleeDistance, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="200" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding SearchesAfterLosing}" ToolTip.Tip="Seconds spent looking around where the target was lost.">
+                                                        <TextBlock Grid.Column="0" Text="Search Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SearchTime, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="60" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Show Debug (path, view cone)" IsChecked="{Binding ShowDebug, Mode=TwoWay}" FontSize="11" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="A computer-controlled character for Play. It walks a navigation grid built from the scene's Static colliders (A* around walls, up ramps, never off ledges), idles (stand, wander or patrol), and watches for its Target with a view cone and line-of-sight rays. On sight: Chase runs after it and shoves it within Attack Range, Follow keeps Follow Distance, Flee runs away, Watch turns to face it. Use a Dynamic capsule with Freeze Rotation; its +Y is its forward. Its scripts get OnTargetSpotted, OnTargetLost, OnNpcStateChanged and OnNpcAttack." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:LodComponentViewModel" x:DataType="m:LodComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Layers" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="*,80,Auto" ColumnSpacing="4">
+                                                        <TextBlock Grid.Column="0" Text="Model" Classes="muted" FontSize="11" />
+                                                        <TextBlock Grid.Column="1" Text="From (m)" Classes="muted" FontSize="11" />
+                                                    </Grid>
+                                                    <ItemsControl ItemsSource="{Binding Levels}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="m:LodLevelViewModel" x:DataType="m:LodLevelViewModel">
+                                                                <Grid ColumnDefinitions="*,80,Auto" ColumnSpacing="4" Margin="0,0,0,4">
+                                                                    <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
+                                                                              ItemsSource="{Binding ModelKeys}" SelectedItem="{Binding Model, Mode=TwoWay}"
+                                                                              PlaceholderText="Pick a model" ToolTip.Tip="Model drawn from this distance on" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Distance, Mode=TwoWay}"
+                                                                                   Minimum="0.1" Maximum="100000" Increment="5" FormatString="0.#"
+                                                                                   ToolTip.Tip="Camera distance (metres) from which this model draws" />
+                                                                    <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this level" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <Button Content="Add Level" Command="{Binding AddLevelCommand}" HorizontalAlignment="Stretch" />
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Nothing draws from this camera distance on; 0 never culls.">
+                                                        <TextBlock Grid.Column="0" Text="Cull Distance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CullDistance, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100000" Increment="10" FormatString="0.#" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Level of detail: up close the gameobject draws its own model; from each level's distance on (camera to the centre of its bounds) it draws that level's simpler model instead, and from Cull Distance nothing. Works in the editor and in Play, shadows included; physics and picking bounds keep the gameobject's own model. LOD models draw unposed, so animated gameobjects should only use Cull Distance." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
                                         <DataTemplate DataType="m:ScriptBehaviourComponentViewModel" x:DataType="m:ScriptBehaviourComponentViewModel">
                                             <Expander IsExpanded="True" Header="{Binding DisplayName}">
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -1276,6 +1687,95 @@
                                                         </ComboBox.ItemTemplate>
                                                     </ComboBox>
                                                     <TextBlock Text="{Binding ScriptId}" Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                                    <!-- Serialized fields: public / [SerializeField] fields of the script (Engine.Scripting.ScriptFields).
+                                                         Each row is label + editor (picked by the field view model's type) + reset. -->
+                                                    <ItemsControl ItemsSource="{Binding Fields}" IsVisible="{Binding HasFields}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Spacing="6" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.DataTemplates>
+                                                            <DataTemplate DataType="m:ScriptBoolFieldViewModel" x:DataType="m:ScriptBoolFieldViewModel">
+                                                                <CheckBox IsChecked="{Binding Value, Mode=TwoWay}" />
+                                                            </DataTemplate>
+                                                            <!-- Before the number template: a range field is also a number field. -->
+                                                            <DataTemplate DataType="m:ScriptRangeFieldViewModel" x:DataType="m:ScriptRangeFieldViewModel">
+                                                                <Grid ColumnDefinitions="*,56" ColumnSpacing="6">
+                                                                    <Slider Grid.Column="0" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                                                                            Value="{Binding SliderValue, Mode=TwoWay}"
+                                                                            IsSnapToTickEnabled="{Binding IsInteger}" TickFrequency="1"
+                                                                            MinHeight="18" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field"
+                                                                                   Value="{Binding Value, Mode=TwoWay}"
+                                                                                   ShowButtonSpinner="False" FormatString="{Binding FormatString}" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptNumberFieldViewModel" x:DataType="m:ScriptNumberFieldViewModel">
+                                                                <NumericUpDown Classes="field" HorizontalAlignment="Stretch"
+                                                                               Value="{Binding Value, Mode=TwoWay}"
+                                                                               ShowButtonSpinner="False" FormatString="{Binding FormatString}" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptTextFieldViewModel" x:DataType="m:ScriptTextFieldViewModel">
+                                                                <TextBox Classes="field" Text="{Binding Value, Mode=TwoWay}" FontSize="11" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptEnumFieldViewModel" x:DataType="m:ScriptEnumFieldViewModel">
+                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{Binding Options}"
+                                                                          SelectedItem="{Binding Value, Mode=TwoWay}" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptVectorFieldViewModel" x:DataType="m:ScriptVectorFieldViewModel">
+                                                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                                    <NumericUpDown Grid.Column="0" Classes="field" Value="{Binding X, Mode=TwoWay}"
+                                                                                   ShowButtonSpinner="False" FormatString="0.##" ToolTip.Tip="X" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Y, Mode=TwoWay}"
+                                                                                   ShowButtonSpinner="False" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                    <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding Z, Mode=TwoWay}" IsVisible="{Binding HasZ}"
+                                                                                   ShowButtonSpinner="False" FormatString="0.##" ToolTip.Tip="Z" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptColorFieldViewModel" x:DataType="m:ScriptColorFieldViewModel">
+                                                                <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                                        HorizontalAlignment="Left">
+                                                                    <Border Width="28" Height="20" CornerRadius="3"
+                                                                            Background="{Binding Value, Converter={StaticResource ColorToBrush}}"
+                                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                    <Button.Flyout>
+                                                                        <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                        <Flyout Opening="OwnedFlyout_Opening">
+                                                                            <ColorPicker x:DataType="m:ScriptColorFieldViewModel" Color="{Binding Value, Mode=TwoWay}" />
+                                                                        </Flyout>
+                                                                    </Button.Flyout>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptGameObjectFieldViewModel" x:DataType="m:ScriptGameObjectFieldViewModel">
+                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{Binding Options}"
+                                                                          SelectedItem="{Binding Value, Mode=TwoWay}">
+                                                                    <ComboBox.ItemTemplate>
+                                                                        <DataTemplate x:DataType="m:GameObjectOption">
+                                                                            <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                                        </DataTemplate>
+                                                                    </ComboBox.ItemTemplate>
+                                                                </ComboBox>
+                                                            </DataTemplate>
+                                                        </ItemsControl.DataTemplates>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="m:ScriptFieldViewModel">
+                                                                <Grid ColumnDefinitions="90,*,22" ColumnSpacing="6">
+                                                                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Tooltip}"
+                                                                               Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <ContentControl Grid.Column="1" Content="{Binding}" VerticalAlignment="Center" />
+                                                                    <Button Grid.Column="2" Classes="iconButton" Padding="2"
+                                                                            Command="{Binding ResetCommand}" IsVisible="{Binding IsOverridden}"
+                                                                            ToolTip.Tip="Reset to the script's default">
+                                                                        <controls:LucideIcon Icon="RotateCcw" Width="12" Height="12" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
                                                     <TextBlock Text="Start runs once; Update runs each frame in Play mode." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <TextBlock Text="Add another Script Behaviour to run more scripts on this object." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
@@ -1919,6 +2419,36 @@
                                     </Grid>
                                     <TextBlock Text="Coverage 0 is a clear sky, 1 is overcast. Heavy cover also dims the sun."
                                                TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Weather" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding WeatherTypes}"
+                                              SelectedIndex="{Binding SelectedWeather, Mode=TwoWay}" />
+                                    <StackPanel Spacing="8" IsVisible="{Binding HasWeather}">
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Intensity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding WeatherIntensity, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WeatherIntensity, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Haze" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding WeatherHaze, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WeatherHaze, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Wind (m/s)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="40" Value="{Binding WindSpeed, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WindSpeed, StringFormat={}{0:0.0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Wind towards" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="359" Value="{Binding WindDirection, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WindDirection, StringFormat={}{0:0}°}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <TextBlock Text="Wind angle: 0° blows towards +X, 90° towards +Y. A sandstorm always blows at least 7 m/s. With the day/night sky, weather also thickens the clouds and dims the sun."
+                                                   TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
                             </StackPanel>

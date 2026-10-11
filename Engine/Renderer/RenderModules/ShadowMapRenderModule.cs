@@ -209,6 +209,9 @@ namespace Engine.Renderer.RenderModules
                             }
                     }
 
+                    //Spot lights only render the faces their cone reaches; the others stay cleared (lit)
+                    if (!LightSeesFace(light, cubeMapFace)) continue;
+
                     if (_boundingFrustumShadow != null) _boundingFrustumShadow.Matrix = lightViewProjection;
                     else _boundingFrustumShadow = new BoundingFrustum(lightViewProjection);
 
@@ -263,6 +266,8 @@ namespace Engine.Renderer.RenderModules
                             break;
                     }
 
+                    if (!LightSeesFace(light, cubeMapFace)) continue;
+
                     if (_boundingFrustumShadow != null) _boundingFrustumShadow.Matrix = lightViewProjection;
                     else _boundingFrustumShadow = new BoundingFrustum(lightViewProjection);
 
@@ -289,6 +294,21 @@ namespace Engine.Renderer.RenderModules
                         hasAnyObjectMoved: true,
                         renderModule: this);
                 }
+            }
+        }
+
+        private static bool LightSeesFace(PointLight light, CubeMapFace face)
+        {
+            if (!(light is SpotLight spot)) return true;
+
+            switch (face)
+            {
+                case CubeMapFace.PositiveX: return spot.ConeTouchesCubeFace(Vector3.UnitX);
+                case CubeMapFace.NegativeX: return spot.ConeTouchesCubeFace(-Vector3.UnitX);
+                case CubeMapFace.PositiveY: return spot.ConeTouchesCubeFace(Vector3.UnitY);
+                case CubeMapFace.NegativeY: return spot.ConeTouchesCubeFace(-Vector3.UnitY);
+                case CubeMapFace.PositiveZ: return spot.ConeTouchesCubeFace(Vector3.UnitZ);
+                default: return spot.ConeTouchesCubeFace(-Vector3.UnitZ);
             }
         }
 

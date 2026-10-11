@@ -61,6 +61,42 @@ scenes (`GameFlow`), read menu input from keyboard, mouse and gamepad
 (`GameInput`) and show UI (`GameUI`). See
 [Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md).
 
+### Multiplayer Test
+
+`Engine/Content/Scripts/MultiplayerTestScript.cs` runs the
+`Scenes/MultiplayerTest.obsc` sample: peer-to-peer play through a Steam lobby,
+with a spawned capsule for each player and a follow camera. It is the
+reference for `SteamP2PSession` and for spawning gameobjects at runtime. See
+[Steam_Multiplayer.md](Steam_Multiplayer.md).
+
+### Collision Test
+
+`Engine/Content/Scripts/CollisionTestPlayerScript.cs` runs on the **Player**
+capsule of the `Scenes/CollisionTest.obsc` sample, a first-person physics
+sandbox. Its stations each run a small script: Trigger Zone, Impact Reporter,
+Launch Pad, Ball Dispenser, Gate Lever and Color Cycle. It is the reference for
+collision and trigger events, camera rays and the Interactable component. See
+[Collisions_and_Interaction.md](Collisions_and_Interaction.md).
+
+### Weather Test
+
+`Engine/Content/Scripts/WeatherTestScript.cs` runs on the Main Camera of the
+`Scenes/WeatherTest.obsc` sample, next to Freecam. Keys 1-4 cross-fade between
+clear, rain, sandstorm and snow. The arrows, Z/X, H and T tune intensity, wind,
+haze and time of day. It is the reference for changing the weather from a script.
+See [Weather.md](Weather.md).
+
+### NPC Test
+
+`Engine/Content/Scripts/NpcTestPlayerScript.cs` runs on the **Player** capsule of
+the `Scenes/NpcTest.obsc` sample, a third-person player among four NPCs (a
+patrolling guard, a villager, a critter and a sentry on a lookout). F shouts to
+alert the NPCs nearby and T shows their paths and view cones. Each NPC runs
+**NPC Reporter** (`NpcReporterScript.cs`), which tints it by state and posts its
+sightings to the HUD. The sentry's reporter sends the guard to search where it
+saw the player. It is the reference for the NPC component and its hooks. See
+[NPC_Navigation.md](NPC_Navigation.md).
+
 ### Helpers on a camera
 
 In a camera script, `GameObject` is `null` and `Camera` is the camera. The
@@ -70,7 +106,9 @@ transform helpers move and turn the camera:
 - `Forward` is the view direction, `Right` points to the screen's right, and `Up` to its top.
 - `Scale` is always one.
 
-`Raycast` and the `PlaySound...` methods also work; 3D sounds follow the camera.
+`Raycast`, the camera rays, `FindInteractable`/`Interact`, the other-gameobject
+physics helpers and the `PlaySound...` methods also work; 3D sounds follow the camera.
+Collision and trigger hooks never run on a camera, because it has no collider.
 The physics body helpers and the Audio-component helpers (`PlayAudio`,
 `StopAudio`) do nothing on a camera, because it has no body or Audio component.
 
@@ -112,6 +150,8 @@ Keep the ID stable because scenes store it. Rebuild and restart Anvil to compile
 the script and add it to the Inspector picker. Scripts are compiled as part of
 the engine; this component does not compile loose source files during gameplay.
 Use private fields for runtime state; these are recreated at the next start.
+Public fields and `[SerializeField]` fields are settings saved with the scene
+(see [Serialized fields](#serialized-fields)).
 `GameObject` provides transforms and `GetComponent<T>()`, `GetComponents<T>()`,
 `AddComponent(...)`, and `RemoveComponent(...)`. All hooks run on the game thread.
 `GetComponent<T>()` returns the first matching attachment; `GetComponents<T>()`
@@ -128,6 +168,125 @@ entity.AddComponent(new Engine.Components.ScriptBehaviourComponent
 
 The working example is in `Engine/Content/Scripts/SpinExampleScript.cs`. The older
 code-only `BasicEntity.Scripts` / `IScript` API remains supported separately.
+
+## Serialized fields
+
+Script settings work like Unity's serialized fields. A field shows in the
+Inspector under the script picker, and each attachment saves its own value in
+the scene:
+
+```csharp
+using Microsoft.Xna.Framework;
+
+namespace Engine.Scripting;
+
+public sealed class DoorScript : ScriptBehaviour
+{
+    public float OpenHeight = 3f;                       // public: serialized
+
+    [SerializeField, Range(0.1f, 10f), Tooltip("Metres per second")]
+    private float _speed = 2f;                          // private + [SerializeField]
+
+    [SerializeField] private Color _lockedTint = Color.Red;
+    [SerializeField, HideInInspector] private int _timesOpened;  // saved, not shown
+
+    [NonSerialized] public bool IsOpen;                 // public, but runtime state only
+    private float _progress;                            // private: runtime state only
+}
+```
+
+**Which fields are serialized:**
+
+- Instance fields that are public, or private/protected with `[SerializeField]`.
+- Fields of base classes between your script and `ScriptBehaviour` count too; they are listed first.
+- **Not serialized:** `[NonSerialized]`, `readonly`, `static` and `const` fields, and properties.
+
+**Supported types:** `bool`, `int`, `float`, `double`, `string`, any enum,
+`Vector2`, `Vector3`, `Color` and `BasicEntity` (a gameobject reference, see
+[Gameobject references](#gameobject-references)). Fields of other types are ignored.
+
+**Attributes** (namespace `Engine.Scripting`):
+
+| Attribute | Effect |
+| --- | --- |
+| `[SerializeField]` | Serializes a private or protected field. |
+| `[NonSerialized]` | Keeps a public field out (the standard .NET attribute). |
+| `[HideInInspector]` | Saved and applied, but not shown in the Inspector. |
+| `[Range(min, max)]` | Number fields show a slider. It only limits the Inspector; code can set any value. |
+| `[Tooltip("...")]` | Hover text on the Inspector label. |
+| `[FormerlySerializedAs("oldName")]` | Loads values saved under an old field name after a rename. The value moves to the new name the next time it is edited. |
+
+**Inspector:**
+
+- Labels are nicified like Unity's: `_moveSpeed` and `m_moveSpeed` show as "Move Speed".
+- A field without a saved value shows the C# initializer. A field you have changed shows a
+  reset button that goes back to the initializer.
+- Picking another script clears the previous script's values.
+
+**When values apply:**
+
+- Saved values are written into the new script instance **before `Start`**. Fields
+  without a saved value keep their initializer.
+- Edits during Play reach the running script before its next `Update`. Only the edited
+  field changes, so values the script changed itself are kept. Like other component
+  edits in this engine, they are not undone on Stop.
+- A saved value that no longer fits its field (for example after changing the field's
+  type) is skipped with a log line, and the field keeps its initializer.
+
+To read a field's default, the engine constructs one instance of the script the
+first time it needs it. That instance is never attached or started, so keep
+constructors free of side effects; put setup in `Start`.
+
+From game code, set values on the component with `SetField`. It throws for an
+unknown field or a value that does not fit. Use `GetField<T>` to read a value
+and `ResetField` to go back to the default:
+
+```csharp
+var door = new ScriptBehaviourComponent { ScriptId = "door" };
+entity.AddComponent(door);
+door.SetField("OpenHeight", 4);          // an int is converted for a float field
+door.SetField("_lockedTint", Color.Blue);
+float height = door.GetField<float>("OpenHeight");
+```
+
+Values are stored in the component's `Fields` record in the `.obsc` file:
+numbers and bools as JSON values, enums by name, vectors as `[x, y, z]` arrays,
+colours as `"#RRGGBBAA"` and gameobjects as their scene ID (`null` for none). `SpinExampleScript` (Degrees Per Second) and
+`LaunchPadScript` (Up Speed, Forward Speed) are working examples.
+
+### Gameobject references
+
+A `BasicEntity` field references another gameobject of the scene, like a
+`GameObject` field in Unity:
+
+```csharp
+public sealed class DoorButtonScript : ScriptBehaviour
+{
+    public BasicEntity Door;                          // pick the door in the Inspector
+    [SerializeField] private BasicEntity _light;
+
+    public override void OnInteract(Interaction interaction)
+    {
+        if (Door != null) Door.Position += Vector3.UnitZ * 3f;
+    }
+}
+```
+
+- **Inspector:** a picker with **None** and every gameobject in the scene, in
+  Hierarchy order. Gameobjects with the same name show their ID, for example
+  "Crate (#12)".
+- **Saving:** the reference is saved as the target's scene ID. It survives save/load
+  and renaming the target.
+- **Before `Start`:** the field holds the gameobject with that ID in the active scene.
+- **Deleted targets:** if the target was deleted, the field is `null` and the Inspector
+  shows **Missing (#id)** until you pick another one or reset the field.
+- **Duplicating:** a duplicated gameobject's references to itself point at the copy.
+  Its references to other gameobjects are kept.
+- **Persistent gameobjects:** a scene's reference to its own copy of a persistent
+  gameobject (left out because the carried one came along) gets the carried one.
+- **From code:** `SetField("Door", entity)` (or `null`) and `GetField<BasicEntity>("Door")`.
+
+Only gameobjects can be referenced. Lights, decals and the Main Camera cannot.
 
 ## Built-in helpers
 
@@ -148,6 +307,13 @@ the physics engine uses.
 | `DeltaTime` | Seconds since the last frame. Multiply speeds by it. |
 | `GetComponent<T>()` | First component of type `T` on this gameobject, or `null`. |
 | `Log(message)` | Writes `[ObjectName] message` to the engine/editor log. |
+| `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
+| `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
+| `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned. Happens automatically when the script stops. |
+| `DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` | Keeps this gameobject (or another, e.g. one it spawned) when a script loads another scene. It moves into the new scene with its scripts still running. Lasts for this Play session; the saved equivalent is **Inspector > Persistent**. See [Persistent_GameObjects.md](Persistent_GameObjects.md). |
+| `IsPersistent` | True when this gameobject survives scene loads. |
+| `OnSceneLoaded()` | Override it: runs on a persistent gameobject's scripts after a scene load carried it over, once the new scene's scripts have started. For example, move to the new scene's spawn point. |
+| `UpdateWhilePaused` | Override it to return true and `Update` keeps running while `GameFlow.Paused` freezes the game, for a pause menu. Every other script waits. Reference: `PauseMenuScript.cs`. |
 
 ### Transform
 
@@ -184,7 +350,7 @@ nothing and getters return zero. Check `HasRigidbody` if your script needs a bod
 
 | Member | What it does |
 | --- | --- |
-| `Physics` | The `PhysicsComponent`, or `null`. Change `BodyType`, `Mass` or `Buoyancy` here. The body is rebuilt on the next physics update. |
+| `Physics` | The `PhysicsComponent`, or `null`. Change `BodyType`, `Mass`, `IsTrigger`, `FreezeRotation` or `Buoyancy` here. The body is rebuilt on the next physics update. |
 | `HasRigidbody` | `true` while a Dynamic body exists. |
 | `Velocity` | Linear velocity in m/s (get/set). |
 | `AngularVelocity` | Spin in rad/s around each world axis (get/set). |
@@ -194,11 +360,79 @@ nothing and getters return zero. Check `HasRigidbody` if your script needs a bod
 | `AddTorque(torque)` | Twists with `torque` newton-metres around a world axis for this frame. Call it every `Update`. |
 | `AddAngularImpulse(impulse)` | Gives one instant spin kick. |
 | `Raycast(origin, direction, maxDistance)` | `true` if a collider lies on the ray within `maxDistance`. |
-| `Raycast(origin, direction, maxDistance, out RaycastHit hit)` | Same, and returns the closest hit: `hit.GameObject`, `hit.Point`, `hit.Normal`, `hit.Distance`. |
+| `Raycast(origin, direction, maxDistance, out RaycastHit hit, includeTriggers = false)` | Same, and returns the closest hit: `hit.GameObject`, `hit.Point`, `hit.Normal`, `hit.Distance`. |
+| `Raycast(ray, maxDistance, out RaycastHit hit, includeTriggers = false)` | The same along a `Ray`, e.g. `CameraRay` or `MouseRay`. |
+| `IsTouching(other)` | `true` while this gameobject touches or overlaps `other` (as of the last physics step). |
+| `GetVelocity(target)` / `SetVelocity(target, v)` / `SetAngularVelocity(target, w)` | Read or set another gameobject's Dynamic body. |
+| `AddImpulse(target, impulse)` / `AddImpulseAtPosition(target, impulse, worldPoint)` | Kick another gameobject's Dynamic body, e.g. a launch pad or a shove. |
 
 Raycasts always ignore the script's own gameobject. They only hit gameobjects
-with an enabled Physics component. Water-role objects have no collider, so rays
-pass through them. `direction` does not need to be normalized.
+with an enabled Physics component, and skip triggers unless `includeTriggers` is
+set. Water-role objects have no collider, so rays pass through them. `direction`
+does not need to be normalized.
+
+### Collision and trigger events
+
+Override these hooks to react to contacts. They need a Physics component on the
+script's gameobject and run on the game thread, right after the physics step
+(after every `Update` of that frame). Both gameobjects of a pair get the event.
+
+| Hook | When |
+| --- | --- |
+| `OnCollisionEnter(Collision c)` | This gameobject started touching another collider. |
+| `OnCollisionStay(Collision c)` | Every physics step while they keep touching. |
+| `OnCollisionExit(Collision c)` | They separated, or the other was removed or lost its collider. `c` holds the last contact. |
+| `OnTriggerEnter(BasicEntity other)` | An overlap with a trigger started (this gameobject is the trigger, or entered one). |
+| `OnTriggerStay(BasicEntity other)` / `OnTriggerExit(BasicEntity other)` | Every step while overlapping / the overlap ended. |
+| `OnInteract(Interaction i)` | Another script used this gameobject's Interactable component (see below). |
+
+`Collision` has `GameObject` (the other one), `Point`, `Normal` (unit, pointing
+from the other gameobject towards this one), `Depth` and `ImpactSpeed` (how fast
+the surfaces were closing just before the step resolved the contact: the impact
+speed on Enter, about zero while resting). A trigger is a Physics component with
+**Is Trigger** ticked: it overlaps instead of colliding. See
+[Collisions_and_Interaction.md](Collisions_and_Interaction.md).
+
+### NPC hooks and paths
+
+An NPC component raises these hooks on the scripts of its own gameobject. See
+[NPC_Navigation.md](NPC_Navigation.md).
+
+| Hook / member | What it does |
+| --- | --- |
+| `OnTargetSpotted(BasicEntity target)` | This NPC noticed its target (saw it, heard it close by, or was alerted). |
+| `OnTargetLost(BasicEntity target)` | This NPC gave up after losing sight of the target for its Memory Time. |
+| `OnNpcStateChanged(NpcState previous, NpcState current)` | This NPC changed what it does, for example from Patrolling to Alerted. |
+| `OnNpcAttack(BasicEntity target)` | This NPC attacked (Chase reaction, within Attack Range). |
+| `FindPath(from, to, path, agentRadius = 0.5f)` | Fills `path` with the ground points of a walkable route on the scene's navigation grid. `false` without a grid. |
+
+Drive an NPC through `GetComponent<NpcComponent>()`. It has `MoveTo`, `Investigate`,
+`Alert`, `Calm`, `CanSee`, and runtime state such as `State`, `CanSeeTarget` and
+`LastKnownTargetPosition`.
+
+```csharp
+public override void OnCollisionEnter(Collision collision)
+{
+    if (collision.ImpactSpeed > 3f)
+        PlaySoundAt("Audio/blip.wav", collision.Point, collision.ImpactSpeed / 10f);
+}
+```
+
+### Camera rays and interaction
+
+| Member | What it does |
+| --- | --- |
+| `MainCamera` | The scene's main camera (the one Play renders), whichever object the script runs on. |
+| `CameraRay` | From the main camera through the screen centre (a crosshair). |
+| `MouseRay` / `ScreenPointToRay(pixel)` | From the main camera through the cursor / a pixel of the game view. |
+| `FindInteractable(ray, maxDistance, out RaycastHit hit)` | The `InteractableComponent` the ray points at, or `null`. The first collider hit must be interactable and within its Range. |
+| `Interact(hit)` / `Interact(gameobject)` | Runs `OnInteract` on the target's scripts and raises `InteractableComponent.Interacted`. `false` without an enabled Interactable. |
+| `FindGameObject(name)` | First gameobject in the active scene with this name, or `null`. |
+
+```csharp
+var target = FindInteractable(CameraRay, 5f, out RaycastHit hit);
+if (target != null && GameInput.WasPressed(Keys.E)) Interact(hit); // HUD text: target.Prompt
+```
 
 The physics step runs after scripts in each frame. Forces you add in `Update`
 apply on that frame's step. `AddForce` uses `DeltaTime`, so the result does not
@@ -304,7 +538,8 @@ Static APIs in `Engine.Logic` for game scripts (details in
 
 | API | Use it for |
 | --- | --- |
-| `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. |
+| `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. Pass `carryPersistent: false` to leave persistent gameobjects behind. |
+| `GameFlow.Paused` | Freezing the game (scripts, components, physics) behind a pause menu. |
 | `GameInput.MenuUp/Down/Confirm/Back`, `AnyInputPressed`, `WasPressed(...)` | Keyboard, mouse and gamepad input with pressed edges and key repeat. |
 | `GameUI.Open("UI/Name")` / `GameUI.Close(ui)` | A Vista XML/CSS layer over the scene. |
 

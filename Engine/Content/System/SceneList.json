@@ -2,6 +2,13 @@
   "Scenes": [
     "Scenes/MainMenu.obsc",
     "Scenes/GodRayTest.obsc",
-    "Scenes/AutoExposureTest.obsc"
+    "Scenes/AutoExposureTest.obsc",
+    "Scenes/AnimationTest.obsc",
+    "Scenes/MultiplayerTest.obsc",
+    "Scenes/CollisionTest.obsc",
+    "Scenes/WeatherTest.obsc",
+    "Scenes/PersistenceTest.obsc",
+    "Scenes/PersistenceTest2.obsc",
+    "Scenes/NpcTest.obsc"
   ]
 }

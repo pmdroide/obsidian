@@ -1,0 +1,454 @@
+{
+  "Version": 2,
+  "Name": "LodTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        30,
+        -0.25
+      ],
+      "Scale": [
+        12,
+        40,
+        0.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.35,
+          0.36,
+          0.38
+        ],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 2,
+      "Name": "LOD Sphere 1",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        6,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.85,
+          0.25,
+          0.2
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "eb22ff6c-ec4f-4171-86a4-0cfb2288f3d8",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 3,
+      "Name": "LOD Sphere 2",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        14,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.55,
+          0.15
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "66cb3904-0cab-4d40-8a66-801c7bf73b1e",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 4,
+      "Name": "LOD Sphere 3",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        22,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.8,
+          0.2
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "2513965c-9a43-410c-869f-428a2cf9d9ef",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 5,
+      "Name": "LOD Sphere 4",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        30,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.35,
+          0.75,
+          0.3
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "ba2fbb3b-df0b-44d4-9e1e-6733689d976c",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 6,
+      "Name": "LOD Sphere 5",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        38,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.65,
+          0.75
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "ccb8e0f1-0e37-4235-b1ff-76ae79afc52c",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 7,
+      "Name": "LOD Sphere 6",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        46,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.4,
+          0.85
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "93018e3e-76f4-4bde-9991-fd1573afb252",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 8,
+      "Name": "LOD Sphere 7",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        54,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.5,
+          0.3,
+          0.8
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "68faad03-f55d-4f0f-816d-48877f7e51cf",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 9,
+      "Name": "LOD Sphere 8",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        62,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.8,
+          0.3,
+          0.6
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "lod",
+          "InstanceId": "653fd57b-d3c7-41d7-b213-483cf6805810",
+          "Data": {
+            "Levels": [
+              {
+                "Model": "Cube",
+                "Distance": 20
+              }
+            ],
+            "CullDistance": 50,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 10,
+      "Name": "Marker 20 m",
+      "ModelKey": "Cube",
+      "Position": [
+        3,
+        16,
+        0.05
+      ],
+      "Scale": [
+        1.5,
+        0.05,
+        0.05
+      ],
+      "Material": {
+        "DiffuseColor": [
+          1,
+          1,
+          1
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 11,
+      "Name": "Marker 50 m",
+      "ModelKey": "Cube",
+      "Position": [
+        3,
+        46,
+        0.05
+      ],
+      "Scale": [
+        1.5,
+        0.05,
+        0.05
+      ],
+      "Material": {
+        "DiffuseColor": [
+          1,
+          1,
+          1
+        ],
+        "Roughness": 0.5
+      }
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 20,
+      "Name": "Sun",
+      "Direction": [
+        -0.5,
+        0.4,
+        -0.75
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        250,
+        240,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 120,
+      "ShadowDepth": 180,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      20,
+      4
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 14
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -4,
+      1.6
+    ],
+    "Forward": [
+      0,
+      1,
+      -0.02
+    ],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "c33d70ea-6dc2-4ac1-8ff1-fe6add1b91f4",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

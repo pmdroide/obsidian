@@ -63,6 +63,23 @@ internal static class GameFlowChecks
         Check(settings.Scenes.All(s => s.Entry != "Scenes/MainMenu.obsc") && settings.Scenes.Select(s => s.Index).SequenceEqual(Enumerable.Range(0, settings.Scenes.Count)),
             "removing a scene renumbers the rest");
 
+        // ---- Intro videos (Content/System/IntroVideos.json) + Game Settings > Intro Videos ----
+        var intros = IntroVideoList.Read().Videos;
+        Check(intros.Count > 0 && intros.All(v => File.Exists(IntroVideoList.ResolvePath(v))) &&
+              IntroVideoList.ToEntry(IntroVideoList.ResolvePath(intros[0])) == intros[0],
+            "the shipped intro video list exists on disk and maps back to its Content entries");
+        settings.IntroVideos.Add(new IntroVideoEntryViewModel("Video/NoSuchVideo.mp4", settings.IntroVideos.Count));
+        settings.SelectedIntroVideo = settings.IntroVideos[^1];
+        Check(settings.IntroVideos[^1].Note == "Missing" && settings.MoveIntroVideoUpCommand.CanExecute(null) &&
+              !settings.MoveIntroVideoDownCommand.CanExecute(null),
+            "a missing intro video is flagged and the last one can only move up");
+        settings.MoveIntroVideoUpCommand.Execute(null);
+        Check(settings.IntroVideos[^2].Entry == "Video/NoSuchVideo.mp4" &&
+              settings.IntroVideos.Select(v => v.Index).SequenceEqual(Enumerable.Range(0, settings.IntroVideos.Count)),
+            "moving an intro video renumbers the play order");
+        settings.RemoveIntroVideoCommand.Execute(null);
+        Check(settings.IntroVideos.Select(v => v.Entry).SequenceEqual(intros), "removing an intro video restores the list");
+
         // ---- GameFlow: switching scenes during Play ----
         IEditorBridge previousHost = Input.HostBridge;
         var host = new EditorBridge();

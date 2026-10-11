@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Recources;
@@ -13,7 +14,7 @@ namespace Engine.Logic
 
     /// <summary>
     /// Owns Edit/Play transitions. On <see cref="Play"/> snapshots the active scene's
-    /// transforms so <see cref="Stop"/> can restore them. Camera selection, physics
+    /// transforms and environment (sky, weather) so <see cref="Stop"/> can restore them. Camera selection, physics
     /// gating, and script ticks all read <see cref="Mode"/>.
     /// </summary>
     public class PlayModeController
@@ -33,6 +34,9 @@ namespace Engine.Logic
         // The main camera's pose, so a camera script (e.g. Freecam) can't move the saved camera.
         private Vector3 _cameraPosition, _cameraForward, _cameraUp;
         private Camera _snappedCamera;
+        // Scripts may change the weather or sky while playing; Stop puts the edited scene's back.
+        private EnvironmentSettings _environmentSnap;
+        private Scene _environmentScene;
 
         // Cached editor-mode value so Stop() can restore whatever the user had set.
         private bool _editorFlagBeforePlay;
@@ -42,7 +46,13 @@ namespace Engine.Logic
             _sceneLogic = sceneLogic ?? throw new ArgumentNullException(nameof(sceneLogic));
         }
 
-        public void Play()
+        public void Play() => Play(null);
+
+        /// <summary>
+        /// Starts Play. <paramref name="continuing"/> are gameobjects whose components keep running
+        /// (persistent gameobjects carried over by a scene load), so they don't restart.
+        /// </summary>
+        internal void Play(IReadOnlyCollection<BasicEntity> continuing)
         {
             if (Mode == GameMode.Play) return;
             EditorBridge.Log("PlayModeController.Play");
@@ -62,7 +72,7 @@ namespace Engine.Logic
                 var ctx = new ScriptContext { Scene = s };
                 foreach (var e in s.BasicEntities.ToArray())
                 {
-                    if (!s.BasicEntities.Contains(e)) continue;
+                    if (!s.BasicEntities.Contains(e) || continuing?.Contains(e) == true) continue;
                     foreach (var component in e.Components.ToArray())
                     {
                         if (!e.Components.Contains(component)) continue;
@@ -97,13 +107,19 @@ namespace Engine.Logic
         /// <summary>
         /// Drives <see cref="IScript.OnUpdate"/> for every script on every entity in the
         /// active scene. Called from <see cref="MainSceneLogic.Update"/> only when
-        /// <see cref="Mode"/> is <see cref="GameMode.Play"/>.
+        /// <see cref="Mode"/> is <see cref="GameMode.Play"/>. While <see cref="GameFlow.Paused"/>,
+        /// only script behaviours that update while paused run (<see cref="UpdatePaused"/>).
         /// </summary>
         public void UpdateScripts(GameTime gameTime)
         {
             if (Mode != GameMode.Play) return;
             Scene s = _sceneLogic.ActiveScene;
             if (s == null) return;
+            if (GameFlow.Paused)
+            {
+                UpdatePaused(s, gameTime);
+                return;
+            }
             var ctx = new ScriptContext { Scene = s };
             foreach (var e in s.BasicEntities.ToArray())
             {
@@ -139,6 +155,34 @@ namespace Engine.Logic
                 }
         }
 
+        /// <summary>
+        /// A paused frame: only enabled script behaviours whose script runs while paused (a pause menu) update.
+        /// Everything else keeps its state, with no Update and no OnStop.
+        /// </summary>
+        private static void UpdatePaused(Scene s, GameTime gameTime)
+        {
+            foreach (var e in s.BasicEntities.ToArray())
+            {
+                if (!s.BasicEntities.Contains(e) || !e.IsEnabled) continue;
+                foreach (var script in e.GetComponents<ScriptBehaviourComponent>().ToArray())
+                {
+                    // A script can resume the game (or switch scenes) mid-frame; the rest waits for the next one.
+                    if (!GameFlow.Paused) return;
+                    if (!script.Enabled || !script.UpdatesWhilePaused || !e.Components.Contains(script)) continue;
+                    try { script.OnUpdate(e, gameTime); }
+                    catch (Exception ex) { EditorBridge.Log("Component.OnUpdate threw: " + ex); }
+                }
+            }
+            if (s.MainCamera is { } camera)
+                foreach (var script in camera.Components.OfType<ScriptBehaviourComponent>().ToArray())
+                {
+                    if (!GameFlow.Paused) return;
+                    if (!script.Enabled || !script.UpdatesWhilePaused || !camera.Components.Contains(script)) continue;
+                    try { script.OnUpdate(null, gameTime); }
+                    catch (Exception ex) { EditorBridge.Log("Camera component OnUpdate threw: " + ex); }
+                }
+        }
+
         public void Stop()
         {
             // Also stop inspector previews when leaving a scene in edit mode.
@@ -151,6 +195,9 @@ namespace Engine.Logic
             EditorBridge.Log("PlayModeController.Stop");
 
             RestoreSnapshot();
+            // DontDestroyOnLoad lasts one Play session (carried gameobjects already left a departing scene).
+            if (_sceneLogic.ActiveScene is { } stopped)
+                foreach (var entity in stopped.BasicEntities) entity.RuntimePersistent = false;
             GameSettings.e_enableeditor = _editorFlagBeforePlay;
 
             Mode = GameMode.Edit;
@@ -170,9 +217,11 @@ namespace Engine.Logic
             foreach (var d in s.Decals)
                 _decalSnap.Add(new TransformSnap(d.Id, d.Position, d.RotationMatrix, d.Scale));
             foreach (var pl in s.PointLights)
-                _pointLightSnap.Add(new TransformSnap(pl.Id, pl.Position, Matrix.Identity, Vector3.One));
+                _pointLightSnap.Add(new TransformSnap(pl.Id, pl.Position, pl is SpotLight ? pl.RotationMatrix : Matrix.Identity, Vector3.One));
             foreach (var dl in s.DirectionalLights)
                 _dirLightSnap.Add(new TransformSnap(dl.Id, dl.Position, dl.RotationMatrix, Vector3.One));
+            _environmentSnap = s.Environment?.Clone();
+            _environmentScene = s;
             _snappedCamera = s.MainCamera;
             if (_snappedCamera != null)
             {
@@ -197,6 +246,25 @@ namespace Engine.Logic
                 _snappedCamera.Up = _cameraUp;
             }
             _snappedCamera = null;
+            if (_environmentSnap != null && ReferenceEquals(_environmentScene, s)) s.Environment = _environmentSnap;
+            _environmentSnap = null;
+            _environmentScene = null;
+        }
+
+        /// <summary>The gameobject's transform when Play started in this scene; false when it wasn't there.</summary>
+        internal bool TryGetStartTransform(BasicEntity entity, out Vector3 position, out Matrix rotation, out Vector3 scale)
+        {
+            foreach (var snap in _entitySnap)
+            {
+                if (snap.Id != entity.Id) continue;
+                position = snap.Position;
+                rotation = snap.Rotation;
+                scale = snap.Scale;
+                return true;
+            }
+            position = scale = Vector3.Zero;
+            rotation = Matrix.Identity;
+            return false;
         }
 
         private static void ApplyById<T>(List<TransformSnap> snaps, List<T> live)

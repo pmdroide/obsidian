@@ -1,6 +1,4 @@
 using System;
-using System.Globalization;
-using System.IO;
 using Engine.Editor;
 using Engine.Physics;
 using Engine.Recources;
@@ -38,12 +36,8 @@ namespace Engine.Logic
         private SpriteBatch _spriteBatch;
         private GraphicsDevice _graphicsDevice;
 
-        private UIManager _vistaUI;
-        // Fonts shared by the debug overlay and script UI (GameUI).
+        // Fonts for script UI (GameUI).
         private readonly UIFontRegistry _uiFonts = new UIFontRegistry();
-        private double _vistaSmoothFps = 60;
-        private double _vistaFpsRefresh;
-        private long _vistaMaxGcMemory;
 
         private EditorLogic.EditorReceivedData _editorReceivedDataBuffer;
 
@@ -103,7 +97,7 @@ namespace Engine.Logic
 
             if (_currentState == GameState.VideoIntro)
             {
-                _videoIntro.Update();
+                _videoIntro.Update(isActive);
                 if (_videoIntro.HasFinished)
                 {
                     _currentState = GameState.MainGame;
@@ -130,8 +124,6 @@ namespace Engine.Logic
             // Script UI (menus, HUDs) after the scripts changed it this frame.
             GameUI.Update(gameTime);
 
-            UpdateVistaUI(gameTime);
-
             // Drain queued editor ops + publish snapshot. Runs on the game thread,
             // strictly after all logic mutations but before the next Draw.
             _bridge?.DrainAndPublish();
@@ -143,35 +135,6 @@ namespace Engine.Logic
         {
             if (_currentState == GameState.VideoIntro) return;
             _sceneLogic.UpdatePhysics(dt, time);
-        }
-
-        // Update the Vista UI with performance metrics and other dynamic information.
-        private void UpdateVistaUI(GameTime gameTime)
-        {
-            if (_vistaUI == null || !GameSettings.ui_vista_enabled) return;
-
-            double frameMs = gameTime.ElapsedGameTime.TotalMilliseconds;
-            if (frameMs > 0.0)
-            {
-                double instantaneous = 1000.0 / frameMs;
-                _vistaSmoothFps = 0.95 * _vistaSmoothFps + 0.05 * instantaneous;
-            }
-
-            // Throttle text updates to twice/sec — AngleSharp DOM writes aren't free.
-            double nowMs = gameTime.TotalGameTime.TotalMilliseconds;
-            if (nowMs - _vistaFpsRefresh < 500.0) { _vistaUI.Update(gameTime); return; }
-            _vistaFpsRefresh = nowMs;
-
-            long mem = GC.GetTotalMemory(false);
-            if (mem > _vistaMaxGcMemory) _vistaMaxGcMemory = mem;
-
-            CultureInfo inv = CultureInfo.InvariantCulture;
-            _vistaUI.SetText("#perf-fps",   "FPS: "   + Math.Round(_vistaSmoothFps).ToString(inv));
-            _vistaUI.SetText("#perf-frame", "Frame: " + frameMs.ToString("0.00", inv) + " ms");
-            _vistaUI.SetText("#perf-res",   "Res: "   + GameSettings.g_screenwidth + " x " + GameSettings.g_screenheight);
-            _vistaUI.SetText("#perf-mem",   "Mem: "   + (mem / 1024).ToString(inv) + " / " + (_vistaMaxGcMemory / 1024).ToString(inv) + " KB");
-
-            _vistaUI.Update(gameTime);
         }
 
         //Load content
@@ -199,13 +162,12 @@ namespace Engine.Logic
             if (_bridge?.IsHostedByEditor != true)
                 _videoIntro.Load(content, graphicsDevice);
 
-            LoadVistaUI(content, graphicsDevice);
+            LoadUIFonts(content);
         }
 
-        // Load Vista UI helper functions
-        private void LoadVistaUI(ContentManager content, GraphicsDevice graphicsDevice)
+        // Fonts the GameUI documents' CSS can reference by font-family.
+        private void LoadUIFonts(ContentManager content)
         {
-            // Register fonts the CSS can reference by font-family.
             var defaultFont = content.Load<SpriteFont>("Fonts/defaultFont");
             var monospaceFont = content.Load<SpriteFont>("Fonts/monospace");
             _uiFonts.Register("default", defaultFont, isDefault: true);
@@ -215,17 +177,6 @@ namespace Engine.Logic
             _uiFonts.Register("heading", content.Load<SpriteFont>("Fonts/UI/Heading"));
             _uiFonts.Register("body", content.Load<SpriteFont>("Fonts/UI/Body"));
             _uiFonts.Register("caption", content.Load<SpriteFont>("Fonts/UI/Caption"));
-
-            _vistaUI = new UIManager(graphicsDevice, _uiFonts);
-
-            string baseDir = AppContext.BaseDirectory;
-            string xmlPath = Path.Combine(baseDir, "Content", "UI", "debug.xml");
-            string cssPath = Path.Combine(baseDir, "Content", "UI", "debug.css");
-
-            if (File.Exists(xmlPath) && File.Exists(cssPath))
-            {
-                _vistaUI.LoadUI(xmlPath, cssPath);
-            }
         }
 
         public void Unload(ContentManager content)
@@ -265,18 +216,11 @@ namespace Engine.Logic
                 lightingSettings: _sceneLogic.ActiveScene.Lighting,
                 scene: _sceneLogic.ActiveScene);
 
-            // Script UI (menus, HUDs) over the scene, under the debug console and overlay.
+            // Script UI (menus, HUDs) over the scene, under the debug stats and console.
             GameUI.Draw(_spriteBatch);
 
+            // Engine debug stats (GameSettings.u_showdisplayinfo; Anvil's viewport Stats toggle) on top.
             _debug.Draw(gameTime);
-
-            // Vista UI on top of everything
-            if (_vistaUI != null && GameSettings.ui_vista_enabled)
-            {
-                _spriteBatch.Begin();
-                _vistaUI.Draw(_spriteBatch);
-                _spriteBatch.End();
-            }
         }
 
         public void UpdateResolution()

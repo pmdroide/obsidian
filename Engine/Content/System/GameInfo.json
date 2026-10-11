@@ -1,0 +1,10 @@
+{
+  "WindowTitle": "Engine",
+  "IconPath": null,
+  "WindowWidth": 1280,
+  "WindowHeight": 720,
+  "AllowResizing": true,
+  "Fullscreen": false,
+  "VSync": false,
+  "FpsCap": 0
+}

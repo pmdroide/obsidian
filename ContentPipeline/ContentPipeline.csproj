@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- MonoGame content pipeline extension, loaded by mgcb through the /reference line in
+       Engine/Content/Content.mgcb. mgcb (dotnet-mgcb 3.8.4.1) runs on .NET 8, so this must stay
+       net8.0. Engine.csproj builds it before its content build (ProjectReference without an
+       assembly reference); the DLL lands at a fixed path the .mgcb can point to. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Obsidian.ContentPipeline</AssemblyName>
+    <RootNamespace>Obsidian.ContentPipeline</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <OutputPath>$(MSBuildThisFileDirectory)bin\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- mgcb already ships these assemblies; reference them without copying. -->
+    <PackageReference Include="MonoGame.Framework.Content.Pipeline" Version="3.8.4.1" PrivateAssets="All" ExcludeAssets="runtime" />
+    <!-- Compile-time only: FBX animations are re-read with the Assimp build mgcb already loads. -->
+    <PackageReference Include="AssimpNetter" Version="5.4.3.3" PrivateAssets="All" ExcludeAssets="runtime;native;build;buildTransitive" />
+    <!-- Compile-time only: Matrix/Vector3/Quaternion. mgcb loads its own MonoGame.Framework. -->
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4.1" PrivateAssets="All" ExcludeAssets="runtime;native;build;buildTransitive" />
+  </ItemGroup>
+
+</Project>

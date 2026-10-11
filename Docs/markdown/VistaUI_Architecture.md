@@ -3,13 +3,13 @@
 Vista draws XML/CSS documents with MonoGame's `SpriteBatch`. AngleSharp parses the document and
 computes the CSS; Vista mirrors the DOM as a tree of `UIElement`s, lays it out, and draws it.
 
-It is used in two places:
+It draws the **game UI layers** opened by scripts with `GameUI.Open("UI/MainMenu")`: menus and HUDs,
+drawn over the scene and under the engine's debug stats. The MainMenu sample scene uses one; see
+[Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md).
 
-- **The debug overlay** (`Content/UI/debug.xml` + `.css`), drawn on top of everything by `ScreenManager`.
-  Toggle it with `GameSettings.ui_vista_enabled`.
-- **Game UI layers** opened by scripts with `GameUI.Open("UI/MainMenu")`: menus and HUDs, drawn over
-  the scene and under the debug overlay. The MainMenu sample scene uses one; see
-  [Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md).
+The debug stats (FPS, frame time, memory, draw counts) are not Vista: `DebugScreen` draws them with
+SpriteFonts. `GameSettings.u_showdisplayinfo` sets their detail (0 off, 1 FPS only, 3 full); Anvil's
+viewport **Stats** button and the sample menus' "Performance overlay" setting switch them on and off.
 
 ## Pieces
 
@@ -83,12 +83,12 @@ Details:
 
 ## Fonts
 
-`ScreenManager.LoadVistaUI` registers:
+`ScreenManager.LoadUIFonts` registers:
 
 | `font-family` | SpriteFont | Use |
 | --- | --- | --- |
 | `default` | `Fonts/defaultfont` (Arial 10) | Fallback when no family matches. |
-| `monospace` | `Fonts/monospace` (Lucida Console 10) | Debug overlay. |
+| `monospace` | `Fonts/monospace` (Lucida Console 10) | Fixed-width text. |
 | `display` | `Fonts/UI/Display` (Bahnschrift, about 88 px) | Titles. |
 | `heading` | `Fonts/UI/Heading` (Bahnschrift, about 32 px) | Menu items, screen titles. |
 | `caption` | `Fonts/UI/Caption` (Bahnschrift, about 16 px) | Small caps labels (use `letter-spacing`). |
@@ -96,13 +96,13 @@ Details:
 
 The UI fonts are sized for a 1080-high canvas. SpriteFonts don't scale cleanly, so pick a family
 rather than a `font-size` (`font-size` is ignored). To add a face, add a `.spritefont` under
-`Content/Fonts/UI`, add it to `Content.mgcb`, and register it in `ScreenManager.LoadVistaUI`.
+`Content/Fonts/UI`, add it to `Content.mgcb`, and register it in `ScreenManager.LoadUIFonts`.
 
 ## Scaling
 
 `UIManager.ReferenceHeight` sets a design height. With `ReferenceHeight = 1080`, the document is laid
 out on a canvas 1080 units high (and as wide as the window's aspect allows), then drawn scaled to the
-window. `GameUI.Open` uses 1080 by default; the debug overlay uses real pixels. Draw a scaled document
+window. `GameUI.Open` uses 1080 by default; without it a document uses real pixels. Draw a scaled document
 inside `spriteBatch.Begin(transformMatrix: ui.Transform)`. `ElementAt` takes viewport pixels and does
 the conversion itself.
 

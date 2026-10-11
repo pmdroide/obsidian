@@ -73,6 +73,8 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramPointLightRadii;
         private EffectParameter _paramPointLightCastShadows;
         private EffectParameter _paramPointLightShadowMapSize;
+        private EffectParameter _paramPointLightSpotDirectionsVS;
+        private EffectParameter _paramPointLightSpotCos;
         private readonly EffectParameter[] _paramPointLightShadowMaps = new EffectParameter[MAX_FROXEL_POINT_LIGHTS];
 
         private readonly Vector3[] _pointLightPositionsVS = new Vector3[MAX_FROXEL_POINT_LIGHTS];
@@ -81,6 +83,8 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private readonly float[] _pointLightRadii = new float[MAX_FROXEL_POINT_LIGHTS];
         private readonly float[] _pointLightCastShadows = new float[MAX_FROXEL_POINT_LIGHTS];
         private readonly float[] _pointLightShadowMapSizes = new float[MAX_FROXEL_POINT_LIGHTS];
+        private readonly Vector3[] _pointLightSpotDirectionsVS = new Vector3[MAX_FROXEL_POINT_LIGHTS];
+        private readonly Vector2[] _pointLightSpotCos = new Vector2[MAX_FROXEL_POINT_LIGHTS];
 
         private EffectTechnique _techniqueBuildFroxels;
         private EffectTechnique _techniqueAccumulateFroxels;
@@ -179,6 +183,8 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramPointLightRadii = GetEffectParameter("PointLightRadii");
             _paramPointLightCastShadows = GetEffectParameter("PointLightCastShadows");
             _paramPointLightShadowMapSize = GetEffectParameter("PointLightShadowMapSize");
+            _paramPointLightSpotDirectionsVS = GetEffectParameter("PointLightSpotDirectionsVS");
+            _paramPointLightSpotCos = GetEffectParameter("PointLightSpotCos");
             for (int i = 0; i < MAX_FROXEL_POINT_LIGHTS; ++i)
                 _paramPointLightShadowMaps[i] = GetEffectParameter("PointLightShadowMap" + i);
 
@@ -308,6 +314,11 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                     _pointLightColors[count] = light.ColorV3 * light.Intensity;
                     _pointLightRadii[count] = light.Radius;
 
+                    //Point lights: outer cosine -2 scatters in every direction
+                    SpotLight spot = light as SpotLight;
+                    _pointLightSpotDirectionsVS[count] = spot != null ? Vector3.Normalize(Vector3.TransformNormal(spot.Direction, _view)) : Vector3.UnitZ;
+                    _pointLightSpotCos[count] = spot != null ? new Vector2(spot.CosOuter, spot.CosInner) : new Vector2(-2, -1);
+
                     bool hasShadow = light.CastShadows && light.ShadowMap != null;
                     _pointLightCastShadows[count] = hasShadow ? 1f : 0f;
                     _pointLightShadowMapSizes[count] = hasShadow ? light.ShadowResolution : 0f;
@@ -325,6 +336,8 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 _pointLightRadii[i] = 0f;
                 _pointLightCastShadows[i] = 0f;
                 _pointLightShadowMapSizes[i] = 0f;
+                _pointLightSpotDirectionsVS[i] = Vector3.UnitZ;
+                _pointLightSpotCos[i] = new Vector2(-2, -1);
                 _paramPointLightShadowMaps[i]?.SetValue((Texture2D)_dummyShadowMap);
             }
 
@@ -335,6 +348,8 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramPointLightRadii?.SetValue(_pointLightRadii);
             _paramPointLightCastShadows?.SetValue(_pointLightCastShadows);
             _paramPointLightShadowMapSize?.SetValue(_pointLightShadowMapSizes);
+            _paramPointLightSpotDirectionsVS?.SetValue(_pointLightSpotDirectionsVS);
+            _paramPointLightSpotCos?.SetValue(_pointLightSpotCos);
         }
 
         private void ApplyDirectionalLight(List<DirectionalLight> directionalLights)

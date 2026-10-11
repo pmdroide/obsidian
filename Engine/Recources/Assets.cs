@@ -23,6 +23,10 @@ namespace Engine.Recources
         public ModelDefinition IsoSphere;
 
         public ModelDefinition Cube;
+        // Z-up capsule, radius 0.5 and height 2, centred on the origin (Unity's default capsule).
+        public ModelDefinition Capsule;
+        // 2 x 2 double-sided plane in X/Z (front faces -Y), 24 x 24 quads: the mesh for the Cloth component.
+        public ModelDefinition Cloth;
 
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
@@ -62,6 +66,11 @@ namespace Engine.Recources
 
         public ModelDefinition StanfordDragon;
         public ModelDefinition StanfordDragonLowpoly;
+
+        // Skinned Mixamo characters (SkinnedModelProcessor: Model.Tag is Animation.SkinningData).
+        // The Animator component plays their clips; see Content/Scenes/AnimationTest.obsc.
+        public ModelDefinition PlayerYBot;
+        public ModelDefinition PlayerWalking;
 
 
 
@@ -130,6 +139,11 @@ namespace Engine.Recources
             SphereMeshPart = Sphere.Meshes[0].MeshParts[0];
 
             Cube = new ModelDefinition(content, "GameObjects/Default/cube", graphicsDevice, true, new Vector3(50, 50, 50));
+            Capsule = new ModelDefinition(content, "GameObjects/Default/capsule", graphicsDevice);
+            Cloth = new ModelDefinition(content, "GameObjects/Cloth/cloth", graphicsDevice);
+            // A cloth swings and falls away from its rest plane; wider bounds keep it from being culled.
+            foreach (ModelMesh mesh in Cloth.Model.Meshes)
+                mesh.BoundingSphere = new BoundingSphere(mesh.BoundingSphere.Center, mesh.BoundingSphere.Radius * 2f);
 
             IconDecal = content.Load<Texture2D>("System/Editor/icon_decal");
             IconLight = content.Load<Texture2D>("System/Editor/icon_light");
@@ -213,6 +227,9 @@ namespace Engine.Recources
 
             DragonLowPolyMaterial = CreateMaterial(Color.Red, 0.5f, 0, type: MaterialEffect.MaterialTypes.Basic, normalMap: content.Load<Texture2D>("GameObjects/default/dragon_normal"));
 
+            PlayerYBot = LoadSkinnedModel(content, "GameObjects/Player/Y Bot", graphicsDevice);
+            PlayerWalking = LoadSkinnedModel(content, "GameObjects/Player/Walking", graphicsDevice);
+
             //Fonts
 
             DefaultFont = content.Load<SpriteFont>("Fonts/defaultFont");
@@ -262,6 +279,29 @@ namespace Engine.Recources
             // Re-register models imported in previous editor sessions so they reappear
             // in the Meshes folder and saved scenes referencing them can load.
             ReimportExistingModels(content, graphicsDevice);
+        }
+
+        /// <summary>
+        /// Loads a skinned model with its FBX material colours (entities saved without a material
+        /// keep them). Mesh bounds are widened so poses reaching past the bind pose aren't culled.
+        /// Returns null when the asset is missing, so a scene using it skips the entity instead
+        /// of blocking boot.
+        /// </summary>
+        private ModelDefinition LoadSkinnedModel(ContentManager content, string assetPath, GraphicsDevice graphicsDevice)
+        {
+            try
+            {
+                var definition = new ModelDefinition(content, assetPath, graphicsDevice);
+                BindEmbeddedTextures(definition.Model);
+                foreach (ModelMesh mesh in definition.Model.Meshes)
+                    mesh.BoundingSphere = new BoundingSphere(mesh.BoundingSphere.Center, mesh.BoundingSphere.Radius * 1.5f);
+                return definition;
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"Assets: failed to load skinned model '{assetPath}': " + ex.Message);
+                return null;
+            }
         }
 
         /// <summary>
@@ -396,6 +436,18 @@ namespace Engine.Recources
             if (material == null) _dynamicMaterials.Remove(key);
             else _dynamicMaterials[key] = material;
             MaterialRegistered?.Invoke(key);
+        }
+
+        /// <summary>
+        /// The model saved in scenes as <paramref name="key"/>: a public <see cref="ModelDefinition"/>
+        /// field ("Cube", "Capsule") or a runtime-imported model. Null when unknown.
+        /// </summary>
+        public ModelDefinition FindModel(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            var field = typeof(Assets).GetField(key, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (field != null && field.FieldType == typeof(ModelDefinition)) return field.GetValue(this) as ModelDefinition;
+            return _dynamicModels.TryGetValue(key, out var model) ? model : null;
         }
 
         public bool TryGetDynamicMaterial(string key, out MaterialEffect material)

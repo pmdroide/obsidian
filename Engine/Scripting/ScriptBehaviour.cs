@@ -1,3 +1,4 @@
+using Engine.AI;
 using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
@@ -25,6 +26,49 @@ public abstract class ScriptBehaviour
     public virtual void Update() { }
     public virtual void Stop() { }
 
+    /// <summary>
+    /// True to keep getting <see cref="Update"/> while the game is paused (<see cref="Logic.GameFlow.Paused"/>),
+    /// for a pause menu. Every other script, component and the physics step wait until it resumes.
+    /// </summary>
+    public virtual bool UpdateWhilePaused => false;
+
+    // Event hooks run on the game thread right after the physics step (after every Update that frame).
+    // They need a Physics component on this gameobject. Triggers: PhysicsComponent.IsTrigger.
+
+    /// <summary>This gameobject started touching another collider.</summary>
+    public virtual void OnCollisionEnter(Collision collision) { }
+    /// <summary>Every physics step while the two keep touching.</summary>
+    public virtual void OnCollisionStay(Collision collision) { }
+    /// <summary>The two stopped touching (or the other was removed). The collision holds the last contact.</summary>
+    public virtual void OnCollisionExit(Collision collision) { }
+    /// <summary>A gameobject started overlapping this trigger, or this gameobject entered a trigger (<paramref name="other"/>).</summary>
+    public virtual void OnTriggerEnter(BasicEntity other) { }
+    /// <summary>Every physics step while the overlap lasts.</summary>
+    public virtual void OnTriggerStay(BasicEntity other) { }
+    /// <summary>The overlap ended (or the other was removed).</summary>
+    public virtual void OnTriggerExit(BasicEntity other) { }
+    /// <summary>Another script used this gameobject's Interactable component (<see cref="Interact(RaycastHit)"/>).</summary>
+    public virtual void OnInteract(Interaction interaction) { }
+    /// <summary>
+    /// A scene loaded and this persistent gameobject came along (<see cref="DontDestroyOnLoad()"/>), still running.
+    /// Runs after the new scene's scripts started, e.g. to move to its spawn point.
+    /// </summary>
+    public virtual void OnSceneLoaded() { }
+
+    // NPC hooks: raised by an NPC component (NpcComponent) on its own gameobject's scripts.
+
+    /// <summary>This NPC noticed <paramref name="target"/> (saw it, heard it close by, or was alerted).</summary>
+    public virtual void OnTargetSpotted(BasicEntity target) { }
+    /// <summary>This NPC gave up on <paramref name="target"/> after losing sight of it for Memory Time.</summary>
+    public virtual void OnTargetLost(BasicEntity target) { }
+    /// <summary>This NPC changed what it does, e.g. Patrolling to Alerted, to switch an animation or a colour.</summary>
+    public virtual void OnNpcStateChanged(NpcState previous, NpcState current) { }
+    /// <summary>This NPC attacked <paramref name="target"/> (Chase reaction, within Attack Range).</summary>
+    public virtual void OnNpcAttack(BasicEntity target) { }
+
+    /// <summary>The behaviour whose Start, Update or hook is running (GameUI records it as a layer's owner).</summary>
+    internal static ScriptBehaviour Running { get; set; }
+
     internal void Attach(BasicEntity owner, Camera camera = null)
     {
         GameObject = owner;
@@ -36,11 +80,15 @@ public abstract class ScriptBehaviour
         Update();
     }
 
-    /// <summary>Runs <see cref="Stop"/>, then releases sounds this script started.</summary>
+    /// <summary>Runs <see cref="Stop"/>, then releases sounds and gameobjects this script started or spawned.</summary>
     internal void Shutdown()
     {
         try { Stop(); }
-        finally { StopAllSounds(); }
+        finally
+        {
+            StopAllSounds();
+            DestroyAllSpawned();
+        }
     }
 
     /// <summary>Writes a line to the engine/editor log.</summary>
@@ -202,18 +250,180 @@ public abstract class ScriptBehaviour
 
     /// <summary>
     /// Closest collider along a ray, ignoring this gameobject. Only gameobjects with an enabled
-    /// Physics component (and not the Water role) can be hit.
+    /// Physics component (and not the Water role) can be hit; triggers only with <paramref name="includeTriggers"/>.
     /// </summary>
-    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
+    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit, bool includeTriggers = false)
     {
         hit = default;
-        var scene = GameObject?.PhysicsScene ?? ScenePhysics.Current;
-        return scene != null && scene.Raycast(origin, direction, maxDistance, out hit, GameObject);
+        var scene = PhysicsScene;
+        return scene != null && scene.Raycast(origin, direction, maxDistance, out hit, GameObject, includeTriggers);
     }
 
     /// <summary>Raycast without hit details.</summary>
     public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance) =>
         Raycast(origin, direction, maxDistance, out _);
+
+    /// <summary>Raycast along a <see cref="Ray"/>, e.g. <see cref="CameraRay"/> or <see cref="MouseRay"/>.</summary>
+    public bool Raycast(Ray ray, float maxDistance, out RaycastHit hit, bool includeTriggers = false) =>
+        Raycast(ray.Position, ray.Direction, maxDistance, out hit, includeTriggers);
+
+    /// <summary>True while this gameobject touches or overlaps <paramref name="other"/> (as of the last physics step).</summary>
+    public bool IsTouching(BasicEntity other) => GameObject != null && PhysicsScene?.IsTouching(GameObject, other) == true;
+
+    // The same helpers for another gameobject's Dynamic body (no-ops without one).
+
+    public Vector3 GetVelocity(BasicEntity target) =>
+        target?.PhysicsScene?.TryGetVelocity(target, out var linear, out _) == true ? linear : Vector3.Zero;
+
+    public void SetVelocity(BasicEntity target, Vector3 velocity)
+    {
+        var scene = target?.PhysicsScene;
+        if (scene != null && scene.TryGetVelocity(target, out _, out var angular)) scene.SetVelocity(target, velocity, angular);
+    }
+
+    public void SetAngularVelocity(BasicEntity target, Vector3 angularVelocity)
+    {
+        var scene = target?.PhysicsScene;
+        if (scene != null && scene.TryGetVelocity(target, out var linear, out _)) scene.SetVelocity(target, linear, angularVelocity);
+    }
+
+    /// <summary>Instant kick on another gameobject, e.g. a launch pad or a shove.</summary>
+    public void AddImpulse(BasicEntity target, Vector3 impulse) => target?.PhysicsScene?.ApplyImpulse(target, impulse);
+
+    /// <summary>Instant kick on another gameobject at a world-space point, which also makes it spin.</summary>
+    public void AddImpulseAtPosition(BasicEntity target, Vector3 impulse, Vector3 worldPoint) =>
+        target?.PhysicsScene?.ApplyImpulse(target, impulse, worldPoint);
+
+    private ScenePhysics PhysicsScene => GameObject?.PhysicsScene ?? ScenePhysics.Current;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  ENVIRONMENT (sky and weather)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>
+    /// The active scene's sky and weather settings (Inspector > Environment). Changes show the next frame
+    /// and are undone when Play stops, e.g. <c>SceneEnvironment.Weather = WeatherType.Snow</c>.
+    /// </summary>
+    public Logic.EnvironmentSettings SceneEnvironment => Logic.GameFlow.SceneLogic?.ActiveScene?.Environment;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  CAMERA RAYS & INTERACTION (Interactable component)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>The scene's main camera (the one Play renders), whichever object this script runs on.</summary>
+    public Camera MainCamera => Camera ?? Logic.GameFlow.SceneLogic?.ActiveScene?.MainCamera;
+
+    /// <summary>From the main camera through the centre of the screen (the crosshair).</summary>
+    public Ray CameraRay
+    {
+        get
+        {
+            Camera camera = MainCamera;
+            return camera == null ? new Ray(Position, Forward) : new Ray(camera.Position, SafeNormalize(camera.Forward, Vector3.UnitY));
+        }
+    }
+
+    /// <summary>From the main camera through the mouse cursor.</summary>
+    public Ray MouseRay => ScreenPointToRay(Logic.GameInput.MousePosition);
+
+    /// <summary>From the main camera through a pixel of the game view (0,0 = top left).</summary>
+    public Ray ScreenPointToRay(Point pixel)
+    {
+        Camera camera = MainCamera;
+        if (camera == null) return CameraRay;
+        int width = Math.Max(1, GameSettings.g_screenwidth), height = Math.Max(1, GameSettings.g_screenheight);
+        // The renderer's projection (Renderer.UpdateViewProjection): near plane 1, far plane g_farplane.
+        Matrix view = Matrix.CreateLookAt(camera.Position, camera.Lookat, camera.Up);
+        Matrix projection = Matrix.CreatePerspectiveFieldOfView(camera.FieldOfView, width / (float)height, 1f,
+            Math.Max(GameSettings.g_farplane, 2f));
+        var viewport = new Microsoft.Xna.Framework.Graphics.Viewport(0, 0, width, height);
+        Vector3 near = viewport.Unproject(new Vector3(pixel.X, pixel.Y, 0f), projection, view, Matrix.Identity);
+        Vector3 far = viewport.Unproject(new Vector3(pixel.X, pixel.Y, 1f), projection, view, Matrix.Identity);
+        return new Ray(camera.Position, SafeNormalize(far - near, camera.Forward));
+    }
+
+    /// <summary>
+    /// The interactable the ray points at, or null. The first collider hit (ignoring this gameobject
+    /// and triggers) must have an enabled Interactable component and be within its Range.
+    /// </summary>
+    public InteractableComponent FindInteractable(Ray ray, float maxDistance, out RaycastHit hit) =>
+        InteractableComponent.Find(PhysicsScene, ray.Position, ray.Direction, maxDistance, out hit, GameObject);
+
+    /// <summary>Uses what the ray hit: runs OnInteract on its scripts. False when it has no enabled Interactable.</summary>
+    public bool Interact(RaycastHit hit) =>
+        InteractableComponent.Use(hit.GameObject, new Interaction { Interactor = GameObject, Hit = hit });
+
+    /// <summary>Uses a gameobject directly (no ray), e.g. from a trigger or a menu.</summary>
+    public bool Interact(BasicEntity target) =>
+        InteractableComponent.Use(target, new Interaction { Interactor = GameObject, Hit = new RaycastHit { GameObject = target } });
+
+    /// <summary>
+    /// A walkable path from <paramref name="from"/> to <paramref name="to"/> on the scene's navigation grid (A* around
+    /// static colliders, for a character of <paramref name="agentRadius"/>): the ground points to walk through, the
+    /// last one at (or as close as possible to) the goal. False when there is no grid or no walkable ground near the start.
+    /// </summary>
+    public bool FindPath(Vector3 from, Vector3 to, List<Vector3> path, float agentRadius = 0.5f)
+    {
+        path.Clear();
+        var entities = Logic.GameFlow.SceneLogic?.BasicEntities;
+        NavGrid grid = entities == null ? null : Navigation.For(PhysicsScene, entities, new NavGridSettings(agentRadius), from);
+        return grid != null && grid.FindPath(from, to, path, out _);
+    }
+
+    /// <summary>First gameobject in the active scene with this name, or null.</summary>
+    public BasicEntity FindGameObject(string name) =>
+        Logic.GameFlow.SceneLogic?.BasicEntities.FirstOrDefault(e => e.Name == name);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  SPAWNING (gameobjects that exist only while this script runs)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    private readonly List<BasicEntity> _spawned = new();
+
+    /// <summary>
+    /// Adds a gameobject from a model key ("Capsule", "Cube", "IsoSphere"). It is never saved and is
+    /// removed when this script stops. Add components with <c>AddComponent</c>. Null for an unknown key.
+    /// </summary>
+    public BasicEntity Spawn(string modelKey, Vector3 position, string name = null)
+    {
+        BasicEntity entity = Logic.GameFlow.SceneLogic?.SpawnRuntimeEntity(modelKey, position, name);
+        if (entity != null) _spawned.Add(entity);
+        return entity;
+    }
+
+    /// <summary>
+    /// Keeps this gameobject when a script loads another scene during Play: it moves into the new scene with
+    /// its scripts still running (and HUD layers they opened still open). Like Inspector > Persistent, but
+    /// for this Play session only. Does nothing on the main camera, which belongs to its scene.
+    /// </summary>
+    public void DontDestroyOnLoad() => DontDestroyOnLoad(GameObject);
+
+    /// <summary>Keeps <paramref name="entity"/> (e.g. one this script spawned) across scene loads for this Play session.</summary>
+    public void DontDestroyOnLoad(BasicEntity entity)
+    {
+        if (entity != null) entity.RuntimePersistent = true;
+    }
+
+    /// <summary>True when this gameobject survives scene loads (Inspector > Persistent or <see cref="DontDestroyOnLoad()"/>).</summary>
+    public bool IsPersistent => GameObject?.IsPersistent == true;
+
+    /// <summary>Removes a gameobject this script spawned (other gameobjects are left alone).</summary>
+    public void Destroy(BasicEntity entity)
+    {
+        if (entity == null || !_spawned.Remove(entity)) return;
+        var sceneLogic = Logic.GameFlow.SceneLogic;
+        // After a scene switch the old scene is gone, and a new object may reuse the ID.
+        if (sceneLogic != null && sceneLogic.BasicEntities.Contains(entity)) sceneLogic.EditorDelete(entity.Id);
+    }
+
+    /// <summary>
+    /// Removes every gameobject this script spawned (also happens automatically when it stops). One that left
+    /// with a scene load (<see cref="DontDestroyOnLoad(BasicEntity)"/>) is no longer in this script's scene and stays.
+    /// </summary>
+    public void DestroyAllSpawned()
+    {
+        foreach (var entity in _spawned.ToArray()) Destroy(entity);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     //  AUDIO (paths are relative to Content, with extension, e.g. "Audio/blip.wav")

@@ -37,7 +37,7 @@ public partial class MaterialInfo : ComponentViewModel
     [ObservableProperty] private double _opacity = 1.0;
     [ObservableProperty] private double _emissiveStrength;
     [ObservableProperty] private bool _isTransparent;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWater))] private int _materialType;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWater)), NotifyPropertyChangedFor(nameof(IsWetSurface))] private int _materialType;
     [ObservableProperty] private bool _castShadows = true;
     [ObservableProperty] private double _waveScale = 0.3;
     [ObservableProperty] private double _waveSpeed = 1;
@@ -45,9 +45,16 @@ public partial class MaterialInfo : ComponentViewModel
     [ObservableProperty] private double _waveHeight = 0.5;
     [ObservableProperty] private double _clarity = 4;
     [ObservableProperty] private double _foam = 0.5;
+    [ObservableProperty] private double _wetness;
+    [ObservableProperty] private double _puddleAmount = 0.5;
+    [ObservableProperty] private double _puddleSize = 3;
+    [ObservableProperty] private bool _weatherWetness = true;
+    [ObservableProperty] private double _tilingU = 1;
+    [ObservableProperty] private double _tilingV = 1;
 
     public string ColorHex => $"#{Color.R:X2}{Color.G:X2}{Color.B:X2}";
     public bool IsWater => MaterialType == (int)Engine.Recources.MaterialEffect.MaterialTypes.Water;
+    public bool IsWetSurface => MaterialType == (int)Engine.Recources.MaterialEffect.MaterialTypes.WetSurface;
 
     public MaterialTextureSlotViewModel[] TextureSlots { get; }
 
@@ -109,6 +116,12 @@ public partial class MaterialInfo : ComponentViewModel
     partial void OnWaveHeightChanged(double value) => Push(c => ((MaterialComponent)c).WaveHeight = (float)value);
     partial void OnClarityChanged(double value) => Push(c => ((MaterialComponent)c).Clarity = (float)value);
     partial void OnFoamChanged(double value) => Push(c => ((MaterialComponent)c).Foam = (float)value);
+    partial void OnWetnessChanged(double value) => Push(c => ((MaterialComponent)c).Wetness = (float)value);
+    partial void OnPuddleAmountChanged(double value) => Push(c => ((MaterialComponent)c).PuddleAmount = (float)value);
+    partial void OnPuddleSizeChanged(double value) => Push(c => ((MaterialComponent)c).PuddleSize = (float)value);
+    partial void OnWeatherWetnessChanged(bool value) => Push(c => ((MaterialComponent)c).WeatherWetness = value);
+    partial void OnTilingUChanged(double value) => Push(c => ((MaterialComponent)c).TilingU = (float)value);
+    partial void OnTilingVChanged(double value) => Push(c => ((MaterialComponent)c).TilingV = (float)value);
 
     [RelayCommand]
     private void WaterExample()
@@ -120,6 +133,13 @@ public partial class MaterialInfo : ComponentViewModel
         Clarity = 4; Foam = 0.5;
         // The example is a whole water body: floating objects need the Water role too.
         Owner.Role = GameObjectRole.Water;
+    }
+
+    [RelayCommand]
+    private void WetFloorExample()
+    {
+        MaterialType = (int)Engine.Recources.MaterialEffect.MaterialTypes.WetSurface;
+        Wetness = 1; PuddleAmount = 0.5; PuddleSize = 3; WeatherWetness = true;
     }
 
     public override void Apply(GameComponent component, bool freezeFields)
@@ -135,17 +155,27 @@ public partial class MaterialInfo : ComponentViewModel
         WaveSpeed = material.WaveSpeed; WaveStrength = material.WaveStrength;
         WaveHeight = material.WaveHeight;
         Clarity = material.Clarity; Foam = material.Foam;
+        Wetness = material.Wetness; PuddleAmount = material.PuddleAmount;
+        PuddleSize = material.PuddleSize; WeatherWetness = material.WeatherWetness;
+        TilingU = material.TilingU; TilingV = material.TilingV;
         foreach (var slot in TextureSlots) slot.Apply(material);
     }
 }
 
 public partial class LightInfo : ObservableObject
 {
-    [ObservableProperty] private LightType _type = LightType.Directional;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasRadius)), NotifyPropertyChangedFor(nameof(IsSpot))]
+    private LightType _type = LightType.Directional;
     [ObservableProperty] private Color _color = Color.Parse("#FFF7D6");
     [ObservableProperty] private double _intensity = 1.0;
     [ObservableProperty] private double _radius = 10.0;
     [ObservableProperty] private bool _castShadows;
+    // Spot lights only: full cone angles in degrees.
+    [ObservableProperty] private double _spotAngle = 60.0;
+    [ObservableProperty] private double _innerSpotAngle = 40.0;
+
+    public bool HasRadius => Type != LightType.Directional;
+    public bool IsSpot => Type == LightType.Spot;
 
     private SceneObjectViewModel? _parent;
     internal void AttachToParent(SceneObjectViewModel parent) => _parent = parent;
@@ -188,6 +218,30 @@ public partial class LightInfo : ObservableObject
         }
     }
 
+    partial void OnSpotAngleChanged(double value)
+    {
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge && !double.IsNaN(value))
+        {
+            float f = (float)value;
+            bridge.EnqueueMutate(id, obj =>
+            {
+                if (obj is SpotLight sl) sl.SpotAngle = f;
+            });
+        }
+    }
+
+    partial void OnInnerSpotAngleChanged(double value)
+    {
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge && !double.IsNaN(value))
+        {
+            float f = (float)value;
+            bridge.EnqueueMutate(id, obj =>
+            {
+                if (obj is SpotLight sl) sl.InnerSpotAngle = f;
+            });
+        }
+    }
+
     partial void OnCastShadowsChanged(bool value)
     {
         if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
@@ -225,6 +279,8 @@ public partial class SceneObjectViewModel : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWaterRole))]
     private GameObjectRole _role = GameObjectRole.Default;
     public bool IsWaterRole => Role == GameObjectRole.Water;
+    // Kept across scene loads during Play (BasicEntity.Persistent).
+    [ObservableProperty] private bool _persistent;
 
     [ObservableProperty] private double _positionX;
     [ObservableProperty] private double _positionY;
@@ -310,6 +366,12 @@ public partial class SceneObjectViewModel : ObservableObject
     {
         if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || !Enum.IsDefined(value)) return;
         bridge.EnqueueSetRole(id, value);
+    }
+
+    partial void OnPersistentChanged(bool value)
+    {
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
+        bridge.EnqueueSetPersistent(id, value);
     }
 
     partial void OnNameChanged(string value)

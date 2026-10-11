@@ -20,6 +20,22 @@ The scene list is the game's scenes in build order. Edit it in **Anvil > Game Se
 
 Anvil itself still opens scenes from the Assets panel and never auto-loads index 0.
 
+## Intro videos
+
+Before scene 0, the standalone game plays its intro videos back to back. Edit them in
+**Anvil > Game Settings > Intro Videos**: **Add Videos...**, **Remove**, **Move Up**, **Move Down**, then **Save**.
+
+- Saved to `Engine/Content/System/IntroVideos.json` as Content-relative paths, in play order:
+  ```json
+  { "Videos": [ "Video/obsidian_intro.mp4", "Video/fmod_intro.mp4" ] }
+  ```
+- **Enter skips the current video** and starts the next one; after the last video the game loads scene 0.
+- Without the file the game plays `Video/intro.mp4`; an empty list skips the intro. Missing files are
+  logged and left out.
+- Videos must live under `Engine/Content` (normally `Content/Video`). The build copies every
+  `.mp4`/`.mkv`/`.mov`/`.avi`/`.wmv`/`.webm` under `Content` next to the executable. Playback is LibVLC,
+  scaled to the window. Anvil never plays the intro.
+
 ## Switching scenes from a script: `GameFlow`
 
 `Engine.Logic.GameFlow` is the script API for game flow.
@@ -28,12 +44,14 @@ Anvil itself still opens scenes from the Assets panel and never auto-loads index
 | --- | --- |
 | `LoadScene(int index)` | Queues the scene at that index in the list. Returns false if out of range or missing. |
 | `LoadScene(string nameOrPath)` | Same, by name (`"GodRayTest"`, any case) or Content path (`"Scenes/GodRayTest.obsc"`). |
+| `LoadScene(..., carryPersistent: false)` | Leaves persistent gameobjects behind, so they unload with the departing scene (going back to the main menu). |
 | `LoadNextScene()` / `ReloadScene()` | The next entry (wrapping to 0) / the running scene again from its file. |
 | `SceneCount`, `SceneName(i)` | The list, for building menus. |
 | `ActiveSceneIndex`, `ActiveSceneName` | The running scene (-1 when it isn't in the list). |
 | `Quit()` | Closes the standalone game. Inside Anvil it only logs. |
 | `IsEditor` | True when running in Anvil's Play mode. |
 | `EscapeQuits` | Escape closes the standalone game unless a script sets this to false (menus use Escape for Back). Reset when Play stops. |
+| `Paused` | Freezes the game during Play (see *Pausing* below). A scene load or Stop unpauses. |
 | `PlayStopped` | Event raised when Play stops (not on scene switches). Use it to undo engine-wide changes made in Anvil. |
 
 Loads are **queued** and happen at the start of the next frame, so it is safe to call `LoadScene` from
@@ -43,6 +61,31 @@ same frame; Play mode never ends.
 **Inside Anvil**, switching scenes during Play does not lose your work. The scene you were editing is
 kept, with its transforms rewound, and **Stop** returns to it. Opening a scene from the Assets panel
 during Play replaces it for good, as before.
+
+**Persistent gameobjects** (Inspector > **Persistent**, or `DontDestroyOnLoad()` in a script) don't
+unload: they move into the new scene with their scripts still running. A player keeps its state from
+level to level. See [Persistent_GameObjects.md](Persistent_GameObjects.md) and the PersistenceTest
+sample.
+
+## Pausing: `GameFlow.Paused`
+
+Set `GameFlow.Paused = true` to freeze the game during Play:
+
+- gameobject and Main Camera components stop updating: scripts, Animator, Audio components;
+- physics doesn't step, so bodies keep their pose and velocity, and no collision or trigger events fire;
+- weather particles hang in the air.
+
+A script that overrides `UpdateWhilePaused` to return true keeps getting `Update`: that is the pause menu.
+Game UI layers keep updating and drawing. Set `Paused = false` to resume. A scene load or Stop also
+unpauses.
+
+Sounds that are already playing carry on, and the water shader keeps its waves moving.
+
+The **Pause Menu** script (`Content/Scripts/PauseMenuScript.cs` + `Content/UI/PauseMenu.xml`/`.css`)
+uses this. It runs on the persistent Player of the PersistenceTest samples, so one instance pauses every
+scene the player reaches. Press Esc or gamepad Start. The menu has Resume, Restart scene, Settings,
+Main menu and Quit game. Main menu loads scene list entry 0 with `carryPersistent: false`. See
+[Persistent_GameObjects.md](Persistent_GameObjects.md#example-a-pause-menu-that-comes-along).
 
 ## Menu and gameplay input: `GameInput`
 
@@ -66,7 +109,7 @@ off, because they would collide with game controls. F1 (render mode) still works
 ## Game UI: `GameUI`
 
 `GameUI.Open("UI/MyMenu")` loads `Content/UI/MyMenu.xml` and `.css` as a Vista layer, scaled from a
-1080-high design canvas to the window. Layers draw over the scene and under the debug overlay. Close a
+1080-high design canvas to the window. Layers draw over the scene and under the debug stats. Close a
 layer in your script's `Stop` with `GameUI.Close(ui)`; any layer still open is closed when Play stops
 or the scene changes. In a dev checkout, saving the XML or CSS reloads the layer while the game runs.
 See [VistaUI_Architecture.md](VistaUI_Architecture.md) for the supported CSS and the scripting API.

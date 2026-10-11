@@ -369,8 +369,9 @@ internal static class ScriptBehaviourChecks
     public sealed class CountingScript : ScriptBehaviour
     {
         public static readonly List<CountingScript> Instances = new();
-        public int Starts, Updates, Stops;
-        public float LastDelta;
+        // Runtime counters, not settings: keep them out of serialization (and out of default-value probing).
+        [NonSerialized] public int Starts, Updates, Stops;
+        [NonSerialized] public float LastDelta;
         public CountingScript() => Instances.Add(this);
         public override void Start() => Starts++;
         public override void Update()

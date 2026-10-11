@@ -1,5 +1,585 @@
 # Changelog
 
+## Added: LOD (level of detail) component and the LodTest sample (2026-10-10)
+
+**Why:** Every gameobject always drew its full model, however far away it was. The LOD component lets a gameobject draw simpler models in the distance, or nothing at all past a cull distance.
+
+- **New `LodComponent`** (`Engine/Components/LodComponent.cs`, type id `lod`, Inspector > Add Component > **LOD**).
+  - `Levels`: each level is a model key and the camera distance it starts at. `CullDistance` draws nothing from there on (0 = never).
+  - Switching back to a finer level needs the camera 5% closer, so a camera resting on a boundary doesn't flicker.
+  - Works in the editor viewport and in Play. Shadows, picking and every render pass use the current level. Physics, SDFs and bounds keep the gameobject's own model.
+  - Scripts read `CurrentLevel` (0 = own model, 1..n = a level, -1 = culled).
+- **Mesh library.** `MeshLibrary` stores a LOD level per registered instance (`LodLevels`), and `MeshMaterialLibrary.Draw` skips instances that aren't at their gameobject's current level (`TransformMatrix.LodLevel`). `BasicEntity.RegisterInLibrary` registers the LOD models as levels 1..n, and `DeleteFromRegistry` removes them all again. `Renderer.Draw` picks the levels once per frame, before the shadow maps (`MeshMaterialLibrary.SelectLevelsOfDetail`).
+- **Anvil inspector.** `LodComponentViewModel`: one row per level (model picker, distance, Remove), Add Level, and Cull Distance.
+- **Sample:** `Content/Scenes/LodTest.obsc`. A row of spheres turns into cubes at 20 m and is culled at 50 m. It is not in the scene list; open it from the Assets panel.
+- **Docs:** new `Docs/markdown/Level_of_Detail.md`; `Gameobject_Components.md` and `CLAUDE.md` updated.
+- **Checks:** new `Tests/Components/LodChecks.cs`. It covers level selection and hysteresis, culling, add/edit/remove through the bridge and inspector, save/load, cloning and the sample scene. With `--graphics` it also checks the mesh library registration with real models.
+- Note: the built-in `StanfordDragon` and `StanfordDragonLowpoly` aren't a usable LOD pair. Their sizes differ by about 18%, and `dragon_lowpoly` is actually the denser mesh (about 15k triangles against about 500).
+
+- Claude
+
+## Added: Engine wiring document (2026-10-10)
+
+**Why:** No single document explained how the engine is wired at a low level. The topic docs each cover one feature. This one shows who creates what, in which order, on which thread, and how one frame flows through the systems.
+
+- **New `Docs/markdown/Engine_Wiring.md`.** It covers:
+  - Assemblies and how each kind of file reaches the game: mgcb, scripts compiled into `Engine.dll`, loose files.
+  - The thread model, standalone and in Anvil.
+  - The exact boot order, including why `Globals.content` must be set before `Shaders`.
+  - The per-frame Update/Physics/Draw timeline and its one-frame lags.
+  - The static globals.
+  - The scene model, how scenes swap, and the ID/color encoding.
+  - The transform dirty-flag lifecycle.
+  - Components, scripts and Play mode, including scene loads during Play.
+  - BEPU sync and contact dispatch.
+  - The renderer: the `MeshMaterialLibrary` structure, a pass-by-pass render target table, the G-buffer layout, picking, shaders and settings.
+  - Assets and scene files, the editor bridge, input, GameUI and audio.
+  - A "where to start" table.
+- It also lists sharp edges found while mapping the code. No code was changed. The list includes:
+  - Scene files can't save runtime-imported models (`SceneSerialization` resolves keys from the public fields of `Assets` only).
+  - `Input.WasKeyPressed` ignores Anvil-forwarded keys.
+  - The Delete-key path in `EditorLogic` skips component `OnStop` and the physics detach.
+  - The debug-entity picking loop indexes `dirLights`.
+
+- Claude
+
+## Added: NPC pathfinding and behaviour (NPC component), and the NpcTest sample (2026-10-10)
+
+**Why:** The engine had no way to make computer-controlled characters walk around a level or react to the player. This adds pathfinding, sight, and a few basic actions for when an NPC sees the player, plus a scene to try them in.
+
+- **Engine: navigation grid** (`Engine/AI/NavGrid.cs`, `Engine/AI/Navigation.cs`).
+  - `NavGrid` is a height field of 0.25 m cells, built by casting one ray down per cell through the **static** colliders. Dynamic bodies (crates, characters) are ignored.
+  - A cell is walkable when its surface is at most 40° steep and nothing within the agent's clearance is a wall, a ledge or a hole. The clearance is the agent radius plus half a cell. Walking between cells allows steps up to 0.45 m, plus the slope over the distance, so ramps work.
+  - Connected areas are labelled as regions. `FindPath` runs A* (8 neighbours, no corner cutting), then shortens the result to straight walkable segments. A goal it can't reach gives a path to the closest reachable point, with `complete` false.
+  - Also: `TryRandomPoint`, `TryFleePoint`, `LineWalkable`, `NearestWalkable`, `TryGetHeight` and `IsReachable`.
+  - `NavGridSettings` sets the agent radius, step, slope and cell size. 0 or `new NavGridSettings()` means the defaults.
+  - `Navigation.For` shares one grid per physics scene and agent size. It rebuilds the grid when static colliders change, at most every 30 frames. `Navigation.Invalidate()` forces a rebuild.
+- **Engine: physics.** New `ScenePhysics.RaycastStatic`, which uses a new `staticOnly` option of `PhysicsSystem.RayCast`. New `ScenePhysics.Frame`.
+- **Engine: new NPC component** (`Engine/Components/NpcComponent.cs`, type id `npc`, Add Component > **NPC**).
+  - Idle behaviour (`NpcIdleBehaviour`): Stand, Wander (Wander Radius) or Patrol (Patrol Points, a comma-separated list of gameobject names), with a Wait Time at each point.
+  - Sight: a Target name (`Player`), Sight Range, Field of View around +Y, Hearing Range (any direction), and two line-of-sight rays from Eye Height, every 0.1 s.
+  - On sight it is Alerted (it stops and faces the target for Reaction Time), then reacts (`NpcReaction`):
+    - **Chase**: runs after the target and attacks within Attack Range, every Attack Cooldown seconds. An attack is an impulse of Attack Force on the target's body.
+    - **Follow**: keeps Follow Distance.
+    - **Flee**: runs Flee Distance away, again and again.
+    - **Watch**: turns to face the target.
+  - After losing sight for Memory Time, Chase and Follow search the last known position for Search Time. Then every NPC goes back to its idle behaviour, and Stand walks home.
+  - It moves a Dynamic body by velocity, with an acceleration limit. Without one, it moves the gameobject along the grid's ground. It turns about Z from its start rotation.
+  - It heads for the next path corner as soon as it can walk there straight. When stuck, it plans again, and after three tries it drops the path.
+  - Show Debug draws the path, the view cone and the sight line.
+  - Script API: `MoveTo`, `Investigate`, `Alert`, `Calm`, `CanSee`, `TargetObject`, and runtime state (`State`, `CanSeeTarget`, `LastKnownTargetPosition`, `Path`, `PathComplete`, ...). Events: `StateChanged`, `TargetSpotted`, `TargetLost`, `Attacked`.
+- **Scripting:** new `ScriptBehaviour` hooks `OnTargetSpotted`, `OnTargetLost`, `OnNpcStateChanged` and `OnNpcAttack`, which run on the NPC's own scripts. New helper `FindPath(from, to, path, agentRadius)`.
+- **Anvil:** new `NpcComponentViewModel` and an NPC Inspector template, grouped into Movement, Idle, Perception and Reaction. Settings that don't apply (Wander Radius, Patrol Points, Attack/Follow/Flee settings) hide.
+- **Sample:** new `Content/Scenes/NpcTest.obsc`, added at the end of the scene list. It is a 40 x 40 m walled yard with interior walls, a see-through hedge, pillars, crates, and a lookout with a ramp.
+  - **Guard** patrols four posts and chases.
+  - **Villager** wanders and follows.
+  - **Critter** wanders and flees.
+  - **Sentry** stands on the lookout and watches.
+  - New scripts:
+    - **NPC Test Player** (`NpcTestPlayerScript.cs`): third-person movement, F to shout and alert nearby NPCs, T to toggle debug lines, and a hit counter that knocks the player out after 3 hits.
+    - **NPC Reporter** (`NpcReporterScript.cs`): tints the NPC by state, posts to the feed, and has an Alarm Target, which the sentry uses to send the guard.
+    - `NpcTestFeed`.
+  - HUD: `Content/UI/NpcTest.xml` and `.css`.
+- **Tests:** new `Tests/Components/NpcChecks.cs`, with 65 checks:
+  - the grid: walls, clearance, steps, a ramp, dynamic bodies, unreachable goals, random and flee points, caching and rebuilds;
+  - sight;
+  - Play: patrol, chase and attack, losing the target, searching and resuming the patrol, a path around a wall, follow, flee, watch, and a body-less `MoveTo`;
+  - the Inspector, saving and cloning;
+  - a scripted Play run of the sample (patrol, follow, shout, sentry alarm, guard knock-out, Stop).
+  - Default run: 624 checks pass. Not yet looked at in the running engine or editor.
+- **Docs:** new `Docs/markdown/NPC_Navigation.md`; also updated `Gameobject_Components.md`, `Script_Behaviours.md` and `CLAUDE.md`.
+- **Known limits:**
+  - One walking level: the topmost static surface, so no paths under bridges or tables.
+  - Dynamic obstacles are avoided only by physics and replanning.
+  - NPCs don't avoid each other.
+  - Static NPC bodies are not supported, because a moving static rebuilds the grid.
+
+- Claude
+
+## Added: Cloth component with collisions, and a cloth station in CollisionTest (2026-10-10)
+
+**Why:** Nothing in the engine could bend or drape. The collision sample needed cloth that collides with the scene: a curtain to walk through and a sheet that drapes over furniture.
+
+- **Engine: new Cloth component** (`Engine/Components/ClothComponent.cs`, type id `cloth`, Add Component > **Cloth**).
+  - In Play it simulates the gameobject's mesh as cloth. Settings: Pin (`ClothPinMode`: None, TopEdge, TopCorners, Border, saved by name), Mass, Stiffness, Bend, Damping, Friction, Thickness, Wind (multiplies the scene's wind) and Collisions.
+  - Pin and Mass edits apply during Play, and a new Scale rebuilds the cloth.
+  - Scripts can use `AddImpulse`, `ResetCloth` and `Touching`. Stop restores the mesh.
+- **Engine: simulation** (`Engine/Physics/Cloth.cs`).
+  - `ClothTopology` welds vertices that share a position, such as the two sides of a double-sided mesh, into one particle. Every triangle edge becomes a stretch constraint, and the far corners of neighbouring triangles a bend constraint.
+  - `Cloth` runs XPBD in 10 substeps per frame: gravity, quadratic air drag with gusting wind, compliance-based constraints, then collisions.
+  - Contacts are inelastic, with Coulomb-like friction.
+  - Edges resist compression only as weakly as bending, so cloth buckles instead of springing back. This fixed a sheet dropped on its edge bouncing until it tangled.
+- **Engine: collisions.**
+  - `ScenePhysics.CollectClothColliders` / `PhysicsSystem.CollectClothColliders` read BEPU's broad phase around the cloth. Hulls and boxes (dynamic bodies, ragdoll parts) become world-space planes; static meshes become two-sided triangles (`ClothCollider.cs`). Triggers and the cloth's own gameobject are skipped.
+  - The coupling is one-way: bodies push the cloth, and the cloth doesn't push back.
+  - New `ScenePhysics.Gravity`.
+- **Engine: rendering.**
+  - `ClothMeshInstance` gives the model's vertex buffers dynamic copies. Each frame it writes the particles back with recomputed normals and tangent frames, matched to the facing and handedness the pipeline stored.
+  - New `TransformMatrix.Cloth`. `MeshMaterialLibrary` draws that copy in every pass, the same way as `Skin`.
+- **Content:**
+  - New `GameObjects/Cloth/cloth.obj`: a generated, double-sided 2 x 2 m plane in X/Z with 24 x 24 quads. It is in `Content.mgcb` and loaded as `Assets.Cloth` (bounding sphere doubled, so a swinging cloth isn't culled). `.gitignore`'s `*.[Oo]bj` rule hides it, so commit it with `git add -f`, as `capsule.obj` was.
+  - New **Cloth Reporter** script (`Content/Scripts/ClothReporterScript.cs`), which posts to the CollisionTest feed when something starts touching a cloth.
+- **Sample:** east side of `Content/Scenes/CollisionTest.obsc`.
+  - A red **Curtain** pinned at its top edge in a doorway (Curtain Post West/East, Curtain Rail). The player walks through it, it slides over them and falls back behind them.
+  - A 15 kg **Cloth Crate** to carry and throw at the curtain.
+  - A loose **Drape Sheet** that falls onto the **Drape Table** on Play.
+- **Anvil:** new `ClothComponentViewModel` and a Cloth Inspector template (Pin list, numeric fields, Collisions, help text).
+- **Tests:**
+  - New `Tests/Components/ClothChecks.cs` covers:
+    - welding, constraints and pins;
+    - hanging without stretching, a sheet dropped on its edge, draping over a table, and a body walking through a curtain;
+    - wind, impulses and the collider query;
+    - the component, Inspector, saving and cloning;
+    - a scripted Play run of the sample in which the player walks through the curtain.
+  - With `--graphics` it also checks the real model's welding and written frames, two-sided drawing, and drawing the simulated vertices.
+  - `CollisionChecks` now expects 44 gameobjects and 9 scripted ones in the sample.
+  - Default run: 559 checks pass. `--graphics` run: 678 checks pass.
+  - Not yet looked at in the running editor.
+- **Docs:** new `Docs/markdown/Cloth.md`; `Gameobject_Components.md`, `Collisions_and_Interaction.md` (station table), `CLAUDE.md`.
+- **Known limits:** no self-collision or tearing. A body can't stand on cloth (one-way coupling). Raycasts don't hit cloth. Colliders come from the previous physics step.
+
+- Claude
+
+## Added: wet surface shader with puddles and rain response (2026-10-10)
+
+**Why:** Ground looked the same in every weather. Rain should leave bricks, cobblestones and dirt soaked, with puddles that mirror the sky, like a road after a shower.
+
+- **Engine:** new material type **WetSurface** (`MaterialEffect.MaterialTypes.WetSurface` = 7). New `MaterialComponent` fields `Wetness`, `PuddleAmount`, `PuddleSize` and `WeatherWetness`, saved and copied with the component.
+  - `ApplyWetSurface` in `Content/Shaders/GBufferSetup/Gbuffer.fx` runs for every G-buffer technique, so it works with any base color/normal/roughness maps.
+    - It darkens and glosses the surface; cavities soak first.
+    - It pools flat, nearly mirror-smooth puddles on faces that look up. Puddles follow a world-space noise field and the texture's cavities (the Displacement map is used as height, without parallax).
+    - In rain it animates raindrop ripples in the puddles.
+  - Wet pixels are written as material type 0, so lighting treats them like Basic.
+  - New UV tiling (`TilingU/V`) on every material, applied in both G-buffer vertex shaders.
+  - `GBufferRenderModule` passes the new `World`, `View`, tiling and wet parameters.
+  - Rain drives the wetness: `WeatherProfile.SurfaceWetness`/`PuddleRipples` (rain 1, snow 0.3 damp only), `WeatherProfile.TargetWetness/TargetRipples`, and a new `SurfaceWetness` tracker in `Engine/Logic/Weather.cs`.
+    - The renderer updates the tracker each frame: wet in about 8 s, dry in about 40 s, held while paused.
+    - A newly shown scene starts at its weather's wetness.
+- **Environment reflections:** wet pixels set the previously unused albedo alpha. `DeferredEnvironmentMap.fx` then gives them, and only them:
+  - a view-dependent Schlick fresnel (puddles mirror at grazing angles and show the wet ground from above);
+  - the camera-relative view ray;
+  - reflections kept at least ~11° above the horizon, where the probe sees sky rather than its unlit ground.
+  - The existing fresnel for other materials is unchanged: it is effectively always 1, and its incident vector subtracts the camera position twice. Those are pre-existing issues, left alone so other scenes do not change.
+- **Anvil:**
+  - Shader list has **WetSurface**, plus an **Apply Wet Floor Example** button and a wet panel (Wetness, Puddle Amount, Puddle Size, Wet in Rain).
+  - Textures has a **Tiling** U/V row.
+  - Code: `MaterialInfo` in `SceneObjectViewModel.cs` and the Material template in `MainWindow.axaml`.
+- **Content:** CC0 Poly Haven ground sets in `Content/GameObjects/Textures/Ground/` (Bricks = brick_floor, Cobblestone = cobblestone_floor_08, RockyDirt = rocky_trail; BaseColor/Normal/Roughness/Height at 1k, with `LICENSE.txt`), added to `Content.mgcb`.
+- **Sample:** `Content/Scenes/WeatherTest.obsc`
+  - The Ground is wet rocky dirt (tiling 100) and the Street wet herringbone bricks.
+  - A new **Plaza** gameobject is wet cobblestone, front-left of the start camera.
+  - All three follow the rain and dry when the weather script switches to clear skies.
+- **Tests:**
+  - New `Tests/Components/WetSurfaceChecks.cs` covers:
+    - the weather wetness and its easing;
+    - Inspector edits, the example button, cloning and save/load (including older scenes);
+    - the sample scene and the shipped textures;
+    - with `--graphics`, a real G-buffer render: the wet flag, darkening, glossier surface, puddles and Puddle Amount, ripples, Wet in Rain off, no parallax, Basic unaffected, and tiling.
+  - `WeatherChecks` expects 59 gameobjects in the sample.
+  - Default run: 516 checks pass. `--graphics` run: 630 checks pass.
+  - Checked visually in the engine on WeatherTest: rain, a sun-facing open field, the street, the plaza, and drying after the rain.
+- **Docs:** `Docs/markdown/Material_Component.md` (Tiling and a Wet surfaces section), `Docs/markdown/Weather.md` (sample, limitations, code map), `CLAUDE.md`.
+- **Known limits:** puddles close to the camera can look dark. That happens when the scene's environment probe sees dark surroundings in that direction (cube captures have no ambient light) and screen-space reflections miss. Puddles do not raise the surface or affect physics.
+
+- Claude
+
+## Added: Build and Build and Run in Anvil (2026-10-10)
+
+**Why:** You could only get a standalone game by running `dotnet publish` by hand.
+
+- **Anvil:** File menu has **Build...** (Ctrl+Shift+B: pick an output folder, then build), **Build and Run** (Ctrl+B: build to the last folder, `Builds/<window name>` the first time, then start the game) and **Cancel Build** (shown while building). Progress, errors and a warning count go to the Console (source `Anvil:Build`). Building with unsaved scene changes logs a warning, because the build uses the saved files. Commands live in `MainWindowViewModel` (`BuildCommand`, `BuildAndRunCommand`, `CancelBuildCommand`, `IsBuilding`).
+- **New `Editor/Anvil/Services/GameBuilder.cs`:** runs `dotnet publish Engine/Engine.csproj -c Release -r win-x64 --self-contained true`, leaving out LibVLC's x86 natives and the framework's translated resources (about 360 MB instead of 540 MB). Then it renames `Engine.exe` after Game Settings > window name. The app host still finds `Engine.dll`. It refuses output folders inside `Engine/`, because the content globs would ship the build in the next build. The output folder is remembered in `Content/System/BuildSettings.json`, relative to the checkout when inside it.
+- **Repo:** `.gitignore` ignores `Builds/`.
+- **Tests:** new `Tests/Components/BuildChecks.cs` covers executable naming, the remembered folder and the refused folder. `--build` also publishes the real game and checks the exe, the shipped scenes/settings/content and the trimmed natives. All default checks and the `--build` run pass (497 checks). A trimmed build renamed to `My Game.exe` started and ran.
+- **Docs:** `CLAUDE.md`.
+
+- Claude
+
+## Added: editable Physics collider size with a Default Size button (2026-10-10)
+
+**Why:** A Physics collider always matched its model exactly, with no way to make it bigger or smaller.
+
+- **Engine:** `PhysicsComponent` has `ColliderSizeX/Y/Z`: the collider's box in model units, before Scale. Saved with the component. 0 or invalid means the model's bounds, and `OnChanged`/`OnAdded` write the bounds in, so new and older components show real numbers. Also new: `ResetColliderSize()`, `ColliderSizeFor(owner)` and `ColliderStretchFor(owner)`. `ScenePhysics` stretches the mesh or hull about the model's bounds centre to fit the size. It rebuilds the body when the size changes (`BasicEntity.AttachedColliderStretch`), and buoyancy uses the stretched bounds. The renderer draws the selected gameobject's collider box in green (`LineHelperManager.AddBox`).
+- **Anvil:** the Physics inspector has a **Size** row (X/Y/Z) and a **Default Size** button (`PhysicsComponentViewModel.ColliderSizeX/Y/Z`, `ResetColliderSizeCommand`).
+- **Tests:** `CollisionChecks.CheckColliderSize` covers the default size, taller dynamic and static colliders, saving, Default Size, and invalid values. All 489 default checks pass.
+- **Docs:** `Docs/markdown/Collisions_and_Interaction.md`.
+
+- Claude
+
+## Added: ragdoll physics for skinned gameobjects (2026-10-10)
+
+**Why:** Skinned characters could animate but had no physical body: nothing could knock them over, and they couldn't collapse.
+
+- **Engine:**
+  - New `Engine/Physics/RagdollRig.cs`: splits a skinned model into ragdoll parts from its bind pose, cached per model. Each vertex belongs to its most-weighted bone. Bones with enough vertices spanning at least 7% of the model become parts; smaller bones (fingers, toes, a short neck) join the part above them. Each part's collider is the convex hull of its vertices. Mass is shared by hull volume, with no part under a tenth of the heaviest. Joint kinds come from bone names (`JointFor`: Mixamo/Unreal/Unity/Blender names; elbows and knees are hinges). The character's left/forward comes from mirrored Left/Right bone pairs. Y Bot/X Bot get 18 parts.
+  - New `Engine/Physics/Ragdoll.cs`: the BEPU bodies and joints of one ragdoll. While animated, the parts are kinematic and are driven by velocity to the animated pose each step (teleports over 1 m jump). `Activate()` makes them dynamic and adds a ball socket, swing/twist limits or a hinge with a range, and a friction motor per joint (`RagdollJointLimits`). After each step a limp ragdoll's bones and skin matrices follow the bodies, and the gameobject follows the hips.
+  - New `Engine/Components/RagdollComponent.cs` (**Ragdoll**, registered after Animator): Mass, Active on Start, Impact (go limp when a moving body hits a part at least this fast; the part takes that body's momentum) and Joint Friction. Script API: `Activate()`, `Deactivate()` (stands up on the ground below the hips), `AddImpulse(impulse, point)`, `IsActive`. It owns its own `SkinnedMeshInstance` while limp.
+  - `ScenePhysics`: `CreateRagdoll`/`RemoveRagdoll`; drives ragdolls before and after each step. Ragdoll parts map to their gameobject for contacts (scripts get the usual collision events) and raycasts. A limp ragdoll's gameobject has its own Physics collider removed until it recovers. A sleeping ragdoll counts as resting. `DetachAll` keeps the ragdolls of carried persistent gameobjects.
+  - `PhysicsSystem`/`ContactRecorder`: collision groups keyed by body handle (`SetCollisionGroup`). Bodies of one gameobject don't collide, except ragdoll parts that aren't joined, siblings or grandparent/grandchild. `RayCast` can ignore a whole group, so `Raycast(..., ignore: gameObject)` skips its ragdoll too. New `CreateConvexShape`.
+  - `AnimatorComponent` stops posing while its gameobject's ragdoll is limp, and takes the skin back afterwards.
+  - `SkinnedMeshInstance.CollectDominantBones`; `BasicEntity.Ragdoll`/`CollisionGroup` (runtime only).
+- **Anvil:** Inspector template for Ragdoll (Mass, Impact, Friction, Active on Start) and `RagdollComponentViewModel`.
+- **Sample:** `Content/Scenes/AnimationTest.obsc` gets a ragdoll row: a Y Bot that goes limp on Play, an X Bot a falling 6 kg ball knocks over, and a slow walker to throw balls at. The ground got a Static Physics component. New **Ragdoll Test** script (`Content/Scripts/RagdollTestScript.cs`) on the camera: left click throws a ball, G drops every ragdoll, R stands them back up.
+- **Tests:** new `Tests/Components/RagdollChecks.cs`. Registration/inspector/save/clone, joint names, rig building on a hand-built skeleton, kinematic follow, raycasts, collision groups, impact, fall and recovery, knee/hip limits in free fall, and the sample scene. With `--graphics`: the real Y Bot rig, a full fall and recovery with the Animator and skin, and the sample's ball knocking over the real walking X Bot. `AnimationChecks` now expects 12 gameobjects in the sample. Default and `--graphics` runs pass (578 checks).
+- **Docs:** new `Docs/markdown/Ragdoll_Physics.md` (listed in `Docs/website/src/docs.ts` under Animation), `Docs/markdown/Skeletal_Animation.md`, `Docs/markdown/Gameobject_Components.md`, `CLAUDE.md`.
+
+- Claude
+
+## Removed: Vista debug overlay; Anvil Stats toggle for the engine debug stats (2026-10-09)
+
+**Why:** The FPS/frame/res/memory panel was drawn twice: once by the Vista overlay (`debug.xml`/`.css`) and once by the engine's own `DebugScreen`. Only the engine's stats are kept, and Anvil can now hide them.
+
+- **Removed** `Engine/Content/UI/debug.xml` and `debug.css`, and the Vista overlay in `Engine/Logic/ScreenManager.cs` (`_vistaUI`, `UpdateVistaUI`, its draw pass). `LoadVistaUI` is now `LoadUIFonts`: it only registers the fonts the `GameUI` layers use.
+- **Removed** `GameSettings.ui_vista_enabled`. The debug stats are controlled by `GameSettings.u_showdisplayinfo` (0 off, 1 FPS only, 3 full; default 3).
+- **Anvil:** the viewport toolbar's **Stats** button (previously unwired) now shows/hides the engine debug stats (`MainWindowViewModel.IsStatsVisible`/`ToggleStatsCommand`, applied on the game thread through the bridge). It's highlighted while the stats are on and is applied when the bridge attaches. On by default, not saved between sessions.
+- **Sample menus:** "Performance overlay" in `Engine/Content/Scripts/MenuSettings.cs` toggles `u_showdisplayinfo` (0/3).
+- **Tests:** `Tests/Components/PauseChecks.cs` checks the setting through `u_showdisplayinfo`. Default and `--graphics` runs pass.
+- **Docs:** `Docs/markdown/VistaUI_Architecture.md`, `Docs/markdown/Scenes_and_Game_Flow.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: ordered, skippable intro videos (2026-10-09)
+
+**Why:** The standalone game could only play one hard-coded `Content/intro.mp4`, with no way to skip it.
+
+- **Engine:**
+  - New `Engine/Recources/IntroVideoList.cs`: the intro videos in play order, saved as `Content/System/IntroVideos.json` (Content-relative paths, e.g. `Video/intro.mp4`). Without the file it defaults to `Video/intro.mp4`; an empty list plays no intro.
+  - `Engine/Logic/VideoIntroLogic.cs` plays the list back to back with one LibVLC player. **Enter** skips the current video (pressed this frame, window focused; an Enter held at startup doesn't count). Missing files are logged and left out. The frame buffer is cleared between videos so the previous last frame doesn't flash.
+  - `ScreenManager` passes `isActive` to `VideoIntroLogic.Update`.
+  - `Engine/Engine.csproj`: every `.mp4/.mkv/.mov/.avi/.wmv/.webm` under `Content` is copied to the output (and publish) at its own path (`Content/Video/...`, no longer flattened to `Content/intro.mp4`), plus `System/IntroVideos.json`.
+  - Added `Engine/Content/System/IntroVideos.json` with `Video/intro.mp4`.
+- **Anvil:** Game Settings has an **Intro Videos** list above Scenes (Add Videos..., Remove, Move Up, Move Down), saved with the dialog. The dialog now scrolls with a max height, and Cancel/Save stay visible below the scroll area. The save log line includes the intro video count.
+- **Tests:** `Tests/Components/GameFlowChecks.cs` checks the shipped list and the Game Settings add/move/remove behaviour.
+- **Docs:** `Docs/markdown/Scenes_and_Game_Flow.md` (new "Intro videos" section), `Docs/markdown/Importing Structure.md`, `CLAUDE.md`.
+
+- Claude
+
+## Changed: cinematic intro to neutral ash formation (2026-10-09)
+
+- Added `Art/ObsidianIntro/ash_v2/` as a separate review revision, preserving the original silver/red version.
+- Replaced active brushed silver materials with grayscale granular consolidation shaders and neutralized all five animated studio lights.
+- Added an editable Geometry Nodes effect with 34,000 grains converging onto the emblem and lettering surfaces, preserving the emblem's contour and five openings. Disabled the earlier sparse mote layer in this revision.
+- Added seven representative stills, an updated H.264 Eevee preview, editable blend, and documentation. Retained the reference's 141-frame / 30 fps timing; final 1080p rendering still awaits preview approval.
+
+- Codex
+
+## Added: Obsidian Engine cinematic intro review scene (2026-10-09)
+
+- Added `Art/ObsidianIntro/Obsidian_Engine_Intro.blend`, built through Blender MCP, with the supplied logo traced as editable extruded curves preserving all five openings, editable `OBSIDIAN ENGINE` text, brushed silver materials, animated crimson/silver lighting, camera movement, and fragment reveal.
+- Matched the supplied reference's 141-frame / 30 fps duration and centered reveal/hold/fade structure; preserved the original Blender default scene.
+- Added six review stills, a contact sheet, and a low-resolution Eevee H.264 preview, plus local source assets and scene documentation.
+- Prepared 1920×1080 final settings; final animation rendering remains pending user approval of the preview.
+
+- Codex
+
+## Added: gameobject references in script serialized fields
+
+**Why:** Scripts could only find other gameobjects by name in code (`FindGameObject`). Now a `BasicEntity` field can be set in the Inspector, like a Unity `GameObject` field.
+
+- **Engine** (`Engine/Scripting/ScriptFields.cs`):
+  - New `ScriptFieldKind.GameObject` for public or `[SerializeField]` `BasicEntity` fields.
+  - Saved as the target's scene ID, or `null` for none. Decoded values and the default are that ID (0 = none).
+  - `SetField` accepts a gameobject, its ID or `null`.
+  - New `ScriptFields.ToFieldValue` turns the ID into the live gameobject when values are applied (before `Start` and on edits during Play) and in `GetField<BasicEntity>`. A deleted target gives `null`.
+- **Scene lookup:** new `MainSceneLogic.FindGameObjectById`. When a persistent gameobject's copy is left out of an arriving scene, `PersistentGameObjects` records that copy's ID (`ReplacementFor`), so the scene's references to the copy get the carried gameobject.
+- **Duplicating:** `BasicEntity.Clone` points the copy's self-references at the copy (`ScriptBehaviourComponent.RemapGameObjectReferences`).
+- **Anvil:** new `ScriptGameObjectFieldViewModel` + `GameObjectOption` and an Inspector ComboBox template.
+  - The picker lists **None** and the scene's gameobjects from the latest snapshot. Duplicate names show "Name (#id)".
+  - An ID with no gameobject shows as "Missing (#id)".
+  - The options list is only rebuilt when it changes, so the selection doesn't flicker.
+- **Docs:** "Gameobject references" in `Script_Behaviours.md`, and `CLAUDE.md`.
+- **Checks:** `Tests/Components/ScriptFieldChecks.cs` covers discovery, encoding, Get/SetField, applying before Start and during Play, duplication, save/load, deleted targets, the Inspector picker (pick, None, Missing) and the persistent-copy redirect.
+
+- Claude
+
+## Added: game pause and a Pause Menu script that follows the persistent player
+
+**Why:** To have a pause menu that works in every scene, built on persistent gameobjects. The engine had no pause, and a scene load always carried persistent gameobjects, even back to the main menu.
+
+- **Pausing** (`GameFlow.Paused`):
+  - While paused, `PlayModeController.UpdateScripts` skips every gameobject and Main Camera component, `MainSceneLogic.UpdatePhysics` doesn't step (bodies keep pose and velocity), and weather particles stop (`Renderer` passes 0 seconds to `WeatherRenderModule.Update`).
+  - Scripts that override the new `ScriptBehaviour.UpdateWhilePaused` (exposed as `ScriptBehaviourComponent.UpdatesWhilePaused`) keep updating. Game UI layers keep running.
+  - A scene load or Stop unpauses.
+- **Leaving persistent gameobjects behind:** `GameFlow.LoadScene(index or name, carryPersistent: false)`. They stop and unload with the departing scene. Inside Anvil, the edited scene's ones go straight back to it, as Stop would (`MainSceneLogic.LeavePersistentBehind`).
+- **Pause Menu script** (`Content/Scripts/PauseMenuScript.cs`, registered as "Pause Menu"; document `Content/UI/PauseMenu.xml` + `.css`):
+  - Esc (`PauseKey` field) or gamepad Start pauses.
+  - **Pages:**
+    - Pause page: Resume, Restart scene, Settings, Main menu and Quit game. Restart, Main menu and Quit ask for confirmation.
+    - Settings page: master volume and rendering options.
+  - **Scene changes:** Restart reloads the scene, and the player and the menu carry on. Main menu loads scene list entry 0 with `carryPersistent: false`. Both fade to black first.
+  - **Layer:** the menu opens its Vista layer when you pause, above the player's HUD, and closes it on resume. The game resumes once the menu has faded out, so the key that resumed doesn't also reach gameplay.
+  - **Look:** a cool "time stopped" palette over the dimmed scene. A **This session** card shows time played, time in the scene, scene loads, pauses and the route. These live in the one persistent instance and keep counting across scenes (`ShowSession` field).
+  - **Input:** keyboard, mouse and gamepad, with hints that follow the last device. Quit is disabled inside Anvil.
+  - Added to the Player in `PersistenceTest.obsc` and `PersistenceTest2.obsc`. The HUD's key line mentions Esc.
+- **Shared menu settings** (new `Content/Scripts/MenuSettings.cs`): `MenuSetting` and `MenuSettings.Graphics()` / `MasterVolume()` / `Toggle()`. `MainMenuScript` now uses them, so both menus share one Anvil restore list, and the value from before Play is what Stop puts back. The main menu's Bloom, Volumetric fog and Reflections descriptions are now generic.
+- **Docs:** `Persistent_GameObjects.md` (the pause menu example, "Leaving them behind"), `Scenes_and_Game_Flow.md` (Pausing, `carryPersistent`), `Script_Behaviours.md` and `CLAUDE.md`.
+- **Checks:** new `Tests/Components/PauseChecks.cs` covers:
+  - Esc freezes a falling player in mid-air and blocks its R reload.
+  - Resume waits for the fade, then the game carries on.
+  - Restart keeps the same menu instance and its session numbers.
+  - Main menu leaves the player behind, and the player is back in the edited scene.
+  - Standalone `carryPersistent: false`, and Stop unpausing.
+  - With `--graphics`: the layer on top, the filled document, the Settings page, and closing.
+  - `PersistenceChecks.Wire`, `ApplyPending` and `Behaviour` are now `internal` to share them.
+- **Known limits:** sounds already playing keep playing while paused, and the water shader's waves keep moving.
+
+- Claude
+
+## Added: persistent gameobjects and the PersistenceTest sample scenes
+
+**Why:** To keep a gameobject, such as the player, across scene loads. Until now a scene load during Play stopped every script and unloaded every gameobject, so a player lost its state when changing levels.
+
+- **Making a gameobject persistent:**
+  - **Inspector > Persistent** (new `BasicEntity.Persistent`). Saved as `"Persistent": true`, written only when set, so existing scenes don't change.
+  - **Scripts:** `ScriptBehaviour.DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` (new `BasicEntity.RuntimePersistent`). Lasts for the Play session, is never saved and is cleared on Stop.
+  - `IsPersistent` (on the entity and on the script) is true for either. Clones keep the flag.
+- **Scene loads during Play** (new `Engine/Logic/PersistentGameObjects.cs`, driven by `MainSceneLogic.ApplyPendingSceneLoad`):
+  - Persistent gameobjects leave the departing scene before its scripts stop, then join the new scene after its own gameobjects.
+  - **What keeps running:**
+    - Components and scripts are not restarted (new internal `PlayModeController.Play(continuing)`).
+    - Physics bodies are kept (`ScenePhysics.DetachAll(keep)`). Their contacts with the old scene end on the next step, with the usual Exit events.
+    - HUD layers their scripts opened stay open. `GameUI` now records which gameobject's script opened each layer, via the new internal `ScriptBehaviour.Running`.
+  - **Copies are left out:** if the new scene has its own copy of a carried gameobject, that copy is dropped. A copy is the same gameobject from its file (matched by scene entry and saved ID), or a Persistent one with the same name. Returning to a level, or `ReloadScene()`, never duplicates the player.
+  - A carried gameobject whose ID the new scene already uses gets a new one.
+  - New hook `ScriptBehaviour.OnSceneLoaded()` runs on the carried gameobjects' scripts after the new scene's scripts start, for example to move to a spawn point.
+- **Anvil:**
+  - A **Persistent** checkbox under Role in the Inspector (`EditorObjectSnapshot.IsPersistent`, `IEditorBridge.EnqueueSetPersistent`, reconciler, `SceneObjectViewModel.Persistent`).
+  - **Stop** puts carried gameobjects back in the edited scene, at their place in the Hierarchy, with their ID and Play-start transform. Ones picked up in other scenes, or spawned at runtime, are dropped.
+- **PersistenceTest sample** (`Content/Scenes/PersistenceTest.obsc` and `PersistenceTest2.obsc`, added to the end of the scene list):
+  - A courtyard and a canyon at sunset, linked by glowing portals: static triggers running the new **Scene Portal** script.
+  - **Player:** a Persistent third-person capsule running **Persistent Player** (`Content/Scripts/PersistentPlayerScript.cs`).
+    - Controls: WASD, Shift, Space, right mouse or arrows to orbit, wheel to zoom, R to reload.
+    - Its HUD (`Content/UI/PersistenceTest.xml` + `.css`) counts play time, distance, scene loads and the route across scenes.
+  - **Companion Orb** (`CompanionOrbScript.cs`) is not Persistent: when you walk up to it, it calls `DontDestroyOnLoad()` and follows you.
+  - The canyon has its own Player, so it can be played on its own; it is left out when the courtyard's player arrives.
+  - Shared event feed: `PersistenceTestFeed.cs`.
+- **Docs:**
+  - New `Docs/markdown/Persistent_GameObjects.md`, also listed on the docs website (`Docs/website/src/docs.ts`).
+  - Updates to `Scenes_and_Game_Flow.md`, `Script_Behaviours.md` and `CLAUDE.md` (repo map and recipe).
+- **Checks:** new `Tests/Components/PersistenceChecks.cs` covers:
+  - the saved flag and Inspector plumbing;
+  - a headless Play run of the sample: through the portal and back, with the same script instance and body, IDs renumbered, no duplicates, spawned and `DontDestroyOnLoad` objects carried, and Stop restoring the edited scene;
+  - the standalone game;
+  - with `--graphics`: the persistent HUD layer staying open.
+- **Test fixes:**
+  - `WeatherChecks` now checks that WeatherTest is *in* the scene list, rather than last.
+  - `CollisionChecks.World` is `internal` so its box colliders can be reused.
+- **Known limits:**
+  - Only gameobjects can be persistent: lights, decals and the Main Camera stay with their scene.
+  - Opening a scene from Anvil's Assets panel during Play still replaces everything.
+
+- Claude
+
+## Added: weather (rain, sandstorm, snow) and the WeatherTest sample scene
+
+**Why:** To test weather. Scenes had a sky, clouds and a day/night cycle, but no precipitation or atmospheric haze.
+
+- **Environment settings** (`Engine/Logic/EnvironmentSettings.cs`), saved in the scene's `Environment` record:
+  - `Weather` (None, Rain, Sandstorm, Snow; saved by name).
+  - `WeatherIntensity` (0-1, default 0.7) and `WeatherHaze` (0-1, default 0.6).
+  - `WindSpeed` (0-40 m/s, default 4) and `WindDirection` (degrees the wind blows towards, default 45).
+  - Out-of-range values are clamped on load; older scenes load with no weather.
+- **Weather profiles** (new `Engine/Logic/Weather.cs`): `WeatherType`, plus a `WeatherProfile` per type. A profile sets the particle count, box size, fall speed, streak or flake shape, sway, colours, haze, cloud cover and sun dimming. Tune a weather there.
+- **Rendering** (new `Engine/Renderer/RenderModules/WeatherRenderModule.cs` and `Engine/Content/Shaders/Forward/Weather.fx`, added to `Content.mgcb`). Drawn after water and before TAA, in Edit and Play:
+  - **Haze:** a full-screen pass that thickens with depth (the sky gets the most), lit by the captured sky and the sun.
+  - **Particles:** one static buffer of up to 24 000 quads, animated in the vertex shader.
+    - They sit on a world-space lattice that wraps around the camera, so they don't move with it.
+    - Fall and wind are accumulated on the CPU for 4 speed groups, so changing the wind never makes them jump.
+    - Rain and sand are velocity-aligned streaks; snow is round flakes.
+    - Sub-pixel particles widen to one pixel and fade instead of flickering.
+    - Particles fade at the box faces, near the eye and where they meet geometry.
+- **Day/night cycle** (`Engine/Renderer/EnvironmentSky.cs`): weather thickens the clouds and dims the sun; a sandstorm also reddens it.
+- **Play/Stop** (`Engine/Logic/PlayMode.cs`): Play snapshots the scene's environment and Stop restores it, as for transforms. Weather a script changed is never saved by accident.
+- **Scripts:** new `ScriptBehaviour.SceneEnvironment` (the active scene's `EnvironmentSettings`).
+- **Anvil:** a **Weather** group at the bottom of the Environment panel: type, Intensity, Haze, Wind (m/s) and Wind towards. The panel reloads when Play stops.
+- **WeatherTest sample** (`Content/Scenes/WeatherTest.obsc`, last in the scene list):
+  - A village street with houses, a tower, dunes, a pond, trees, reference spheres, street lamps, and visibility markers at 10/25/50/100/150 m.
+  - It starts in rain at 15:00 under a slow day/night cycle.
+  - The Main Camera runs Freecam and the new **Weather Test** script (`Content/Scripts/WeatherTestScript.cs`, HUD `Content/UI/WeatherTest.xml` + `.css`). Keys:
+    - 1-4 cross-fade clear/rain/sandstorm/snow;
+    - Up/Down set intensity, Left/Right turn the wind, Z/X set wind speed;
+    - H steps the haze, T moves the time of day, C auto-cycles.
+  - Inspector fields: **Auto Cycle** and **Seconds Per Weather**.
+- **Docs:** new `Docs/markdown/Weather.md`, plus links from `Scene_Lighting_and_Fog.md` and `Script_Behaviours.md`, and `CLAUDE.md` (repo map and recipe).
+- **Checks:** new `Tests/Components/WeatherChecks.cs` covers:
+  - settings clamping, profiles and wind direction, and save/load by name;
+  - older scenes, and Inspector edits through the bridge;
+  - the sample scene, and its script in Play (keys, cross-fades, restore on Stop);
+  - with `--graphics`: each weather drawn on the GPU (haze thicker over the sky, particles-only with Haze 0, offsets wrap).
+- **Known limits:** no roof occlusion, no wet or snowy surfaces or splashes, point lights don't light the particles, and no weather sound.
+
+- Claude
+
+## Added: Unity-style serialized fields for Script Behaviours
+
+**Why:** Scripts had no per-object settings. Tuning a value meant editing constants in C# and rebuilding, and two gameobjects could not share a script with different values.
+
+- **Serialized fields:** public instance fields and private/protected `[SerializeField]` fields are saved per Script Behaviour attachment and shown in the Inspector. Supported types: `bool`, `int`, `float`, `double`, `string`, enums, `Vector2`, `Vector3`, `Color`.
+  - `[NonSerialized]`, `readonly`, `static`, `const` fields and properties are skipped.
+  - Base class fields between the script and `ScriptBehaviour` count, and are listed first.
+- **Attributes** (new `Engine/Scripting/ScriptFieldAttributes.cs`): `[SerializeField]`, `[HideInInspector]`, `[Range(min, max)]`, `[Tooltip]`, `[FormerlySerializedAs]`.
+- **Engine:**
+  - New `Engine/Scripting/ScriptFields.cs` finds the fields, nicifies labels (`_moveSpeed` → "Move Speed"), reads C# defaults from one lazily built instance, and encodes values as readable JSON (enums by name, vectors as arrays, colours as `#RRGGBBAA`).
+  - `ScriptDefinition` now records the script's type (`ScriptType`, `Fields`).
+  - `ScriptBehaviourComponent` has a `Fields` record (saved in `.obsc` files, copied on clone) plus `SetField`, `SetFieldJson`, `GetField<T>`, `ResetField` and `ClearFields`.
+  - Values are applied before `Start`. Edits during Play reach the running script before its next `Update`, field by field, so values the script changed itself are kept.
+  - Values that no longer fit their field are skipped with a log line. Renamed fields load through `[FormerlySerializedAs]`.
+- **Anvil Inspector:** the Script Behaviour panel lists the fields under the script picker, each with its own editor:
+  - checkbox, number box, slider for `[Range]`, text box, enum dropdown, X/Y(/Z) boxes, and colour picker;
+  - the label shows the `[Tooltip]` on hover, and a reset button appears on changed fields;
+  - picking another script shows its fields at once and clears the old values.
+  - New `Editor/Anvil/Models/ScriptFieldViewModels.cs`.
+- **Samples:** `SpinExampleScript` has **Degrees Per Second** (`[Range(-360, 360)]`, default 45). `LaunchPadScript` has **Up Speed** / **Forward Speed** (defaults 9 / 4, unchanged).
+- **Docs:** new "Serialized fields" section in `Docs/markdown/Script_Behaviours.md`; `CLAUDE.md` recipe.
+- **Checks:** new `Tests/Components/ScriptFieldChecks.cs` covers:
+  - which fields serialize, labels and attributes;
+  - encoding, and rejecting bad values;
+  - applying before Start, live edits and Reset during Play;
+  - stale values and renamed fields;
+  - clone and save/load;
+  - Inspector display and edits, reset, and switching scripts.
+  - `ScriptBehaviourChecks`' counting fixture marks its runtime counters `[NonSerialized]`.
+
+- Claude
+
+## Added: spot lights
+
+**Why:** The engine only had directional and point lights.
+
+- **`SpotLight`** (`Engine/Entities/SpotLight.cs`) is a `PointLight` limited to a cone: **Spot Angle** (full angle, 1-179°) and **Inner** angle (fully lit core, fades out to Spot Angle). Its rotation sets the cone axis; with no rotation it points straight down (-Z). It lives in the scene's `PointLights` list, so selection, delete/copy, Play/Stop and the light volume work as for point lights.
+- **Rendering:** a shared cone falloff (`SpotConeFactor`, mirrored by `SpotLight.ConeFactor` on the CPU) is applied in:
+  - `DeferredPointLight.fx`: unshadowed, shadowed and SDF-shadowed lighting, and both volumetric glows.
+  - `Forward.fx` (transparent materials) and `Froxel.fx` (volumetric fog), through new per-light cone arrays.
+  - The probe volume bake (`LightingBakeInput` / `ProbeVolumeBaker`).
+  - Point lights pass an outer cosine of -2, so they are unchanged.
+- **Shadows:** spot lights reuse the cube shadow map but render only the faces their cone reaches (`ShadowMapRenderModule.LightSeesFace`).
+- **Anvil:** **GameObject > Light > Spot Light** and the Hierarchy **+** menu add a spot light. The Inspector shows Type Spot, Radius, and **Spot Angle** / **Inner** sliders. A selected spot light draws its cone in the viewport. The bridge has `EnqueueAddSpotLight`, `EditorObjectKind.SpotLight`, and spot fields on `LightSnapshot`.
+- **Scene files:** a new optional `SpotLights` list (rotation quaternion, `SpotAngle`, `InnerSpotAngle` plus the point light fields). Older scenes load unchanged.
+- **Docs:** `Docs/markdown/Scene_Lighting_and_Fog.md` and `CLAUDE.md`.
+- **Checks:** new `Tests/Components/SpotLightChecks.cs` (cone math, cube face culling, clone, bake, bridge add/snapshot, Inspector edits, Play/Stop, save/load; with `--graphics`, the compiled shaders expose the cone uniforms). `GameObjectMenuChecks` now expects the Spot Light menu entries.
+
+- Claude
+
+## Added: collision and trigger events, raycast interaction, and the CollisionTest sample scene
+
+**Why:** To test collisions properly. Scripts could raycast and push bodies, but nothing told them when gameobjects touched, there were no triggers, a dynamic character tipped over, and there was no way to use objects.
+
+- **Collision and trigger events** for Script Behaviours: `OnCollisionEnter/Stay/Exit(Collision)` and `OnTriggerEnter/Stay/Exit(BasicEntity other)`. They run right after the physics step, on both gameobjects of a pair.
+  - `Collision` has the other `GameObject`, `Point`, `Normal` (pointing at the receiver), `Depth` and `ImpactSpeed`.
+  - `PhysicsSystem` records each pair's deepest contact through BEPU's narrow-phase callbacks (new `Engine/Physics/PhysicsContact.cs`). Speculative contacts that close within the step count, so a fast impact reports its real speed.
+  - `ScenePhysics` turns the contacts into Enter/Stay/Exit, keyed by gameobject pair. A body that falls asleep keeps its contacts. A removed or disabled body raises Exit. Leaving Play forgets contacts silently.
+  - Delivered through the new `ScriptBehaviourComponent.Notify`; a throwing hook stops its script.
+- **Physics component:**
+  - **Is Trigger** overlaps without colliding. Raycasts skip triggers unless `includeTriggers: true`. A Static trigger is built as the model's convex hull (new `PhysicsSystem.AddStaticConvex`), so a body fully inside still counts.
+  - **Freeze Rotation** (Dynamic) gives the body infinite inertia, for upright characters.
+  - Both appear in Anvil's Inspector and are saved in scenes.
+- **Interactable component** (Inspector > Add Component > Interactable, `Engine/Components/InteractableComponent.cs`): Prompt and Range. `ScriptBehaviour.FindInteractable(ray, ...)` finds the interactable the ray points at (blocked by colliders, not by triggers). `Interact(hit)` / `Interact(gameobject)` run the target's new `OnInteract(Interaction)` hook and raise `InteractableComponent.Interacted`. Anvil editor: `InteractableComponentViewModel` plus an Inspector template.
+- **New script helpers:**
+  - Rays: `MainCamera`, `CameraRay`, `MouseRay`, `ScreenPointToRay(pixel)`, and `Raycast(Ray, ...)`.
+  - Contacts and lookup: `IsTouching(other)`, `FindGameObject(name)`.
+  - Physics on other gameobjects: `GetVelocity`, `SetVelocity`, `SetAngularVelocity`, `AddImpulse` and `AddImpulseAtPosition`.
+- **CollisionTest sample** (`Content/Scenes/CollisionTest.obsc`, last in the scene list; HUD `Content/UI/CollisionTest.xml` + `.css`):
+  - A first-person player capsule (Dynamic, 80 kg, Freeze Rotation) moves with a limited acceleration, so the solver does the pushing.
+  - Controls: WASD, Shift, Space, hold right mouse / arrows to look, E to use, hold left mouse to carry, F to throw, Q to shove at the hit point, R to reset.
+  - Stations:
+    - Crates of 10 / 60 / 180 / 2000 kg.
+    - A Goal Zone trigger that counts what's inside.
+    - A Launch Pad trigger.
+    - A lever that slides a Static gate into the floor.
+    - A colour-cycling Prize Cube.
+    - Dominoes falling onto an Impact Plate that reports impact speeds.
+    - A Ball Dispenser dropping balls on a block tower.
+  - New scripts in `Content/Scripts`: Collision Test Player, Trigger Zone, Impact Reporter, Launch Pad, Ball Dispenser, Gate Lever, Color Cycle, plus the `CollisionTestFeed` helper (HUD event feed, colour and highlight helpers). Every runtime material or prompt change is restored on Stop.
+- **Docs:** new `Docs/markdown/Collisions_and_Interaction.md` (also on the docs website under Gameplay & Input). Updated `Script_Behaviours.md`, `Gameobject_Components.md` and `CLAUDE.md`.
+- **Checks:** new `Tests/Components/CollisionChecks.cs`. It covers:
+  - Events, impact data and normals on both sides; sleeping contacts; removal; leaving Play.
+  - Trigger pass-through and see-through rays; a sleeping body inside a trigger.
+  - Freeze Rotation; Interactable range, blocking and disable.
+  - Inspector edits, clone and save/load.
+  - A scripted Play run of the sample: the launch pad throws the player, the 60 kg crate is pushed, the anchor holds, the lever opens the gate, the dispenser drops a ball, and Stop restores everything.
+
+  All component checks pass. The standalone engine was also launched into the scene: the HUD, contact tracking, impact reports and interactions worked on the real models.
+- **Not possible yet:** a see-through trigger volume. `IsTransparent` on a Basic material hides the object, and the ForwardShaded type draws a fixed grey, so the zones are thin glowing (Emissive) pads instead. `EmissiveStrength` only shows on the Emissive material type.
+
+- Claude
+
+## Added: Steam peer-to-peer multiplayer sample with capsule players
+
+**Why:** To test basic peer-to-peer multiplayer through Steam. The engine could connect to Steam, but it had no lobbies or networking yet.
+
+- **MultiplayerTest sample** (`Content/Scenes/MultiplayerTest.obsc`, last in the scene list): a walled 20 m arena. The Main Camera runs the new **Multiplayer Test** script.
+  - Each player is a coloured capsule with a dark visor showing its facing. The colour comes from the Steam ID, so every peer sees the same colours.
+  - H hosts a public lobby (up to 4 players). J finds a lobby and joins it. I opens the Steam invite dialog, L leaves, and C connects to Steam (the same as Anvil > Window > Steam > Connect).
+  - WASD or the left stick moves the player relative to the camera, Space jumps, and holding the right mouse button orbits the follow camera. Without Steam the local capsule still works.
+  - Each peer sends its own capsule's position and yaw to every other peer about 20 times a second (unreliable, 21 bytes, out-of-order packets dropped). Remote capsules ease towards the newest state.
+  - Vista HUD (`Content/UI/MultiplayerTest.xml` + `.css`) in the top-right, clear of the performance overlay: Steam account, lobby state, status line, and the player list with colour, ping and host.
+  - Testing needs two Steam accounts, each in its own Steam client (normally two PCs) with the same App ID (default 480).
+- **`Engine/Steam/SteamP2PSession.cs`** (reusable): lobby host/find/join/leave/invite through `SteamMatchmaking`, and peer join/leave events from the lobby member list. Send, broadcast and receive go through `SteamNetworkingMessages` (Valve relay, no open ports). Sessions are accepted only from lobby members. Also reports the connection state and ping per peer, and follows Steam invites and Join Game from the friends list. Searches only match lobbies with the same game key, because App 480 is shared by every developer.
+- **`SteamService.Current`** gives scripts the engine's Steam session, and **`SteamService.ConfiguredAppId`** returns the saved App ID.
+- **Capsule primitive:** `Content/GameObjects/Default/capsule.obj`, model key `Capsule` (`Assets.Capsule`). It is Z-up, with radius 0.5 and height 2, centred on its origin (the same size as Unity's capsule). It was generated with smooth normals and UVs, and is built with `FbxImporter`. `OpenAssetImporter` produced a material the runtime couldn't read, which crashed the engine at boot. `.gitignore` now allows this file, because its `*.obj` rule is meant for compiler output.
+- **Runtime spawning for scripts:** `ScriptBehaviour.Spawn(modelKey, position, name)`, `Destroy(entity)` and `DestroyAllSpawned()`.
+  - Spawned gameobjects get `BasicEntity.IsRuntimeSpawned` and are removed when the script stops (like script sounds).
+  - Scene saves skip them.
+  - Backed by `MainSceneLogic.SpawnRuntimeEntity` and the new `Assets.FindModel(key)`.
+- **Docs:** new `Docs/markdown/Steam_Multiplayer.md` (also on the docs website under Gameplay & Input). Updated `Script_Behaviours.md` (sample, spawn helpers), `Engine/thirdparty/steam/README.md`, and `CLAUDE.md`.
+- **Checks:** `Tests/Components/MultiplayerChecks.cs` checks the scene, script registration, scene list and HUD files. Offline, it checks that Play spawns the capsule and visor, W moves the capsule relative to the camera, the camera follows, saving during Play leaves spawned objects out, Stop removes them, and model-key lookup works. All component checks pass. The standalone engine was also launched into the scene to check rendering (capsule, shadow, visor, HUD). The two-PC Steam lobby was not tested, because it needs a second Steam account.
+
+- Claude
+
+## Updated: current engine docs and a separate welcome page
+
+- Connected the documentation website directly to all 13 current guides in `Docs/markdown`, grouped into their respective topics. New unmapped Markdown files appear under Reference until assigned a topic.
+- Replaced the old example introduction, first steps, and issue reporting pages with Obsidian documentation, and removed placeholder topics from the published navigation.
+- Added a separate responsive welcome page with documentation and GitHub links, a crystal illustration, topic shortcuts, and light/dark themes.
+- Added shareable hash routes, full-content documentation search, heading navigation, previous/next guides, GitHub source links, and a mobile navigation drawer with keyboard support.
+- Resolved links between Markdown guides and converted local code/diagram links into GitHub links. Fixed the logo path for deployments under `/obsidian/`.
+- Split the documentation renderer into a separate bundle and updated the website README with source locations, routes, and the Markdown deployment trigger.
+- Verified the production build, lint, and GitHub Pages base path. Browser checks passed for all 13 engine guides at desktop, tablet, and phone widths, including routing, search, links, heading navigation, theme persistence, the mobile drawer, and missing-page recovery.
+
+- Codex
+
+## Added: documentation website build and GitHub Pages instructions
+
+- Added `Docs/website/README.md` instructions for dependency installation, local builds and previews, and GitHub Pages deployment using a GitHub Actions workflow.
+- Documented the repository base path, the required sidebar logo path change, deployment updates, and adjustments for forks or custom domains.
+
+- Codex
+
+## Added: skeletal animation and the AnimationTest sample scene
+
+**Why:** To test animations with the Mixamo FBX files in `Content/GameObjects/Player`, and to test textures on an animated mesh in the same scene. The engine had no skeletal animation before this.
+
+- **AnimationTest sample** (`Content/Scenes/AnimationTest.obsc`, last in the scene list): open it in Anvil and press Play. The camera has Freecam.
+  - X Bot playing its own walk clip, In Place.
+  - Y Bot playing the X Bot walk (retargeted by bone name).
+  - A textured Y Bot (UV checker albedo + normal map), walking.
+  - X Bot with root motion.
+  - Y Bot at 0.25 speed.
+  - A Y Bot bind-pose reference with no Animator.
+  - A cube with the same checker maps.
+  - The FBX files have no textures of their own. The checker maps (`GameObjects/Textures/UVChecker_BaseColor.png`, `UVChecker_Normal.png`) were generated for this.
+- **`ContentPipeline/`** (new net8.0 project, also in `Engine.slnx`): a MonoGame pipeline extension with `SkinnedModelProcessor`.
+  - Stores the skeleton and clips in `Model.Tag`. A file without a skeleton builds exactly like `ModelProcessor`.
+  - `Engine.csproj` builds it before the content build, and `Content.mgcb` references it.
+  - Re-reads FBX clips with Assimp, with pivots merged. MonoGame 3.8.4's `FbxImporter` applied each bone's PreRotation to the animation keys twice, which flipped Mixamo legs about 180°.
+- **`Engine/Animation/`**:
+  - `SkinningData` (+ content reader).
+  - `AnimationPlayer`: keyframe lerp/slerp, retargeting by bone name using model-space rotation deltas, root height scaling, In Place.
+  - `SkinnedMeshInstance`: parallel CPU skinning into per-entity dynamic vertex buffers.
+- **Rendering**: `MeshMaterialLibrary.Draw` swaps in an instance's posed vertex buffer (`TransformMatrix.Skin`). The G-buffer, shadow, forward, ID and outline passes all show the pose, with no new shaders.
+  - Animated entities flag `HasChanged` each frame, so culling and shadow maps update.
+  - Cost: about 2 ms per frame per 35k-vertex character.
+- **Animator component** (`AnimatorComponent`, Inspector > Add Component > Animator): Source (content path of another skinned model), Clip, Speed, Loop, In Place.
+  - Plays in Play mode. Edit mode and Stop show the bind pose.
+- **Assets**: `PlayerYBot` and `PlayerWalking` (`GameObjects/Player`, built Z-up in metres), loaded with their FBX material colours and widened culling bounds.
+- Docs: new `Docs/markdown/Skeletal_Animation.md`. `CLAUDE.md`, `Gameobject_Components.md` and `Importing Structure.md` are updated.
+- Tests: new `AnimationChecks` in `Tests/Components`.
+  - Covers the component and editor, player math, retargeting, the sample scene, and the real assets (the pre-rotation regression, feet on the ground, render output, loop and one-shot timing).
+  - All checks pass, including `--graphics`.
+- Checked in the standalone game: a screenshot of the scene in Play (all characters animating, shadows following, checker on the skinned mesh). The look is hazy and washed out because of the engine-wide froxel fog and auto exposure. Not yet checked in Anvil's Play mode or Inspector.
+
+- Claude
+
 ## Added: MainMenu sample scene, scene list and game UI
 
 **Why:** To test that Vista UI works and can look good in a real game flow, and to give the game a build order of scenes with a fixed startup scene.

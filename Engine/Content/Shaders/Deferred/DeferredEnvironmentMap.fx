@@ -417,8 +417,13 @@ PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
 
     //float materialType = decodeMattype(color.a);
 
+    //Wet Surface pixels (albedo alpha) use a view-dependent fresnel: their puddles mirror the
+    //surroundings at grazing angles and show the wet ground beneath when seen from above
+    bool wetSurface = color.a > 0.5f;
+
 	//The incoming vector from the camera //EDIT: In world space now
-    float3 incident = normalize(input.ViewDir - CameraPositionWS);
+	//(ViewDir is already relative to the camera; wet surfaces use it as is)
+    float3 incident = wetSurface ? normalize(input.ViewDir) : normalize(input.ViewDir - CameraPositionWS);
 
 	//Transform the reflectionVector from VS to WS
 	normal = mul(normal, TransposeView);
@@ -427,10 +432,16 @@ PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
     float3 reflectionVector = reflect(incident, normal);
 
 	//Fresnel
-    float VdotH = saturate(dot(normal, incident));
+    float VdotH = saturate(dot(normal, wetSurface ? -incident : incident));
     float fresnel = pow(1.0 - VdotH, 5.0);
     fresnel *= (1.0 - f0);
     fresnel += f0;
+
+    //The probe's own ground is unlit, so grazing puddle reflections would pick up a dark horizon:
+    //keep them a little above it, where the probe sees the sky and the tops of its surroundings
+    [flatten]
+    if (wetSurface)
+        reflectionVector = normalize(float3(reflectionVector.xy, max(reflectionVector.z, 0.2f)));
 
     reflectionVector.z = -reflectionVector.z;
 
@@ -443,7 +454,7 @@ PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
 
 	float4 diffuseReflection = ReflectionCubeMap.SampleLevel(ReflectionCubeMapSampler, reflectionVector, 9);
 
-	diffuseReflection *= (roughness) * fresnel; //* NdotC * NdotC * NdotC;
+	diffuseReflection *= wetSurface ? 0.9f * (1 - fresnel) : (roughness) * fresnel; //* NdotC * NdotC * NdotC;
 
 	float ao = 1;
 

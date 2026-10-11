@@ -6,6 +6,11 @@ namespace Engine.Scripting;
 public sealed class SpinExampleScript : ScriptBehaviour
 {
     public const string ScriptId = "spin-example";
+
+    // Serialized fields show in the Inspector and are saved per attachment (see Script_Behaviours.md).
+    [SerializeField, Range(-360f, 360f), Tooltip("Rotation speed around Z (the engine's up axis).")]
+    private float _degreesPerSecond = 45f;
+
     private Matrix _initialRotation;
     private float _angle;
 
@@ -18,8 +23,8 @@ public sealed class SpinExampleScript : ScriptBehaviour
 
     public override void Update()
     {
-        // Rotate around Z (the engine's up axis) at 45 degrees per second.
-        _angle = (_angle + MathHelper.ToRadians(45f) * DeltaTime) % MathHelper.TwoPi;
+        // Rotate around Z (the engine's up axis) at Degrees Per Second.
+        _angle = (_angle + MathHelper.ToRadians(_degreesPerSecond) * DeltaTime) % MathHelper.TwoPi;
         GameObject.RotationMatrix = _initialRotation * Matrix.CreateRotationZ(_angle);
     }
 }

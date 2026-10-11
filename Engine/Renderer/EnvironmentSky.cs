@@ -63,7 +63,8 @@ namespace Engine.Renderer
             // Accumulate drift in doubles and wrap it on the shader's noise period so it never loses precision.
             _cloudOffsetX = (_cloudOffsetX + delta * CloudDrift * 0.8 * settings.CloudSpeed) % CloudPeriod;
             _cloudOffsetY = (_cloudOffsetY + delta * CloudDrift * 0.6 * settings.CloudSpeed) % CloudPeriod;
-            module.SetClouds(settings.CloudCoverage, new Vector2((float)_cloudOffsetX, (float)_cloudOffsetY));
+            float cloudCoverage = WeatherProfile.SkyCloudCoverage(settings);
+            module.SetClouds(cloudCoverage, new Vector2((float)_cloudOffsetX, (float)_cloudOffsetY));
 
             if (_loadedPath != settings.SkyboxPath)
             {
@@ -125,7 +126,14 @@ namespace Engine.Renderer
                 _sun.Color = new Color(170, 190, 255);
             }
             // Heavy cloud cover softens direct light; light scattered clouds barely change it.
-            _sun.Intensity *= 1 - 0.5f * settings.CloudCoverage * settings.CloudCoverage;
+            _sun.Intensity *= 1 - 0.5f * cloudCoverage * cloudCoverage;
+            // Rain, snow and dust block more of the sun; dust also reddens it.
+            if (WeatherProfile.For(settings.Weather) is { } weather)
+            {
+                float amount = WeatherProfile.Intensity(settings);
+                _sun.Intensity *= 1 - weather.SunDim * amount;
+                _sun.Color = Color.Lerp(_sun.Color, new Color(_sun.Color.ToVector3() * weather.SunTint.ToVector3()), amount);
+            }
             // Baked probes hold the daytime bounce; dim them toward the moonlight level at night.
             AmbientScale = MathHelper.Lerp(Math.Min(1, MoonIntensity * settings.MoonBrightness), 1, daylight);
             _lights.Clear();

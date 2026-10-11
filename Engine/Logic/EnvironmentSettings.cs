@@ -1,9 +1,10 @@
 using System;
+using System.Text.Json.Serialization;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Logic
 {
-    /// <summary>Scene-owned sky selection, initial time and clouds for the animated sky.</summary>
+    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, and weather.</summary>
     public sealed class EnvironmentSettings
     {
         public bool DayNightCycle { get; set; }
@@ -32,6 +33,18 @@ namespace Engine.Logic
         public float DayExposure { get; set; } = -1f;
         public float NightExposure { get; set; } = -2.5f;
 
+        // Weather (rain, sandstorm, snow), drawn in both Edit and Play. See WeatherProfile for each type's look.
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public WeatherType Weather { get; set; } = WeatherType.None;
+        /// <summary>0 = no particles or haze, 1 = the heaviest the type gets.</summary>
+        public float WeatherIntensity { get; set; } = 0.7f;
+        /// <summary>Scales the weather's haze; 0 leaves only the particles.</summary>
+        public float WeatherHaze { get; set; } = 0.6f;
+        /// <summary>Horizontal wind in m/s that blows rain, snow and sand.</summary>
+        public float WindSpeed { get; set; } = 4;
+        /// <summary>Compass angle in degrees the wind blows towards: 0 = +X, 90 = +Y.</summary>
+        public float WindDirection { get; set; } = 45;
+
         public EnvironmentSettings Clone() => (EnvironmentSettings)MemberwiseClone();
 
         public void Normalize()
@@ -48,6 +61,11 @@ namespace Engine.Logic
             StarBrightness = Limit(StarBrightness, 0, 3, 1);
             DayExposure = Limit(DayExposure, -4, 4, -1f);
             NightExposure = Limit(NightExposure, -4, 4, -2.5f);
+            if (!Enum.IsDefined(Weather)) Weather = WeatherType.None;
+            WeatherIntensity = Limit(WeatherIntensity, 0, 1, 0.7f);
+            WeatherHaze = Limit(WeatherHaze, 0, 1, 0.6f);
+            WindSpeed = Limit(WindSpeed, 0, 40, 4);
+            WindDirection = float.IsFinite(WindDirection) ? ((WindDirection % 360) + 360) % 360 : 45;
         }
 
         private static float Limit(float value, float min, float max, float fallback) =>

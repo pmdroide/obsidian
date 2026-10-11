@@ -1,5 +1,6 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Engine.Components;
 using Engine.Physics;
 
@@ -16,6 +17,12 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
     [ObservableProperty] private bool _buoyancy;
     [ObservableProperty] private double _buoyancyStrength = 2;
     [ObservableProperty] private double _waterDrag = 3;
+    [ObservableProperty] private bool _isTrigger;
+    [ObservableProperty] private bool _freezeRotation;
+    // Model units (before Scale); the engine fills them with the model's bounds.
+    [ObservableProperty] private double _colliderSizeX;
+    [ObservableProperty] private double _colliderSizeY;
+    [ObservableProperty] private double _colliderSizeZ;
 
     public bool IsStatic => BodyType == PhysicsBodyType.Static;
     public bool IsDynamic => BodyType == PhysicsBodyType.Dynamic;
@@ -48,6 +55,31 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
         Push(c => ((PhysicsComponent)c).WaterDrag = drag);
     }
 
+    partial void OnIsTriggerChanged(bool value) => Push(c => ((PhysicsComponent)c).IsTrigger = value);
+    partial void OnFreezeRotationChanged(bool value) => Push(c => ((PhysicsComponent)c).FreezeRotation = value);
+
+    // Emptied or zero boxes would mean "use the model's bounds": only the Default Size button resets.
+    private static bool IsSize(double value) => double.IsFinite(value) && value > 0;
+
+    partial void OnColliderSizeXChanged(double value)
+    {
+        if (IsSize(value)) Push(c => ((PhysicsComponent)c).ColliderSizeX = (float)value);
+    }
+
+    partial void OnColliderSizeYChanged(double value)
+    {
+        if (IsSize(value)) Push(c => ((PhysicsComponent)c).ColliderSizeY = (float)value);
+    }
+
+    partial void OnColliderSizeZChanged(double value)
+    {
+        if (IsSize(value)) Push(c => ((PhysicsComponent)c).ColliderSizeZ = (float)value);
+    }
+
+    /// <summary>Fits the collider to the model's bounds again.</summary>
+    [RelayCommand]
+    private void ResetColliderSize() => Push(c => ((PhysicsComponent)c).ResetColliderSize());
+
     public override void Apply(GameComponent component, bool freezeFields)
     {
         base.Apply(component, freezeFields);
@@ -58,5 +90,10 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
         Buoyancy = physics.Buoyancy;
         if (Math.Abs(BuoyancyStrength - physics.BuoyancyStrength) > 0.0001) BuoyancyStrength = physics.BuoyancyStrength;
         if (Math.Abs(WaterDrag - physics.WaterDrag) > 0.0001) WaterDrag = physics.WaterDrag;
+        IsTrigger = physics.IsTrigger;
+        FreezeRotation = physics.FreezeRotation;
+        if (Math.Abs(ColliderSizeX - physics.ColliderSizeX) > 0.0001) ColliderSizeX = physics.ColliderSizeX;
+        if (Math.Abs(ColliderSizeY - physics.ColliderSizeY) > 0.0001) ColliderSizeY = physics.ColliderSizeY;
+        if (Math.Abs(ColliderSizeZ - physics.ColliderSizeZ) > 0.0001) ColliderSizeZ = physics.ColliderSizeZ;
     }
 }

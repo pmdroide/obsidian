@@ -1,0 +1,7 @@
+Ground textures from Poly Haven (https://polyhaven.com), CC0 1.0 (public domain), 1k JPG, DirectX normal maps.
+
+Bricks_*       brick_floor            https://polyhaven.com/a/brick_floor
+Cobblestone_*  cobblestone_floor_08   https://polyhaven.com/a/cobblestone_floor_08
+RockyDirt_*    rocky_trail            https://polyhaven.com/a/rocky_trail
+
+*_Height is the displacement map; Wet Surface materials use it as the height puddles fill.

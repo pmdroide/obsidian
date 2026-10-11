@@ -49,6 +49,12 @@ public static class ComponentEditorRegistry
         Register(PhysicsComponent.TypeId, owner => new PhysicsComponentViewModel(owner));
         Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
         Register(ScriptBehaviourComponent.TypeId, owner => new ScriptBehaviourComponentViewModel(owner));
+        Register(AnimatorComponent.TypeId, owner => new AnimatorComponentViewModel(owner));
+        Register(RagdollComponent.TypeId, owner => new RagdollComponentViewModel(owner));
+        Register(InteractableComponent.TypeId, owner => new InteractableComponentViewModel(owner));
+        Register(ClothComponent.TypeId, owner => new ClothComponentViewModel(owner));
+        Register(NpcComponent.TypeId, owner => new NpcComponentViewModel(owner));
+        Register(LodComponent.TypeId, owner => new LodComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

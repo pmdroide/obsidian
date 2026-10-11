@@ -1,0 +1,491 @@
+/*
+  Pause menu. Design canvas: 1080 units high (GameUI scales it to the window).
+  Vista layout is absolute: left/top/right/bottom/width/height (px or % of the parent box) plus
+  margins. Fonts: display, heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Time has stopped, so the frozen scene is dimmed and cooled rather than warmed like the main menu.
+
+  Palette
+    ink      rgba(6, 10, 16)       backdrop and panels
+    text     #EEF3F7               cool white
+    accent   #8FD3FF               ice blue
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #EEF3F7;
+    font-family: body;
+}
+
+/* ---------------------------------------------------------------- backdrop */
+
+#backdrop {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.25s;
+    background-image: radial-gradient(ellipse at center, rgba(6, 10, 16, 0.35), rgba(6, 10, 16, 0.55), rgba(6, 10, 16, 0.85));
+}
+
+#wash {
+    width: 64%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s;
+    background-image: linear-gradient(to right, rgba(6, 10, 16, 0.92), rgba(6, 10, 16, 0.78), rgba(6, 10, 16, 0.3), rgba(6, 10, 16, 0));
+}
+
+/* Pushes HUD key hints under the footer well back. */
+#shade-bottom {
+    bottom: 0;
+    height: 34%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s;
+    background-image: linear-gradient(to bottom, rgba(6, 10, 16, 0), rgba(6, 10, 16, 0.7), rgba(6, 10, 16, 0.96));
+}
+
+#root.open #backdrop,
+#root.open #wash,
+#root.open #shade-bottom { opacity: 1; }
+
+/* ---------------------------------------------------------------- screens */
+
+.screen {
+    width: 100%;
+    height: 100%;
+    left: -36px;
+    opacity: 0;
+    transition: opacity 0.25s, left 0.4s;
+}
+
+#root.open .screen.active {
+    left: 0;
+    opacity: 1;
+}
+
+/* ---------------------------------------------------------------- headers */
+
+.eyebrow {
+    left: 150px;
+    top: 172px;
+    width: 900px;
+    height: 24px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: #8FD3FF;
+}
+
+#scene-line { top: 232px; }
+
+#title {
+    left: 144px;
+    top: 252px;
+    width: 900px;
+    height: 112px;
+    font-family: display;
+    text-transform: uppercase;
+    letter-spacing: 22px;
+    color: #F4F8FB;
+    text-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+
+.title-rule {
+    left: 154px;
+    top: 376px;
+    width: 64px;
+    height: 2px;
+    background-color: #8FD3FF;
+}
+
+#clock {
+    left: 150px;
+    top: 394px;
+    width: 700px;
+    height: 26px;
+    color: rgba(238, 243, 247, 0.55);
+}
+
+.screen-title {
+    left: 148px;
+    top: 200px;
+    height: 48px;
+    font-family: heading;
+    text-transform: uppercase;
+    letter-spacing: 12px;
+    color: #F4F8FB;
+}
+
+.settings-rule { top: 254px; }
+
+.screen-sub {
+    left: 150px;
+    top: 274px;
+    height: 24px;
+    color: rgba(238, 243, 247, 0.5);
+}
+
+/* ---------------------------------------------------------------- option rows */
+
+.options {
+    left: 150px;
+    top: 452px;
+    width: 560px;
+    height: 320px;
+}
+
+#settings-list {
+    top: 330px;
+    width: 880px;
+    height: 490px;
+}
+
+.option {
+    left: 0;
+    width: 100%;
+    height: 58px;
+    transition: left 0.2s;
+}
+
+.option.selected { left: 14px; }
+
+.option .hl {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.2s;
+    background-image: linear-gradient(to right, rgba(143, 211, 255, 0.22), rgba(143, 211, 255, 0.07), rgba(143, 211, 255, 0));
+}
+
+.option .bar {
+    left: 0;
+    top: 13px;
+    width: 3px;
+    height: 32px;
+    opacity: 0;
+    transition: opacity 0.16s;
+    background-color: #8FD3FF;
+}
+
+.option.selected .hl,
+.option.selected .bar { opacity: 1; }
+
+.option .label {
+    left: 30px;
+    width: 400px;
+    height: 100%;
+    font-family: heading;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: rgba(238, 243, 247, 0.52);
+    transition: color 0.18s;
+}
+
+.option.selected .label { color: #FFFFFF; }
+.option.disabled .label { color: rgba(238, 243, 247, 0.2); }
+
+.option .meta {
+    right: 24px;
+    width: 240px;
+    height: 100%;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    vertical-align: middle;
+    color: rgba(238, 243, 247, 0.3);
+    transition: color 0.18s;
+}
+
+.option.selected .meta { color: #8FD3FF; }
+
+/* Setting rows: < value > on the right. */
+.setting { height: 54px; }
+.setting .bar { top: 11px; }
+.setting .label { width: 500px; letter-spacing: 2px; }
+
+.setting .value {
+    right: 72px;
+    width: 220px;
+    height: 100%;
+    font-family: heading;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    vertical-align: middle;
+    color: rgba(238, 243, 247, 0.55);
+    transition: color 0.18s;
+}
+
+.setting .arrow {
+    width: 36px;
+    height: 100%;
+    font-family: heading;
+    text-align: center;
+    vertical-align: middle;
+    color: #8FD3FF;
+    opacity: 0;
+    transition: opacity 0.18s;
+}
+
+.setting .arrow-left { right: 292px; }
+.setting .arrow-right { right: 36px; }
+.setting.selected .arrow { opacity: 1; }
+.setting.selected .value { color: #FFFFFF; }
+
+/* ---------------------------------------------------------------- descriptions */
+
+.desc {
+    left: 150px;
+    top: 786px;
+    width: 560px;
+    height: 96px;
+    padding-top: 18px;
+    line-height: 28px;
+    white-space: pre-line;
+    color: rgba(238, 243, 247, 0.66);
+    border-top: 1px solid rgba(238, 243, 247, 0.12);
+}
+
+#settings-desc { top: 840px; width: 880px; height: 70px; }
+
+/* ---------------------------------------------------------------- session card */
+
+/* Starts level with the second option row, clear of HUD panels in the top-right corner. */
+#session {
+    right: 150px;
+    top: 514px;
+    width: 470px;
+    height: 384px;
+    background-color: rgba(10, 16, 24, 0.72);
+    border-top: 1px solid rgba(143, 211, 255, 0.25);
+}
+
+#session.hidden { display: none; }
+
+#session-accent {
+    width: 3px;
+    height: 100%;
+    background-image: linear-gradient(to bottom, #8FD3FF, rgba(143, 211, 255, 0.15));
+}
+
+.card-eyebrow {
+    left: 30px;
+    top: 26px;
+    width: 400px;
+    letter-spacing: 5px;
+}
+
+.stat {
+    left: 30px;
+    width: 410px;
+    height: 38px;
+    border-bottom: 1px solid rgba(238, 243, 247, 0.08);
+}
+
+#stat-1 { top: 60px; }
+#stat-2 { top: 98px; }
+#stat-3 { top: 136px; }
+#stat-4 { top: 174px; }
+
+.stat-label {
+    left: 0;
+    width: 220px;
+    height: 100%;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    vertical-align: middle;
+    color: rgba(238, 243, 247, 0.5);
+}
+
+.stat-value {
+    right: 0;
+    width: 200px;
+    height: 100%;
+    text-align: right;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: #F4F8FB;
+}
+
+#route-label {
+    left: 30px;
+    top: 226px;
+    height: 24px;
+}
+
+#route {
+    left: 30px;
+    top: 252px;
+    width: 410px;
+    height: 56px;
+    line-height: 26px;
+    color: rgba(238, 243, 247, 0.85);
+}
+
+#session-note {
+    left: 30px;
+    top: 310px;
+    width: 410px;
+    height: 56px;
+    font-family: caption;
+    line-height: 22px;
+    letter-spacing: 1px;
+    color: rgba(143, 211, 255, 0.62);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+#footer {
+    bottom: 0;
+    height: 120px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#root.open #footer { opacity: 1; }
+
+#footer-rule {
+    left: 150px;
+    right: 150px;
+    top: 22px;
+    height: 1px;
+    background-image: linear-gradient(to right, rgba(238, 243, 247, 0.18), rgba(238, 243, 247, 0.1), rgba(238, 243, 247, 0));
+}
+
+.hint {
+    top: 48px;
+    width: 260px;
+    height: 34px;
+}
+
+#hint-1 { left: 150px; }
+#hint-2 { left: 400px; }
+#hint-3 { left: 650px; }
+#hint-4 { left: 900px; display: none; }
+#hint-4.visible { display: block; }
+
+.key {
+    left: 0;
+    width: 76px;
+    height: 34px;
+    text-align: center;
+    vertical-align: middle;
+    color: #EEF3F7;
+    border: 1px solid rgba(238, 243, 247, 0.32);
+    background-color: rgba(238, 243, 247, 0.05);
+}
+
+.hint-label {
+    left: 90px;
+    width: 160px;
+    height: 34px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    vertical-align: middle;
+    color: rgba(238, 243, 247, 0.55);
+}
+
+#frozen {
+    right: 150px;
+    top: 48px;
+    width: 600px;
+    height: 34px;
+    font-family: caption;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    vertical-align: middle;
+    color: rgba(143, 211, 255, 0.5);
+}
+
+/* ---------------------------------------------------------------- confirmation */
+
+#confirm {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(3, 5, 8, 0.66);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+#confirm.open { opacity: 1; }
+
+.dialog-panel {
+    left: 50%;
+    top: 50%;
+    width: 620px;
+    height: 270px;
+    margin-left: -310px;
+    margin-top: -112px;
+    background-color: rgba(12, 17, 24, 0.97);
+    border-top: 3px solid #8FD3FF;
+    border-bottom: 1px solid rgba(238, 243, 247, 0.08);
+    transition: top 0.25s;
+}
+
+#confirm.open .dialog-panel { margin-top: -135px; }
+
+.dialog-title {
+    left: 48px;
+    top: 40px;
+    width: 524px;
+    height: 40px;
+    font-family: heading;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    white-space: nowrap;
+    color: #F4F8FB;
+}
+
+.dialog-text {
+    left: 48px;
+    top: 92px;
+    width: 524px;
+    height: 60px;
+    line-height: 27px;
+    color: rgba(238, 243, 247, 0.62);
+}
+
+.dialog-button {
+    top: 178px;
+    width: 250px;
+    height: 54px;
+    font-family: caption;
+    text-align: center;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: rgba(238, 243, 247, 0.7);
+    border: 1px solid rgba(238, 243, 247, 0.2);
+    transition: background-color 0.16s, color 0.16s, border-color 0.16s;
+}
+
+#confirm-cancel { left: 48px; }
+#confirm-ok { left: 322px; }
+
+.dialog-button.selected {
+    color: #071018;
+    background-color: #8FD3FF;
+    border-color: #8FD3FF;
+}
+
+/* ---------------------------------------------------------------- fade */
+
+#fade {
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s;
+}
+
+#fade.out { opacity: 1; transition: opacity 0.5s; }
