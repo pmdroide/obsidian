@@ -51,11 +51,13 @@ Thread pool (both cases):
   - LightingSystem.StartBake → ProbeVolumeBaker (Task.Run, Parallel.For per probe)
   - Vista UIManager.Load parses the DOM on a pool thread; the caller blocks on it
   - Anvil GameBuilder runs `dotnet publish` (Task.Run)
+  - VoxelSystem generates and meshes a voxel world (Task.Run + Parallel.For) while editing;
+    during Play it runs the same build on the game thread and waits for it
 ```
 
 Rules that follow from this:
 
-- **Everything in the engine is single-threaded on the game thread:** scene lists, components, scripts, physics (BEPU is created with a `null` thread dispatcher), rendering. The bake hands its result back through `LightingSystem.Update`, which runs on the game thread.
+- **Everything in the engine is single-threaded on the game thread:** scene lists, components, scripts, physics (BEPU is created with a `null` thread dispatcher), rendering. The bake hands its result back through `LightingSystem.Update`, which runs on the game thread. A voxel build works on its own new `VoxelWorld` and CPU meshes only. `VoxelSystem.Update` uploads the buffers and adds the BEPU statics on the game thread.
 - Anvil never calls `Game.Run()`. Its WinForms message loop would deadlock against Avalonia's. `MonoGameHost.GameThreadProc` pumps Win32 messages itself and calls `RunOneFrame()`. The only pacing on top of that is `Thread.Sleep(1)` plus the engine's own VSync or fixed-FPS settings.
 - The only sanctioned channel across threads is `EditorBridge` (section 11).
 
@@ -112,6 +114,7 @@ LoadUIFonts(content)                   ← default, monospace, display, heading,
 5. `_sceneLogic.Initialize(assets, physics, device)`:
    - creates `ScenePhysics`, which sets `ScenePhysics.Current`
    - creates `MeshMaterialLibrary`
+   - creates `VoxelSystem(device, MeshMaterialLibrary, physics)` (`MainSceneLogic.Voxels`)
    - subscribes `SceneManager.SceneChanged → OnSceneChanged`
    - creates `PlayModeController` and subscribes `ModeChanged`
    - sets `GameFlow.SceneLogic = this`
@@ -159,6 +162,10 @@ Engine.Update
 │   ├─ GameUI.Update                    ← Vista layout and XML/CSS hot reload, after scripts
 │   └─ _bridge.DrainAndPublish()        ← apply Anvil's queued edits; publish a snapshot every 6 frames
 └─ ScreenManager.UpdatePhysics(dt, totalSeconds)
+    ├─ MainSceneLogic.UpdatePhysics → VoxelSystem.Update(ActiveScene, playing)   ← also while paused
+    │   ├─ clear last frame's chunk HasChanged flags
+    │   ├─ voxel settings changed? build a new world (worker thread in Edit, now in Play); swap it in when done
+    │   └─ remesh chunks scripts edited this frame, rebuild their colliders
     └─ MainSceneLogic.UpdatePhysics → ScenePhysics.Update(entities, dt, simulate, time)
         ├─ rebuild or sync bodies from components and transforms
         ├─ if simulate: Step(min(dt, 1/20)) → pull poses → contacts
@@ -168,6 +175,7 @@ Engine.Update
 Consequences of this order:
 
 - **Scripts run before physics in the same frame.** Collision and trigger callbacks fire after the step, so they run after every script's `Update` that frame.
+- **Voxel edits made by scripts are solid in the same frame's step.** The voxel sync runs between scripts and the physics step. A script that reads `ScriptBehaviour.Voxels` during Play builds a missing world right away (`VoxelSystem.Ensure`), so a scene loaded mid-Play has ground before its first step.
 - **Editor edits land before physics** but after scripts. The snapshot Anvil receives is built *before* that frame's physics step.
 - **Picking lags one frame.** The renderer computes the hovered ID during `Draw`. `ScreenManager` stores it in `_editorReceivedDataBuffer`, and `EditorLogic` reads it in the next `Update`.
 - **The timestep is variable.** Physics uses the frame `dt`, clamped to 1/20 s. `IsFixedTimeStep` is on only when `GameSettings.g_fixedfps > 0`. The defaults are `g_vsync = false` and `g_fixedfps = 0`, so the frame rate is uncapped.
@@ -236,13 +244,14 @@ MainSceneLogic                                  (runtime drivers, one per proces
 ├─ SceneManager ──► ActiveScene : Scene         (data that round-trips to .obsc)
 │                     ├─ BasicEntities, PointLights (incl. SpotLight), DirectionalLights, Decals
 │                     ├─ MainCamera (game camera, has Components), EnvironmentSample
-│                     ├─ Environment (EnvironmentSettings: sky, fog, weather, wind…)
+│                     ├─ Environment (EnvironmentSettings: sky, fog, weather, wind, voxel world…)
 │                     ├─ Lighting (LightingSettings) + BakedProbes (.probes sidecar)
 │                     └─ Name, FilePath, IsDirty
 ├─ EditorCamera            (never saved)
 ├─ Camera  ⇒  Play && MainCamera != null ? ActiveScene.MainCamera : EditorCamera
 ├─ MeshMaterialLibrary     (render registry, section 9.2)
 ├─ ScenePhysics            (BEPU bodies, section 8)
+├─ VoxelSystem (Voxels)    (the active scene's VoxelWorld: chunk meshes in the library, chunk statics in BEPU)
 ├─ PlayModeController      (section 7.3)
 ├─ LightingSystem          (probe bakes and GPU data)
 ├─ SdfGenerator, DebugEntities
@@ -258,12 +267,13 @@ All swaps go through `SceneManager.SetActiveScene(newScene)`. It fires `SceneCha
 1. If not switching during Play, it forgets `_editScene` and clears the persistent set.
 2. For each old entity, it calls `OnStop()` on every component and `entity.Dispose(MeshMaterialLibrary)`.
 3. `ScenePhysics.DetachAll(carried)`. Carried persistent objects keep their bodies and velocity.
-4. `MeshMaterialLibrary.Clear()`.
-5. It adds a default `MainCamera` and `EnvironmentSample` if the scene has none. Without them every `Draw` would throw.
-6. `RegisterInLibrary` for every new entity.
-7. `PlayMode.Stop()`, unconditionally.
-8. `GameUI.CloseAll(carried)`.
-9. The bridge clears the editor selection and raises `SceneChanged` toward Anvil.
+4. `VoxelSystem.Reset()` drops the old voxel world: it unregisters the chunks, removes their statics and cancels a pending build. The new scene's world is built at the next `UpdatePhysics`, or earlier when a playing script asks for it.
+5. `MeshMaterialLibrary.Clear()`.
+6. It adds a default `MainCamera` and `EnvironmentSample` if the scene has none. Without them every `Draw` would throw.
+7. `RegisterInLibrary` for every new entity.
+8. `PlayMode.Stop()`, unconditionally.
+9. `GameUI.CloseAll(carried)`.
+10. The bridge clears the editor selection and raises `SceneChanged` toward Anvil.
 
 Scene loads that scripts request during Play take a different path (section 7.5).
 
@@ -376,7 +386,7 @@ ScriptBehaviourComponent  (component "script-behaviour"; persisted: ScriptId, Fi
 3. `SceneManager.SetActiveScene(loaded)` (section 6.2).
 4. If playing: `_persistent.Arrive`, register the carried objects in the library, `PlayMode.Play(carried)` (carried objects keep running instead of restarting), then `NotifySceneLoaded` (`ScriptBehaviour.OnSceneLoaded`).
 
-On Anvil's Stop, `OnPlayModeChanged(Edit)` closes the UI, unpauses, drops any pending load, raises `PlayStopped`, sends carried objects back home, and swaps back to `_editScene`.
+On Anvil's Stop, `OnPlayModeChanged(Edit)` closes the UI, unpauses, drops any pending load, raises `PlayStopped`, sends carried objects back home, and swaps back to `_editScene`. Before that it calls `VoxelSystem.OnPlayStopped()`: a voxel world that scripts edited (`EditCount > 0`) is regenerated on the next update. The environment snapshot restore also undoes voxel setting changes, which regenerates the world too.
 
 ---
 
@@ -416,6 +426,12 @@ ragdoll.AfterStep → UpdateTouches → DispatchContactEvents
 
 The physics *component* is just data. `ScenePhysics` reads it every frame through `BasicEntity.PhysicsType` and `Mass`. Changing a field in the inspector triggers a rebuild on the next step.
 
+**Statics without a gameobject.** `VoxelSystem` adds one static triangle mesh per voxel chunk straight to `PhysicsSystem` (`AddStaticMesh` / `RemoveStatic`), with world-space vertices. These statics are not in `_staticOwners`:
+- raycasts that hit them report `GameObject == null`
+- `UpdateTouches` skips contacts with them, so they raise no collision events
+- dynamic bodies still collide with them
+- the triangles are one-sided (front = clockwise seen from outside), like model meshes.
+
 **Contact events** are keyed by the `(BasicEntity, BasicEntity)` pair, so they survive body rebuilds:
 - A new pair fires Enter, a pair seen again fires Stay, and a missing pair fires Exit unless both sides are resting.
 - `Notify` sends `OnCollision*` or `OnTrigger*` to both owners' `ScriptBehaviourComponent`s.
@@ -450,6 +466,11 @@ MeshMaterialLibrary
   - **Unregister:** `entity.Dispose(library)` → `DeleteFromRegistry`, which removes the `TransformMatrix` by reference.
   - `RefreshMaterials()` is dispose + register.
   - Adding an entity to `Scene.BasicEntities` without registering it means it never draws. Removing it without disposing leaves a ghost.
+  - **Geometry without a gameobject** (voxel chunks, the voxel sea) registers its own `ModelMeshPart`s with `Register(material, part, transform, sphere)` and removes them with `Unregister(part, transform)`. Its `TransformMatrix` is owned by `VoxelSystem`:
+    - `Id` is 0, so it can't be picked or outlined.
+    - `Scale` must be non-zero, because it scales the culling sphere.
+    - Nothing clears `HasChanged` for these transforms (`FrustumCullingFinalizeFrame` only walks entities). The owner sets it for one frame after a rebuild, so shadow maps redraw, and clears it on the next update.
+    - `MeshMaterialLibrary.Clear()` on a scene swap drops these registrations too, which is why `VoxelSystem.Reset()` runs first.
 - **Batching:** `HasMaterial` only matches when `GameSettings.g_batchbymaterial` is true. The default is false, so each registration gets its own `MaterialLibrary`.
 - **`FrustumCulling`** applies dirty transforms, re-tests spheres against the frustum, and sets `Rendered[i]`. It returns whether anything changed, which shadow passes use to skip redraws. Shadow passes call it with *light* frusta, so the flags are re-culled for the camera afterwards.
 - **`Draw(RenderType, viewProjection, …, renderModule)`**: `RenderType` is one of `Opaque, ShadowOmnidirectional, ShadowLinear, Hologram, IdRender, IdOutline, SubsurfaceScattering, Forward, Water`. It filters by material:
@@ -632,6 +653,8 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 9. **A shadowed directional light with `ScreenSpaceShadowBlur` throws** `NotImplementedException` in `DrawScreenSpaceDirectionalShadow`.
 10. **Shader hot reload is effectively off** (section 9.6).
 11. `BasicEntity.Scripts` (`IScript`) is a legacy hook path. `PlayModeController` still calls it, but nothing adds to it.
+12. **The environment pass shades non-wet pixels with a different view vector.** `DeferredEnvironmentMap.fx` uses `ViewDir - CameraPositionWS` for ordinary pixels and `ViewDir` as is for Wet Surface pixels (albedo alpha). Rough Basic materials can look washed out next to Wet Surface ones. The voxel surfaces all use Wet Surface for this reason (see `VoxelSurfaceStyle`).
+13. **`new ModelMeshPart()` is marked obsolete in MonoGame 3.8.4,** but it is the only way to build parts outside the content pipeline. `VoxelSystem` suppresses CS0618 around it.
 
 ---
 
@@ -649,5 +672,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Change physics sync | `ScenePhysics.Update/Reconcile/PushPose/PullPose`, `PhysicsSystem` |
 | Expose engine state to Anvil | `IEditorBridge` + `EditorBridge.BuildSnapshot` + `BridgeReconciler` + view model + XAML |
 | Change scene file format | `SceneSerialization` DTOs (bump `CurrentVersion`, keep loading v1–v2) |
+| Draw geometry that isn't a gameobject | `MeshMaterialLibrary.Register(material, part, transform, sphere)` / `Unregister`, as `VoxelSystem.Upload` / `Release` do |
+| Change the voxel world | `Engine/Voxels/` (`VoxelGenerator`, `VoxelMesher`, `VoxelTextures`, `VoxelSystem`), settings in `EnvironmentSettings`; see [Voxel_World.md](Voxel_World.md) |
 | Change picking or gizmos | `IdAndOutlineRenderer`, `EditorRender`, `EditorLogic.Update/GizmoControl`, `IdGenerator` |
 | Debug "Anvil viewport wrong size" | `Engine.ApplyPendingResize`, `MonoGameHost.ResizeEngineToContainer` |

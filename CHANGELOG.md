@@ -1,5 +1,71 @@
 # Changelog
 
+## Added: Voxel world (Environment > Voxel World) and the VoxelTest sample (2026-10-11)
+
+**Why:** The engine had no way to make block terrain. A scene can now generate a voxel world from a few Environment settings. It is drawn by the deferred renderer, solid for physics, and editable from scripts. A sample scene shows digging and building in first person.
+
+- **New `Engine/Voxels/`:**
+  - `VoxelBlock`: 11 blocks stored as bytes (Air, Grass, Dirt, Stone, Sand, Snow, Wood, Leaves, Planks, Brick, Lamp), the surfaces each face shows, and `VoxelTerrain` (Flat, Hills, Mountains, Islands, saved by name).
+  - `VoxelWorld`: the block grid in 32³ chunks, centred on X/Y = 0 with its floor at a set Z.
+    - `GetBlock`, `SetBlock`, `FillBox`, `FillSphere`.
+    - A grid `Raycast` that returns the hit block, the adjacent empty cell, the face normal and the point.
+    - `TryGetSurface`.
+    - Dirty-chunk tracking: edits on a chunk border mark the neighbour too.
+    - The bottom layer can't be edited.
+  - `VoxelGenerator` and `VoxelNoise`: deterministic seeded terrain.
+    - A height field per terrain type, then grass over dirt over stone.
+    - Sand at the waterline, bare stone on cliffs, snow above 70% height on mountains.
+    - Spaghetti caves and trees. The column passes run in parallel.
+  - `VoxelMesher`: greedy meshing per surface, plus a coarser collision mesh that merges across surfaces.
+    - The world's underside isn't meshed, and faces between chunks are hidden in both.
+    - Triangles wind clockwise seen from outside, which both the culling and BEPU's one-sided triangles expect. A GPU check proves it.
+  - `VoxelTextures`: each surface is painted in code (16 x 16 pixel art scaled to 64², with mipmaps) together with a normal map.
+    - `VoxelSurfaceStyle` sets roughness, emboss strength and rain response.
+    - Every surface except the Lamp uses the Wet Surface type, so rain soaks the terrain. The Lamp is Emissive.
+  - `VoxelSystem` (`MainSceneLogic.Voxels`): keeps the active scene's world in step with its settings, before each physics step.
+    - It builds on a worker thread while editing, and synchronously during Play.
+    - Each chunk's surfaces register as `ModelMeshPart`s in the `MeshMaterialLibrary`, so the G-buffer, shadows, reflections and picking draw them. Chunks have ID 0.
+    - Each chunk gets a static BEPU mesh.
+    - Script edits remesh only the touched chunks.
+    - The sea is a unit quad drawn by the water pass.
+    - The world is reset on a scene swap and regenerated on Stop when Play changed it.
+- **Engine:**
+  - `EnvironmentSettings` gets `Voxels`, `VoxelTerrain`, `VoxelSeed`, `VoxelWorldSize`, `VoxelWorldHeight`, `VoxelBlockSize`, `VoxelBaseHeight`, `VoxelCaves`, `VoxelTrees`, `VoxelSeaLevel` and `VoxelCollision`. They are clamped in `Normalize`, saved in the scene's Environment, and old scenes load with the world off.
+  - New `MeshMaterialLibrary.Unregister(part, transform)` for geometry that isn't a gameobject.
+  - `MainSceneLogic`: `Voxels` and `VoxelWorld`, the voxel sync at the top of `UpdatePhysics`, `Reset` in `OnSceneChanged`, and `OnPlayStopped` on Stop.
+  - New `ScriptBehaviour.Voxels`. During Play it builds a missing world on demand, so scripts can use it in `Start`.
+- **Anvil:** a **Voxel World** section in the Environment panel:
+  - "Generate a voxel world", then Terrain, Seed with **New seed**, Size, Height, Block size, Floor Z, Trees, Sea level, Caves and Collision.
+  - A size summary in blocks and metres, and a short help text.
+- **Sample:** `Content/Scenes/VoxelTest.obsc` is appended to the scene list.
+  - A 128 x 128 x 64 world of hills (seed 1337) with caves, trees and lakes, under the day/night sky.
+  - The Player capsule runs the new **Voxel Test** script (`Content/Scripts/VoxelTestScript.cs`) with its HUD (`Content/UI/VoxelTest.xml/.css`): a first-person builder with a 10-block hotbar.
+  - Left mouse digs. A right click or F builds. B blasts a crater, G throws a physics ball, V flies, N makes a new world, T advances the time and R reloads.
+  - Four glowing bars frame the face under the crosshair.
+- **Docs:** new `Docs/markdown/Voxel_World.md`. `Engine_Wiring.md`, `Script_Behaviours.md` and `CLAUDE.md` are updated.
+- **Checks:** new `Tests/Components/VoxelChecks.cs`:
+  - settings, clamping and save/load
+  - deterministic generation for each terrain
+  - grid edits and raycasts
+  - meshing: face counts, merging, chunk borders, winding, UVs
+  - painted textures
+  - chunk colliders in BEPU, including one-sidedness and a dropped box coming to rest on the blocks
+  - async and sync builds, Stop, switching off and scene swaps
+  - the Inspector
+  - the VoxelTest sample played with real physics: land, dig, build, walk, blast, throw, new seed, Stop
+  - with `--graphics`: the library registration and a culling check on the GPU.
+  All checks pass, with and without `--graphics`.
+- Measured: the sample world builds in about 100 ms (about 55 000 triangles, about 110 draw parts). A 96-high Mountains world takes about 300 ms.
+- Known limits (see the doc):
+  - Edits aren't saved, and there is no editor sculpting.
+  - Lamps don't light their surroundings.
+  - Only opaque cubes.
+  - The sea has no buoyancy.
+  - NPC navigation grids ignore voxels.
+- Found while building it, not changed: `DeferredEnvironmentMap.fx` builds the view vector differently for non-Wet-Surface pixels, which washes out rough Basic materials. It is listed under sharp edges in `Engine_Wiring.md`.
+
+- Claude
+
 ## Added: LOD (level of detail) component and the LodTest sample (2026-10-10)
 
 **Why:** Every gameobject always drew its full model, however far away it was. The LOD component lets a gameobject draw simpler models in the distance, or nothing at all past a cull distance.

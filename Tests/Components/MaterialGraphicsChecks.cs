@@ -40,6 +40,7 @@ internal static class MaterialGraphicsChecks
             PersistenceChecks.RunGraphics(graphics, content);
             PauseChecks.RunGraphics(graphics, content);
             LodChecks.RunGraphics(graphics, content);
+            VoxelChecks.RunGraphics(graphics, content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);

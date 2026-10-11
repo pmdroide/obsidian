@@ -97,6 +97,16 @@ sightings to the HUD. The sentry's reporter sends the guard to search where it
 saw the player. It is the reference for the NPC component and its hooks. See
 [NPC_Navigation.md](NPC_Navigation.md).
 
+### Voxel Test
+
+`Engine/Content/Scripts/VoxelTestScript.cs` runs on the **Player** capsule of the
+`Scenes/VoxelTest.obsc` sample, a first-person builder in the scene's voxel world.
+The left mouse button digs, a right click (or F) builds the block picked with 1-0
+or the wheel, B blasts a crater, G throws a physics ball, V flies and N generates a
+new world from a random seed. A frame of four spawned bars marks the face under the
+crosshair. It is the reference for `ScriptBehaviour.Voxels`. See
+[Voxel_World.md](Voxel_World.md).
+
 ### Helpers on a camera
 
 In a camera script, `GameObject` is `null` and `Camera` is the camera. The
@@ -308,6 +318,7 @@ the physics engine uses.
 | `GetComponent<T>()` | First component of type `T` on this gameobject, or `null`. |
 | `Log(message)` | Writes `[ObjectName] message` to the engine/editor log. |
 | `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
+| `Voxels` | The scene's voxel world (`VoxelWorld`), or `null` when it has none: `GetBlock`, `SetBlock`, `FillSphere`, `FillBox`, `Raycast`, `TryGetSurface`. Edited chunks are remeshed before the next physics step; Stop regenerates the world. Fetch it each frame, because changing a voxel setting replaces it. See [Voxel_World.md](Voxel_World.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
 | `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned. Happens automatically when the script stops. |
 | `DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` | Keeps this gameobject (or another, e.g. one it spawned) when a script loads another scene. It moves into the new scene with its scripts still running. Lasts for this Play session; the saved equivalent is **Inspector > Persistent**. See [Persistent_GameObjects.md](Persistent_GameObjects.md). |

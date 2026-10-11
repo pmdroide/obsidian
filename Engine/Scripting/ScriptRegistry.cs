@@ -33,6 +33,7 @@ public static class ScriptRegistry
         Register<RagdollTestScript>(RagdollTestScript.ScriptId, "Ragdoll Test");
         Register<NpcTestPlayerScript>(NpcTestPlayerScript.ScriptId, "NPC Test Player");
         Register<NpcReporterScript>(NpcReporterScript.ScriptId, "NPC Reporter");
+        Register<VoxelTestScript>(VoxelTestScript.ScriptId, "Voxel Test");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

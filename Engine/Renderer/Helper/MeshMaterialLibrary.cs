@@ -201,6 +201,12 @@ namespace Engine.Renderer.Helper
                 entities[i].SelectLevelOfDetail(cameraPosition);
         }
 
+        /// <summary>
+        /// Removes one mesh part registered with <see cref="Register(MaterialEffect, ModelMeshPart, TransformMatrix, BoundingSphere, int)"/>
+        /// for geometry that has no <see cref="BasicEntity"/> (voxel chunks).
+        /// </summary>
+        public void Unregister(ModelMeshPart mesh, TransformMatrix worldMatrix) => DeleteFromRegistry(null, mesh, worldMatrix);
+
         private void DeleteFromRegistry(MaterialEffect mat, ModelMeshPart mesh, TransformMatrix worldMatrix)
         {
             for (var i = 0; i < Index; i++)

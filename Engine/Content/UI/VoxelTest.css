@@ -1,0 +1,244 @@
+/*
+  VoxelTest HUD. Design canvas: 1080 units high (GameUI scales it to the window).
+  Layout is absolute; fonts are heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Palette
+    panel    rgba(8, 10, 14, 0.74)
+    text     #F1ECE4
+    muted    rgba(241, 236, 228, 0.62)
+    accent   #8FCB5B               grass green
+    select   #F2C14E               the picked block
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #F1ECE4;
+    font-family: body;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- crosshair + message */
+
+#crosshair {
+    left: 50%;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    margin-top: -7px;
+}
+
+/* A ring while the crosshair is on a block within reach. */
+#crosshair.active { border: 1px solid #8FCB5B; }
+
+#dot {
+    left: 5px;
+    top: 5px;
+    width: 4px;
+    height: 4px;
+    background-color: rgba(241, 236, 228, 0.85);
+}
+
+#message {
+    left: 50%;
+    top: 50%;
+    width: 800px;
+    height: 34px;
+    margin-left: -400px;
+    margin-top: 40px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+#message.visible { opacity: 1; }
+
+/* ---------------------------------------------------------------- panel */
+
+/* Top right, clear of the engine's performance overlay in the top-left corner. */
+#panel {
+    right: 40px;
+    top: 40px;
+    width: 640px;
+    height: 300px;
+    background-color: rgba(8, 10, 14, 0.74);
+}
+
+#accent {
+    width: 3px;
+    height: 100%;
+    background-color: #8FCB5B;
+}
+
+.eyebrow {
+    left: 30px;
+    top: 24px;
+    width: 400px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+#title {
+    left: 30px;
+    top: 48px;
+    width: 580px;
+    height: 40px;
+    font-family: heading;
+}
+
+#terrain {
+    left: 30px;
+    top: 104px;
+    width: 580px;
+    height: 30px;
+    white-space: nowrap;
+    font-family: caption;
+    color: #8FCB5B;
+}
+
+#stats {
+    left: 30px;
+    top: 140px;
+    width: 580px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 236, 228, 0.78);
+}
+
+#rule {
+    left: 30px;
+    top: 180px;
+    width: 580px;
+    height: 1px;
+    background-color: rgba(241, 236, 228, 0.14);
+}
+
+#looking {
+    left: 30px;
+    top: 194px;
+    width: 580px;
+    height: 28px;
+    white-space: nowrap;
+}
+
+#counts {
+    left: 30px;
+    top: 226px;
+    width: 580px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 236, 228, 0.78);
+}
+
+#mode {
+    left: 30px;
+    top: 258px;
+    width: 580px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+/* ---------------------------------------------------------------- hotbar */
+
+#hotbar {
+    left: 50%;
+    bottom: 170px;
+    width: 792px;
+    height: 110px;
+    margin-left: -396px;
+}
+
+#block-name {
+    left: 0;
+    top: 0;
+    width: 792px;
+    height: 28px;
+    text-align: center;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.slot {
+    top: 36px;
+    width: 72px;
+    height: 72px;
+    background-color: rgba(8, 10, 14, 0.74);
+    border: 1px solid rgba(241, 236, 228, 0.18);
+    transition: border-color 0.12s, background-color 0.12s;
+}
+
+.slot.selected {
+    border: 2px solid #F2C14E;
+    background-color: rgba(40, 34, 20, 0.85);
+}
+
+#slot0 { left: 0; }
+#slot1 { left: 80px; }
+#slot2 { left: 160px; }
+#slot3 { left: 240px; }
+#slot4 { left: 320px; }
+#slot5 { left: 400px; }
+#slot6 { left: 480px; }
+#slot7 { left: 560px; }
+#slot8 { left: 640px; }
+#slot9 { left: 720px; }
+
+.swatch {
+    left: 12px;
+    top: 10px;
+    width: 48px;
+    height: 36px;
+}
+
+/* VoxelBlocks.SwatchColor, in VoxelBlocks.Placeable order. */
+#swatch0 { background-color: #5C963E; }  /* Grass */
+#swatch1 { background-color: #7C583C; }  /* Dirt */
+#swatch2 { background-color: #808084; }  /* Stone */
+#swatch3 { background-color: #DECC96; }  /* Sand */
+#swatch4 { background-color: #ECF2F8; }  /* Snow */
+#swatch5 { background-color: #684C30; }  /* Wood */
+#swatch6 { background-color: #3A7030; }  /* Leaves */
+#swatch7 { background-color: #B08856; }  /* Planks */
+#swatch8 { background-color: #A04A3A; }  /* Brick */
+#swatch9 { background-color: #FFD68C; }  /* Lamp */
+
+.key {
+    left: 0;
+    top: 50px;
+    width: 72px;
+    height: 18px;
+    text-align: center;
+    font-family: caption;
+    color: rgba(241, 236, 228, 0.62);
+}
+
+/* ---------------------------------------------------------------- key hints */
+
+#keys {
+    left: 40px;
+    bottom: 36px;
+    width: 1300px;
+    height: 104px;
+}
+
+.keys-line {
+    left: 0;
+    width: 1300px;
+    height: 28px;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+#keys-build { top: 0; }
+#keys-world { top: 34px; }
+#keys-move { top: 68px; color: rgba(241, 236, 228, 0.62); }

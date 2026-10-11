@@ -1,10 +1,11 @@
 using System;
 using System.Text.Json.Serialization;
+using Engine.Voxels;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Logic
 {
-    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, and weather.</summary>
+    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather and the voxel world.</summary>
     public sealed class EnvironmentSettings
     {
         public bool DayNightCycle { get; set; }
@@ -45,6 +46,28 @@ namespace Engine.Logic
         /// <summary>Compass angle in degrees the wind blows towards: 0 = +X, 90 = +Y.</summary>
         public float WindDirection { get; set; } = 45;
 
+        // Voxel world: block terrain generated from these settings, drawn and collidable in both Edit and Play
+        // (Engine/Voxels, VoxelSystem). Changing any of them regenerates the world.
+        public bool Voxels { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public VoxelTerrain VoxelTerrain { get; set; } = VoxelTerrain.Hills;
+        public int VoxelSeed { get; set; } = 1337;
+        /// <summary>Blocks along X and Y: 32-256, a multiple of the 32-block chunk.</summary>
+        public int VoxelWorldSize { get; set; } = 128;
+        /// <summary>Blocks along Z: 16-128, a multiple of 16.</summary>
+        public int VoxelWorldHeight { get; set; } = 64;
+        /// <summary>Edge length of one block in metres.</summary>
+        public float VoxelBlockSize { get; set; } = 1;
+        /// <summary>World Z of the voxel world's floor; the world is centred on the origin in X/Y.</summary>
+        public float VoxelBaseHeight { get; set; } = -24;
+        public bool VoxelCaves { get; set; } = true;
+        /// <summary>0 = no trees, 1 = a dense forest on grass.</summary>
+        public float VoxelTrees { get; set; } = 0.5f;
+        /// <summary>Water surface as a fraction of the world height; 0 = no sea.</summary>
+        public float VoxelSeaLevel { get; set; } = 0.3f;
+        /// <summary>Static colliders for the chunks (bodies, characters and raycasts hit the blocks).</summary>
+        public bool VoxelCollision { get; set; } = true;
+
         public EnvironmentSettings Clone() => (EnvironmentSettings)MemberwiseClone();
 
         public void Normalize()
@@ -66,6 +89,13 @@ namespace Engine.Logic
             WeatherHaze = Limit(WeatherHaze, 0, 1, 0.6f);
             WindSpeed = Limit(WindSpeed, 0, 40, 4);
             WindDirection = float.IsFinite(WindDirection) ? ((WindDirection % 360) + 360) % 360 : 45;
+            if (!Enum.IsDefined(VoxelTerrain)) VoxelTerrain = VoxelTerrain.Hills;
+            VoxelWorldSize = VoxelWorldSettings.ClampSize(VoxelWorldSize);
+            VoxelWorldHeight = VoxelWorldSettings.ClampHeight(VoxelWorldHeight);
+            VoxelBlockSize = VoxelWorldSettings.ClampBlockSize(VoxelBlockSize);
+            VoxelBaseHeight = Limit(VoxelBaseHeight, -1000, 1000, -24);
+            VoxelTrees = Limit(VoxelTrees, 0, 1, 0.5f);
+            VoxelSeaLevel = Limit(VoxelSeaLevel, 0, 0.9f, 0.3f);
         }
 
         private static float Limit(float value, float min, float max, float fallback) =>

@@ -10,6 +10,7 @@ using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
 using Engine.Renderer.Lighting;
 using Engine.Renderer.RenderModules.Signed_Distance_Fields.SDF_Generator;
+using Engine.Voxels;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -88,6 +89,15 @@ namespace Engine.Logic
         // Builds/syncs BEPU bodies from each entity's physics component (Inspector > Physics).
         private ScenePhysics _scenePhysics;
 
+        /// <summary>
+        /// The scene's voxel world (Inspector > Environment > Voxel World): generated, drawn and collidable.
+        /// Null until <see cref="Initialize"/>; checks may set a GPU-free one.
+        /// </summary>
+        public VoxelSystem Voxels { get; set; }
+
+        /// <summary>The active scene's voxel world, built now if Play needs it and it isn't ready; null when off.</summary>
+        public VoxelWorld VoxelWorld => Voxels?.Ensure(ActiveScene, PlayMode?.Mode == GameMode.Play);
+
         //SDF
         public SdfGenerator _sdfGenerator;
 
@@ -108,6 +118,7 @@ namespace Engine.Logic
             _scenePhysics = new ScenePhysics(physics);
 
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
+            Voxels = new VoxelSystem(graphicsDevice, MeshMaterialLibrary, physics);
 
             SceneManager.Assets = assets;
             LodComponent.FindModel = assets.FindModel;
@@ -213,6 +224,8 @@ namespace Engine.Logic
         {
             if (mode != GameMode.Edit || _switchingScene) return;
 
+            // Blocks dug or placed during Play go back to the generated world.
+            Voxels?.OnPlayStopped();
             GameUI.CloseAll();
             GameFlow.EscapeQuits = true;
             GameFlow.Paused = false;
@@ -262,6 +275,9 @@ namespace Engine.Logic
             // theirs from their physics component on the next physics update.
             // Carried persistent gameobjects keep theirs (and their velocity).
             _scenePhysics?.DetachAll(carried);
+
+            // The old scene's voxel world goes with it (the new one is built on the next update).
+            Voxels?.Reset();
 
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
@@ -427,6 +443,10 @@ namespace Engine.Logic
         /// <param name="time">Total game time in seconds, so buoyancy follows the waves the water shader draws.</param>
         public void UpdatePhysics(float dt, float time = 0)
         {
+            // Voxel world first: settings changes, a new scene's world and script edits become meshes and
+            // colliders before the step (also while paused, so the Environment panel still applies).
+            Voxels?.Update(ActiveScene, PlayMode?.Mode == GameMode.Play);
+
             // Paused: bodies hold their pose and velocity until the game resumes.
             if (GameFlow.Paused && PlayMode?.Mode == GameMode.Play) return;
             bool simulate = !GameSettings.e_enableeditor && GameSettings.p_physics;

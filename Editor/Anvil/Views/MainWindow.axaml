@@ -2450,6 +2450,62 @@
                                                    TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                     </StackPanel>
                                 </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Voxel World" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <CheckBox Content="Generate a voxel world" IsChecked="{Binding VoxelsEnabled, Mode=TwoWay}" FontSize="11" />
+                                    <StackPanel Spacing="8" IsVisible="{Binding VoxelsEnabled}">
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Terrain" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                      ItemsSource="{Binding VoxelTerrains}"
+                                                      SelectedIndex="{Binding SelectedVoxelTerrain, Mode=TwoWay}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,Auto" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Seed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelSeed, Mode=TwoWay}"
+                                                           Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" />
+                                            <Button Grid.Column="2" Content="New seed" Command="{Binding NewVoxelSeedCommand}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Size (blocks)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="32" Maximum="256" TickFrequency="32" IsSnapToTickEnabled="True"
+                                                    Value="{Binding VoxelWorldSize, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding VoxelWorldSize, StringFormat={}{0:0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Height (blocks)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="16" Maximum="128" TickFrequency="16" IsSnapToTickEnabled="True"
+                                                    Value="{Binding VoxelWorldHeight, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding VoxelWorldHeight, StringFormat={}{0:0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Block size (m)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0.25" Maximum="4" TickFrequency="0.25" IsSnapToTickEnabled="True"
+                                                    Value="{Binding VoxelBlockSize, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding VoxelBlockSize, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Floor Z (m)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding VoxelBaseHeight, Mode=TwoWay}"
+                                                           Minimum="-1000" Maximum="1000" Increment="1" FormatString="0.##" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Trees" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding VoxelTrees, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding VoxelTrees, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Sea level" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="0.9" Value="{Binding VoxelSeaLevel, Mode=TwoWay}" MinHeight="18" />
+                                            <TextBlock Grid.Column="2" Text="{Binding VoxelSeaLevel, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <CheckBox Content="Caves" IsChecked="{Binding VoxelCaves, Mode=TwoWay}" FontSize="11" />
+                                        <CheckBox Content="Collision" IsChecked="{Binding VoxelCollision, Mode=TwoWay}" FontSize="11" />
+                                        <TextBlock Text="{Binding VoxelSummary}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                                        <TextBlock Text="Changing a setting regenerates the world (in the background while editing). The world is centred on X/Y = 0 and its floor is at Floor Z. Sea level is a fraction of the height; 0 means no water. Scripts dig and build through ScriptBehaviour.Voxels, and Stop puts the generated world back."
+                                                   TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    </StackPanel>
+                                </StackPanel>
                                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
                             </StackPanel>
                         </ScrollViewer>

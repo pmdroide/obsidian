@@ -502,6 +502,7 @@ CollisionChecks.Run();
 ClothChecks.Run();
 NpcChecks.Run();
 LodChecks.Run();
+VoxelChecks.Run();
 PersistenceChecks.Run();
 PauseChecks.Run();
 BuildChecks.Run();
