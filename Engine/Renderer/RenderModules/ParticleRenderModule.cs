@@ -38,6 +38,11 @@ public sealed class ParticleRenderModule : IDisposable
     private readonly List<ParticleVolume> _staleVolumes = new();
     private readonly Vector4[] _carveFrom = new Vector4[ParticleVolumetricModule.MaxCarves];
     private readonly Vector4[] _carveTo = new Vector4[ParticleVolumetricModule.MaxCarves];
+    // Lit particles: the point lights nearest each system (MAX_PARTICLE_POINT_LIGHTS in Particles.fx).
+    private const int MaxLitPointLights = 4;
+    private readonly Vector4[] _litLightPosition = new Vector4[MaxLitPointLights];
+    private readonly Vector4[] _litLightColor = new Vector4[MaxLitPointLights];
+    private readonly float[] _litLightScore = new float[MaxLitPointLights];
     private Texture3D _noise;
     private FullScreenTriangle _fullScreenTriangle;
     private int _frame;
@@ -97,8 +102,11 @@ public sealed class ParticleRenderModule : IDisposable
     public int LastVolumeCount { get; private set; }
 
     /// <param name="depthMap">Linear G-buffer depth (view Z / -farClip): hides particles behind geometry and softens them into it.</param>
+    /// <param name="extraSystems">Systems without a gameobject (water splash droplets); they sort by their simulation's pose.</param>
+    /// <param name="pointLights">Point lights that shade Lit particles (scene lights plus particle Lights modules); optional.</param>
     public void Draw(GraphicsDevice graphics, IReadOnlyList<BasicEntity> entities, Camera camera, Matrix view,
-        Matrix viewProjection, TextureCube environment, List<DirectionalLight> lights, Texture2D depthMap, float farClip)
+        Matrix viewProjection, TextureCube environment, List<DirectionalLight> lights, Texture2D depthMap, float farClip,
+        IReadOnlyList<ParticleSystemComponent> extraSystems = null, IReadOnlyList<PointLight> pointLights = null)
     {
         LastParticleCount = 0;
         LastSystemCount = 0;
@@ -133,6 +141,16 @@ public sealed class ParticleRenderModule : IDisposable
                 total += count;
             }
         }
+        if (extraSystems != null)
+            for (int i = 0; i < extraSystems.Count; i++)
+            {
+                ParticleSystemComponent system = extraSystems[i];
+                int count = Math.Max(0, Math.Min(system?.ParticleCount ?? 0, MaxInstances - total));
+                if (count == 0) continue;
+                Vector3 at = system.Simulation?.World.Translation ?? Vector3.Zero;
+                _batches.Add((system, Vector3.DistanceSquared(camera.Position, at), 0, count, false));
+                total += count;
+            }
         if (_batches.Count == 0)
         {
             ReleaseUnusedVolumes();
@@ -192,6 +210,7 @@ public sealed class ParticleRenderModule : IDisposable
             Set("SpeedScale", Finite(renderer.SpeedScale, 0, 0, 1000));
             Set("Brightness", Finite(renderer.Brightness, 1, 0, 1000));
             Set("Lit", renderer.Lit);
+            if (renderer.Lit) SetPointLights(system, pointLights);
             Set("SoftParticles", Finite(renderer.SoftParticles, 0.3f, 0, 100));
             Set("CameraFade", Finite(renderer.CameraFade, 0.5f, 0, 100));
             _shader.CurrentTechnique.Passes[0].Apply();
@@ -210,6 +229,41 @@ public sealed class ParticleRenderModule : IDisposable
         graphics.RasterizerState = RasterizerState.CullCounterClockwise;
         graphics.BlendState = BlendState.Opaque;
         ReleaseUnusedVolumes();
+    }
+
+    // The (up to) four point lights that shine most on a Lit system, judged from its emitter.
+    private void SetPointLights(ParticleSystemComponent system, IReadOnlyList<PointLight> pointLights)
+    {
+        int count = 0;
+        Vector3 at = system.Owner?.Position ?? system.Simulation?.World.Translation ?? Vector3.Zero;
+        // Smoke drifts away from its emitter: lights a few metres beyond their radius still count.
+        const float Slack = 4f;
+        if (pointLights != null)
+            for (int i = 0; i < pointLights.Count; i++)
+            {
+                PointLight light = pointLights[i];
+                if (light == null || !light.IsEnabled || light is SpotLight || !(light.Intensity > 0) || !(light.Radius > 0)) continue;
+                float distance = Vector3.Distance(light.Position, at);
+                if (distance > light.Radius + Slack) continue;
+                float score = light.Intensity * light.Radius / (1 + distance * distance);
+                int slot = count < MaxLitPointLights ? count++ : MaxLitPointLights;
+                if (slot == MaxLitPointLights && score <= _litLightScore[MaxLitPointLights - 1]) continue;
+                if (slot == MaxLitPointLights) slot--;
+                while (slot > 0 && _litLightScore[slot - 1] < score)
+                {
+                    _litLightScore[slot] = _litLightScore[slot - 1];
+                    _litLightPosition[slot] = _litLightPosition[slot - 1];
+                    _litLightColor[slot] = _litLightColor[slot - 1];
+                    slot--;
+                }
+                _litLightScore[slot] = score;
+                _litLightPosition[slot] = new Vector4(light.Position, light.Radius);
+                // The same 0.1 output scale as DeferredPointLight.fx.
+                _litLightColor[slot] = new Vector4(light.ColorV3 * light.Intensity * 0.1f, 0);
+            }
+        Set("PointLightCount", (float)count);
+        _shader.Parameters["PointLightPosition"]?.SetValue(_litLightPosition);
+        _shader.Parameters["PointLightColor"]?.SetValue(_litLightColor);
     }
 
     // ---------------------------------------------------------------------------------------------

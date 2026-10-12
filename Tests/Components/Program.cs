@@ -393,6 +393,23 @@ playMode.UpdateScripts(new GameTime());
 playMode.Stop();
 Check(behaviour.Starts == 1 && behaviour.Updates == 1, "disabled components do not start or update");
 
+// Volume settings hold their values without FMOD; the game menus read and write them through Audio.
+var previousAudio = Audio.Instance;
+Audio.Instance = new AudioManager();
+Audio.SetVolume(AudioBus.Music, 0.4f);
+Audio.EffectsVolume = 2f;
+Audio.MasterVolume = float.NaN;
+Check(Math.Abs(Audio.MusicVolume - 0.4f) < 0.0001f && Audio.GetVolume(AudioBus.Effects) == 1f && Audio.MasterVolume == 1f,
+    "bus volumes are kept per bus and clamped to 0..1");
+var volumeRows = Engine.Scripting.MenuSettings.Audio();
+volumeRows[2].Set(3);
+Check(volumeRows.Select(r => r.Name).SequenceEqual(new[] { "Master volume", "Music volume", "Sound effects volume" }) &&
+      Math.Abs(Audio.EffectsVolume - 0.3f) < 0.0001f && volumeRows[2].ValueText == "30%" && volumeRows[1].ValueText == "40%",
+    "the menus' Master/Music/Effects rows read and change their own bus");
+Audio.Instance = previousAudio;
+Check(System.Text.Json.JsonSerializer.Serialize(new AudioComponent { Output = AudioBus.Music }).Contains("\"Output\":\"Music\""),
+    "an Audio component saves its Output bus by name");
+
 if (args.Contains("--audio"))
 {
     using var manager = new AudioManager();
@@ -421,6 +438,26 @@ if (args.Contains("--audio"))
     bridge.EnqueueMutateComponent(entity.Id, AudioComponent.TypeId, c => ((AudioComponent)c).Volume = 0.25f);
     Publish();
     Check(audio.IsPlaying && Math.Abs(Channel(audio).Volume - 0.25f) < 0.0001, "volume updates the playing channel without stopping it");
+    manager.EffectsVolume = 0.3f;
+    Channel(audio).Native.getChannelGroup(out var effectsGroup);
+    effectsGroup.getVolume(out float effectsVolume);
+    Check(Math.Abs(effectsVolume - 0.3f) < 0.0001, "Audio components play on the Effects bus, which follows the effects volume");
+    manager.EffectsVolume = 1;
+    manager.MusicVolume = 0.5f;
+    var musicChannel = manager.PlayMusic("music");
+    float musicVolume = -1;
+    if (musicChannel is { } playingMusic && playingMusic.Native.getChannelGroup(out var musicGroup) == FMOD.RESULT.OK)
+        musicGroup.getVolume(out musicVolume);
+    Check(manager.IsMusicPlaying && Math.Abs(musicVolume - 0.5f) < 0.0001, "music plays on the Music bus at the music volume");
+    manager.StopMusic();
+    manager.MusicVolume = 1;
+    audio.Output = AudioBus.Music;
+    audio.OnChanged(entity);
+    Channel(audio).Native.getChannelGroup(out var outputGroup);
+    outputGroup.getVolume(out float outputVolume);
+    Check(audio.IsPlaying && outputVolume == 1f && !outputGroup.handle.Equals(effectsGroup.handle),
+        "changing Output moves a playing Audio component to the Music bus");
+    audio.Output = AudioBus.Effects;
     bridge.EnqueueRemoveComponent(entity.Id, AudioComponent.TypeId);
     Publish();
     Check(!audio.IsPlaying, "removing component stops its 2D channel");
@@ -481,6 +518,7 @@ if (args.Contains("--audio"))
 }
 
 ScriptBehaviourChecks.Run();
+ScriptTimingChecks.Run();
 GameObjectMenuChecks.Run();
 SpotLightChecks.Run();
 ScriptFieldChecks.Run();
@@ -492,6 +530,7 @@ ProjectResetChecks.Run();
 WeatherChecks.Run();
 WetSurfaceChecks.Run();
 WaterChecks.Run();
+WaterSplashChecks.Run();
 SteamChecks.Run();
 InputDeviceChecks.Run();
 GameFlowChecks.Run();
@@ -503,8 +542,12 @@ CollisionChecks.Run();
 ClothChecks.Run();
 NpcChecks.Run();
 LodChecks.Run();
+FoliageChecks.Run();
+FogChecks.Run();
 ParticleChecks.Run();
 VoxelChecks.Run();
+GridChecks.Run();
+SaveDataChecks.Run();
 PersistenceChecks.Run();
 PauseChecks.Run();
 BuildChecks.Run();

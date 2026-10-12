@@ -37,6 +37,11 @@ bool UseFroxelFog = true;
 // for moodier atmospheric distance haze. Independent from the per-light scatter values.
 float SkyFogStrength = 0.25f;
 
+// Sky pixels keep the fog in front of them up to this distance at full strength; only the haze
+// beyond it is scaled by SkyFogStrength. Light shafts seen towards the sun sit in front of the sky
+// (the gap they shine through), so scaling the whole column erased them when facing the light.
+float SkyShaftDistance = 200.0f;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SAMPLERS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -293,12 +298,14 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
         transmittance =
             saturate(fog.a);
 
-        // For sky pixels, dial fog impact down so the skybox doesn't get washed out by accumulated
-        // scatter from the entire view-frustum depth. SkyFogStrength = 0 -> sky untouched.
+        // For sky pixels, dial the far haze down so the skybox doesn't get washed out by accumulated
+        // scatter from the entire view-frustum depth, but keep the near part (where shafts live) like
+        // any surface at that distance. SkyFogStrength = 0 -> sky only gets the near fog.
         if (isSky)
         {
-            volumetrics *= SkyFogStrength;
-            transmittance = lerp(1.0, transmittance, SkyFogStrength);
+            float4 nearFog = SampleFroxelAccumulationTexture(input.TexCoord, min(max(SkyShaftDistance, NearClip), dist));
+            volumetrics = nearFog.rgb + max(fog.rgb - nearFog.rgb, 0) * SkyFogStrength;
+            transmittance = lerp(saturate(nearFog.a), transmittance, SkyFogStrength);
         }
     }
 

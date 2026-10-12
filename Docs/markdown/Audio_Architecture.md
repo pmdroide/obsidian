@@ -24,8 +24,8 @@ The subsystem deliberately mirrors the engine's existing conventions:
   `Audio.PlaySound("blip")` from anywhere without threading a reference through.
 
 It supports four things: **2D one-shot/looping SFX**, **3D positional audio** (listener
-driven by the active camera, emitters by world or live entity positions), a **master volume**,
-and **streamed music**.
+driven by the active camera, emitters by world or live entity positions), **master, music and
+effects volumes** (mixer buses), and **streamed music**.
 
 ---
 
@@ -123,12 +123,15 @@ Channel? PlaySound3D(string name, Func<Vector3> positionSource, float volume = 1
                      float minDist = 1f, float maxDist = 10000f);
 void StopInstance(Channel channel);
 
-// music (streamed)
-Channel? PlayMusic(string name, float volume = 1f, bool loop = true);
-void StopMusic();  void PauseMusic();  void ResumeMusic();
+// music (streamed, Music bus)
+Channel? PlayMusic(string name, float volume = 1f, bool loop = true, bool contentRelativePath = false);
+void StopMusic();  void PauseMusic();  void ResumeMusic();  bool IsMusicPlaying { get; }
 
-// global
+// global (see Audio_Volume.md)
 float MasterVolume { get; set; }     // 0..1, applied to FMOD's master channel group
+float MusicVolume { get; set; }      // 0..1, the Music channel group
+float EffectsVolume { get; set; }    // 0..1, the Effects channel group
+float GetVolume(AudioBus bus);  void SetVolume(AudioBus bus, float volume);
 void StopAll();
 void Dispose();
 ```
@@ -251,11 +254,16 @@ it, and stores the channel in `_music`. It is plain 2D (no spatialisation). `Sto
 `PauseMusic`, and `ResumeMusic` operate on that single stored channel. Only one music track
 plays at a time.
 
-## Master Volume
+## Volume and Buses
 
 `MasterVolume` clamps to `0..1` and applies to FMOD's **master channel group**
 (`CoreSystem.Native.getMasterChannelGroup → setVolume`), so it scales *everything* — SFX, 3D,
 and music — at once.
+
+Under the master group there are two channel groups, **Music** and **Effects** (`AudioBus`),
+each with its own volume (`MusicVolume`, `EffectsVolume`, `SetVolume(bus, v)`). `PlayMusic`
+plays on Music; the other play methods take a `bus` argument and default to Effects. The game
+menus have a row for each volume. See [Audio_Volume.md](Audio_Volume.md).
 
 ---
 
@@ -332,9 +340,8 @@ panning. Remove/gate the X/M hooks once satisfied.
   position extra listeners.
 - **Doppler** — pass a real velocity into `_listener.SetAttributes` and `channel.Velocity3D`
   (compute from per-frame position deltas).
-- **Buses / categories (SFX vs music vs UI)** — give each category its own FMOD `ChannelGroup`
-  and play into it (currently everything plays on the master group), enabling per-category
-  volume.
+- **More buses (voice, UI)** — Music and Effects already exist; adding another is a new
+  `AudioBus` value plus a channel group (steps in [Audio_Volume.md](Audio_Volume.md)).
 - **Editor integration** — the Anvil editor already has an `Audio` asset-folder stub
   (`AssetKind.Audio`). Surfacing audio assets and a per-entity emitter component there is the
   natural next step (see [Editor_Architecture.md](Editor_Architecture.md) for the bridge pattern

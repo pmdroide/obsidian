@@ -233,6 +233,224 @@
       "Position": [0, 0, 4],
       "Scale": [4, 4, 4],
       "Material": { "DiffuseColor": [0.9, 0.9, 0.9], "Roughness": 0.4 }
+    },
+    {
+      "Id": 31,
+      "Name": "Attic Floor",
+      "ModelKey": "Cube",
+      "Position": [-105, 0, 0.1],
+      "Scale": [9, 13, 0.1],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 32,
+      "Name": "Attic Wall West",
+      "ModelKey": "Cube",
+      "Position": [-114.5, 0, 5.5],
+      "Scale": [0.5, 14, 5.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 33,
+      "Name": "Attic Wall South",
+      "ModelKey": "Cube",
+      "Position": [-105, -13.5, 5.5],
+      "Scale": [9, 0.5, 5.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 34,
+      "Name": "Attic Wall North",
+      "ModelKey": "Cube",
+      "Position": [-105, 13.5, 5.5],
+      "Scale": [9, 0.5, 5.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 35,
+      "Name": "Attic Wall East Low",
+      "ModelKey": "Cube",
+      "Position": [-95.5, 0, 1.5],
+      "Scale": [0.5, 14, 1.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 36,
+      "Name": "Attic Wall East High",
+      "ModelKey": "Cube",
+      "Position": [-95.5, 0, 9.25],
+      "Scale": [0.5, 14, 1.75],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 37,
+      "Name": "Attic Wall East Left",
+      "ModelKey": "Cube",
+      "Position": [-95.5, -8.5, 5.25],
+      "Scale": [0.5, 5.5, 2.25],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 38,
+      "Name": "Attic Wall East Right",
+      "ModelKey": "Cube",
+      "Position": [-95.5, 8.5, 5.25],
+      "Scale": [0.5, 5.5, 2.25],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 39,
+      "Name": "Attic Window Bar",
+      "ModelKey": "Cube",
+      "Position": [-95.5, 0, 5.25],
+      "Scale": [0.5, 0.2, 2.25],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 40,
+      "Name": "Attic Window Sill",
+      "ModelKey": "Cube",
+      "Position": [-95.5, 0, 5.25],
+      "Scale": [0.5, 3, 0.15],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 41,
+      "Name": "Attic Roof West",
+      "ModelKey": "Cube",
+      "Position": [-109.5, 0, 11.5],
+      "Scale": [5.5, 14, 0.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 42,
+      "Name": "Attic Roof East",
+      "ModelKey": "Cube",
+      "Position": [-97, 0, 11.5],
+      "Scale": [2, 14, 0.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 43,
+      "Name": "Attic Roof South",
+      "ModelKey": "Cube",
+      "Position": [-101.5, -9, 11.5],
+      "Scale": [2.5, 5, 0.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 44,
+      "Name": "Attic Roof North",
+      "ModelKey": "Cube",
+      "Position": [-101.5, 9, 11.5],
+      "Scale": [2.5, 5, 0.5],
+      "Material": { "DiffuseColor": [0.32, 0.27, 0.22], "Roughness": 0.95 }
+    },
+    {
+      "Id": 45,
+      "Name": "Attic Skylight Slat 1",
+      "ModelKey": "Cube",
+      "Position": [-101.5, -1.6, 11.5],
+      "Scale": [2.5, 0.25, 0.5],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 46,
+      "Name": "Attic Skylight Slat 2",
+      "ModelKey": "Cube",
+      "Position": [-101.5, 0.4, 11.5],
+      "Scale": [2.5, 0.25, 0.5],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 47,
+      "Name": "Attic Skylight Slat 3",
+      "ModelKey": "Cube",
+      "Position": [-101.5, 2.4, 11.5],
+      "Scale": [2.5, 0.25, 0.5],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 48,
+      "Name": "Attic Skylight Beam",
+      "ModelKey": "Cube",
+      "Position": [-101.5, 0, 10.7],
+      "Scale": [0.2, 4, 0.3],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 49,
+      "Name": "Attic Rafter 1",
+      "ModelKey": "Cube",
+      "Position": [-111, 0, 10.6],
+      "Scale": [0.25, 13, 0.4],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 50,
+      "Name": "Attic Rafter 2",
+      "ModelKey": "Cube",
+      "Position": [-107, 0, 10.6],
+      "Scale": [0.25, 13, 0.4],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 51,
+      "Name": "Attic Rafter 3",
+      "ModelKey": "Cube",
+      "Position": [-103, 0, 10.6],
+      "Scale": [0.25, 13, 0.4],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 52,
+      "Name": "Attic Rafter 4",
+      "ModelKey": "Cube",
+      "Position": [-99, 0, 10.6],
+      "Scale": [0.25, 13, 0.4],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 53,
+      "Name": "Attic Couch Seat",
+      "ModelKey": "Cube",
+      "Position": [-110.5, 5, 0.7],
+      "Scale": [2, 1, 0.5],
+      "Material": { "DiffuseColor": [0.35, 0.08, 0.06], "Roughness": 0.8 }
+    },
+    {
+      "Id": 54,
+      "Name": "Attic Couch Back",
+      "ModelKey": "Cube",
+      "Position": [-110.5, 6.4, 1.3],
+      "Scale": [2, 0.4, 1.1],
+      "Material": { "DiffuseColor": [0.35, 0.08, 0.06], "Roughness": 0.8 }
+    },
+    {
+      "Id": 55,
+      "Name": "Attic Crate",
+      "ModelKey": "Cube",
+      "Position": [-101, -7, 1.2],
+      "Scale": [1, 1, 1],
+      "Material": { "DiffuseColor": [0.22, 0.15, 0.1], "Roughness": 0.9 }
+    },
+    {
+      "Id": 56,
+      "Name": "Attic Dust",
+      "ModelKey": "Cube",
+      "Position": [-105, 0, 5.6],
+      "Scale": [9, 13, 5.4],
+      "Components": [
+        {
+          "Type": "fog-volume",
+          "InstanceId": "2f8ca4e9-bf50-4c95-ad28-f0466e42d5d3",
+          "Data": {
+            "Density": 0.15,
+            "EdgeFade": 0.05,
+            "Enabled": true
+          }
+        }
+      ]
     }
   ],
   "PointLights": [],
@@ -259,10 +477,11 @@
     "AutoUpdate": true
   },
   "Environment": {
-    "DayNightCycle": true,
+    "DayNightCycle": false,
     "TimeOfDay": 7,
     "CycleDurationMinutes": 4,
-    "CloudCoverage": 0.2
+    "CloudCoverage": 0.2,
+    "MaxAutoExposure": 0
   },
   "MainCamera": {
     "Position": [0, -170, 12],

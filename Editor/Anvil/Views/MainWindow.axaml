@@ -385,6 +385,10 @@
                             <MenuItem Header="Particle System"
                                       Command="{Binding AddParticleSystemCommand}" />
                         </MenuItem>
+                        <MenuItem Header="Nature">
+                            <MenuItem Header="Tree"
+                                      Command="{Binding AddTreeCommand}" />
+                        </MenuItem>
                     </MenuItem>
                     <MenuItem Header="Game Settings"
                               Command="{Binding OpenGameSettingsCommand}"
@@ -458,9 +462,6 @@
                     <!-- bottom group -->
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" Spacing="6">
                         <Border Height="1" Background="{StaticResource AnvilBorderBrush}" Margin="6,4" />
-                        <Button Classes="tool" ToolTip.Tip="Toggle Grid">
-                            <controls:LucideIcon Icon="Grid3x3" />
-                        </Button>
                         <Button Classes="tool play"
                                 Classes.active="{Binding IsPlaying}"
                                 Command="{Binding TogglePlayCommand}"
@@ -542,6 +543,11 @@
                             </Button>
                             <Button Classes="iconButton" ToolTip.Tip="Layers">
                                 <controls:LucideIcon Icon="Layers" />
+                            </Button>
+                            <Button Classes="iconButton" Classes.active="{Binding IsGridVisible}"
+                                    Command="{Binding ToggleGridCommand}" ToolTip.Tip="{Binding GridToggleTip}"
+                                    AutomationProperties.Name="Ground grid">
+                                <controls:LucideIcon Icon="Grid3x3" />
                             </Button>
                             <Button Classes="iconButton" Classes.active="{Binding IsStatsVisible}"
                                     Command="{Binding ToggleStatsCommand}" ToolTip.Tip="{Binding StatsToggleTip}"
@@ -1254,6 +1260,7 @@
                                                                     <ComboBoxItem>ForwardShaded</ComboBoxItem>
                                                                     <ComboBoxItem>Water</ComboBoxItem>
                                                                     <ComboBoxItem>WetSurface</ComboBoxItem>
+                                                                    <ComboBoxItem>Foliage</ComboBoxItem>
                                                                 </ComboBox>
                                                             </Grid>
                                                             <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
@@ -1415,6 +1422,83 @@
                                                     <CheckBox Content="Active on Start" IsChecked="{Binding ActiveOnStart, Mode=TwoWay}" FontSize="11" />
                                                     <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
                                                                Text="Rigid bodies for the bones of a skinned model. In Play they follow the animation (other bodies bounce off them) until the ragdoll goes limp: on start, when a body hits it faster than Impact m/s (0 = never), or from a script (GetComponent&lt;RagdollComponent&gt;().Activate()). Mass is the whole body's, in kg; Friction stiffens the joints." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:FogVolumeComponentViewModel" x:DataType="m:FogVolumeComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="CloudFog" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="70,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Density" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Density, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.01" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="70,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Edge Fade" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EdgeFade, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Adds fog inside a box: this gameobject's position, rotation and scale (like a Cube). It ignores the scene fog's distance ramp, so a dusty room shows light shafts up close. The mesh is hidden while enabled; select it in the hierarchy. Density uses the scene fog's units (Environment > Volumetric Fog, default 0.03). At most 8 volumes draw." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:FoliageWindComponentViewModel" x:DataType="m:FoliageWindComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="TreeDeciduous" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Trunk Bend" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding TrunkBend, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="3" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Branch Sway" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BranchSway, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="3" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Leaf Flutter" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LeafFlutter, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="3" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Wind Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WindScale, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Min Wind m/s" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MinWind, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="40" Increment="0.5" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Speed, Mode=TwoWay}"
+                                                                       Minimum="0.05" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Height m" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Height, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Sways the gameobject in the scene wind (Environment > Wind Speed / Direction), in the editor too: the trunk bends with gusts, branches bob and leaves flutter. Only materials with Shader Foliage flutter (the Tree model's leaves). Height 0 = the model's height; the model's base must be at its origin, Z up. Visual only: colliders stay still." />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -2251,6 +2335,85 @@
                                                             </Grid>
                                                         </StackPanel>
                                                     </Expander>
+                                                    <Expander IsExpanded="False" Header="Lights">
+                                                        <StackPanel Spacing="6" Margin="8,6,8,8">
+                                                            <CheckBox Content="Enabled" IsChecked="{Binding LightsEnabled, Mode=TwoWay}" FontSize="11"
+                                                                      ToolTip.Tip="The particles light the scene (point lights that follow them and die with them)" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="System: one light at the particles' glowing centre (fire, torch, explosion). Per Particle: lights riding on some particles (sparks, fireworks)">
+                                                                <TextBlock Grid.Column="0" Text="Mode" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{x:Static m:ParticleSystemComponentViewModel.LightModes}"
+                                                                          SelectedItem="{Binding LightMode, Mode=TwoWay}" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
+                                                                <TextBlock Grid.Column="0" Text="Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                                    <Border Width="44" Height="18" CornerRadius="3"
+                                                                            Background="{Binding LightColor, Converter={StaticResource ColorToBrush}}"
+                                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                    <Button.Flyout>
+                                                                        <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                        <Flyout Opening="OwnedFlyout_Opening">
+                                                                            <ColorPicker x:DataType="m:ParticleSystemComponentViewModel" Color="{Binding LightColor, Mode=TwoWay}" />
+                                                                        </Flyout>
+                                                                    </Button.Flyout>
+                                                                </Button>
+                                                            </Grid>
+                                                            <CheckBox Content="Use Particle Color" IsChecked="{Binding LightUseParticleColor, Mode=TwoWay}" FontSize="11"
+                                                                      ToolTip.Tip="Take the hue of the particles instead of Color" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Same scale as a Point Light's intensity">
+                                                                <TextBlock Grid.Column="0" Text="Intensity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightIntensity, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Metres the light reaches">
+                                                                <TextBlock Grid.Column="0" Text="Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightRange, Mode=TwoWay}"
+                                                                               Minimum="0.1" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                            </Grid>
+                                                            <CheckBox Content="Alpha Affects Intensity" IsChecked="{Binding LightAlphaAffectsIntensity, Mode=TwoWay}" FontSize="11"
+                                                                      ToolTip.Tip="System: the light follows how much the particles glow (fades as a fire dies or a blast cools). Per Particle: each particle's alpha dims its light" />
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="0..1: how much the intensity wavers (0.3 a campfire, 0.6 a torch in the wind)">
+                                                                <TextBlock Grid.Column="0" Text="Flicker" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightFlicker, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Flickers per second, roughly">
+                                                                <TextBlock Grid.Column="0" Text="Flicker Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightFlickerSpeed, Mode=TwoWay}"
+                                                                               Minimum="0" Maximum="100" Increment="1" FormatString="0.#" />
+                                                            </Grid>
+                                                            <StackPanel Spacing="6" IsVisible="{Binding IsSystemLight}">
+                                                                <Grid ColumnDefinitions="96,*,*,*" ColumnSpacing="4" ToolTip.Tip="Offset from the particles' glowing centre (world metres, Z up)">
+                                                                    <TextBlock Grid.Column="0" Text="Offset" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightOffsetX, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                   Minimum="-1000" Maximum="1000" FormatString="0.##" ToolTip.Tip="X" />
+                                                                    <NumericUpDown Grid.Column="2" Classes="field" Value="{Binding LightOffsetY, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                   Minimum="-1000" Maximum="1000" FormatString="0.##" ToolTip.Tip="Y" />
+                                                                    <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding LightOffsetZ, Mode=TwoWay}" ShowButtonSpinner="False"
+                                                                                   Minimum="-1000" Maximum="1000" FormatString="0.##" ToolTip.Tip="Z" />
+                                                                </Grid>
+                                                                <CheckBox Content="Cast Shadows" IsChecked="{Binding LightCastShadows, Mode=TwoWay}" FontSize="11"
+                                                                          ToolTip.Tip="Point light shadows (six shadow faces redrawn whenever the light moves: costly)" />
+                                                            </StackPanel>
+                                                            <StackPanel Spacing="6" IsVisible="{Binding IsPerParticleLight}">
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Share of the particles that carry a light, 0..1">
+                                                                    <TextBlock Grid.Column="0" Text="Ratio" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightRatio, Mode=TwoWay}"
+                                                                                   Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                                </Grid>
+                                                                <Grid ColumnDefinitions="96,*" ColumnSpacing="8" ToolTip.Tip="Most lights at once (the brightest carriers win), up to 16">
+                                                                    <TextBlock Grid.Column="0" Text="Max Lights" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                    <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding LightMaxLights, Mode=TwoWay}"
+                                                                                   Minimum="0" Maximum="16" Increment="1" FormatString="0" />
+                                                                </Grid>
+                                                                <CheckBox Content="Size Affects Range" IsChecked="{Binding LightSizeAffectsRange, Mode=TwoWay}" FontSize="11"
+                                                                          ToolTip.Tip="The range grows and shrinks with the particle (relative to its start size)" />
+                                                            </StackPanel>
+                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                                       Text="Particle lights join the scene's point lights for lighting, forward materials, volumetric fog and Lit particles (the volumetric fog uses the first 8 lights). They play in the editor preview too." />
+                                                        </StackPanel>
+                                                    </Expander>
                                                     <Expander IsExpanded="False" Header="Volumetric">
                                                         <StackPanel Spacing="6" Margin="8,6,8,8">
                                                             <CheckBox Content="Enabled" IsChecked="{Binding VolumetricEnabled, Mode=TwoWay}" FontSize="11"
@@ -2475,6 +2638,13 @@
                                                         <TextBlock Text="Volume" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                                         <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" MinHeight="18" />
                                                         <TextBlock Grid.Column="2" Text="{Binding Volume, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
+                                                          ToolTip.Tip="Mixer bus: the game menus' Effects or Music volume applies to it">
+                                                        <TextBlock Text="Output" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:AudioComponentViewModel.Outputs}"
+                                                                  SelectedItem="{Binding Output, Mode=TwoWay}" />
                                                     </Grid>
                                                     <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
                                                     <CheckBox Content="Play on Start" IsChecked="{Binding PlayOnStart, Mode=TwoWay}" FontSize="11" />
@@ -2768,63 +2938,16 @@
                                     <StackPanel Spacing="6" Margin="12,8,12,12">
                                         <CheckBox Content="Enable Fog"
                                                   IsChecked="{Binding FogEnabled, Mode=TwoWay}" />
-                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto"
                                               RowSpacing="6" IsEnabled="{Binding FogEnabled}">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Density"
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="History"
                                                        Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="0.001" Maximum="5" Increment="0.001"
-                                                           Value="{Binding FogDensity, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.000" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Absorption"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="1" Increment="0.01"
-                                                           Value="{Binding FogAbsorption, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Sun Scatter"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="4" Increment="0.01"
-                                                           Value="{Binding FogDirectionalScatter, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Point Scatter"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="16" Increment="0.1"
-                                                           Value="{Binding FogPointScatter, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Anisotropy"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
-                                                           Minimum="-0.95" Maximum="0.95" Increment="0.05"
-                                                           Value="{Binding FogAnisotropy, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Start Dist."
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="2000" Increment="5"
-                                                           Value="{Binding FogDistanceStart, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0" />
-                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Full Dist."
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field"
-                                                           Minimum="1" Maximum="5000" Increment="10"
-                                                           Value="{Binding FogDistanceFull, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0" />
-                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Sky Fog"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="1" Increment="0.05"
-                                                           Value="{Binding FogSkyStrength, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="8" Grid.Column="0" Text="History"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field"
                                                            Minimum="0" Maximum="0.98" Increment="0.05"
                                                            Value="{Binding FogHistoryBlend, Mode=TwoWay}"
                                                            ShowButtonSpinner="False" FormatString="0.00" />
                                         </Grid>
+                                        <TextBlock Text="Density, scatter, distances and the sky are saved per scene: Environment > Volumetric Fog." TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                     </StackPanel>
                                 </Expander>
 
@@ -3117,6 +3240,78 @@
                                         <TextBlock Text="Wind angle: 0° blows towards +X, 90° towards +Y. A sandstorm always blows at least 7 m/s. With the day/night sky, weather also thickens the clouds and dims the sun."
                                                    TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                     </StackPanel>
+                                </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Volumetric Fog" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Density" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Fog everywhere (per metre), scaled by the distance ramp." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0.001" Maximum="5" Increment="0.005"
+                                                       Value="{Binding FogDensity, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Absorption" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="How much of what is behind the fog it hides." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.01"
+                                                       Value="{Binding FogAbsorption, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Sun Scatter" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Brightness of sunlight in the fog: the light shafts." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01"
+                                                       Value="{Binding FogSunScatter, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Light Scatter" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Brightness of point and spot lights in the fog." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="16" Increment="0.1"
+                                                       Value="{Binding FogLightScatter, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Anisotropy" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="0 glows evenly; towards 1 it glows mostly when looking at the light." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="-0.95" Maximum="0.95" Increment="0.05"
+                                                       Value="{Binding FogAnisotropy, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Start Dist." Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Metres from the camera where the density starts ramping up." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="5000" Increment="5"
+                                                       Value="{Binding FogStartDistance, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Full Dist." Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Metres from the camera where the density is full." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="1" Maximum="10000" Increment="10"
+                                                       Value="{Binding FogFullDistance, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Near Density" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Fraction of the density kept before Start Dist. (1 = no ramp)." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05"
+                                                       Value="{Binding FogNearDensity, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Sky Fog" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="How much far fog covers the sky." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05"
+                                                       Value="{Binding FogSkyStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Sky Shafts" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Fog in front of the sky up to this distance (m) stays whole, so shafts show when facing the sun." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="10000" Increment="10"
+                                                       Value="{Binding FogSkyShaftDistance, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Max Auto Exp." Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Caps how far auto exposure brightens dark views (EV). Lower keeps dark rooms dark." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="-3" Maximum="3" Increment="0.25"
+                                                       Value="{Binding MaxAutoExposure, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <TextBlock Text="Saved with the scene. Denser pockets (a dusty room with light shafts) are Fog Volume components. Shafts only form inside the sun's shadow box (Directional light > Shadow Size)."
+                                               TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                    <Button Content="Reset fog" Command="{Binding ResetFogCommand}" HorizontalAlignment="Stretch" />
                                 </StackPanel>
                                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
                             </StackPanel>

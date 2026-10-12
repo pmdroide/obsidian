@@ -292,6 +292,8 @@
 
 #scene-scroll-up { top: 306px; }
 #scene-scroll-down { top: 722px; }
+#settings-scroll-up { top: 306px; }
+#settings-scroll-down { top: 802px; }
 .scroll-hint.visible { display: block; }
 
 /* ---------------------------------------------------------------- descriptions */

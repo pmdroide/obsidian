@@ -12,6 +12,7 @@
     "Scenes/NpcTest.obsc",
     "Scenes/VoxelTest.obsc",
     "Scenes/ParticleTest.obsc",
-    "Scenes/SmokeTest.obsc"
+    "Scenes/SmokeTest.obsc",
+    "Scenes/WaterTest.obsc"
   ]
 }

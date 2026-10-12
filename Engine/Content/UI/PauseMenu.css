@@ -151,6 +151,23 @@
 }
 
 .option.selected { left: 14px; }
+.option.offscreen { display: none; }
+
+/* The settings list scrolls: 8 rows (54px) from top 330, clear of the description at 840. */
+.scroll-hint {
+    left: 180px;
+    width: 300px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: rgba(143, 211, 255, 0.7);
+    display: none;
+}
+
+#settings-scroll-up { top: 306px; }
+#settings-scroll-down { top: 770px; }
+.scroll-hint.visible { display: block; }
 
 .option .hl {
     width: 100%;

@@ -4,6 +4,7 @@ using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Logic;
+using Engine.Particles;
 using Engine.Recources;
 using Engine.Renderer.Helper;
 using Engine.Renderer.RenderModules;
@@ -40,8 +41,10 @@ internal static class MaterialGraphicsChecks
             PersistenceChecks.RunGraphics(graphics, content);
             PauseChecks.RunGraphics(graphics, content);
             LodChecks.RunGraphics(graphics, content);
+            FoliageChecks.RunGraphics(graphics, content);
             ParticleChecks.RunGraphics(graphics, content);
             VoxelChecks.RunGraphics(graphics, content);
+            GridChecks.RunGraphics(graphics, content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);
@@ -176,6 +179,35 @@ internal static class MaterialGraphicsChecks
             component.OnChanged(entity);
             var swollen = Render(1);
             Check(Covered(still) != Covered(swollen), "the swell moves the water surface geometry, not just its lighting");
+            // Rings where something hit the water, and raindrops, bend the surface where they are.
+            component.WaveHeight = 0;
+            component.OnChanged(entity);
+            using var large = new RenderTarget2D(graphics, 512, 512, false, SurfaceFormat.Color, DepthFormat.Depth24);
+            Color[] RenderLarge()
+            {
+                meshes.FrustumCulling(new List<BasicEntity> { entity }, new BoundingFrustum(vp), true, camera.Position);
+                graphics.SetRenderTarget(large);
+                graphics.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 1, 0);
+                water.Draw(graphics, meshes, vp, camera, daySky, lights, new GameTime(TimeSpan.FromSeconds(1), TimeSpan.Zero));
+                graphics.SetRenderTarget(null);
+                var pixels = new Color[512 * 512];
+                large.GetData(pixels);
+                return pixels;
+            }
+            var calm = RenderLarge();
+            var splashes = new WaterSplashes();
+            float top = Vector3.Transform(entity.BoundingBox.Max, Matrix.CreateScale(entity.Scale) * Matrix.CreateTranslation(entity.Position)).Z;
+            splashes.Splash(new Vector3(0, 0, top), 8, 0.15f);
+            for (int i = 0; i < 18; i++) splashes.Update(1 / 60f, new Vector3(0, 0, -9.81f), Vector2.Zero);
+            water.Splashes = splashes;
+            var splashed = RenderLarge();
+            water.Splashes = null;
+            Check(calm.Where((p, i) => p != splashed[i]).Count() > 500, "a splash ring and its foam show on the water surface");
+            Check(RenderLarge().SequenceEqual(calm), "without splashes the surface is unchanged");
+            water.RainRipples = 1;
+            var rained = RenderLarge();
+            water.RainRipples = 0;
+            Check(calm.Where((p, i) => p != rained[i]).Count() > 500, "rain dimples the water with raindrop rings");
             component.WaveHeight = 0.5f;
             component.WaveScale = 0.3f;
             component.OnChanged(entity);

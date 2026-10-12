@@ -29,7 +29,7 @@ images need a content build before they can load. Missing maps are logged and
 leave the original map in place. Texture choices save in scenes and copy with objects.
 
 **Shader** is a separate section with the existing shader choices, including
-Water and WetSurface. The water preset, wave controls and wet surface controls live there. These are registered engine
+Water, WetSurface and Foliage. The water preset, wave controls and wet surface controls live there. These are registered engine
 shaders; arbitrary `.fx` files need renderer integration before appearing as choices.
 
 Water moves its mesh with four Gerstner swell waves: the surface rises and falls,
@@ -53,6 +53,8 @@ transparent surfaces inside one mesh can still show ordering artifacts.
 Water does not implement refraction or water shadows. Selection outlines and
 picking use the undeformed mesh. It works without extra water textures and keeps
 animating in Edit and Play modes.
+Bodies falling into Water-role water splash, and rain rings the surface: see
+[Water.md](Water.md).
 The existing lighting baker still estimates diffuse bounce colors from the
 source materials; component overrides are applied at render time.
 
@@ -72,6 +74,15 @@ The shader is `Engine/Content/Shaders/Forward/Water.fx`, built by `Content.mgcb`
 `WaterRenderModule` binds frame and surface parameters; `MaterialComponent`
 supplies the settings. New shader options require registration in the component
 material type enum and editor dropdown, material application, and a renderer pass.
+
+## Foliage (leaves)
+
+**Foliage** (Shader list) is for leaf cards. It is alpha-cut through the **Mask** texture, like any masked
+material, and it casts cut-out shadows from the sun too. It also writes material type 8 to the G-buffer, so
+the sun shines through the back of the leaves (`FoliageTransmission` in
+`Shaders/Deferred/DeferredDirectionalLight.fx`). With a **Foliage Wind** component on the gameobject, Foliage
+parts flutter while the rest of the model only bends and sways. The built-in Tree model's leaves use it. See
+[Foliage_Wind.md](Foliage_Wind.md).
 
 ## Wet surfaces
 

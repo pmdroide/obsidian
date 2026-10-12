@@ -27,7 +27,7 @@ public sealed class PauseMenuScript : ScriptBehaviour
 
     private const string DocumentPath = "UI/PauseMenu";
     private const string TickSound = "Audio/blip.wav";
-    private const int RowHeight = 62, SettingRowHeight = 54;
+    private const int RowHeight = 62, SettingRowHeight = 54, VisibleSettingRows = 8;
     private const float CloseSeconds = 0.2f, LeaveSeconds = 0.55f, ArriveSeconds = 0.9f;
 
     /// <summary>The pause page's rows, in order (each matches a <c>data-action</c> in the document).</summary>
@@ -67,6 +67,7 @@ public sealed class PauseMenuScript : ScriptBehaviour
     private float _timer;
     private Func<bool> _afterLeave;
     private List<MenuSetting> _settings;
+    private int _settingScroll;
 
     // The layer exists only while the menu is open. _shown: its first layout is done, so classes now transition.
     private UIManager _ui;
@@ -78,7 +79,7 @@ public sealed class PauseMenuScript : ScriptBehaviour
     {
         _route.Clear();
         _route.Add(GameFlow.ActiveSceneName ?? "?");
-        _settings = new List<MenuSetting> { MenuSettings.MasterVolume() };
+        _settings = MenuSettings.Audio();
         _settings.AddRange(MenuSettings.Graphics());
         // Escape pauses instead of closing the standalone game; Quit game is in the menu.
         GameFlow.EscapeQuits = false;
@@ -331,6 +332,28 @@ public sealed class PauseMenuScript : ScriptBehaviour
 
     private int RowCount(Page page) => page == Page.Pause ? PauseActions.Length : _settings.Count;
 
+    /// <summary>The settings list shows <see cref="VisibleSettingRows"/> rows that follow the selection.</summary>
+    private void ScrollSettings()
+    {
+        if (!_rows.TryGetValue(Page.Settings, out var rows)) return;
+        int selected = Selected(Page.Settings);
+        if (selected < _settingScroll) _settingScroll = selected;
+        if (selected >= _settingScroll + VisibleSettingRows) _settingScroll = selected - VisibleSettingRows + 1;
+        _settingScroll = Math.Clamp(_settingScroll, 0, Math.Max(0, rows.Count - VisibleSettingRows));
+        for (int i = 0; i < rows.Count; i++)
+        {
+            bool visible = i >= _settingScroll && i < _settingScroll + VisibleSettingRows;
+            _ui.SetClass(rows[i], "offscreen", !visible);
+            if (!visible) continue;
+            string style = $"top: {(i - _settingScroll) * SettingRowHeight}px";
+            if (rows[i].GetAttribute("style") == style) continue;
+            rows[i].SetAttribute("style", style);
+            _ui.Invalidate(rows[i]);
+        }
+        _ui.SetClass("#settings-scroll-up", "visible", _settingScroll > 0);
+        _ui.SetClass("#settings-scroll-down", "visible", _settingScroll + VisibleSettingRows < rows.Count);
+    }
+
     private void ApplyState()
     {
         if (_ui == null || _rows.Count == 0) return;
@@ -339,6 +362,7 @@ public sealed class PauseMenuScript : ScriptBehaviour
         foreach (var (page, rows) in _rows)
             for (int i = 0; i < rows.Count; i++)
                 _ui.SetClass(rows[i], "selected", i == Selected(page));
+        ScrollSettings();
 
         _ui.SetClass("#confirm", "open", _confirm != Confirm.None);
         _ui.SetClass("#confirm-cancel", "selected", _confirmChoice == 0);

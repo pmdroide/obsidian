@@ -14,6 +14,8 @@ float4x4  View;
 float4x4  WorldView;
 float4x4  WorldViewProj;
 float3x3  WorldViewIT; //Inverse Transposed
+// Only used by gameobjects with the Foliage Wind component, which move their vertices in world space
+float4x4  ViewProjection;
 
 float3 Camera;
 float2 Resolution;
@@ -43,6 +45,8 @@ float4 WetParams = float4(0, 0.5, 0.33, 0);
 // Raindrop ripples in the puddles (0 = still water)
 float Ripples = 0;
 // (Time, the ripple clock, is declared in helper.fx)
+
+#include "../Common/FoliageWind.fx"
 
 Texture2D<float4> Texture;
 
@@ -146,6 +150,17 @@ DrawBasic_VSOut DrawBasic_VertexShader(DrawBasic_VSIn input)
 
 	//Linear Depth buffer instead of Z / W
 	Output.Depth = mul(input.Position, WorldView).z / -FarClip;//float2(Output.Position.z, Output.Position.w);
+
+    [branch]
+    if (WindEnabled)
+    {
+        float3 tilt;
+        float3 worldPos = FoliageWorldPosition(input.Position, input.Normal, input.TexCoord, tilt);
+        Output.Position = mul(float4(worldPos, 1), ViewProjection);
+        Output.WorldPos = worldPos;
+        Output.Depth = mul(float4(worldPos, 1), View).z / -FarClip;
+        Output.Normal = normalize(Output.Normal) + mul(tilt, (float3x3)View);
+    }
     return Output;
 }
 
@@ -161,6 +176,17 @@ DrawNormals_VSOut DrawNormals_VertexShader(DrawNormals_VSIn input)
 
 	//Linear Depth buffer instead of Z / W
 	Output.Depth = mul(input.Position, WorldView).z / -FarClip;//float2(Output.Position.z, Output.Position.w);
+
+    [branch]
+    if (WindEnabled)
+    {
+        float3 tilt;
+        float3 worldPos = FoliageWorldPosition(input.Position, input.Normal, input.TexCoord, tilt);
+        Output.Position = mul(float4(worldPos, 1), ViewProjection);
+        Output.WorldPos = worldPos;
+        Output.Depth = mul(float4(worldPos, 1), View).z / -FarClip;
+        Output.WorldToTangentSpace[2] = normalize(Output.WorldToTangentSpace[2]) + mul(tilt, (float3x3)View);
+    }
     return Output;
 }
 

@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace Engine.Logic
 {
-    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather and the voxel world.</summary>
+    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather, volumetric fog and the voxel world.</summary>
     public sealed class EnvironmentSettings
     {
         public bool DayNightCycle { get; set; }
@@ -45,6 +45,33 @@ namespace Engine.Logic
         public float WindSpeed { get; set; } = 4;
         /// <summary>Compass angle in degrees the wind blows towards: 0 = +X, 90 = +Y.</summary>
         public float WindDirection { get; set; } = 45;
+
+        // Volumetric fog (froxels): the haze and light shafts (god rays) of this scene. The renderer copies these into
+        // GameSettings.g_Froxel* every frame. Defaults are an outdoor haze that stays thin near the camera; denser
+        // pockets (a dusty room) are Fog Volume components.
+        /// <summary>Fog density everywhere (per metre, scaled by the distance ramp below).</summary>
+        public float FogDensity { get; set; } = 0.03f;
+        /// <summary>How much of the light behind the fog it swallows (extinction = density * absorption).</summary>
+        public float FogAbsorption { get; set; } = 0.1f;
+        /// <summary>Brightness of the sun's light in the fog (light shafts).</summary>
+        public float FogSunScatter { get; set; } = 0.1f;
+        /// <summary>Brightness of point and spot lights in the fog.</summary>
+        public float FogLightScatter { get; set; } = 1.5f;
+        /// <summary>Henyey-Greenstein g: 0 scatters evenly, towards 1 the fog glows mostly when looking at the light.</summary>
+        public float FogAnisotropy { get; set; } = 0.45f;
+        /// <summary>Distance (m) where the density starts ramping up from Near Density.</summary>
+        public float FogStartDistance { get; set; } = 30;
+        /// <summary>Distance (m) where the density is full.</summary>
+        public float FogFullDistance { get; set; } = 400;
+        /// <summary>Fraction of the density kept before Start Distance: 0 = clear near the camera, 1 = no ramp.</summary>
+        public float FogNearDensity { get; set; }
+        /// <summary>How much of the fog beyond Sky Shaft Distance covers the sky: 0 = none, 1 = all.</summary>
+        public float FogSkyStrength { get; set; } = 0.1f;
+        /// <summary>Fog in front of the sky up to this distance (m) is kept whole, so shafts show against it.</summary>
+        public float FogSkyShaftDistance { get; set; } = 200;
+        /// <summary>Caps how far auto exposure brightens dark views, in EV (Post Processing's maximum still applies).
+        /// Lower it to keep dark interiors dark around bright openings.</summary>
+        public float MaxAutoExposure { get; set; } = 3;
 
         // Voxel world: block terrain generated from these settings, drawn and collidable in both Edit and Play
         // (Engine/Voxels, VoxelSystem). Changing any of them regenerates the world.
@@ -89,6 +116,17 @@ namespace Engine.Logic
             WeatherHaze = Limit(WeatherHaze, 0, 1, 0.6f);
             WindSpeed = Limit(WindSpeed, 0, 40, 4);
             WindDirection = float.IsFinite(WindDirection) ? ((WindDirection % 360) + 360) % 360 : 45;
+            FogDensity = Limit(FogDensity, 0.001f, 5, 0.03f);
+            FogAbsorption = Limit(FogAbsorption, 0, 1, 0.1f);
+            FogSunScatter = Limit(FogSunScatter, 0, 4, 0.1f);
+            FogLightScatter = Limit(FogLightScatter, 0, 16, 1.5f);
+            FogAnisotropy = Limit(FogAnisotropy, -0.95f, 0.95f, 0.45f);
+            FogStartDistance = Limit(FogStartDistance, 0, 5000, 30);
+            FogFullDistance = Limit(FogFullDistance, FogStartDistance + 1, 10000, Math.Max(400, FogStartDistance + 1));
+            FogNearDensity = Limit(FogNearDensity, 0, 1, 0);
+            FogSkyStrength = Limit(FogSkyStrength, 0, 1, 0.1f);
+            FogSkyShaftDistance = Limit(FogSkyShaftDistance, 0, 10000, 200);
+            MaxAutoExposure = Limit(MaxAutoExposure, -3, 3, 3);
             if (!Enum.IsDefined(VoxelTerrain)) VoxelTerrain = VoxelTerrain.Hills;
             VoxelWorldSize = VoxelWorldSettings.ClampSize(VoxelWorldSize);
             VoxelWorldHeight = VoxelWorldSettings.ClampHeight(VoxelWorldHeight);

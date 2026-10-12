@@ -21,6 +21,13 @@ float CameraFade;        //metres in front of the camera over which particles fa
 float3 LightDirection;   //towards the light
 float3 LightColor;       //colour * intensity * 0.1, like the deferred lights
 
+//Lit particles: the point lights nearest the system (scene lights and particle Lights modules, e.g. the
+//campfire under its smoke), with the falloff of DeferredPointLight.fx
+#define MAX_PARTICLE_POINT_LIGHTS 4
+float PointLightCount;  //float: the C# side sets every scalar as one
+float4 PointLightPosition[MAX_PARTICLE_POINT_LIGHTS]; //xyz world, w radius
+float4 PointLightColor[MAX_PARTICLE_POINT_LIGHTS];    //rgb linear colour * intensity * 0.1
+
 Texture2D ParticleTexture;
 SamplerState ParticleSampler
 {
@@ -134,7 +141,23 @@ VertexOutput ParticleVS(VertexInput input)
         float3 L = normalize(LightDirection);
         float wrap = saturate(dot(normal, L) * 0.5f + 0.5f);
         float behind = pow(saturate(dot(-toCamera, L)), 8);
-        color *= Ambient(normal) + LightColor * (wrap * 0.9f + behind * 0.6f);
+        float3 light = Ambient(normal) + LightColor * (wrap * 0.9f + behind * 0.6f);
+        [unroll]
+        for (int i = 0; i < MAX_PARTICLE_POINT_LIGHTS; i++)
+        {
+            if (i < PointLightCount)
+            {
+                float3 toLight = PointLightPosition[i].xyz - center;
+                float lightDistance = max(length(toLight), 0.001f);
+                float relative = lightDistance / max(PointLightPosition[i].w, 0.001f);
+                float denominator = 4 * relative + 1;
+                float attenuation = saturate(1 / (denominator * denominator) - 0.04f * relative);
+                //Smoke scatters: wrapped, and glowing when the light is behind it
+                float facing = saturate(dot(normal, toLight / lightDistance) * 0.5f + 0.5f);
+                light += PointLightColor[i].rgb * attenuation * (facing * 0.8f + 0.35f);
+            }
+        }
+        color *= light;
     }
 
     output.Position = mul(float4(world, 1), ViewProj);

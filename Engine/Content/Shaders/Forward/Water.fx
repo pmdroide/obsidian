@@ -35,6 +35,13 @@ bool HasDepth;
 Texture2D DepthMap; //linear G-buffer depth, view Z / -FarClip
 float FarClip;
 
+//Rings where bodies hit the surface (Engine/Particles/WaterSplashes.cs; keep MAX_SPLASHES = MaxRipples)
+#define MAX_SPLASHES 16
+float SplashCount = 0;
+float4 SplashPositions[MAX_SPLASHES]; //xyz where it hit the surface, w seconds since
+float4 SplashShapes[MAX_SPLASHES];    //x strength (0.05 a pebble .. 2 a crate from high up), y radius of what hit (m)
+float RainRipples = 0;                //0 still .. 1 heavy rain: raindrop rings all over the surface
+
 #define SWELL_COUNT 4
 #define RIPPLE_COUNT 8
 #define CHOPPINESS 0.8f
@@ -153,6 +160,75 @@ float3 Ripples(float2 positionWS, float pixelFootprint)
     return float3(slope / total, height / total);
 }
 
+//Expanding rings where bodies hit the water: a packet of capillary-gravity waves whose front travels outwards,
+//stretching and fading as it spreads. Returns the surface slope in xy and churned-water foam (0..1) in w.
+float4 SplashRings(float3 positionWS, float pixelFootprint)
+{
+    float2 slope = 0;
+    float foam = 0;
+    [loop]
+    for (int i = 0; i < MAX_SPLASHES; i++)
+    {
+        if (i >= (int)SplashCount) break;
+        float4 hit = SplashPositions[i];
+        float strength = SplashShapes[i].x;
+        float radius = max(SplashShapes[i].y, 0.02f);
+        float age = hit.w;
+        float2 delta = positionWS.xy - hit.xy;
+        float d = length(delta) + 0.0001f;
+        float front = radius + age * 1.3f;
+        //Past the rings, or another pool at a different height: nothing to add
+        if (d > front + 1.2f || abs(positionWS.z - hit.z) > 2) continue;
+
+        float wavelength = 0.16f + 0.1f * radius + 0.07f * age;
+        float width = 0.2f + 0.3f * radius + 0.3f * age;
+        float x = d - front;
+        float packet = exp(-x * x / (width * width));
+        //Rises in a few frames, then dies away; spread over a growing circle (1/sqrt of the distance)
+        float fade = exp(-age * 1.1f) * saturate(age * 10);
+        float spread = sqrt(radius / max(d, radius));
+        float k = 2 * PI / wavelength;
+        float amplitude = strength * 0.012f * fade * spread * saturate(1.5f - pixelFootprint * 2 / wavelength);
+        float s, c;
+        sincos(k * x, s, c);
+        //d/dd of packet * cos(kx)
+        float dh = amplitude * packet * (-2 * x / (width * width) * c - k * s);
+        slope += dh * delta / d;
+
+        //White water where it went in, thinning as it spreads, and a trace on the first crest
+        float churn = saturate(1 - d / (radius * 1.4f + age * 0.5f)) * saturate(1 - age / 2.5f);
+        foam += saturate(strength) * (churn * 0.75f + packet * saturate(c) * 0.3f * fade);
+    }
+    return float4(slope, 0, saturate(foam));
+}
+
+//One layer of raindrop rings, one drop per cell (p in cells). Same idea as RippleLayer in Gbuffer.fx.
+float2 RainLayer(float2 p, float time)
+{
+    float2 cell = floor(p);
+    float cycle = time * 1.6f + WaterHash(cell);
+    float phase = frac(cycle);
+    float drop = floor(cycle);
+    //Every cycle the cell's drop lands somewhere else, or not at all in light rain
+    float2 rnd = float2(WaterHash(cell + drop * 7.13f), WaterHash(cell + drop * 3.71f + 19.1f));
+    float alive = step(WaterHash(cell + drop * 5.31f + 41.7f), RainRipples);
+    float2 delta = frac(p) - 0.25f - rnd * 0.5f;
+    float d = length(delta) + 0.0001f;
+    float x = d - phase * 0.35f;
+    float envelope = saturate(1 - abs(x + 0.05f) * 10) * (1 - phase) * (1 - phase);
+    return delta / d * sin(x * 60) * envelope * alive;
+}
+
+//Raindrops on the surface, faded with distance and once the rings get smaller than a pixel
+float2 RainRings(float2 positionWS, float pixelFootprint, float cameraDistance)
+{
+    float fade = saturate(1 - cameraDistance / 45) * saturate(1.5f - pixelFootprint * 40);
+    if (fade <= 0) return 0;
+    float2 p = positionWS / 0.35f;
+    float2 slope = RainLayer(p, Time) + RainLayer(p * 1.37f + 5.2f, Time + 0.43f);
+    return slope * RainRipples * fade * 0.6f;
+}
+
 VSOutput WaterVS(VSInput input)
 {
     VSOutput output;
@@ -188,7 +264,10 @@ float4 WaterPS(VSOutput input) : SV_TARGET
     float3 swell = Swell(input.RestXY, 0, swellSlope, pinch);
     float footprint = length(fwidth(input.RestXY));
     float3 ripple = Ripples(input.RestXY, footprint);
-    float3 tilt = float3(-swellSlope - ripple.xy * WaveStrength * 2, 0);
+    // Rings where bodies hit the water, and raindrops
+    float4 splash = SplashCount > 0 ? SplashRings(input.PositionWS, footprint) : 0;
+    float2 rain = RainRipples > 0.001f ? RainRings(input.RestXY, footprint, cameraDistance) : 0;
+    float3 tilt = float3(-swellSlope - ripple.xy * WaveStrength * 2 - splash.xy - rain, 0);
     // Project the tilt onto the mesh's tangent plane; on an upward surface the pinch sharpens crests.
     float3 normal = normalize(baseNormal * lerp(1, max(pinch, 0.2f), saturate(baseNormal.z)) +
                               tilt - baseNormal * dot(tilt, baseNormal));
@@ -261,6 +340,13 @@ float4 WaterPS(VSOutput input) : SV_TARGET
         float sharp = saturate((0.6f - pinch) * 2.5f);
         float crestFoam = max(saturate((crest - 0.78f) * 4), sharp) * Foam * 0.6f;
         foam = saturate(smoothstep(pattern * 0.9f, pattern * 0.9f + 0.25f, shore) + crestFoam * pattern) * Foam;
+    }
+    // Splash foam shows whatever the material's Foam: bubbly patches that break up as they thin out
+    if (splash.w > 0)
+    {
+        float2 bubbleUV = input.RestXY * 3.5f;
+        float bubbles = WaterNoise(bubbleUV + Time * 0.3f) * 0.6f + WaterNoise(bubbleUV * 2.7f - Time * 0.2f) * 0.4f;
+        foam = max(foam, smoothstep(0.3f, 0.75f, splash.w * (0.4f + bubbles)) * 0.8f);
     }
     float3 foamColor = 0.6f * (LightColor * saturate(dot(baseNormal, L)) + ambient * 0.5f);
 

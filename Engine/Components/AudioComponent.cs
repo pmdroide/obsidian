@@ -14,6 +14,9 @@ public sealed class AudioComponent : GameComponent
     public bool Loop { get; set; }
     public bool PlayOnStart { get; set; } = true;
     public bool Spatial { get; set; } = true;
+    /// <summary>The mixer bus (Effects or Music), so the menus' Music/Effects volume settings apply to it.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public AudioBus Output { get; set; } = AudioBus.Effects;
     /// <summary>3D only: full volume within this many units, then inverse falloff (half at 2x).</summary>
     public float MinDistance { get; set; } = 10f;
     /// <summary>3D only: no further attenuation beyond this distance.</summary>
@@ -22,6 +25,7 @@ public sealed class AudioComponent : GameComponent
     private Channel? _channel;
     private string _playingClipPath;
     private bool _playingSpatial;
+    private AudioBus _playingOutput;
     [JsonIgnore] public bool IsPlaying => _channel?.IsPlaying ?? false;
 
     public static bool IsAudioAsset(string path) =>
@@ -35,10 +39,11 @@ public sealed class AudioComponent : GameComponent
         float volume = Math.Clamp(Volume, 0f, 1f);
         _channel = Spatial
             ? Audio.Instance?.PlaySound3D(ClipPath, () => owner.Position, volume, Loop,
-                ClampedMinDistance, ClampedMaxDistance, contentRelativePath: true)
-            : Audio.Instance?.PlaySound(ClipPath, volume, loop: Loop, contentRelativePath: true);
+                ClampedMinDistance, ClampedMaxDistance, contentRelativePath: true, Output)
+            : Audio.Instance?.PlaySound(ClipPath, volume, loop: Loop, contentRelativePath: true, bus: Output);
         _playingClipPath = ClipPath;
         _playingSpatial = Spatial;
+        _playingOutput = Output;
     }
 
     public override void OnStart(BasicEntity owner)
@@ -56,7 +61,7 @@ public sealed class AudioComponent : GameComponent
             return;
         }
         if (!IsPlaying) return;
-        if (_playingClipPath != ClipPath || _playingSpatial != Spatial) Play(owner);
+        if (_playingClipPath != ClipPath || _playingSpatial != Spatial || _playingOutput != Output) Play(owner);
         else if (_channel is { } channel)
         {
             channel.Volume = Math.Clamp(Volume, 0f, 1f);

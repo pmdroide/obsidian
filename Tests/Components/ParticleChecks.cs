@@ -34,6 +34,7 @@ internal static class ParticleChecks
         CheckSubEmitters();
         CheckPlayback();
         CheckVolumes();
+        CheckLights();
         CheckSaving();
         CheckEditor();
         CheckLifecycle();
@@ -622,6 +623,96 @@ internal static class ParticleChecks
         Check(!smoke.HasVolume, "stopping Play clears the volume");
     }
 
+    private static void CheckLights()
+    {
+        // System: one light at the glowing centre of the particles (plus the offset), following the gameobject.
+        var (system, simulation) = NewSystem(s =>
+        {
+            s.Main.StartSpeed = 0;
+            s.Main.StartLifetime = 1;
+            s.Emission.RateOverTime = 50;
+            s.Shape.Enabled = false;
+            s.Lights.Enabled = true;
+            s.Lights.Intensity = 6;
+            s.Lights.Range = 9;
+            s.Lights.Offset = new Vector3(0, 0, 0.5f);
+        });
+        Matrix at = Matrix.CreateTranslation(3, 4, 1);
+        simulation.Play();
+        Run(simulation, 1, at);
+        PointLight light = simulation.Lights[0];
+        Check(simulation.Lights.Count == 1 && Vector3.Distance(light.Position, new Vector3(3, 4, 1.5f)) < 0.05f &&
+              light.Radius == 9 && Math.Abs(light.Intensity - 6) < 0.3f && !light.CastShadows && light.Color == system.Lights.Color,
+            "a System light shines at the particles' glowing centre plus its offset, with the module's colour, range and intensity");
+        simulation.Stop();
+        Run(simulation, 0.5f, at);
+        Check(simulation.Lights.Count == 1 && simulation.Lights[0].Intensity < 5.5f,
+            "Alpha Affects Intensity: the light dims as the particles die out");
+        Run(simulation, 0.7f, at);
+        Check(simulation.ParticleCount == 0 && simulation.Lights.Count == 0, "the light goes out with the last particle");
+
+        system.Lights.AlphaAffectsIntensity = false;
+        system.Lights.UseParticleColor = true;
+        system.Lights.Flicker = 0.5f;
+        system.Main.StartColor = system.Main.StartColor2 = new Color(255, 100, 0);
+        simulation.Play();
+        var intensities = new List<float>();
+        for (int i = 0; i < 90; i++)
+        {
+            Run(simulation, Step, at);
+            if (i > 30) intensities.Add(simulation.Lights[0].Intensity);
+        }
+        Check(simulation.Lights[0].Color is { R: 255, G: >= 98 and <= 102, B: 0 },
+            "Use Particle Color takes the particles' hue at full brightness");
+        Check(intensities.All(v => v >= 0 && float.IsFinite(v)) && intensities.Min() < intensities.Max() * 0.85f &&
+              Math.Abs(intensities.Average() - 6) < 1.5f,
+            "Flicker wavers the intensity around its value, never below zero");
+
+        system.Lights.CastShadows = true;
+        Run(simulation, Step, at);
+        Check(simulation.Lights[0].CastShadows, "Cast Shadows makes the System light a shadowed point light");
+
+        // Per Particle: lights on the brightest carriers, at most Max Lights.
+        system.Lights.Mode = ParticleLightMode.PerParticle;
+        system.Lights.Ratio = 1;
+        system.Lights.MaxLights = 3;
+        Run(simulation, Step, at);
+        ParticleSimulation sim = simulation;
+        Particle[] particles = sim.Particles.ToArray();
+        Check(sim.Lights.Count == 3 && Enumerable.Range(0, 3).All(i => !sim.Lights[i].CastShadows &&
+                  particles.Any(p => Vector3.Distance(p.Position, sim.Lights[i].Position) < 0.02f)),
+            "Per Particle puts up to Max Lights lights on particles (never shadowed)");
+        system.Lights.Ratio = 0;
+        Run(simulation, Step, at);
+        Check(simulation.Lights.Count == 0, "Ratio 0 carries no lights");
+        system.Lights.Ratio = 1;
+        system.Lights.Enabled = false;
+        Run(simulation, Step, at);
+        Check(simulation.Lights.Count == 0, "turning the module off removes the lights");
+        system.Lights.Enabled = true;
+        Run(simulation, Step, at);
+        simulation.Stop(clear: true);
+        Check(simulation.Lights.Count == 0, "Stop(clear) removes the lights with the particles");
+
+        // The renderer collects the lights of enabled systems on enabled gameobjects.
+        var entity = new BasicEntity(Marker, null, new Vector3(1, 2, 3), Matrix.Identity, Vector3.One) { Name = "Torch", IsEnabled = true };
+        var torch = new ParticleSystemComponent();
+        torch.Main.StartSpeed = 0;
+        torch.Lights.Enabled = true;
+        entity.AddComponent(torch);
+        var frame = new GameTime(TimeSpan.Zero, TimeSpan.FromSeconds(Step));
+        for (int i = 0; i < 10; i++) ParticleSystemComponent.UpdatePreviews(new[] { entity }, frame);
+        var collected = new List<PointLight>();
+        ParticleSystemComponent.CollectLights(new[] { entity }, collected);
+        Check(collected.Count == 1 && torch.LightCount == 1, "CollectLights gathers a playing system's light (the editor preview lights too)");
+        torch.Enabled = false;
+        collected.Clear();
+        ParticleSystemComponent.CollectLights(new[] { entity }, collected);
+        Check(collected.Count == 0, "disabled systems add no lights");
+        torch.OnStop();
+        Check(torch.LightCount == 0, "stopping Play removes the lights");
+    }
+
     private static void CheckSaving()
     {
         Check(ComponentRegistry.Find(ParticleSystemComponent.TypeId) is { DisplayName: "Particle System" } definition &&
@@ -640,6 +731,10 @@ internal static class ParticleChecks
         system.Volumetric.Enabled = true;
         system.Volumetric.Source = ParticleVolumeSource.Voxels;
         system.Volumetric.Volume = 75;
+        system.Lights.Enabled = true;
+        system.Lights.Mode = ParticleLightMode.PerParticle;
+        system.Lights.Offset = new Vector3(0, 0, 1);
+        system.Lights.Flicker = 0.3f;
         system.Emit(3);
 
         var record = ComponentRegistry.Capture(system);
@@ -652,14 +747,18 @@ internal static class ParticleChecks
         Check(!data.TryGetProperty(nameof(ParticleSystemComponent.ParticleCount), out _) &&
               !data.TryGetProperty(nameof(ParticleSystemComponent.Simulation), out _) &&
               !data.TryGetProperty(nameof(ParticleSystemComponent.Volume), out _) &&
-              data.GetProperty("Volumetric").GetProperty("Source").GetString() == "Voxels",
-            "runtime state isn't saved; the volume source is saved by name");
+              data.GetProperty("Volumetric").GetProperty("Source").GetString() == "Voxels" &&
+              !data.TryGetProperty(nameof(ParticleSystemComponent.LightCount), out _) &&
+              data.GetProperty("Lights").GetProperty("Mode").GetString() == "PerParticle" &&
+              data.GetProperty("Lights").GetProperty("Offset").GetRawText().Replace(" ", "") == "[0,0,1]",
+            "runtime state isn't saved; the volume source and light mode are saved by name");
         var restored = (ParticleSystemComponent)ComponentRegistry.Restore(record);
         Check(restored.Main.StartSpeed is { Min: 2, Max: 4 } && restored.Main.StartColor == new Color(10, 20, 30, 40) &&
               restored.Shape.BoxSize == new Vector3(1, 2, 3) && restored.ColorOverLifetime.Enabled &&
               restored.Emission.Bursts.Single() is { Time: 0.5f, Count: { Min: 10, Max: 20 }, Cycles: 2 } &&
               restored.SubEmitters.Emitters.Single() is { Trigger: ParticleSubEmitterTrigger.Trail, Target: "Smoke" } &&
               restored.Volumetric is { Enabled: true, Source: ParticleVolumeSource.Voxels, Volume: 75 } &&
+              restored.Lights is { Enabled: true, Mode: ParticleLightMode.PerParticle, Flicker: 0.3f } && restored.Lights.Offset == new Vector3(0, 0, 1) &&
               restored.ParticleCount == 0,
             "particle records round-trip every module");
 
@@ -734,6 +833,20 @@ internal static class ParticleChecks
         system.Volumetric.Flatten = 2;
         Publish();
         Check(editor.VoxelFlatten == 2, "engine-side Volumetric changes show in the inspector");
+        editor.LightsEnabled = true;
+        editor.LightMode = ParticleLightMode.PerParticle;
+        editor.LightMaxLights = 40;
+        editor.LightFlicker = 0.4;
+        editor.LightOffsetZ = 0.5;
+        editor.LightColor = Avalonia.Media.Color.FromRgb(255, 120, 40);
+        Publish();
+        Check(system.Lights is { Enabled: true, Mode: ParticleLightMode.PerParticle, MaxLights: ParticleLightsModule.MaxLightsLimit } &&
+              Math.Abs(system.Lights.Flicker - 0.4f) < 1e-5f && system.Lights.Offset.Z == 0.5f && system.Lights.Color == new Color(255, 120, 40) &&
+              editor.IsPerParticleLight && !editor.IsSystemLight,
+            "the Lights inspector reaches the engine (Max Lights clamped to 16) and shows the Per Particle settings");
+        system.Lights.Intensity = 12;
+        Publish();
+        Check(editor.LightIntensity == 12, "engine-side Lights changes show in the inspector");
 
         editor.ColorKeys[0].RemoveCommand.Execute(null);
         Publish();
@@ -826,20 +939,31 @@ internal static class ParticleChecks
         Check(systems.Count >= 15 && scene.BasicEntities.All(e => e.ModelDefinition != null) &&
               scene.BasicEntities.Single(e => e.Name == "Ground").Physics is { BodyType: Engine.Physics.PhysicsBodyType.Static },
             "the particle sample loads its systems on a static ground");
-        Check(Find("Campfire") is { Renderer: { Blend: ParticleBlendMode.Additive, Texture: ParticleTexture.Flame } } &&
+        Check(Find("Campfire") is { Renderer: { Blend: ParticleBlendMode.Additive, Texture: ParticleTexture.FlameSheet }, TextureSheetAnimation.Enabled: true } &&
+              Find("Campfire Core") is { Renderer.Blend: ParticleBlendMode.Additive } &&
               Find("Campfire Smoke") is { Renderer.Lit: true, TextureSheetAnimation.Enabled: true, ExternalForces.Enabled: true } &&
               Find("Spark Fountain") is { Collision: { Enabled: true, Type: ParticleCollisionType.World }, Renderer.RenderMode: ParticleRenderMode.StretchedBillboard } &&
               Find("Magic Vortex").VelocityOverLifetime is { Enabled: true, Orbital.Z: > 0 } &&
               Find("Comet").Emission.RateOverDistance > 0,
             "the stations cover fire, lit flipbook smoke, colliding sparks, orbital velocity and rate over distance");
+        Check(Find("Campfire").Lights is { Enabled: true, Mode: ParticleLightMode.System, Flicker: > 0, AlphaAffectsIntensity: true } &&
+              Find("Spark Fountain").Lights is { Enabled: true, Mode: ParticleLightMode.PerParticle, UseParticleColor: true } &&
+              Find("Explosion Fireball").Lights is { Enabled: true, Mode: ParticleLightMode.System } &&
+              scene.PointLights.All(l => l.Name != "Campfire Light"),
+            "the campfire lights the scene with its own flickering light, the sparks and the explosion light up too");
 
         var launcher = Find("Fireworks Launcher");
         Check(launcher.SubEmitters.Enabled && launcher.SubEmitters.Emitters.Count == 2 &&
               launcher.SubEmitters.Emitters.All(s => Find(s.Target) is { Main: { PlayOnAwake: false, SimulationSpace: ParticleSimulationSpace.World } }),
             "the fireworks' trail and burst sub-emitters exist, wait for their parent and live in world space");
-        Check(scene.BasicEntities.Count(e => e.Name.StartsWith("Explosion ") && e.GetComponent<ParticleSystemComponent>() is { Main.Looping: false }) == 5 &&
+        Check(scene.BasicEntities.Count(e => e.Name.StartsWith("Explosion ") && e.GetComponent<ParticleSystemComponent>() is { Main.Looping: false }) == 7 &&
               Find("Impact Sparks").Main.PlayOnAwake == false,
-            "the explosion is five one-shot systems and the click sparks wait for the script");
+            "the explosion is seven one-shot systems and the click sparks wait for the script");
+        Check(Find("Explosion Fireball") is { Renderer: { Texture: ParticleTexture.FireballSheet, Blend: ParticleBlendMode.Alpha, Lit: false }, TextureSheetAnimation.Enabled: true } &&
+              Find("Explosion Smoke").Renderer.Lit && Find("Explosion Dust").Renderer.Lit &&
+              Find("Explosion Chunks").SubEmitters.Emitters.Single() is { Trigger: ParticleSubEmitterTrigger.Trail } trail &&
+              Find(trail.Target) is { Main: { PlayOnAwake: false, SimulationSpace: ParticleSimulationSpace.World } },
+            "the explosion's fireball cools into soot, its smoke and dust are lit and its burning chunks trail smoke");
         Check(scene.MainCamera.Components.OfType<ScriptBehaviourComponent>().Select(s => s.ScriptId)
                   .SequenceEqual(new[] { FreecamScript.ScriptId, ParticleTestScript.ScriptId }) &&
               ScriptRegistry.Find(ParticleTestScript.ScriptId) != null,
@@ -901,7 +1025,7 @@ internal static class ParticleChecks
         Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, 1, 0.1f, 500);
         var lights = new List<DirectionalLight> { new(Color.White, 100, new Vector3(0, 0.3f, -1), Vector3.UnitZ, false) };
 
-        (Vector4[] Pixels, int Drawn) Render(Vector3 at, Action<ParticleSystemComponent> setup)
+        (Vector4[] Pixels, int Drawn) Render(Vector3 at, Action<ParticleSystemComponent> setup, List<PointLight> pointLights = null)
         {
             var entity = new BasicEntity(Marker, null, at, Matrix.Identity, Vector3.One) { Name = "Emitter", IsEnabled = true };
             var system = new ParticleSystemComponent();
@@ -917,7 +1041,7 @@ internal static class ParticleChecks
             system.Emit(5);
             graphics.SetRenderTarget(target);
             graphics.Clear(Color.Black);
-            module.Draw(graphics, new[] { entity }, camera, view, view * projection, null, lights, depth, 500);
+            module.Draw(graphics, new[] { entity }, camera, view, view * projection, null, lights, depth, 500, null, pointLights);
             graphics.SetRenderTarget(null);
             var half = new Microsoft.Xna.Framework.Graphics.PackedVector.HalfVector4[Size * Size];
             target.GetData(half);
@@ -934,6 +1058,18 @@ internal static class ParticleChecks
         Check(behind.Skip(Size * Size / 2).Sum(Luma) < lower * 0.01f, "particles behind the wall are hidden by the scene depth");
         var (bright, _) = Render(new Vector3(0, 10, 1.4f), s => s.Renderer.Brightness = 4);
         Check(bright.Max(c => c.X) > 1.5f, "Brightness above 1 writes HDR values for the bloom");
+        void LitSmoke(ParticleSystemComponent s)
+        {
+            s.Main.StartColor = s.Main.StartColor2 = new Color(200, 200, 200);
+            s.Renderer.Blend = ParticleBlendMode.Alpha;
+            s.Renderer.Texture = ParticleTexture.SoftCircle;
+            s.Renderer.Lit = true;
+        }
+        var (unlitByFire, _) = Render(new Vector3(0, 10, 1.4f), LitSmoke);
+        var fire = new PointLight(new Vector3(0, 9.5f, 1.4f), 6, Color.Red, 100, false, false, 256, 0, false);
+        var (litByFire, _) = Render(new Vector3(0, 10, 1.4f), LitSmoke, new List<PointLight> { fire });
+        Check(litByFire.Sum(c => c.X) > unlitByFire.Sum(c => c.X) * 1.2f && litByFire.All(c => float.IsFinite(Luma(c))),
+            "Lit particles are shaded by nearby point lights (smoke glowing over a fire)");
 
         // Volumetric: a voxel smoke in front of the wall covers it; one behind the wall is hidden by the scene depth.
         (Vector4[] Pixels, int Volumes) RenderSmoke(Vector3 at, Action<ParticleSystemComponent> setup = null)

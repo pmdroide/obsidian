@@ -27,6 +27,12 @@ namespace Engine.Recources
         public ModelDefinition Capsule;
         // 2 x 2 double-sided plane in X/Z (front faces -Y), 24 x 24 quads: the mesh for the Cloth component.
         public ModelDefinition Cloth;
+        // 7 m broadleaf tree, Z up, trunk base at the origin (GameObjects/Tree, made by Source/generate_tree.py).
+        // Its Bark and Leaves parts carry their own materials; add a Foliage Wind component to make it sway.
+        public ModelDefinition Tree;
+        public MaterialEffect TreeBarkMaterial;
+        // Foliage material type: alpha-cut leaf cards that flutter in the wind and let sunlight through.
+        public MaterialEffect TreeLeavesMaterial;
 
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
@@ -144,6 +150,8 @@ namespace Engine.Recources
             // A cloth swings and falls away from its rest plane; wider bounds keep it from being culled.
             foreach (ModelMesh mesh in Cloth.Model.Meshes)
                 mesh.BoundingSphere = new BoundingSphere(mesh.BoundingSphere.Center, mesh.BoundingSphere.Radius * 2f);
+
+            Tree = LoadTree(content, graphicsDevice);
 
             IconDecal = content.Load<Texture2D>("System/Editor/icon_decal");
             IconLight = content.Load<Texture2D>("System/Editor/icon_light");
@@ -302,6 +310,47 @@ namespace Engine.Recources
                 EditorBridge.Log($"Assets: failed to load skinned model '{assetPath}': " + ex.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Loads the built-in tree and binds its bark and leaf materials per mesh part, so a Tree gameobject
+        /// saved without a material draws both. Returns null when the asset is missing.
+        /// </summary>
+        private ModelDefinition LoadTree(ContentManager content, GraphicsDevice graphicsDevice)
+        {
+            try
+            {
+                var definition = new ModelDefinition(content, "GameObjects/Tree/tree", graphicsDevice);
+                TreeBarkMaterial = CreateMaterial(Color.White, 0.85f, 0,
+                    albedoMap: content.Load<Texture2D>("GameObjects/Tree/bark_albedo"),
+                    normalMap: content.Load<Texture2D>("GameObjects/Tree/bark_normal"));
+                TreeLeavesMaterial = CreateMaterial(Color.White, 0.8f, 0,
+                    albedoMap: content.Load<Texture2D>("GameObjects/Tree/leaves_albedo"),
+                    normalMap: content.Load<Texture2D>("GameObjects/Tree/leaves_normal"),
+                    mask: content.Load<Texture2D>("GameObjects/Tree/leaves_mask"),
+                    type: MaterialEffect.MaterialTypes.Foliage);
+                foreach (ModelMesh mesh in definition.Model.Meshes)
+                {
+                    // Swaying moves the crown past its rest bounds; keep it from being culled early.
+                    mesh.BoundingSphere = new BoundingSphere(mesh.BoundingSphere.Center, mesh.BoundingSphere.Radius * 1.15f);
+                    foreach (ModelMeshPart part in mesh.MeshParts)
+                        part.Effect = IsLeafPart(mesh, part) ? TreeLeavesMaterial : TreeBarkMaterial;
+                }
+                return definition;
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log("Assets: failed to load the tree model: " + ex.Message);
+                return null;
+            }
+        }
+
+        // The OBJ names its parts Bark and Leaves (tree.mtl gives Leaves a green colour as a fallback).
+        private static bool IsLeafPart(ModelMesh mesh, ModelMeshPart part)
+        {
+            if (mesh.Name != null && mesh.Name.IndexOf("leaves", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (mesh.Name != null && mesh.Name.IndexOf("bark", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            return part.Effect is BasicEffect basic && basic.DiffuseColor.Y > basic.DiffuseColor.X * 1.3f;
         }
 
         /// <summary>
@@ -576,6 +625,8 @@ namespace Engine.Recources
             MetalRough03Material?.Dispose();
             AlphaBlendRim?.Dispose();
             MirrorMaterial?.Dispose();
+            TreeBarkMaterial?.Dispose();
+            TreeLeavesMaterial?.Dispose();
             NoiseMap?.Dispose();
             SkyTexture?.Dispose();
             if (ErrorModelMaterial != ErrorMaterial) ErrorModelMaterial?.Dispose();

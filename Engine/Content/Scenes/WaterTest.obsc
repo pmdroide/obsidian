@@ -1,0 +1,1867 @@
+{
+  "Version": 2,
+  "Name": "WaterTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Deck North",
+      "ModelKey": "Cube",
+      "Position": [0, 34, -0.25],
+      "Scale": [60, 26, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a4014cf1-4e10-558b-82cc-cc68cfd74d20",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "f998743e-68c8-5f1a-85d5-c31e8eea6a47",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 60,
+            "TilingV": 26,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Deck South",
+      "ModelKey": "Cube",
+      "Position": [0, -34, -0.25],
+      "Scale": [60, 26, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "5ef6bcb5-0f44-5840-8730-85f49c0f90be",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "99f4dbfb-5def-5c75-8bcc-1f37ecefeee5",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 60,
+            "TilingV": 26,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Deck West",
+      "ModelKey": "Cube",
+      "Position": [-39, 0, -0.25],
+      "Scale": [21, 8, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "43304af8-5375-5d9d-889d-d035c0ae36f6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "c0c48d90-51d9-519c-8148-fc636967c9ea",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 21,
+            "TilingV": 8,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Deck Between",
+      "ModelKey": "Cube",
+      "Position": [5, 0, -0.25],
+      "Scale": [3, 8, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "62cab830-c47e-5564-8eaa-8959d6ea472b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d4ca9b57-79cd-5f18-8868-8d2188696926",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 3,
+            "TilingV": 8,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Deck East",
+      "ModelKey": "Cube",
+      "Position": [42, 0, -0.25],
+      "Scale": [18, 8, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d4e11d91-beec-5dfb-84e0-7361c757d883",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "8b5475e9-e1d7-5d1e-8b57-b8dc6d959cd9",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 18,
+            "TilingV": 8,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Deck Tank North",
+      "ModelKey": "Cube",
+      "Position": [16, 7, -0.25],
+      "Scale": [8, 1, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "211ca521-a714-5ce5-8483-fdf233f010f2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "bb28a1f3-d141-539f-8e37-21ae19d50420",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 8,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Deck Tank South",
+      "ModelKey": "Cube",
+      "Position": [16, -7, -0.25],
+      "Scale": [8, 1, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "1b38f681-4d90-5bf7-8d1a-3ae12b56fa34",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "f725184d-6c81-5c05-8068-f35ee8ce3fa6",
+          "Data": {
+            "MaterialType": 7,
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 8,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Cobblestone_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Cobblestone_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Cobblestone_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Cobblestone_Height.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Pool Floor",
+      "ModelKey": "Cube",
+      "Position": [-8, 0, -3.25],
+      "Scale": [10, 8, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a4334596-4504-5502-8937-2f7944230280",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "6d06828e-f448-5341-8b9c-14de25934790",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.72,
+            "Green": 0.86,
+            "Blue": 0.9,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Pool Wall North",
+      "ModelKey": "Cube",
+      "Position": [-8, 8.25, -1.875],
+      "Scale": [10.5, 0.25, 1.625],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4f5e7497-8429-56b2-88a8-a9b4f0eb39cb",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "053f9fe5-28c9-5abe-8bb1-2cdb1a1d515f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.72,
+            "Green": 0.86,
+            "Blue": 0.9,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Pool Wall South",
+      "ModelKey": "Cube",
+      "Position": [-8, -8.25, -1.875],
+      "Scale": [10.5, 0.25, 1.625],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "63e0a912-ed8d-57e0-8fff-44b2b6a5bf9b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "b3848541-4f55-5a62-80c4-fb114d8d21b0",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.72,
+            "Green": 0.86,
+            "Blue": 0.9,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Pool Wall West",
+      "ModelKey": "Cube",
+      "Position": [-18.25, 0, -1.875],
+      "Scale": [0.25, 8, 1.625],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7abc5006-b3aa-5eb1-8185-057021d8a9a3",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "c3ea867e-f1c2-55e0-86fb-c4dc21782c02",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.72,
+            "Green": 0.86,
+            "Blue": 0.9,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Pool Wall East",
+      "ModelKey": "Cube",
+      "Position": [2.25, 0, -1.875],
+      "Scale": [0.25, 8, 1.625],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7156e881-2bfb-5dd9-8d5e-5c12838e08e2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "0aa44821-d5b9-5b10-85d3-40ff38d07af7",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.72,
+            "Green": 0.86,
+            "Blue": 0.9,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Pool Coping North",
+      "ModelKey": "Cube",
+      "Position": [-8, 8.3, 0.06],
+      "Scale": [10.6, 0.3, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a9e0bc3f-9054-5b62-8238-94231b1b47bc",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "b66315ec-1415-5bd2-8e38-bb57581a75ec",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Pool Coping South",
+      "ModelKey": "Cube",
+      "Position": [-8, -8.3, 0.06],
+      "Scale": [10.6, 0.3, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7cb2d567-4b31-5d8f-86ad-94fab1ab0204",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "9ef8015f-4728-5839-8761-08fde1dc8f8a",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Pool Coping West",
+      "ModelKey": "Cube",
+      "Position": [-18.3, 0, 0.06],
+      "Scale": [0.3, 8, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3cbedaa0-f5a9-5aea-8d9c-6b93c43df53d",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "397d6ce3-742e-549a-8f65-18632888ffda",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "Pool Coping East",
+      "ModelKey": "Cube",
+      "Position": [2.3, 0, 0.06],
+      "Scale": [0.3, 8, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4ce7b2f5-390b-5a65-8e99-6500dfd2f552",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "511ae6fb-2fa7-559b-8cdb-bd6d1acdeda4",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "Pool Water",
+      "Role": "Water",
+      "ModelKey": "Cube",
+      "Position": [-8, 0, -1.7],
+      "Scale": [9.98, 7.98, 1.3],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ff8488bd-f2e2-5abe-8602-45f03039464e",
+          "Data": {
+            "MaterialType": 6,
+            "IsTransparent": false,
+            "Red": 0.03,
+            "Green": 0.36,
+            "Blue": 0.52,
+            "Roughness": 0.08,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": false,
+            "Opacity": 0.7,
+            "WaveScale": 0.6,
+            "WaveSpeed": 0.8,
+            "WaveStrength": 0.25,
+            "WaveHeight": 0.15,
+            "Clarity": 4,
+            "Foam": 0.4,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "Tank Floor",
+      "ModelKey": "Cube",
+      "Position": [16, 0, -4.25],
+      "Scale": [8, 6, 0.25],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "1db46756-04ce-5f7e-885c-4c6620a8a9d0",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "1ee85c04-6661-5c86-8903-09deb3f45e7d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.62,
+            "Blue": 0.66,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "Tank Wall North",
+      "ModelKey": "Cube",
+      "Position": [16, 6.25, -2.375],
+      "Scale": [8.5, 0.25, 2.125],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "5b3cca3f-2085-5a20-83db-826b45a51a9e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "686c6761-b860-56e7-8f96-070751159230",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.62,
+            "Blue": 0.66,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "Tank Wall South",
+      "ModelKey": "Cube",
+      "Position": [16, -6.25, -2.375],
+      "Scale": [8.5, 0.25, 2.125],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "57beefe1-3842-54a1-8ca2-45d8eae967be",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "f3bc9c08-5d48-521c-8337-e529e9a4cd16",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.62,
+            "Blue": 0.66,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "Tank Wall West",
+      "ModelKey": "Cube",
+      "Position": [7.75, 0, -2.375],
+      "Scale": [0.25, 6, 2.125],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0eb99648-7ff7-5569-88fa-8e6012a027ff",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "5fa07358-e37c-5c06-8bdf-5ed2e6576e60",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.62,
+            "Blue": 0.66,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 22,
+      "Name": "Tank Wall East",
+      "ModelKey": "Cube",
+      "Position": [24.25, 0, -2.375],
+      "Scale": [0.25, 6, 2.125],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0d853a47-47c9-561e-819f-9d0e2118fb0e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "62855c7f-bb1e-58ee-8423-1394f5dd2912",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.5,
+            "Green": 0.62,
+            "Blue": 0.66,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 23,
+      "Name": "Tank Coping North",
+      "ModelKey": "Cube",
+      "Position": [16, 6.3, 0.06],
+      "Scale": [8.6, 0.3, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b7aafcbd-1efa-5648-8da2-fcefcf27524c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "6cc68fc9-989d-52d9-8e61-f657d72cc1e9",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 24,
+      "Name": "Tank Coping South",
+      "ModelKey": "Cube",
+      "Position": [16, -6.3, 0.06],
+      "Scale": [8.6, 0.3, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "1cbc48cb-a9ed-5745-85e7-b9b16fb186ea",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "6067b18e-9e97-52c4-8892-b83eb74bce89",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 25,
+      "Name": "Tank Coping West",
+      "ModelKey": "Cube",
+      "Position": [7.7, 0, 0.06],
+      "Scale": [0.3, 6, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9967c006-affb-51a9-8f78-f9051f3c0576",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "32609d43-f836-54b4-8d03-c65611261e55",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 26,
+      "Name": "Tank Coping East",
+      "ModelKey": "Cube",
+      "Position": [24.3, 0, 0.06],
+      "Scale": [0.3, 6, 0.06],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e54bc98c-c73d-5017-8c67-d2cda3b61cb2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "ff1ecfcd-0878-5f3b-8924-b0a03babef42",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.74,
+            "Green": 0.72,
+            "Blue": 0.68,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 27,
+      "Name": "Wave Tank Water",
+      "Role": "Water",
+      "ModelKey": "Cube",
+      "Position": [16, 0, -2.4],
+      "Scale": [7.98, 5.98, 1.6],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "bc757228-6783-5bcb-8ef1-ff2421d034d5",
+          "Data": {
+            "MaterialType": 6,
+            "IsTransparent": false,
+            "Red": 0.03,
+            "Green": 0.24,
+            "Blue": 0.34,
+            "Roughness": 0.08,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": false,
+            "Opacity": 0.7,
+            "WaveScale": 0.5,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.3,
+            "WaveHeight": 0.9,
+            "Clarity": 4,
+            "Foam": 0.7,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 28,
+      "Name": "Diving Tower",
+      "ModelKey": "Cube",
+      "Position": [-20.3, 0, 2],
+      "Scale": [0.7, 1, 2],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4d14a67f-20e0-5e9c-872f-99abcd12ee40",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "0f05517b-bcc1-57b1-83a3-db98eabdfb73",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.85,
+            "Blue": 0.82,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 29,
+      "Name": "Diving Board",
+      "ModelKey": "Cube",
+      "Position": [-17.3, 0, 4.05],
+      "Scale": [2.3, 0.4, 0.05],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4f3d51e4-c0d3-5615-8573-6b863b3cc514",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "40aa4035-32c1-532b-865b-d30583c560c1",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.5,
+            "Blue": 0.75,
+            "Roughness": 0.45,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 30,
+      "Name": "Tower Ladder",
+      "ModelKey": "Cube",
+      "Position": [-19.55, 1.3, 2],
+      "Scale": [0.05, 0.2, 2],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "26ad54a7-d398-5843-8769-7463395c6b3f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.62,
+            "Roughness": 0.3,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 31,
+      "Name": "Lamp 1 Post",
+      "ModelKey": "Cube",
+      "Position": [-19.5, 9.5, 1.8],
+      "Scale": [0.08, 0.08, 1.8],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "656e848c-e062-5050-8d96-6d7cea36dee9",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "cc962653-1f0d-5c35-80ee-f921d5a0e162",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.15,
+            "Green": 0.16,
+            "Blue": 0.18,
+            "Roughness": 0.4,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 32,
+      "Name": "Lamp 1 Bulb",
+      "ModelKey": "IsoSphere",
+      "Position": [-19.5, 9.5, 3.75],
+      "Scale": [0.18, 0.18, 0.18],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "f3dd00c5-1507-58fe-835a-28de43aa453c",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1,
+            "Green": 0.85,
+            "Blue": 0.65,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 4,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 33,
+      "Name": "Lamp 2 Post",
+      "ModelKey": "Cube",
+      "Position": [3.5, -9.5, 1.8],
+      "Scale": [0.08, 0.08, 1.8],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "5d9f560c-232f-559a-899d-83b856dba75e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "9cf4dc62-8e94-5a3c-88b9-cc4f8c0c5bc2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.15,
+            "Green": 0.16,
+            "Blue": 0.18,
+            "Roughness": 0.4,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 34,
+      "Name": "Lamp 2 Bulb",
+      "ModelKey": "IsoSphere",
+      "Position": [3.5, -9.5, 3.75],
+      "Scale": [0.18, 0.18, 0.18],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "74338531-26b9-51ac-8239-5528d7cdc6f9",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1,
+            "Green": 0.85,
+            "Blue": 0.65,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 4,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 35,
+      "Name": "Lamp 3 Post",
+      "ModelKey": "Cube",
+      "Position": [25.5, 7.5, 1.8],
+      "Scale": [0.08, 0.08, 1.8],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "fabd12dd-ad72-54a9-8393-585723de7554",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "e3f31eda-a761-594b-823b-90a39569d10d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.15,
+            "Green": 0.16,
+            "Blue": 0.18,
+            "Roughness": 0.4,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 36,
+      "Name": "Lamp 3 Bulb",
+      "ModelKey": "IsoSphere",
+      "Position": [25.5, 7.5, 3.75],
+      "Scale": [0.18, 0.18, 0.18],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "41242938-19f0-5ace-8029-8450a8bb0679",
+          "Data": {
+            "MaterialType": 3,
+            "Red": 1,
+            "Green": 0.85,
+            "Blue": 0.65,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 4,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 37,
+      "Name": "Raft",
+      "ModelKey": "Cube",
+      "Position": [-12, 3, -0.4],
+      "Scale": [1.2, 0.8, 0.1],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0fb21db1-3eba-536a-8b0d-5254680ae303",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 60,
+            "Buoyancy": true,
+            "BuoyancyStrength": 3,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "5f561ea0-0cec-5b57-8c30-fc326674d42d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.55,
+            "Green": 0.38,
+            "Blue": 0.22,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 38,
+      "Name": "Buoy Red",
+      "ModelKey": "IsoSphere",
+      "Position": [-4, -4, -0.4],
+      "Scale": [0.3, 0.3, 0.3],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "de8d1ca1-7e70-5b6d-80c2-3c18ab6d4ad1",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 3,
+            "Buoyancy": true,
+            "BuoyancyStrength": 4,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d2c82775-0bd8-5e2e-8352-f656fd81cc7d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.9,
+            "Green": 0.18,
+            "Blue": 0.12,
+            "Roughness": 0.4,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 39,
+      "Name": "Buoy Yellow",
+      "ModelKey": "IsoSphere",
+      "Position": [-14, -5, -0.4],
+      "Scale": [0.3, 0.3, 0.3],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e71a9366-a144-5a5b-8dba-6538bdd1e0e2",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 3,
+            "Buoyancy": true,
+            "BuoyancyStrength": 4,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "c2e47bf8-7fa0-52d5-83e0-52d721b22f48",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.95,
+            "Green": 0.78,
+            "Blue": 0.15,
+            "Roughness": 0.4,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 40,
+      "Name": "Barrel",
+      "ModelKey": "Capsule",
+      "Position": [-2, 4, -0.2],
+      "Scale": [0.35, 0.35, 0.5],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "89e6d1ee-70f3-5dc1-80fb-b9281808d3be",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 40,
+            "Buoyancy": true,
+            "BuoyancyStrength": 2.2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "db4cf1b0-fecb-50d5-8408-670f8b09ffd6",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.35,
+            "Blue": 0.6,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 41,
+      "Name": "Sunken Crate",
+      "ModelKey": "Cube",
+      "Position": [-7, -2, -2.6],
+      "Scale": [0.4, 0.4, 0.4],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4c9c7c86-d0fa-5beb-8c5c-a96961a66375",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 200,
+            "Buoyancy": true,
+            "BuoyancyStrength": 0.5,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d0fcb34b-ad95-518f-80db-415bbf22d7a6",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.35,
+            "Green": 0.3,
+            "Blue": 0.25,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 42,
+      "Name": "Boat",
+      "ModelKey": "Cube",
+      "Position": [16, -2.5, -0.8],
+      "Scale": [1.4, 0.55, 0.22],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "4ca331f4-aaed-5f77-87ea-87b15db22e99",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 120,
+            "Buoyancy": true,
+            "BuoyancyStrength": 2.5,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "3d4476de-2bba-51c3-87f0-42d5359ef783",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.92,
+            "Green": 0.92,
+            "Blue": 0.9,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 43,
+      "Name": "Tank Crate 1",
+      "ModelKey": "Cube",
+      "Position": [11.5, 2, -0.8],
+      "Scale": [0.35, 0.35, 0.35],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d69cd158-0089-51f5-8069-5f38aad7ae2a",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 40,
+            "Buoyancy": true,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "5d1192bd-ed09-50b4-8e7b-7e5b684e9686",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.55,
+            "Green": 0.38,
+            "Blue": 0.22,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 44,
+      "Name": "Tank Crate 2",
+      "ModelKey": "Cube",
+      "Position": [20, 1.5, -0.8],
+      "Scale": [0.35, 0.35, 0.35],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "6f743366-0395-5025-87a5-4a7537952092",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 40,
+            "Buoyancy": true,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "816b0519-0106-5064-82d4-3401fdf4667c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.55,
+            "Green": 0.38,
+            "Blue": 0.22,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 45,
+      "Name": "Tank Ball",
+      "ModelKey": "IsoSphere",
+      "Position": [14, 3, -0.8],
+      "Scale": [0.3, 0.3, 0.3],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a36454f7-fc77-5c26-82b0-bd18d03730bf",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 2,
+            "Buoyancy": true,
+            "BuoyancyStrength": 3,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "610592b0-8056-53ea-81d3-9595236b9dc1",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.95,
+            "Green": 0.3,
+            "Blue": 0.22,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 46,
+      "Name": "Lamp 1 Light",
+      "Position": [-19.5, 9.5, 3.6],
+      "Radius": 12,
+      "Color": [255, 210, 160, 255],
+      "Intensity": 2.5
+    },
+    {
+      "Id": 47,
+      "Name": "Lamp 2 Light",
+      "Position": [3.5, -9.5, 3.6],
+      "Radius": 12,
+      "Color": [255, 210, 160, 255],
+      "Intensity": 2.5
+    },
+    {
+      "Id": 48,
+      "Name": "Lamp 3 Light",
+      "Position": [25.5, 7.5, 3.6],
+      "Radius": 12,
+      "Color": [255, 210, 160, 255],
+      "Intensity": 2.5
+    },
+    {
+      "Id": 49,
+      "Name": "Pool Light West",
+      "Position": [-13, 0, -2.5],
+      "Radius": 9,
+      "Color": [120, 215, 255, 255],
+      "Intensity": 3
+    },
+    {
+      "Id": 50,
+      "Name": "Pool Light East",
+      "Position": [-3, 0, -2.5],
+      "Radius": 9,
+      "Color": [120, 215, 255, 255],
+      "Intensity": 3
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 51,
+      "Name": "Sun",
+      "Direction": [-0.45, 0.4, -0.8],
+      "Position": [0, 0, 2],
+      "Color": [255, 248, 236, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 120,
+      "ShadowDepth": 200,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [-4, -12, 2.5],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 16.5,
+    "CycleDurationMinutes": 30,
+    "CloudCoverage": 0.45,
+    "CloudSpeed": 2,
+    "Weather": "Rain",
+    "WeatherIntensity": 0.6,
+    "WeatherHaze": 0.3,
+    "WindSpeed": 4,
+    "WindDirection": 45
+  },
+  "MainCamera": {
+    "Position": [2, -24, 6],
+    "Forward": [0, 0.9578, -0.2873],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "7200b691-990b-5cfc-8e94-41beb6ede10f",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "f4514601-ee36-5d50-82bc-3884a2fc7a97",
+        "Data": {
+          "ScriptId": "water-test",
+          "Enabled": true,
+          "Fields": {
+            "Pool": 17
+          }
+        }
+      }
+    ]
+  }
+}

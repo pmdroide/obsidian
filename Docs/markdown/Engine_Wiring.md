@@ -155,6 +155,8 @@ Engine.Update
 │   │   ├─ GameInput.Update(dt)         ← script-facing input, gamepads, menu repeat
 │   │   ├─ PlayMode.UpdateScripts(gameTime) ← component OnUpdate (Play only; particle systems step here)
 │   │   ├─ ParticleSystemComponent.UpdatePreviews(...) ← Edit only: Play On Awake particle systems preview
+│   │   ├─ FoliageWindComponent.UpdateAll(entities, dt (0 while paused), scene wind) ← Edit and Play: tree wind clocks, TransformMatrix.Wind, HasChanged
+│   │   ├─ WaterSplashes.Update(dt, 0 while paused) ← splash droplets and water rings age and move
 │   │   └─ dev hotkeys (F1 render mode; Space/L/X/M outside Play)
 │   ├─ _audio.UpdateListener(Camera)
 │   ├─ _renderer.Update(...)            ← editor mouse-moved timer, SDF generator
@@ -170,7 +172,8 @@ Engine.Update
     └─ MainSceneLogic.UpdatePhysics → ScenePhysics.Update(entities, dt, simulate, time)
         ├─ rebuild or sync bodies from components and transforms
         ├─ if simulate: Step(min(dt, 1/20)) → pull poses → contacts
-        └─ dispatch OnCollision*/OnTrigger* to scripts
+        ├─ dispatch OnCollision*/OnTrigger* to scripts
+        └─ water contacts: bodies crossing a Water surface → WaterEntered/WaterExited (MainSceneLogic.WaterSplashes) + OnWaterEnter/OnWaterExit
 ```
 
 Consequences of this order:
@@ -223,13 +226,14 @@ Most cross-system wiring goes through statics. Knowing them saves a lot of searc
 | `GameSettings.*` | defaults, `ApplySettings`, the editor | Render, editor and physics switches. Prefixes: `g_` graphics, `e_` editor, `d_` debug, `sdf_`, `u_` UI, `p_` physics. Some setters push straight into shader parameters |
 | `GameStats.*` | renderer, editor | Per-frame counters, `e_gizmoMode`, `e_EnableSelection`, `e_LocalTransformation` |
 | `GameFlow.SceneLogic`, `QuitHandler`, `Paused`, `EscapeQuits`, pending scene | `MainSceneLogic.Initialize`, `Engine` ctor, scripts | Script API for scenes and pausing |
-| `ScenePhysics.Current` | `ScenePhysics` ctor | Script raycasts, navigation |
+| `ScenePhysics.Current` | `ScenePhysics` ctor | Script raycasts (also `RaycastWater`), navigation |
 | `Input.*` state, `Input.HostBridge` | `Input.Update`, `EditorBridge.Bind` | Raw keyboard/mouse, Anvil key merge |
 | `GameInput.*` | `GameInput.Update` | Script input |
 | `GameUI.Layers` | `GameUI.Open/Close` | Script UI layers |
 | `Audio.Instance` | `AudioManager.Initialize` | Static audio facade |
 | `ScriptBehaviour.Running` | `ScriptBehaviourComponent` around each call | Records which script owns a `GameUI` layer |
 | `SteamService.Current` | `Engine` ctor | Steam session for scripts |
+| `SaveData.Folder`, pending async writes | default `%LOCALAPPDATA%/<game name>/Saves`, scripts, tests | Save files (`Engine/Logic/SaveData.cs`); `Engine.UnloadContent` calls `SaveData.Flush()` |
 | `IdGenerator._currentId` | `GetNewId`, `Reseed` | Object IDs (section 6.3) |
 
 There is **no** global `GraphicsDevice`. It is passed into `Initialize` methods, and `Assets` keeps `GraphicsDevice` and `Content` as instance properties.
@@ -253,6 +257,7 @@ MainSceneLogic                                  (runtime drivers, one per proces
 ├─ MeshMaterialLibrary     (render registry, section 9.2)
 ├─ ScenePhysics            (BEPU bodies, section 8)
 ├─ VoxelSystem (Voxels)    (the active scene's VoxelWorld: chunk meshes in the library, chunk statics in BEPU)
+├─ WaterSplashes           (splash droplet systems + water rings; fed by ScenePhysics water contacts, read by the renderer through GameFlow.SceneLogic; cleared on scene swap and Stop)
 ├─ PlayModeController      (section 7.3)
 ├─ LightingSystem          (probe bakes and GPU data)
 ├─ SdfGenerator, DebugEntities
@@ -325,8 +330,10 @@ Renderer.Draw (end) → FrustumCullingFinalizeFrame → HasChanged = false
   - `Restore` deserialises by `Type`.
   - `Copy` is `Restore(Capture)` with a fresh Guid.
   - The same records are used for scene files, bridge snapshots and cloning.
-- Registration order (= Add Component menu order): `material`, `physics`, `audio`, `script-behaviour` (multiple), `animator`, `ragdoll`, `interactable`, `cloth`, `npc`, `lod`, `particles`.
-- `ParticleSystemComponent` (`particles`) is the one component that also runs outside Play: `MainSceneLogic.Update` calls `UpdatePreviews` in Edit mode, and `PlayModeController.Stop` (`OnStop`) clears the preview so Play restarts from scratch. Its settings are nested module objects (`Main`, `Emission`, `Shape`, ...) with property-level JSON converters for `Vector3`/`Color` (components serialise with default options, which skip XNA fields). The simulation is `Engine/Particles/ParticleSimulation.cs` (CPU, GPU-free); it hides the gameobject's marker mesh during Play through `TransformMatrix.Hidden`. With the `Volumetric` module on, each step ends by updating a `ParticleVolume` (`Engine/Particles/ParticleVolume.cs`): a density grid splatted from the particles, or (Source Voxels) a Counter-Strike 2 style flood fill from the emitter that `ParticleStepContext.RaycastStatic` (`ScenePhysics.RaycastStatic`) keeps out of Static colliders, with one sun ray per voxel (`SunDirection`). Scripts carve bullet tunnels/blast holes (`CarveTunnel`/`CarveHole`, static `CarveTunnels`/`CarveHoles`) and query `Opacity`/`VolumeOpacity`; `NpcComponent.CanSee` refuses sight through smoke above `SmokeBlocksSight`.
+- Registration order (= Add Component menu order): `material`, `physics`, `audio`, `script-behaviour` (multiple), `animator`, `ragdoll`, `interactable`, `cloth`, `npc`, `lod`, `particles`, `fog-volume`, `foliage-wind`.
+- `FoliageWindComponent` (`foliage-wind`) also runs outside Play: `MainSceneLogic.Update` calls the static `UpdateAll` every frame (dt 0 while `GameFlow.Paused`) with `WeatherProfile.Wind(scene environment)`. For each enabled component it advances the tree's wind clock (faster in stronger wind, slower for taller trees), fills its `FoliageWind` state (height = Height or the model's bounds top × Scale.Z, strength = wind m/s / 6 after Wind Scale and Min Wind, a phase hashed from the position) and puts it on `TransformMatrix.Wind`. It also sets `WorldTransform.HasChanged` every frame so culling and the cached shadow maps redraw. A disabled or missing component sets `Wind` back to null (scene loads don't run `OnAdded`, so attaching happens there too). The motion itself is vertex-shader only (section 9.2).
+- `FogVolumeComponent` (`fog-volume`) is data for the renderer: `FroxelRenderModule.SetFogVolumes` collects the enabled ones each frame (Edit and Play) and the froxel injection adds their density inside the gameobject's box (unit cube × scale/rotation/position), skipping the scene fog's distance ramp. Scene loads don't run `OnAdded`, so the collection also keeps the box mesh hidden (`TransformMatrix.Hidden`); `OnChanged`/`OnRemoved` show it again when disabled or removed.
+- `ParticleSystemComponent` (`particles`) is the one component that also runs outside Play: `MainSceneLogic.Update` calls `UpdatePreviews` in Edit mode, and `PlayModeController.Stop` (`OnStop`) clears the preview so Play restarts from scratch. Its settings are nested module objects (`Main`, `Emission`, `Shape`, ...) with property-level JSON converters for `Vector3`/`Color` (components serialise with default options, which skip XNA fields). The simulation is `Engine/Particles/ParticleSimulation.cs` (CPU, GPU-free); it hides the gameobject's marker mesh during Play through `TransformMatrix.Hidden`. With the `Volumetric` module on, each step ends by updating a `ParticleVolume` (`Engine/Particles/ParticleVolume.cs`): a density grid splatted from the particles, or (Source Voxels) a Counter-Strike 2 style flood fill from the emitter that `ParticleStepContext.RaycastStatic` (`ScenePhysics.RaycastStatic`) keeps out of Static colliders, with one sun ray per voxel (`SunDirection`). Scripts carve bullet tunnels/blast holes (`CarveTunnel`/`CarveHole`, static `CarveTunnels`/`CarveHoles`) and query `Opacity`/`VolumeOpacity`; `NpcComponent.CanSee` refuses sight through smoke above `SmokeBlocksSight`. With the `Lights` module on, each step also refreshes the simulation's `ParticleLights` (`Engine/Particles/ParticleLights.cs`): engine-owned `PointLight`s (one System light at the glow-weighted centre, or Per Particle lights on the brightest carriers) that never enter `Scene.PointLights`; the renderer gathers them each frame with `ParticleSystemComponent.CollectLights`.
 - The main camera has its own `Components` list, which accepts only `ScriptBehaviourComponent` (`Camera.SupportsComponent`). Its hooks receive `owner == null`.
 
 ### 7.3 `PlayModeController` (`Engine/Logic/PlayMode.cs`)
@@ -365,15 +372,18 @@ ScriptBehaviourComponent  (component "script-behaviour"; persisted: ScriptId, Fi
      instance.Attach(owner, HostCamera)
      Run(s => s.Start())                             ← sets ScriptBehaviour.Running around the call
   OnUpdate → OnChanged (stop if disabled or ScriptId changed) → EnsureStarted (handles attach mid-Play)
-           → ApplyFieldEdits() (inspector edits during Play) → instance.Tick(dt) → Update()
+           → ApplyFieldEdits() (inspector edits during Play) → instance.Tick(dt):
+                Time += (GameFlow.Paused ? 0 : dt); FrameCount++; Update();
+                AdvanceTiming(): ScriptTimer.Advance (timers/tweens), then ScriptCoroutine.Step
   Notify(hook, call)  ← entry point for physics, interaction, NPC and OnSceneLoaded events
-  OnStop   → instance.Shutdown(): Stop(), StopAllSounds(), DestroyAllSpawned()
+  OnStop   → instance.Shutdown(): Stop(), CancelAllTimers(), StopAllCoroutines(), StopAllSounds(), DestroyAllSpawned()
   An exception sets _faulted; a faulted script stops ticking until it is restarted.
 ```
 
 - **A new script needs two steps:** a class in `Content/Scripts/` *and* a line in the `ScriptRegistry` static constructor.
 - `Spawn(modelKey, pos)` → `MainSceneLogic.SpawnRuntimeEntity` → `Assets.FindModel`, flagged `IsRuntimeSpawned`, never saved. `Destroy(entity)` only removes objects the same script spawned (through `EditorDelete`).
 - Script transform helpers use Z-up conventions: Forward = local +Y, Up = local +Z.
+- Timers, tweens and coroutines (`Engine/Scripting/ScriptBehaviour.Timing.cs`, `ScriptTimer.cs`, `ScriptCoroutine.cs`, `Ease.cs`) are per script instance, with no global scheduler. They advance only inside `Tick`, after `Update`, so they follow the script's own update rules: they get no frames while paused unless the script has `UpdateWhilePaused`, and even then game-time ones get a delta of 0 (only `realtime` ones count). A callback that throws escapes `Tick`, so `ScriptBehaviourComponent` marks the script faulted, the same as a throwing `Update`. Timers and coroutines started during the pass run from the next frame. `StartCoroutine` runs the first step at once, inside the caller (`Start`, `Update` or a hook). `ScriptMath`/`ScriptRandom` are static helpers with no engine state; `ScriptRandom` is one shared `System.Random`, game thread only.
 
 ### 7.5 Scene loads during Play (`GameFlow` → `ApplyPendingSceneLoad`)
 
@@ -419,11 +429,12 @@ for each entity:
      editing or Static, and moved      → PushPose(resetVelocity: true)    entity → body
      simulating Dynamic moved by code  → PushPose(resetVelocity: false)   (Position != SyncedPosition)
 destroy bodies (and ragdolls) of entities that were not visited
-if !simulate: clear touches; return
+if !simulate: clear touches and the in-water set; return
 step = min(dt, 1/20)
 ApplyBuoyancy (Water role) → ragdoll.BeforeStep → Simulation.Timestep(step)
 PullPose for Dynamic bodies         body → entity (setters run only on change, so sleeping bodies stay clean)
 ragdoll.AfterStep → UpdateTouches → DispatchContactEvents
+UpdateWaterContacts → DispatchWaterEvents   (WaterEntered/WaterExited events, then OnWaterEnter/OnWaterExit)
 ```
 
 The physics *component* is just data. `ScenePhysics` reads it every frame through `BasicEntity.PhysicsType` and `Mass`. Changing a field in the inspector triggers a rebuild on the next step.
@@ -439,6 +450,13 @@ The physics *component* is just data. `ScenePhysics` reads it every frame throug
 - `Notify` sends `OnCollision*` or `OnTrigger*` to both owners' `ScriptBehaviourComponent`s.
 - Water buoyancy reads `WaterWaves`, which must match the swell in `Water.fx`.
 
+**Water contacts** (`UpdateWaterContacts`, after the contact events) track every Dynamic body, with or without Buoyancy:
+- The body's collider box (the same one buoyancy samples) is rotated into world space. Its bottom is compared with the wave height (`WaterVolume.SurfaceHeight`) under the collider's centre, in the water volumes `ApplyBuoyancy` collected that step.
+- In: the bottom goes below the surface. Out: it rises more than `WaterExitMargin` (5 cm) above it, so bobbing never flickers.
+- Each crossing becomes a `WaterContact`: surface point, velocity, speed into or out of the water, the collider's horizontal half-size and the mass. It goes to the `WaterEntered`/`WaterExited` events first, then to the body's scripts (`OnWaterEnter`/`OnWaterExit`).
+- `MainSceneLogic.Initialize` connects the events to `WaterSplashes`. `IsInWater(entity)` and `RaycastWater` (rays march the wave surface, which `Raycast` ignores) read the same state.
+- Bodies that lose their body or leave the scene drop out quietly. Leaving simulation clears the set.
+
 ---
 
 ## 9. Renderer (`Engine/Renderer/`)
@@ -447,7 +465,7 @@ A deferred renderer. It renders a G-buffer, accumulates lights, composes, then d
 
 ### 9.1 Modules (`Renderer.Load`, in creation order)
 
-`BloomFilter` → `LightAccumulationModule` (owns `PointLightRenderModule`) → `ShadowMapRenderModule` → `GBufferRenderModule` → `TemporalAntialiasingRenderModule` → `DeferredEnvironmentMapRenderModule` → `DecalRenderModule` → `SubsurfaceScatterRenderModule` (unused in Draw) → `ForwardRenderModule` → `WaterRenderModule` → `WeatherRenderModule` → `ParticleRenderModule` → `HelperGeometryRenderModule` → `DistanceFieldRenderModule` → `FroxelRenderModule` → `ColorGradingFilter` → `AutoExposureFilter`, plus the LUT texture.
+`BloomFilter` → `LightAccumulationModule` (owns `PointLightRenderModule`) → `ShadowMapRenderModule` → `GBufferRenderModule` → `TemporalAntialiasingRenderModule` → `DeferredEnvironmentMapRenderModule` → `DecalRenderModule` → `SubsurfaceScatterRenderModule` (unused in Draw) → `ForwardRenderModule` → `WaterRenderModule` → `WeatherRenderModule` → `GridRenderModule` → `ParticleRenderModule` → `HelperGeometryRenderModule` → `DistanceFieldRenderModule` → `FroxelRenderModule` → `ColorGradingFilter` → `AutoExposureFilter`, plus the LUT texture.
 
 Modules that draw meshes implement `IRenderModule.Apply(world, view, viewProjection)`. `MeshMaterialLibrary` calls it for each instance.
 
@@ -474,7 +492,7 @@ MeshMaterialLibrary
     - Nothing clears `HasChanged` for these transforms (`FrustumCullingFinalizeFrame` only walks entities). The owner sets it for one frame after a rebuild, so shadow maps redraw, and clears it on the next update.
     - `MeshMaterialLibrary.Clear()` on a scene swap drops these registrations too, which is why `VoxelSystem.Reset()` runs first.
 - **Batching:** `HasMaterial` only matches when `GameSettings.g_batchbymaterial` is true. The default is false, so each registration gets its own `MaterialLibrary`.
-- **`FrustumCulling`** applies dirty transforms, re-tests spheres against the frustum, and sets `Rendered[i]`. It returns whether anything changed, which shadow passes use to skip redraws. Shadow passes call it with *light* frusta, so the flags are re-culled for the camera afterwards.
+- **`FrustumCulling`** applies dirty transforms, re-tests spheres against the frustum, and sets `Rendered[i]`. The sphere radius is the mesh's radius times the **largest** axis scale of the instance's world matrix (`MeshLibrary.UpdatePositionAndCheckRender`); it used `Scale.X` only, which culled stretched meshes such as 3 × 60 roof slats from the view and the shadow maps while they were on screen. It returns whether anything changed, which shadow passes use to skip redraws. Shadow passes call it with *light* frusta, so the flags are re-culled for the camera afterwards.
 - **`Draw(RenderType, viewProjection, …, renderModule)`**: `RenderType` is one of `Opaque, ShadowOmnidirectional, ShadowLinear, Hologram, IdRender, IdOutline, SubsurfaceScattering, Forward, Water`. It filters by material:
   - Opaque skips transparent and `ForwardShaded`.
   - Forward draws only `ForwardShaded`.
@@ -483,13 +501,14 @@ MeshMaterialLibrary
   - Shadow passes skip `!HasShadow`.
 
   It sets blend and rasterizer state per pass, calls the module's `SetMaterialSettings` once per material, then calls `Apply` per instance. For skinned or cloth instances, `transform.Skin?.Resolve(...) ?? transform.Cloth?.Resolve(...)` swaps in a per-instance vertex buffer for that draw.
+- **Foliage wind:** the G-buffer and shadow modules implement `IFoliageWindModule`; the ID passes use `Shaders.IdRenderEffectWind`. Per material `Draw` calls `FoliageWindParameters.SetMaterial` (`WindLeaf` = 1 for the Foliage type), and per instance `SetInstance(transform.Wind)` before `Apply` (`WindEnabled` off for static meshes, set only when it changes). The shared include `Content/Shaders/Common/FoliageWind.fx` (`FoliageWorldPosition` → `ApplyFoliageWind`) moves the vertex in world space, then the pass projects it with its `ViewProjection` (and `View` for linear depth); `Apply` of each module sets those. Shadow passes and picking have no UVs in their vertex input (except the alpha shadow passes), so they bend and sway but don't flutter.
 
 ### 9.3 Materials (`Engine/Recources/MaterialEffect.cs`)
 
 `MaterialEffect : Effect` holds:
 - texture slots, each with a `Has*` flag set by its setter: `AlbedoMap`, `RoughnessMap`, `MetallicMap`, `NormalMap`, `DisplacementMap`, `Mask`
 - scalars: `DiffuseColor`, `Roughness`, `Metallic`, `EmissiveStrength`, tiling, water and wet parameters
-- `Type : MaterialTypes`: `Basic 0, Hologram 1, ProjectHologram 2, Emissive 3, SubsurfaceScattering 4, ForwardShaded 5, Water 6, WetSurface 7`
+- `Type : MaterialTypes`: `Basic 0, Hologram 1, ProjectHologram 2, Emissive 3, SubsurfaceScattering 4, ForwardShaded 5, Water 6, WetSurface 7, Foliage 8`
 
 Two things depend on the material:
 
@@ -497,14 +516,17 @@ Two things depend on the material:
 - **Which G-buffer technique:** decided by the `Has*` flags in `GBufferRenderModule.SetMaterialSettings`. Examples are `DrawTextureSpecularNormalMetallic`, `DrawTextureDisplacement` and the `*Mask` variants, down to `DrawBasic`.
   - The material type number is packed into the G-buffer (below).
   - WetSurface writes type 0 and sets `WetSurface` / `WetParams`.
+  - Foliage (leaves) draws through the ordinary `*Mask` techniques and writes type 8. `DeferredDirectionalLight.fx` (`IsFoliage`, `FoliageTransmission`) adds sunlight through the leaf's back for those pixels and shadow-tests them even when they face away from the sun. It flutters with the Foliage Wind component (`WindLeaf`).
+- **Masked materials cast cut-out shadows from every light:** `ShadowMapRenderModule.SetMaterialSettings` now also runs for `ShadowLinear` and picks `DrawLinearDepthAlpha` for materials with a `Mask` (it used to be omnidirectional only).
 
 ### 9.4 `Renderer.Draw`: pass order and render targets
 
 | # | Step | Writes | Reads |
 |---|---|---|---|
-| 1 | `_environmentSky.Apply` (day/night sun), exposure, `SurfaceWetness` | shader params | scene environment |
+| 1 | `_environmentSky.Apply` (day/night sun), `ApplySceneFog` (scene `Fog*` → `GameSettings.g_Froxel*`, `MaxAutoExposure` → `AutoExposureFilter.SceneMaxExposure`), exposure, `SurfaceWetness` | shader params, fog/exposure settings | scene environment |
+| 1b | Particle lights: `_frameLights` = the scene's point lights + `ParticleSystemComponent.CollectLights(entities)` (Lights modules). This list is used for shadow maps, SDF check, env capture, froxels, deferred lights, the forward pass and Lit particles; `DrawIds`/`RenderEditorOverlays` keep the scene's list (`sceneLights`) | `_frameLights` | entities' particle simulations |
 | 2 | `CheckRenderChanges` | pushes far clip, shadow filtering and SSR changes into modules | `GameSettings` vs cached copies |
-| 3 | `DrawShadowMaps` | per point light: `HalfSingle` RT of `size × 6·size` (6 face strips); per directional light: `Single` RT | `RenderType.ShadowOmnidirectional/ShadowLinear`, light frusta |
+| 3 | `DrawShadowMaps` | per point light: `HalfSingle` RT of `size × 6·size` (6 face strips); per directional light: `Single` RT (masked materials alpha-tested; Foliage Wind meshes swayed) | `RenderType.ShadowOmnidirectional/ShadowLinear`, light frusta |
 | 4 | SDF transforms (if any light uses SDF shadows) | SDF data | |
 | 5 | `DrawCubeMap` if `envSample.NeedsUpdate` | `_renderTargetCubeMap` (`HalfVector4` cube). Each face runs a small deferred pipeline with the render targets temporarily rebuilt at envmap size (`onlyEssentials`) | |
 | 6 | `UpdateViewProjection` | `_view`, `_projection`, TAA-jittered `_viewProjection`, unjittered `_staticViewProjection`, `_currentViewToPreviousViewProjection`, frustum corners → SSR/SSAO/TAA/lights | camera |
@@ -513,17 +535,17 @@ Two things depend on the material:
 | 9 | Decals | Albedo (copied through `DecalOffTarget`) | Depth |
 | 10 | SSR | `ScreenSpaceEffectReflection` | **previous** TAA buffer (or Composed) |
 | 11 | SSAO + bilateral blur | `SSAOEffect` (half res) → `…BlurVertical/Horizontal` → `BlurFinal` | Normal, Depth |
-| 12 | Froxel fog | froxel injection + ping-pong accumulation atlas (160 × 90·128) | lights, depth |
+| 12 | Froxel fog: `SetFogVolumes(entities)` (up to 8 enabled `FogVolumeComponent` boxes as world-to-unit-cube matrices; keeps their meshes `Hidden`), then injection (density = scene density × lerp(Near Density, 1, distance ramp) + Fog Volume density) and accumulation | froxel injection + ping-pong accumulation atlas (160 × 90·128) | lights, shadow maps, entities |
 | 13 | `LightAccumulationModule.DrawLights` | rebuild hardware depth into `Diffuse`'s D24S8 from linear depth (`ReconstructDepth`), then additive MRT `[Diffuse, Specular, Volume]`. Point and spot lights draw sphere proxies (stencil-culled); directional lights draw full-screen | G-buffer, shadow maps |
 | 14 | `DrawEnvironmentMap` | adds into the still-bound Diffuse/Specular | env cubemap, sky, baked probe SH (`Texture3D`s), SSR |
-| 15 | `Compose` | `Composed` (`HalfVector4`) | Albedo, Diffuse, Specular, `BlurFinal` (AO), froxels |
+| 15 | `Compose` | `Composed` (`HalfVector4`). Sky pixels get the froxel fog up to `g_FroxelSkyShaftDistance` at full strength and the rest scaled by `g_FroxelSkyFogStrength` (keeps shafts visible when facing the sun) | Albedo, Diffuse, Specular, `BlurFinal` (AO), froxels |
 | 16 | `DrawForward` | `Composed` (after `ReconstructDepth` into its depth buffer) | `RenderType.Forward`, up to 40 point lights as arrays |
-| 17 | Water, then particle systems (`ParticleRenderModule`: one instanced quad per particle, systems far to near, no depth buffer; Volumetric systems upload their `ParticleVolume` to a `Texture3D` and raymarch it with the `Volume` technique on a scissored full-screen triangle, premultiplied), then weather (haze + particles) | `Composed` | Depth (occlusion + ray end), env cubemap, sun, volume + 32³ noise 3D textures |
+| 17 | Water (`WaterRenderModule`: also splash rings from `WaterSplashes.FillRipples` as `SplashPositions/SplashShapes` arrays, up to 16, and raindrop rings from `SurfaceWetness.Ripples` as `RainRipples`), then particle systems (`ParticleRenderModule`: one instanced quad per particle, systems far to near, no depth buffer; Lit systems take the 4 point lights of `_frameLights` that shine most on their emitter (`SetPointLights`); water splash droplets are passed as `extraSystems` since they have no gameobject; Volumetric systems upload their `ParticleVolume` to a `Texture3D` and raymarch it with the `Volume` technique on a scissored full-screen triangle, premultiplied), then weather (haze + particles) | `Composed` | Depth (occlusion + ray end), env cubemap, sun, volume + 32³ noise 3D textures |
 | 18 | TAA | `TAA_1`/`TAA_2` ping-pong; with `g_taa_tonemapped`, inverse-tonemapped back into `Composed` | previous TAA buffer, Depth, reprojection matrix |
 | 19 | Bloom | Mip0..Mip5 chain → `_renderTargetBloom` | current output |
 | 20 | Auto exposure | 256² luminance chain → 1×1 ping-pong | current output |
 | 21 | `RenderMode` → `DrawPostProcessing` | `_renderTargetOutput` → color grading (LUT) → **backbuffer** | `g_rendermode` can show a single buffer instead (F1 cycles) |
-| 22 | Editor: `DrawIds`, outlines, gizmos, billboards, helper lines, probe debug | ID RT, backbuffer | `RenderType.IdRender/IdOutline` |
+| 22 | Editor: `DrawIds`, then the ground grid (`GridRenderModule`, edit mode with `GameSettings.e_showgrid`: one full-screen pass that cuts each view ray with the plane Z = `e_gridheight`, 1/10/100-cell levels faded by pixel density, red X / green Y axes, hidden where the linear depth is nearer), outlines, gizmos, billboards, helper lines, probe debug | ID RT, backbuffer | `RenderType.IdRender/IdOutline`, Depth (grid) |
 | 23 | `FrustumCullingFinalizeFrame` | clears `HasChanged` | |
 
 **G-buffer layout** (`Content/Shaders/GBufferSetup/Gbuffer.fx`):
@@ -547,6 +569,7 @@ Two things depend on the material:
 - It then reads back **one pixel** under the mouse (`GetData(..., new Rectangle(x, y, 1, 1))`) and returns `HoveredId` in `EditorReceivedData`.
 - `EditorLogic.Update` uses it next frame. A click on 1–3 starts gizmo dragging. A click on nothing falls back to a CPU ray pick (`Picking.PickEntity`). Otherwise the object is selected.
 - Outlines redraw the selected and hovered IDs into the ID target with `RenderType.IdOutline`, and the result is added onto the backbuffer.
+- Gameobjects with a Foliage Wind component are picked and outlined where they are drawn: `IdRender.fx` includes `FoliageWind.fx` and `ApplyShaders` sets its `World` and `ViewProjection` for every ID draw.
 
 ### 9.6 Shaders and hot reload
 
@@ -563,7 +586,7 @@ Two things depend on the material:
 
 ## 10. Assets and content (`Engine/Recources/`)
 
-- **`Assets`** is a hard-coded registry. Its public `ModelDefinition` and `Texture2D` fields *are* the built-in keys: `Cube`, `Capsule`, `Cloth`, `PlayerYBot`, …. `Assets.Load` fills them in a fixed order. It ends with `ReimportExistingModels`, which scans `<exe>/Content/GameObjects/Models/<key>/<key>.xnb` and registers what it finds in `_dynamicModels` through `RegisterModel` (raising `ModelRegistered`).
+- **`Assets`** is a hard-coded registry. Its public `ModelDefinition` and `Texture2D` fields *are* the built-in keys: `Cube`, `Capsule`, `Cloth`, `Tree`, `PlayerYBot`, …. `LoadTree` binds `TreeBarkMaterial` and `TreeLeavesMaterial` (Foliage) to the tree's Bark/Leaves mesh parts, so a Tree gameobject without a material draws both (a Material component would override both parts alike). `Assets.Load` fills them in a fixed order. It ends with `ReimportExistingModels`, which scans `<exe>/Content/GameObjects/Models/<key>/<key>.xnb` and registers what it finds in `_dynamicModels` through `RegisterModel` (raising `ModelRegistered`).
 - **`ModelDefinition`** wraps the `Model`, its bounds (read from a `<path>.bbox` sidecar or computed) and the signed distance field (`<path>.sdft`). `LoadSkinnedModel` also binds the embedded textures into `MaterialEffect`s and widens the bounding spheres.
 - **`FindModel(key)`** looks at the public fields first, then `_dynamicModels`. `Spawn` and the editor use it.
 - **`AssetImporter`** (editor import, game thread):
@@ -648,7 +671,9 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 - **Audio** (`AudioManager`, FMOD Core through FmodForFoxes):
   - `SystemUpdate` runs every frame. `UpdateListener(camera)` moves the listener and the 3D emitters.
   - Files are loose (`Audio/<name>.wav`). In Anvil, changed source files are copied to `<exe>/Content` before loading.
-  - If FMOD fails to start, every call becomes a no-op.
+  - Buses (`AudioBus`): `Initialize` creates FMOD channel groups `Music` and `Effects` under the master group. `PlayMusic` plays on Music; `PlaySound`/`PlaySound3D` take a `bus` (Effects by default; `Master` = no group). `MasterVolume` sets the master group, `MusicVolume`/`EffectsVolume` (or `SetVolume(bus, v)`) their group. The volumes are fields, applied again after FMOD starts.
+  - `Audio.Instance` is set at the start of `Initialize`, before FMOD starts, so volume settings work without FMOD. If FMOD fails to start, every play call becomes a no-op.
+  - Menus: `MenuSettings.Audio()` (Master/Music/Sound effects rows) heads the Settings page of `MainMenuScript` and `PauseMenuScript`. Both settings lists scroll (8 visible rows, `#settings-scroll-up/down`). See [Audio_Volume.md](Audio_Volume.md).
 
 ---
 
@@ -686,7 +711,14 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Change scene file format | `SceneSerialization` DTOs (bump `CurrentVersion`, keep loading v1–v2) |
 | Draw geometry that isn't a gameobject | `MeshMaterialLibrary.Register(material, part, transform, sphere)` / `Unregister`, as `VoxelSystem.Upload` / `Release` do |
 | Change the voxel world | `Engine/Voxels/` (`VoxelGenerator`, `VoxelMesher`, `VoxelTextures`, `VoxelSystem`), settings in `EnvironmentSettings`; see [Voxel_World.md](Voxel_World.md) |
-| Change particle systems | `Engine/Particles/` (`ParticleModules`, `ParticleSimulation`, `ParticleTextures`, `ParticleVolume`), `ParticleSystemComponent`, `ParticleRenderModule` + `Shaders/Forward/Particles.fx` (techniques `Particles` and `Volume`); see [Particle_Systems.md](Particle_Systems.md) |
+| Change particle systems | `Engine/Particles/` (`ParticleModules`, `ParticleSimulation`, `ParticleTextures` (Flame Sheet: `Flame` + `FireRamp`; Fireball Sheet: `Fireball`), `ParticleVolume`, `ParticleLights`), `ParticleSystemComponent`, `ParticleRenderModule` + `Shaders/Forward/Particles.fx` (techniques `Particles` and `Volume`); see [Particle_Systems.md](Particle_Systems.md) |
+| Change the sample explosion (fireball, smoke, dust, sparks, chunks with smoke trails) | the `Explosion ...` gameobjects of `Content/Scenes/ParticleTest.obsc` (restarted together by `ParticleTestScript.Explode`); the fireball look is `ParticleTextures.Fireball` (Fireball Sheet, Alpha blend, Brightness 3); systems sort by gameobject distance, so the smoke sits a little below the fireball; see "A realistic explosion" in [Particle_Systems.md](Particle_Systems.md) |
+| Change particle lights (fire lighting the scene) | `ParticleLightsModule` (`ParticleModules.cs`), `ParticleLights` (System centre/peak/flicker in `UpdateSystem`, carrier choice in `UpdatePerParticle`), `ParticleSystemComponent.CollectLights`, the `_frameLights` merge at the top of `Renderer.Draw`, `ParticleRenderModule.SetPointLights` + the point light loop in `ParticleVS` (`Particles.fx`); sample: the Campfire/Spark Fountain/Explosion Fireball of `Content/Scenes/ParticleTest.obsc` |
 | Change volumetric / CS2 voxel smoke | `ParticleVolume` (flood fill order `FillOrder`, edge/fade in `Pack`, carves), `ParticleVolumetricModule`, `ParticleRenderModule.DrawVolume` + `VolumePS` in `Particles.fx`; sample `Content/Scenes/SmokeTest.obsc` + `Content/Scripts/SmokeTestScript.cs` + `UI/SmokeTest` |
+| Change audio volumes / add a mixer bus | `AudioBus` + `AudioManager` (`Initialize` groups, `GroupFor`, `GetVolume`/`SetVolume`), `Audio` facade, `MenuSettings.Audio()`, `AudioComponent.Output`; see [Audio_Volume.md](Audio_Volume.md) |
+| Save or load game data (save slots, settings) | `SaveData` (`Engine/Logic/SaveData.cs`): file naming in `GetPath`, atomic write + `.bak` in `WriteFile`, per-file ordering in `QueueWrite`, JSON in `CreateJsonOptions`; see [Save_Data.md](Save_Data.md) |
+| Change water splashes, water rings or the in/out-of-water events | `ScenePhysics.UpdateWaterContacts/DispatchWaterEvents` (detection, `WaterExitMargin`), `Engine/Particles/WaterSplashes.cs` (droplet/jet/spray look in `CreateCrown/CreateJet/CreateMist`, sizes in `Throw`, thresholds `MinSplashSpeed`), `SplashRings`/`RainRings` in `Shaders/Forward/Water.fx`; sample `Content/Scenes/WaterTest.obsc` + `Content/Scripts/WaterTestScript.cs`; see [Water.md](Water.md) |
+| Change tree swaying / leaf flutter, or add trees | `Content/Shaders/Common/FoliageWind.fx` (bend, branch sway, flutter), `FoliageWindComponent` (strength, clock rate, `UpdateAll`), `FoliageWindParameters` (`Renderer/Helper/FoliageWind.cs`), leaf translucency in `DeferredDirectionalLight.fx` (`FoliageTransmission`); the tree mesh and textures come from `Content/GameObjects/Tree/Source/generate_tree.py`; sample `Content/Scenes/FoliageTest.obsc`; see [Foliage_Wind.md](Foliage_Wind.md) |
+| Change the editor ground grid | `GridRenderModule` + `Shaders/Editor/Grid.fx`, `GameSettings.e_showgrid/e_gridheight/e_gridcellsize/e_gridfadedistance`, Anvil's viewport Grid button (`MainWindowViewModel.IsGridVisible`) |
 | Change picking or gizmos | `IdAndOutlineRenderer`, `EditorRender`, `EditorLogic.Update/GizmoControl`, `IdGenerator` |
 | Debug "Anvil viewport wrong size" | `Engine.ApplyPendingResize`, `MonoGameHost.ResizeEngineToContainer` |

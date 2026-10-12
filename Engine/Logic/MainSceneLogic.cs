@@ -98,6 +98,12 @@ namespace Engine.Logic
         /// <summary>The active scene's voxel world, built now if Play needs it and it isn't ready; null when off.</summary>
         public VoxelWorld VoxelWorld => Voxels?.Ensure(ActiveScene, PlayMode?.Mode == GameMode.Play);
 
+        /// <summary>
+        /// Splashes and rings where dynamic bodies hit Water-role gameobjects (fed by the physics step), drawn by the
+        /// water shader and the particle pass. Scripts splash with <see cref="Scripting.ScriptBehaviour.Splash"/>.
+        /// </summary>
+        public Particles.WaterSplashes WaterSplashes { get; } = new Particles.WaterSplashes();
+
         //SDF
         public SdfGenerator _sdfGenerator;
 
@@ -116,6 +122,8 @@ namespace Engine.Logic
         {
             _assets = assets;
             _scenePhysics = new ScenePhysics(physics);
+            _scenePhysics.WaterEntered += WaterSplashes.OnWaterEntered;
+            _scenePhysics.WaterExited += WaterSplashes.OnWaterExited;
 
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
             Voxels = new VoxelSystem(graphicsDevice, MeshMaterialLibrary, physics);
@@ -226,6 +234,7 @@ namespace Engine.Logic
 
             // Blocks dug or placed during Play go back to the generated world.
             Voxels?.OnPlayStopped();
+            WaterSplashes.Clear();
             GameUI.CloseAll();
             GameFlow.EscapeQuits = true;
             GameFlow.Paused = false;
@@ -278,6 +287,7 @@ namespace Engine.Logic
 
             // The old scene's voxel world goes with it (the new one is built on the next update).
             Voxels?.Reset();
+            WaterSplashes.Clear();
 
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
@@ -382,6 +392,12 @@ namespace Engine.Logic
             PlayMode?.UpdateScripts(gameTime);
             // Particle systems also play while editing, so effects show in Anvil's viewport (Play runs them as components).
             if (PlayMode?.Mode != GameMode.Play) ParticleSystemComponent.UpdatePreviews(ActiveScene?.BasicEntities, gameTime);
+            // Trees with a Foliage Wind component sway in the scene wind while editing too; the pause menu holds them.
+            FoliageWindComponent.UpdateAll(ActiveScene?.BasicEntities,
+                GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds, WeatherProfile.Wind(ActiveScene?.Environment));
+            // Splash droplets and water rings; paused (pause menu) they hang where they are.
+            WaterSplashes.Update(GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+                _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f), WeatherProfile.Wind(ActiveScene?.Environment));
 
             //VolumeTexture.RotationMatrix = testEntity.WorldTransform.InverseWorld;
             //VolumeTexture.Scale = testEntity.WorldTransform.Scale;

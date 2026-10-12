@@ -152,20 +152,47 @@ interior in `AutoExposureTest` is about 3 stops, and the offset swings from abou
 
 ## Volumetric fog
 
-**Window > Post Processing > Volumetric Fog**. It is a froxel grid of 160 × 90 × 128
-over the view frustum, with logarithmic depth slices from 1 m to the far plane
-(`FroxelRenderModule`, `Froxel.fx`).
+A froxel grid of 160 × 90 × 128 over the view frustum, with logarithmic depth slices
+from 1 m to the far plane (`FroxelRenderModule`, `Froxel.fx`). The fog is **saved with
+the scene**: **Inspector > Environment > Volumetric Fog** (`EnvironmentSettings.Fog*`).
+The renderer copies it into `GameSettings.g_Froxel*` every frame
+(`Renderer.ApplySceneFog`), so scripts change it through `SceneEnvironment`. Only
+**Enable Fog** and **History** stay in **Window > Post Processing > Volumetric Fog**.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | Density | 0.03 | Fog density at full distance. |
 | Absorption | 0.1 | How much the fog darkens what is behind it. |
 | Sun Scatter | 0.1 | In-scattering strength for the sun. |
-| Point Scatter | 1.5 | In-scattering strength for point lights. Higher than the sun's because of 1/r² falloff. |
+| Light Scatter | 1.5 | In-scattering strength for point and spot lights. Higher than the sun's because of 1/r² falloff. |
 | Anisotropy | 0.45 | Henyey-Greenstein *g*. Above 0, light scatters forwards: looking towards the sun glows. |
-| Start Dist. / Full Dist. | 30 m / 400 m | Density ramps linearly from 0 at Start to full at Full. |
-| Sky Fog | 0.1 | How much fog covers sky pixels. |
-| History | 0.7 | Temporal blend. Higher is smoother but laggier. |
+| Start Dist. / Full Dist. | 30 m / 400 m | Density ramps linearly from Near Density at Start to full at Full. |
+| Near Density | 0 | Fraction of the density kept before Start. 0 = clear near the camera, 1 = no ramp. |
+| Sky Fog | 0.1 | How much of the fog beyond Sky Shafts covers sky pixels. |
+| Sky Shafts | 200 m | Fog in front of the sky up to this distance stays whole, so shafts still show when you look towards the sun through an opening. |
+| Max Auto Exp. | 3 EV | Caps how far eye adaptation brightens dark views (it can only lower Post Processing's **Max EV**). Lower it to keep a dark room dark around a bright opening. |
+| History *(Post Processing)* | 0.7 | Temporal blend. Higher is smoother but laggier. |
+
+The defaults are an outdoor haze: thin near the camera, thicker with distance. Fog dense
+enough for shafts indoors would haze the whole outdoors, so put it in a **Fog Volume**
+instead.
+
+### Fog Volume component
+
+**Add Component > Fog Volume** (`FogVolumeComponent`, type id `fog-volume`) adds fog inside
+a box: the gameobject's position, rotation and scale, like a Cube with that scale. Its
+fog skips the Start/Full ramp, so a dusty room shows shafts right in front of the camera.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Density | 0.15 | Added to the scene density inside the box (same units, so 5× the default haze). |
+| Edge Fade | 0.1 | Fraction of the box, from each face inwards, over which the density fades in. |
+
+- While the component is enabled, the gameobject's mesh isn't drawn and can't be picked
+  in the viewport; select it in the hierarchy.
+- At most 8 volumes draw (`FogVolumeComponent.MaxVolumes`, `MAX_FOG_VOLUMES` in `Froxel.fx`).
+- Shafts need the light's shadows: keep the box inside the sun's shadow box.
+- `FogVolumeComponent.DensityAt(owner, point)` matches the shader, for scripts and checks.
 
 The sun's scattering uses its shadow map, so shafts form wherever the sun reaches,
 for example through a window. Point lights use their cube shadow maps when they cast
@@ -267,13 +294,13 @@ engine defaults; the rest come from `GodRayTest`.
 | **Moon brightness** | Environment | 1 *(default)*; raise it if nights are too dark to play | Night light, moon shafts and the night probe ambient scale with it. |
 | **Coverage** | Environment | 0.2–0.45 | Above about 0.6 the sun gets noticeably weaker. |
 | **Day (EV)** / **Night (EV)** | Environment | −1 / −2.5 *(default)* | Added to the Post Processing **Exposure** (0.75), blended over sun elevations −7° to +10°. Lower **Night (EV)** for darker nights. |
-| **Eye Adaptation** | Post Processing | On *(default)* | Lifts nights noticeably: in `GodRayTest` at midnight the average pixel is about 48/255 once adapted, and 14/255 without it. To keep nights darker, lower **Max EV** rather than turning it off. |
-| **Volumetric Fog** | Post Processing | Defaults | Shafts need distance: fog is zero within 30 m of the camera (**Start Dist.**), so keep the camera at least 60 m from the openings you want beams through. |
+| **Eye Adaptation** | Post Processing | On *(default)* | Lifts nights noticeably: with the cycle at midnight the average pixel was about 48/255 once adapted, and 14/255 without it. To keep nights darker, lower **Max EV** (or the scene's **Max Auto Exp.**) rather than turning it off. |
+| **Volumetric Fog** | Environment | Defaults | Shafts need distance: fog is zero within 30 m of the camera (**Start Dist.**), so keep the camera at least 60 m from the openings you want beams through, or add a **Fog Volume** where you want beams up close. |
 | `EnvironmentSample` | `.obsc` | Outdoors at eye height, `AutoUpdate: true` | The cycle recaptures it every 0.5 s, so it has to see the sky. |
 | Probe bake | **Window > Lighting** | Bake with the template's `Direction` set to a typical midday sun | The bake uses the scene's lights, not the cycle. The cycle only dims baked ambient at night. |
 
-Post Processing settings (exposure, eye adaptation, fog) are **not saved** with the
-scene. Note the values you settle on.
+Post Processing settings (exposure, eye adaptation) are **not saved** with the scene.
+Note the values you settle on. Fog and **Max Auto Exp.** are saved (Environment).
 
 ### Checking a scene
 
@@ -303,7 +330,9 @@ adaptation, or look at the sun patches from the window and doorway.
 
 ## Sample scene: `Scenes/GodRayTest.obsc`
 
-A test for sun and moon shafts over the day/night cycle, using the default fog settings.
+A test for sun shafts outdoors (the hall, default scene fog) and indoors (the attic, a
+Fog Volume), with a fixed sun: the day/night cycle is **off**. Turn it on in the
+Environment panel to check shafts over the day (starts at 07:00, 4 minutes).
 
 - **The hall:** 120 × 120 m and 40 m tall, with a slatted roof (10 slats, 6 m wide,
   6 m gaps) and horizontal louvres on the east and west faces.
@@ -313,13 +342,21 @@ A test for sun and moon shafts over the day/night cycle, using the default fog s
     one lit or shadowed sheet.
 - **The camera:** 110–230 m from the hall, well past the 30 m **Start Dist.**, with a
   dark backdrop wall behind the hall.
-- **The `Sun` light:** only a template. It gives the cycle its peak intensity (100)
-  and a 260 m shadow box around the hall. Fog outside the shadow box counts as lit,
-  so keep new geometry inside it.
-- **The cycle:** starts at 07:00 and lasts 4 minutes.
+- **The attic:** at (-105, 0), 18 × 26 m inside and 11 m tall, closed except for an
+  east window (with a cross bar) and a 5 × 8 m roof skylight split by three slats and
+  a beam. Rafters, a couch and a crate give the shafts something to cross. The
+  **Attic Dust** gameobject is a Fog Volume (density 0.15) filling the room. Stand at
+  about (-111, -10, 2) and look up towards the skylight.
+- **The `Sun` light:** direction (-0.6, 0.1, -0.8), intensity 100, and a 260 m shadow
+  box around the hall and the attic. Fog outside the shadow box counts as lit, so
+  keep new geometry inside it. With the cycle on it is only a template (peak
+  intensity and the shadow box).
+- **Exposure:** **Max Auto Exp.** is 0 EV, so eye adaptation doesn't lift the dark
+  attic to grey (it went near-white at the default 3 EV).
 - Freecam is on the main camera.
 
-Rendered offscreen with default Post Processing settings and eye adaptation on:
+With the cycle on (07:00 start, 4 minutes), rendered offscreen with default Post
+Processing settings and eye adaptation on:
 
 | Time | Light | What the side view shows |
 | --- | --- | --- |
@@ -334,16 +371,13 @@ up with the line of sight, so you see bright gaps instead.
 
 ## Current issues
 
-- **Indoor god rays are faint.** Fog density is zero within 30 m of the camera
-  (**Start Dist.**), and even near the camera the default density is too low for
-  clear beams. Fog settings are global, so fog dense enough for beams indoors also
-  hazes the outdoors. Not decided yet: a **Fog Volume** gameobject (a local box with
-  its own density, the preferred option) or per-scene fog in the Environment panel.
-  To try beams now, set **Start Dist.** to 0 and raise **Density** and
-  **Sun Scatter**; the outdoors will haze over.
-- **Post Processing settings are not saved.** Exposure, eye adaptation, fog, SSAO
-  and SSR are session-wide `GameSettings` values. They reset when Anvil restarts and
-  are the same for every scene.
+- **Post Processing settings are not saved.** Exposure, eye adaptation, SSAO and SSR
+  are session-wide `GameSettings` values. They reset when Anvil restarts and are the
+  same for every scene. (Fog is per scene now.)
+- **Fog Volumes have no viewport outline.** Their mesh is hidden, so the box can only
+  be seen through its fog; select it in the hierarchy.
+- **The sun's shadow box is fixed.** It doesn't follow the camera, so shafts (and
+  shadows) only exist inside `ShadowSize` around the light's `Position`.
 - **Fog sparkles at high density.** White speckles appear on walls when density is
   raised a lot. This comes from the froxel jitter, temporal history and bilateral
   upsampling.
@@ -384,7 +418,7 @@ up with the line of sight, so you see bright gaps instead.
 | Sky / day-night | `Engine/Logic/EnvironmentSettings.cs`, `Engine/Renderer/EnvironmentSky.cs` |
 | Weather | `Engine/Logic/Weather.cs`, `Engine/Renderer/RenderModules/WeatherRenderModule.cs`, `Engine/Content/Shaders/Forward/Weather.fx` ([Weather.md](Weather.md)) |
 | Point / spot lights | `Engine/Entities/PointLight.cs`, `Engine/Entities/SpotLight.cs`, `Engine/Content/Shaders/Deferred/DeferredPointLight.fx`, `Engine/Renderer/RenderModules/DeferredLighting/PointLightRenderModule.cs`, `Engine/Renderer/RenderModules/ShadowMapRenderModule.cs` |
-| Fog | `Engine/Content/Shaders/Deferred/Froxel.fx`, `Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs`, `Engine/Content/Shaders/Deferred/DeferredCompose.fx` |
+| Fog | `Engine/Content/Shaders/Deferred/Froxel.fx`, `Engine/Renderer/RenderModules/DeferredLighting/FroxelRenderModule.cs`, `Engine/Content/Shaders/Deferred/DeferredCompose.fx`, `Engine/Components/FogVolumeComponent.cs`, `Engine/Logic/EnvironmentSettings.cs` (`Fog*`) |
 | Exposure | `Engine/Content/Shaders/PostProcessing/AutoExposure.fx`, `Engine/Renderer/RenderModules/PostProcessingFilters/AutoExposureFilter.cs`, `Engine/Content/Shaders/PostProcessing/PostProcessing.fx` |
 | Defaults | `Engine/Recources/GameSettings.cs` |
 | Checks | `Tests/Components/SampleSceneChecks.cs`, `Tests/Components/AutoExposureChecks.cs`, `Tests/Components/SpotLightChecks.cs` |

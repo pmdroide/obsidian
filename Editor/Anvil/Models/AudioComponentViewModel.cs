@@ -2,6 +2,7 @@ using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Engine.Components;
+using Engine.Recources;
 
 namespace Anvil.Models;
 
@@ -15,8 +16,11 @@ public partial class AudioComponentViewModel : ComponentViewModel
     [ObservableProperty] private bool _loop;
     [ObservableProperty] private bool _playOnStart = true;
     [ObservableProperty] private bool _spatial = true;
+    [ObservableProperty] private AudioBus _output = AudioBus.Effects;
     [ObservableProperty] private double _minDistance = 10;
     [ObservableProperty] private double _maxDistance = 1000;
+
+    public static AudioBus[] Outputs { get; } = [AudioBus.Effects, AudioBus.Music];
 
     public string ClipLabel => HasClip ? ClipPath : "Drop an audio asset here";
     public bool HasClip => AudioComponent.IsAudioAsset(ClipPath);
@@ -33,6 +37,7 @@ public partial class AudioComponentViewModel : ComponentViewModel
     partial void OnLoopChanged(bool value) => Push(c => ((AudioComponent)c).Loop = value);
     partial void OnPlayOnStartChanged(bool value) => Push(c => ((AudioComponent)c).PlayOnStart = value);
     partial void OnSpatialChanged(bool value) => Push(c => ((AudioComponent)c).Spatial = value);
+    partial void OnOutputChanged(AudioBus value) => Push(c => ((AudioComponent)c).Output = value);
     partial void OnMinDistanceChanged(double value) => Push(c => ((AudioComponent)c).MinDistance = (float)Math.Max(value, 0.01));
     partial void OnMaxDistanceChanged(double value) => Push(c => ((AudioComponent)c).MaxDistance = (float)Math.Max(value, 0.01));
 
@@ -61,6 +66,7 @@ public partial class AudioComponentViewModel : ComponentViewModel
         Loop = audio.Loop;
         PlayOnStart = audio.PlayOnStart;
         Spatial = audio.Spatial;
+        Output = audio.Output;
         if (Math.Abs(MinDistance - audio.MinDistance) > 0.0001) MinDistance = audio.MinDistance;
         if (Math.Abs(MaxDistance - audio.MaxDistance) > 0.0001) MaxDistance = audio.MaxDistance;
     }

@@ -30,7 +30,10 @@ public sealed class MenuSetting
     }
 }
 
-/// <summary>Settings shared by the sample menus. They apply immediately and are not saved.</summary>
+/// <summary>
+/// Settings shared by the sample menus: <see cref="Audio"/> volumes and <see cref="Graphics"/> options. They apply
+/// immediately and are not saved.
+/// </summary>
 public static class MenuSettings
 {
     // Engine-wide values changed from a menu inside Anvil, put back when Play stops. One registry for every
@@ -67,14 +70,30 @@ public static class MenuSettings
             () => GameSettings.g_SSReflection, v => GameSettings.g_SSReflection = v),
     };
 
+    /// <summary>Master, music and sound effects volume. A new list each call; the rows read the live values.</summary>
+    public static List<MenuSetting> Audio() => new() { MasterVolume(), MusicVolume(), EffectsVolume() };
+
     /// <summary>The engine's master volume, in steps of 10%.</summary>
-    public static MenuSetting MasterVolume() => new()
+    public static MenuSetting MasterVolume() =>
+        Volume("Master volume", "Every sound and music track the game plays.", AudioBus.Master);
+
+    /// <summary>The music bus volume (music tracks, Audio components set to Music), in steps of 10%.</summary>
+    public static MenuSetting MusicVolume() =>
+        Volume("Music volume", "Music tracks. Multiplied by the master volume.", AudioBus.Music);
+
+    /// <summary>The sound effects bus volume (every other sound, menu clicks included), in steps of 10%.</summary>
+    public static MenuSetting EffectsVolume() =>
+        Volume("Sound effects volume", "Sound effects, 3D sounds and menu clicks. Multiplied by the master volume.",
+            AudioBus.Effects);
+
+    /// <summary>A 0-100% row for one audio bus (<see cref="Recources.Audio.SetVolume"/>).</summary>
+    public static MenuSetting Volume(string name, string description, AudioBus bus) => new()
     {
-        Name = "Master volume",
-        Description = "Every sound and music track the game plays.",
+        Name = name,
+        Description = description,
         Values = Enumerable.Range(0, 11).Select(i => $"{i * 10}%").ToArray(),
-        Get = () => Math.Clamp((int)MathF.Round(Audio.MasterVolume * 10f), 0, 10),
-        Set = i => Audio.MasterVolume = i / 10f,
+        Get = () => Math.Clamp((int)MathF.Round(Recources.Audio.GetVolume(bus) * 10f), 0, 10),
+        Set = i => Recources.Audio.SetVolume(bus, i / 10f),
     };
 
     public static MenuSetting Toggle(string name, string description, Func<bool> get, Action<bool> set) => new()

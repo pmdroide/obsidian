@@ -30,6 +30,9 @@ namespace Engine.Recources
         public static readonly EffectParameter IdRenderEffectParameterColorId = IdRenderEffect.Parameters["ColorId"];
         public static readonly EffectParameter IdRenderEffectParameterOutlineSize = IdRenderEffect.Parameters["OutlineSize"];
         public static readonly EffectParameter IdRenderEffectParameterWorld = IdRenderEffect.Parameters["World"];
+        public static readonly EffectParameter IdRenderEffectParameterViewProjection = IdRenderEffect.Parameters["ViewProjection"];
+        // Picking and the selection outline follow gameobjects swaying with the Foliage Wind component.
+        public static readonly Renderer.Helper.FoliageWindParameters IdRenderEffectWind = new Renderer.Helper.FoliageWindParameters(IdRenderEffect);
 
         public static readonly EffectPass IdRenderEffectDrawId = IdRenderEffect.Techniques["DrawId"].Passes[0];
         public static readonly EffectPass IdRenderEffectDrawOutline = IdRenderEffect.Techniques["DrawOutline"].Passes[0];
@@ -180,6 +183,9 @@ namespace Engine.Recources
 
         public static readonly EffectParameter DeferredComposeEffectParameter_SkyFogStrength =
             DeferredCompose.Parameters["SkyFogStrength"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_SkyShaftDistance =
+            DeferredCompose.Parameters["SkyShaftDistance"];
 
         public static readonly EffectTechnique DeferredComposeTechnique_NonLinear = DeferredCompose.Techniques["TechniqueNonLinear"];
         public static readonly EffectTechnique DeferredComposeTechnique_Linear = DeferredCompose.Techniques["TechniqueLinear"];

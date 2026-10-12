@@ -364,6 +364,8 @@ namespace Engine.Entities
         public bool Hidden;
         // LOD component: the level of detail that draws (0 = the model, 1..n = its LOD models, -1 = culled).
         public int LodLevel;
+        // Foliage Wind component: the vertex shaders sway this mesh in the wind; null = static.
+        public FoliageWind Wind;
 
         public TransformMatrix(Matrix world, int id)
         {

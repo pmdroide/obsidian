@@ -81,6 +81,23 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge?.EnqueueGameThreadAction(() => Engine.Recources.GameSettings.u_showdisplayinfo = visible ? 3 : 0);
     }
 
+    // Engine ground grid (GridRenderModule) at Z = 0, drawn in edit mode only.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GridToggleTip))]
+    private bool _isGridVisible = true;
+
+    public string GridToggleTip => IsGridVisible ? "Hide ground grid" : "Show ground grid";
+    partial void OnIsGridVisibleChanged(bool value) => PushGridVisible();
+
+    [RelayCommand]
+    private void ToggleGrid() => IsGridVisible = !IsGridVisible;
+
+    private void PushGridVisible()
+    {
+        bool visible = IsGridVisible;
+        _bridge?.EnqueueGameThreadAction(() => Engine.Recources.GameSettings.e_showgrid = visible);
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilteredConsole))]
     private string _consoleFilter = "All";
@@ -239,6 +256,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge = bridge;
         bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
         PushStatsVisible();
+        PushGridVisible();
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
@@ -258,6 +276,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Tree", _ => AddTree(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -463,6 +482,14 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_bridge == null) return;
         _bridge.EnqueueAddBasicEntity("IsoSphere", _bridge.SpawnPoint, "Particle System", new XnaVector3(0.15f),
             new[] { ParticleSystemComponent.TypeId });
+    }
+
+    /// <summary>The built-in Tree (own bark and leaf materials) swaying in the scene wind (Foliage Wind).</summary>
+    [RelayCommand]
+    private void AddTree()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("Tree", _bridge.SpawnPoint, "Tree", componentTypes: new[] { FoliageWindComponent.TypeId });
     }
 
     [RelayCommand]

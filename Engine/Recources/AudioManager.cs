@@ -8,11 +8,27 @@ using Microsoft.Xna.Framework;
 namespace Engine.Recources
 {
     /// <summary>
+    /// The mixer bus a sound plays on. Music and Effects each have their own volume and both go through
+    /// <see cref="Master"/>, so a sound's loudness is its own volume x its bus volume x the master volume.
+    /// Saved by name (Audio component Output), so never rename a value.
+    /// </summary>
+    public enum AudioBus
+    {
+        /// <summary>Sound effects: one-shots, loops and 3D sounds. The default for everything but music.</summary>
+        Effects,
+        /// <summary>Music tracks (<see cref="AudioManager.PlayMusic"/>, Audio components set to Music).</summary>
+        Music,
+        /// <summary>The master bus itself: only the master volume applies to a sound played here.</summary>
+        Master,
+    }
+
+    /// <summary>
     /// Game audio subsystem built on FMOD via the FmodForFoxes wrapper.
     /// Follows the engine's Load/Initialize/Update/Dispose subsystem convention and is
     /// wired into <see cref="Engine.Logic.ScreenManager"/>. Supports 2D one-shot SFX,
     /// looping/instanced sounds, 3D positional audio (listener driven by the active
-    /// camera, emitters by world positions), a master volume, and streamed music.
+    /// camera, emitters by world positions), streamed music, and master/music/effects volumes
+    /// (FMOD channel groups: Music and Effects are children of the master group, see <see cref="AudioBus"/>).
     ///
     /// FMOD's native libraries (fmod.dll / fmodL.dll) are supplied locally by the dev
     /// from fmod.com and copied next to the executable. If they are missing, Initialize
@@ -40,7 +56,8 @@ namespace Engine.Recources
 
         private readonly List<Tracked3D> _tracked = new List<Tracked3D>();
         private Channel? _music;
-        private float _masterVolume = 1f;
+        private FMOD.ChannelGroup _musicGroup, _effectsGroup;
+        private float _masterVolume = 1f, _musicVolume = 1f, _effectsVolume = 1f;
         private bool _isMuted;
         /// <summary>Source content root for live editor assets; null in standalone games.</summary>
         public string EditorContentRoot { get; set; }
@@ -56,6 +73,8 @@ namespace Engine.Recources
         /// </summary>
         public void Initialize(string contentRoot = "Content")
         {
+            // Set even if FMOD fails below: every call is then a no-op, but the volume settings still hold their values.
+            Audio.Instance = this;
             uint expected = (uint)FMOD.VERSION.number;
             EditorBridge.Log($"Audio: FmodForFoxes bindings require FMOD {FormatFmodVersion(expected)} " +
                              $"(0x{expected:X8}). fmod.dll/fmodL.dll must be EXACTLY this version (x64).");
@@ -64,9 +83,13 @@ namespace Engine.Recources
                 _native = new DesktopNativeFmodLibrary();
                 FmodManager.Init(_native, FmodInitMode.Core, contentRoot);
                 _listener = new Listener3D();
+                // New channel groups start as children of the master group.
+                CoreSystem.Native.createChannelGroup("Music", out _musicGroup);
+                CoreSystem.Native.createChannelGroup("Effects", out _effectsGroup);
                 _initialized = true;
-                Audio.Instance = this;
                 MasterVolume = _masterVolume;
+                MusicVolume = _musicVolume;
+                EffectsVolume = _effectsVolume;
                 IsMuted = _isMuted;
 
                 CoreSystem.Native.getVersion(out uint dllVersion);
@@ -128,12 +151,13 @@ namespace Engine.Recources
         ////////////////////////////////////////////////////////////////////////////////
 
         /// <summary>One-shot or looping 2D (non-positional) sound.</summary>
-        public Channel? PlaySound(string name, float volume = 1f, float pitch = 1f, bool loop = false, bool contentRelativePath = false)
+        public Channel? PlaySound(string name, float volume = 1f, float pitch = 1f, bool loop = false, bool contentRelativePath = false,
+                                  AudioBus bus = AudioBus.Effects)
         {
             if (!_initialized) return null;
             Sound sound = GetOrLoad(name, streamed: false, is3d: false, contentRelativePath);
             if (sound == null) return null;
-            if (!TryPlay(sound, paused: false, out Channel channel)) return null;
+            if (!TryPlay(sound, GroupFor(bus), paused: false, out Channel channel)) return null;
 
             channel.Is3D = false;
             channel.Volume = volume;
@@ -148,14 +172,15 @@ namespace Engine.Recources
 
         /// <summary>Plays a sound at a fixed world position.</summary>
         public Channel? PlaySound3D(string name, Vector3 worldPosition, float volume = 1f, bool loop = false,
-                                    float minDist = 1f, float maxDist = 10000f, bool contentRelativePath = false)
+                                    float minDist = 1f, float maxDist = 10000f, bool contentRelativePath = false,
+                                    AudioBus bus = AudioBus.Effects)
         {
             if (!_initialized) return null;
             Sound sound = GetOrLoad(name, streamed: false, is3d: true, contentRelativePath);
             if (sound == null) return null;
 
             // Play paused so the first audible frame is already positioned/attenuated.
-            if (!TryPlay(sound, paused: true, out Channel channel)) return null;
+            if (!TryPlay(sound, GroupFor(bus), paused: true, out Channel channel)) return null;
             channel.Is3D = true;
             channel.MinDistance3D = minDist;
             channel.MaxDistance3D = maxDist;
@@ -172,10 +197,11 @@ namespace Engine.Recources
         /// every frame in <see cref="UpdateListener"/> until the channel stops.
         /// </summary>
         public Channel? PlaySound3D(string name, Func<Vector3> positionSource, float volume = 1f, bool loop = false,
-                                    float minDist = 1f, float maxDist = 10000f, bool contentRelativePath = false)
+                                    float minDist = 1f, float maxDist = 10000f, bool contentRelativePath = false,
+                                    AudioBus bus = AudioBus.Effects)
         {
             if (!_initialized || positionSource == null) return null;
-            Channel? channel = PlaySound3D(name, positionSource(), volume, loop, minDist, maxDist, contentRelativePath);
+            Channel? channel = PlaySound3D(name, positionSource(), volume, loop, minDist, maxDist, contentRelativePath, bus);
             if (channel.HasValue)
                 _tracked.Add(new Tracked3D { Channel = channel.Value, PositionSource = positionSource });
             return channel;
@@ -192,13 +218,14 @@ namespace Engine.Recources
         //  MUSIC (streamed)
         ////////////////////////////////////////////////////////////////////////////////
 
-        public Channel? PlayMusic(string name, float volume = 1f, bool loop = true)
+        /// <summary>Streams a track on the <see cref="AudioBus.Music"/> bus, replacing the current one (one at a time).</summary>
+        public Channel? PlayMusic(string name, float volume = 1f, bool loop = true, bool contentRelativePath = false)
         {
             if (!_initialized) return null;
             StopMusic();
-            Sound sound = GetOrLoad(name, streamed: true, is3d: false);
+            Sound sound = GetOrLoad(name, streamed: true, is3d: false, contentRelativePath);
             if (sound == null) return null;
-            if (!TryPlay(sound, paused: false, out Channel channel)) return null;
+            if (!TryPlay(sound, _musicGroup, paused: false, out Channel channel)) return null;
 
             channel.Is3D = false;
             channel.Volume = volume;
@@ -217,21 +244,75 @@ namespace Engine.Recources
         public void PauseMusic() { if (_music.HasValue) { try { Channel c = _music.Value; c.Paused = true; } catch { } } }
         public void ResumeMusic() { if (_music.HasValue) { try { Channel c = _music.Value; c.Paused = false; } catch { } } }
 
+        /// <summary>True while the track started by <see cref="PlayMusic"/> is playing.</summary>
+        public bool IsMusicPlaying
+        {
+            get
+            {
+                if (!_music.HasValue) return false;
+                try { return _music.Value.IsPlaying; } catch { return false; }
+            }
+        }
+
         ////////////////////////////////////////////////////////////////////////////////
         //  GLOBAL
         ////////////////////////////////////////////////////////////////////////////////
 
+        /// <summary>0..1, scales every sound and music track (FMOD's master channel group).</summary>
         public float MasterVolume
         {
             get => _masterVolume;
             set
             {
-                _masterVolume = MathHelper.Clamp(value, 0f, 1f);
+                _masterVolume = ClampVolume(value);
                 if (!_initialized) return;
                 if (CoreSystem.Native.getMasterChannelGroup(out var masterGroup) == FMOD.RESULT.OK)
                     masterGroup.setVolume(_masterVolume);
             }
         }
+
+        /// <summary>0..1, scales the <see cref="AudioBus.Music"/> bus, on top of the master volume.</summary>
+        public float MusicVolume
+        {
+            get => _musicVolume;
+            set
+            {
+                _musicVolume = ClampVolume(value);
+                if (_initialized && _musicGroup.hasHandle()) _musicGroup.setVolume(_musicVolume);
+            }
+        }
+
+        /// <summary>0..1, scales the <see cref="AudioBus.Effects"/> bus, on top of the master volume.</summary>
+        public float EffectsVolume
+        {
+            get => _effectsVolume;
+            set
+            {
+                _effectsVolume = ClampVolume(value);
+                if (_initialized && _effectsGroup.hasHandle()) _effectsGroup.setVolume(_effectsVolume);
+            }
+        }
+
+        /// <summary>The volume of one bus (0..1); <see cref="AudioBus.Master"/> is <see cref="MasterVolume"/>.</summary>
+        public float GetVolume(AudioBus bus) => bus switch
+        {
+            AudioBus.Music => MusicVolume,
+            AudioBus.Effects => EffectsVolume,
+            _ => MasterVolume,
+        };
+
+        /// <summary>Sets the volume of one bus, clamped to 0..1. Sounds already playing follow at once.</summary>
+        public void SetVolume(AudioBus bus, float volume)
+        {
+            switch (bus)
+            {
+                case AudioBus.Music: MusicVolume = volume; break;
+                case AudioBus.Effects: EffectsVolume = volume; break;
+                default: MasterVolume = volume; break;
+            }
+        }
+
+        private static float ClampVolume(float value) => float.IsFinite(value) ? MathHelper.Clamp(value, 0f, 1f) : 1f;
 
         /// <summary>Mute output without changing master or per-component volumes.</summary>
         public bool IsMuted
@@ -258,6 +339,7 @@ namespace Engine.Recources
 
         public void Dispose()
         {
+            if (ReferenceEquals(Audio.Instance, this)) Audio.Instance = null;
             if (!_initialized) return;
             try { StopAll(); } catch { }
 
@@ -269,9 +351,13 @@ namespace Engine.Recources
             try { _listener?.Destroy(); } catch { }
             _listener = null;
 
+            try { if (_musicGroup.hasHandle()) _musicGroup.release(); } catch { }
+            try { if (_effectsGroup.hasHandle()) _effectsGroup.release(); } catch { }
+            _musicGroup = default;
+            _effectsGroup = default;
+
             try { FmodManager.Unload(); } catch { }
             _initialized = false;
-            if (ReferenceEquals(Audio.Instance, this)) Audio.Instance = null;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -285,13 +371,14 @@ namespace Engine.Recources
         // NullReferenceException whenever playSound returns a bad channel (e.g. an FMOD
         // native/bindings version mismatch). Here we check the result first and degrade
         // to a logged no-op instead of crashing.
-        private static bool TryPlay(Sound sound, bool paused, out Channel channel)
+        private static bool TryPlay(Sound sound, FMOD.ChannelGroup group, bool paused, out Channel channel)
         {
             channel = default;
             if (sound == null) return false;
 
+            // A default (null) group plays on the master group.
             FMOD.RESULT result = CoreSystem.Native.playSound(
-                sound.Native, default, paused, out FMOD.Channel native);
+                sound.Native, group, paused, out FMOD.Channel native);
 
             if (result != FMOD.RESULT.OK)
             {
@@ -303,6 +390,13 @@ namespace Engine.Recources
             channel = new Channel(native);
             return true;
         }
+
+        private FMOD.ChannelGroup GroupFor(AudioBus bus) => bus switch
+        {
+            AudioBus.Music => _musicGroup,
+            AudioBus.Effects => _effectsGroup,
+            _ => default,
+        };
 
         private Sound GetOrLoad(string name, bool streamed, bool is3d, bool contentRelativePath = false)
         {
@@ -363,14 +457,17 @@ namespace Engine.Recources
     {
         internal static AudioManager Instance;
 
-        public static Channel? PlaySound(string name, float volume = 1f, float pitch = 1f, bool loop = false)
-            => Instance?.PlaySound(name, volume, pitch, loop);
+        public static Channel? PlaySound(string name, float volume = 1f, float pitch = 1f, bool loop = false,
+                                         AudioBus bus = AudioBus.Effects)
+            => Instance?.PlaySound(name, volume, pitch, loop, bus: bus);
 
-        public static Channel? PlaySound3D(string name, Vector3 position, float volume = 1f, bool loop = false)
-            => Instance?.PlaySound3D(name, position, volume, loop);
+        public static Channel? PlaySound3D(string name, Vector3 position, float volume = 1f, bool loop = false,
+                                           AudioBus bus = AudioBus.Effects)
+            => Instance?.PlaySound3D(name, position, volume, loop, bus: bus);
 
-        public static Channel? PlaySound3D(string name, Func<Vector3> positionSource, float volume = 1f, bool loop = false)
-            => Instance?.PlaySound3D(name, positionSource, volume, loop);
+        public static Channel? PlaySound3D(string name, Func<Vector3> positionSource, float volume = 1f, bool loop = false,
+                                           AudioBus bus = AudioBus.Effects)
+            => Instance?.PlaySound3D(name, positionSource, volume, loop, bus: bus);
 
         public static Channel? PlayMusic(string name, float volume = 1f, bool loop = true)
             => Instance?.PlayMusic(name, volume, loop);
@@ -379,11 +476,34 @@ namespace Engine.Recources
 
         public static void StopAll() => Instance?.StopAll();
 
+        public static bool IsMusicPlaying => Instance?.IsMusicPlaying ?? false;
+
+        /// <summary>0..1, every sound and music track.</summary>
         public static float MasterVolume
         {
-            get => Instance?.MasterVolume ?? 0f;
-            set { if (Instance != null) Instance.MasterVolume = value; }
+            get => GetVolume(AudioBus.Master);
+            set => SetVolume(AudioBus.Master, value);
         }
+
+        /// <summary>0..1, the music bus (multiplied by <see cref="MasterVolume"/>).</summary>
+        public static float MusicVolume
+        {
+            get => GetVolume(AudioBus.Music);
+            set => SetVolume(AudioBus.Music, value);
+        }
+
+        /// <summary>0..1, the sound effects bus (multiplied by <see cref="MasterVolume"/>).</summary>
+        public static float EffectsVolume
+        {
+            get => GetVolume(AudioBus.Effects);
+            set => SetVolume(AudioBus.Effects, value);
+        }
+
+        /// <summary>The volume of a bus, 0..1 (1 before the audio manager exists).</summary>
+        public static float GetVolume(AudioBus bus) => Instance?.GetVolume(bus) ?? 1f;
+
+        /// <summary>Sets the volume of a bus, clamped to 0..1. Sounds already playing follow at once.</summary>
+        public static void SetVolume(AudioBus bus, float volume) => Instance?.SetVolume(bus, volume);
 
         public static bool IsMuted
         {

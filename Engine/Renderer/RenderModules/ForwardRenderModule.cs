@@ -228,7 +228,8 @@ namespace Engine.Renderer.RenderModules
 
             int count = pointLights.Count > 40 ? MAXLIGHTS : pointLights.Count;
 
-            if (LightPositionWS == null || pointLights.Count != LightPositionWS.Length)
+            //Only when the (clamped) count changes: particle Lights modules change it from frame to frame
+            if (LightPositionWS == null || count != LightPositionWS.Length)
             {
                 LightPositionWS = new Vector3[count];
                 LightColor = new Vector3[count];

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Engine.Entities;
 using DirectionalLight = Engine.Entities.DirectionalLight;
+using PointLight = Engine.Entities.PointLight;
 using Engine.Logic;
 using Engine.Particles;
 using Engine.Physics;
@@ -19,6 +20,7 @@ namespace Engine.Components;
 /// own mesh marks the emitter in the editor and is hidden in Play (<see cref="HideMesh"/>).
 /// With <see cref="Volumetric"/> on, the system draws as a raymarched volume: its particles' density, or a voxel
 /// smoke that floods the room like Counter-Strike 2's (<see cref="CarveTunnel"/>/<see cref="CarveHole"/> shoot through it).
+/// With <see cref="Lights"/> on, it lights the scene too (a flickering campfire, an explosion flash, glowing sparks).
 /// </summary>
 public sealed class ParticleSystemComponent : GameComponent
 {
@@ -42,6 +44,7 @@ public sealed class ParticleSystemComponent : GameComponent
     private ParticleSubEmittersModule _subEmitters = new();
     private ParticleRendererModule _renderer = new();
     private ParticleVolumetricModule _volumetric = new();
+    private ParticleLightsModule _lights = new();
 
     // Modules are never null (a hand-edited scene may say "Noise": null).
     public ParticleMainModule Main { get => _main; set => _main = value ?? new(); }
@@ -60,6 +63,9 @@ public sealed class ParticleSystemComponent : GameComponent
     public ParticleSubEmittersModule SubEmitters { get => _subEmitters; set => _subEmitters = value ?? new(); }
     public ParticleRendererModule Renderer { get => _renderer; set => _renderer = value ?? new(); }
     public ParticleVolumetricModule Volumetric { get => _volumetric; set => _volumetric = value ?? new(); }
+    public ParticleLightsModule Lights { get => _lights; set => _lights = value ?? new(); }
+    /// <summary>Point lights the Lights module shines this frame (0 when it is off or nothing glows).</summary>
+    [JsonIgnore] public int LightCount => _simulation?.Lights?.Count ?? 0;
     /// <summary>Hides the gameobject's own mesh during Play; while editing it marks (and selects) the emitter.</summary>
     public bool HideMesh { get; set; } = true;
 
@@ -189,6 +195,23 @@ public sealed class ParticleSystemComponent : GameComponent
             if (entity == null || !entity.IsEnabled) continue;
             foreach (GameComponent component in entity.Components)
                 if (component is ParticleSystemComponent { Enabled: true, HasVolume: true } system) yield return system;
+        }
+    }
+
+    /// <summary>
+    /// Adds the Lights module lights of the enabled systems on <paramref name="entities"/> to <paramref name="into"/>
+    /// (the renderer appends them to the scene's point lights each frame).
+    /// </summary>
+    public static void CollectLights(IReadOnlyList<BasicEntity> entities, List<PointLight> into)
+    {
+        if (entities == null || into == null) return;
+        for (int i = 0; i < entities.Count; i++)
+        {
+            BasicEntity entity = entities[i];
+            if (entity == null || !entity.IsEnabled) continue;
+            foreach (GameComponent component in entity.Components)
+                if (component is ParticleSystemComponent { Enabled: true, Lights.Enabled: true } system)
+                    system._simulation?.Lights?.AddTo(into);
         }
     }
 

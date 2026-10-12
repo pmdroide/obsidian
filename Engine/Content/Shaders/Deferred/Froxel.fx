@@ -33,6 +33,15 @@ float PointScatter = 1.5f;
 // FogDistanceStart and FogDistanceFull (so near geometry stays crisp, distant fades).
 float FogDistanceStart = 30.0f;
 float FogDistanceFull = 400.0f;
+// Fraction of FroxelDensity kept before FogDistanceStart (0 = clear near the camera, 1 = no ramp).
+float FogNearDensity = 0.0f;
+
+// Fog Volume components: density added inside boxes, without the distance ramp (dusty rooms show shafts up close).
+// WorldToBox maps world space to the box's unit cube (-1..1); Settings = (density, edge fade, -, -).
+#define MAX_FOG_VOLUMES 8
+int FogVolumeCount = 0;
+float4x4 FogVolumeWorldToBox[MAX_FOG_VOLUMES];
+float4 FogVolumeSettings[MAX_FOG_VOLUMES];
 
 float G = 0.45f;
 
@@ -119,6 +128,23 @@ float HenyeyGreenstein(float cosTheta, float g)
     denom = max(denom, 0.05);
     float phase = (1.0 / (4.0 * PI)) * ((1.0 - g2) / pow(denom, 1.5));
     return min(phase, 4.0);
+}
+
+// Matches FogVolumeComponent.DensityAt.
+float FogVolumeDensity(float3 worldPos)
+{
+    float density = 0;
+    [loop]
+    for (int i = 0; i < FogVolumeCount; ++i)
+    {
+        float3 p = mul(float4(worldPos, 1.0), FogVolumeWorldToBox[i]).xyz;
+        float inside = 1.0 - max(abs(p.x), max(abs(p.y), abs(p.z)));
+        if (inside <= 0)
+            continue;
+        float fade = FogVolumeSettings[i].y;
+        density += FogVolumeSettings[i].x * (fade > 0 ? saturate(inside / fade) : 1.0);
+    }
+    return density;
 }
 
 float2 FroxelIndicesToAtlasUV(int fx, int fy, int fz)
@@ -317,7 +343,7 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
 
     // Distance ramp: keep nearby fog thin so foreground objects stay readable, swell toward the distance.
     float distanceRamp = saturate((dist - FogDistanceStart) / max(FogDistanceFull - FogDistanceStart, 1e-3));
-    float density = FroxelDensity * distanceRamp;
+    float density = FroxelDensity * lerp(FogNearDensity, 1.0, distanceRamp) + FogVolumeDensity(worldPos);
     float3 scatter = 0;
 
     float3 viewDir = normalize(-dirVS);

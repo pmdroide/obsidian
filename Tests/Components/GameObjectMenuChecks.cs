@@ -13,7 +13,8 @@ internal static class GameObjectMenuChecks
     public static void Run()
     {
         var bounds = new BoundingBox(-Vector3.One, Vector3.One);
-        var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds) };
+        var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds),
+            Tree = new ModelDefinition(null, bounds) };
         var logic = new MainSceneLogic();
         var bridge = new EditorBridge();
         typeof(EditorBridge).GetMethod("Bind", BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -47,11 +48,17 @@ internal static class GameObjectMenuChecks
               particles.Components.Single() is ParticleSystemComponent,
             "GameObject > Effects > Particle System creates a small marker sphere with a Particle System");
 
-        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System" }),
+        vm.AddTreeCommand.Execute(null);
+        Drain();
+        Check(logic.BasicEntities.Count == entities + 4 && logic.BasicEntities[^1] is { Name: "Tree", Material: null } tree &&
+              ReferenceEquals(tree.ModelDefinition, assets.Tree) && tree.Components.Single() is FoliageWindComponent { Enabled: true },
+            "GameObject > Nature > Tree creates the built-in tree (its own materials) with Foliage Wind");
+
+        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Tree" }),
             "the Hierarchy + menu offers the same objects as the GameObject menu");
         foreach (var option in vm.AddableObjects) option.AddCommand.Execute(null);
         Drain();
-        Check(logic.BasicEntities.Count == entities + 6 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4,
+        Check(logic.BasicEntities.Count == entities + 8 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4,
             "every Hierarchy + menu entry creates its object");
 
         void Drain() =>

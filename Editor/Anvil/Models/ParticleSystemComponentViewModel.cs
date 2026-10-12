@@ -27,6 +27,7 @@ public partial class ParticleSystemComponentViewModel : ComponentViewModel
     public static ParticleCollisionType[] CollisionTypes { get; } = Enum.GetValues<ParticleCollisionType>();
     public static ParticleSubEmitterTrigger[] SubEmitterTriggers { get; } = Enum.GetValues<ParticleSubEmitterTrigger>();
     public static ParticleVolumeSource[] VolumeSources { get; } = Enum.GetValues<ParticleVolumeSource>();
+    public static ParticleLightMode[] LightModes { get; } = Enum.GetValues<ParticleLightMode>();
 
     // Main
     [ObservableProperty] private double _duration = 5;
@@ -172,6 +173,30 @@ public partial class ParticleSystemComponentViewModel : ComponentViewModel
     [ObservableProperty] private double _voxelExpandTime = 1.4;
     [ObservableProperty] private double _voxelFadeTime = 3;
     [ObservableProperty] private double _voxelFlatten = 1.5;
+
+    // Lights
+    [ObservableProperty] private bool _lightsEnabled;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSystemLight), nameof(IsPerParticleLight))]
+    private ParticleLightMode _lightMode = ParticleLightMode.System;
+    [ObservableProperty] private Color _lightColor = Color.FromRgb(255, 150, 70);
+    [ObservableProperty] private bool _lightUseParticleColor;
+    [ObservableProperty] private double _lightIntensity = 5;
+    [ObservableProperty] private double _lightRange = 8;
+    [ObservableProperty] private bool _lightAlphaAffectsIntensity = true;
+    [ObservableProperty] private double _lightFlicker;
+    [ObservableProperty] private double _lightFlickerSpeed = 8;
+    [ObservableProperty] private double _lightOffsetX;
+    [ObservableProperty] private double _lightOffsetY;
+    [ObservableProperty] private double _lightOffsetZ;
+    [ObservableProperty] private bool _lightCastShadows;
+    [ObservableProperty] private double _lightRatio = 0.1;
+    [ObservableProperty] private double _lightMaxLights = 4;
+    [ObservableProperty] private bool _lightSizeAffectsRange;
+
+    /// <summary>Offset and shadows show for one System light; Ratio, Max Lights and size for Per Particle.</summary>
+    public bool IsSystemLight => LightMode == ParticleLightMode.System;
+    public bool IsPerParticleLight => LightMode == ParticleLightMode.PerParticle;
 
     /// <summary>The voxel (Counter-Strike 2 smoke) settings show only for the Voxels source.</summary>
     public bool IsVoxelSource => VolumeSource == ParticleVolumeSource.Voxels;
@@ -402,6 +427,32 @@ public partial class ParticleSystemComponentViewModel : ComponentViewModel
     partial void OnVoxelFadeTimeChanged(double value) => SetNumber(Math.Max(value, 0.01), (c, v) => c.Volumetric.FadeTime = v);
     partial void OnVoxelFlattenChanged(double value) => SetNumber(Math.Clamp(value, 0.1, 10), (c, v) => c.Volumetric.Flatten = v);
 
+    partial void OnLightsEnabledChanged(bool value) => Set(c => c.Lights.Enabled = value);
+    partial void OnLightModeChanged(ParticleLightMode value) => SetEnum(value, (c, v) => c.Lights.Mode = v);
+    partial void OnLightColorChanged(Color value)
+    {
+        XnaColor color = ToXna(value);
+        Set(c => c.Lights.Color = color);
+    }
+    partial void OnLightUseParticleColorChanged(bool value) => Set(c => c.Lights.UseParticleColor = value);
+    partial void OnLightIntensityChanged(double value) => SetNumber(Math.Max(value, 0), (c, v) => c.Lights.Intensity = v);
+    partial void OnLightRangeChanged(double value) => SetNumber(Math.Clamp(value, 0.1, 1000), (c, v) => c.Lights.Range = v);
+    partial void OnLightAlphaAffectsIntensityChanged(bool value) => Set(c => c.Lights.AlphaAffectsIntensity = value);
+    partial void OnLightFlickerChanged(double value) => SetNumber(Math.Clamp(value, 0, 1), (c, v) => c.Lights.Flicker = v);
+    partial void OnLightFlickerSpeedChanged(double value) => SetNumber(Math.Clamp(value, 0, 100), (c, v) => c.Lights.FlickerSpeed = v);
+    partial void OnLightOffsetXChanged(double value) => SetNumber(value, (c, v) => c.Lights.Offset = c.Lights.Offset with { X = v });
+    partial void OnLightOffsetYChanged(double value) => SetNumber(value, (c, v) => c.Lights.Offset = c.Lights.Offset with { Y = v });
+    partial void OnLightOffsetZChanged(double value) => SetNumber(value, (c, v) => c.Lights.Offset = c.Lights.Offset with { Z = v });
+    partial void OnLightCastShadowsChanged(bool value) => Set(c => c.Lights.CastShadows = value);
+    partial void OnLightRatioChanged(double value) => SetNumber(Math.Clamp(value, 0, 1), (c, v) => c.Lights.Ratio = v);
+    partial void OnLightMaxLightsChanged(double value)
+    {
+        if (!double.IsFinite(value)) return;
+        int max = (int)Math.Clamp(Math.Round(value), 0, ParticleLightsModule.MaxLightsLimit);
+        Set(c => c.Lights.MaxLights = max);
+    }
+    partial void OnLightSizeAffectsRangeChanged(bool value) => Set(c => c.Lights.SizeAffectsRange = value);
+
     // ---------------------------------------------------------------------------------------------
     // Rows
     // ---------------------------------------------------------------------------------------------
@@ -602,6 +653,24 @@ public partial class ParticleSystemComponentViewModel : ComponentViewModel
             Number(VoxelExpandTime, volume.ExpandTime, v => VoxelExpandTime = v);
             Number(VoxelFadeTime, volume.FadeTime, v => VoxelFadeTime = v);
             Number(VoxelFlatten, volume.Flatten, v => VoxelFlatten = v);
+
+            ParticleLightsModule lights = p.Lights;
+            LightsEnabled = lights.Enabled;
+            LightMode = lights.Mode;
+            LightColor = FromXna(lights.Color);
+            LightUseParticleColor = lights.UseParticleColor;
+            Number(LightIntensity, lights.Intensity, v => LightIntensity = v);
+            Number(LightRange, lights.Range, v => LightRange = v);
+            LightAlphaAffectsIntensity = lights.AlphaAffectsIntensity;
+            Number(LightFlicker, lights.Flicker, v => LightFlicker = v);
+            Number(LightFlickerSpeed, lights.FlickerSpeed, v => LightFlickerSpeed = v);
+            Number(LightOffsetX, lights.Offset.X, v => LightOffsetX = v);
+            Number(LightOffsetY, lights.Offset.Y, v => LightOffsetY = v);
+            Number(LightOffsetZ, lights.Offset.Z, v => LightOffsetZ = v);
+            LightCastShadows = lights.CastShadows;
+            Number(LightRatio, lights.Ratio, v => LightRatio = v);
+            Number(LightMaxLights, lights.MaxLights, v => LightMaxLights = v);
+            LightSizeAffectsRange = lights.SizeAffectsRange;
         }
         finally
         {

@@ -50,8 +50,13 @@ public enum ParticleBlendMode
 
 public enum ParticleSortMode { None, Distance, OldestFirst, YoungestFirst }
 
-/// <summary>Particle images. All but Custom are painted at startup (<see cref="ParticleTextures"/>).</summary>
-public enum ParticleTexture { SoftCircle, Glow, Spark, Smoke, SmokeSheet, Flame, Star, Ring, Square, Custom }
+/// <summary>
+/// Particle images. All but Custom are painted at startup (<see cref="ParticleTextures"/>). Saved by name, so
+/// new ones can go anywhere; never rename one. SmokeSheet, FlameSheet and FireballSheet are 4 x 4 flipbooks
+/// (Texture Sheet Animation 4 x 4); FlameSheet and FireballSheet carry their own fire colours (white Start Color
+/// keeps them). FireballSheet is a billowing blast that cools into soot, meant for Alpha blending.
+/// </summary>
+public enum ParticleTexture { SoftCircle, Glow, Spark, Smoke, SmokeSheet, Flame, FlameSheet, FireballSheet, Star, Ring, Square, Custom }
 
 public enum ParticleCollisionType
 {
@@ -71,6 +76,15 @@ public enum ParticleSubEmitterTrigger
     Collision,
     /// <summary>When a particle's lifetime ends (not when cleared).</summary>
     Death,
+}
+
+/// <summary>How a particle system lights the scene (<see cref="ParticleLightsModule"/>).</summary>
+public enum ParticleLightMode
+{
+    /// <summary>One light at the glowing heart of the particles: a campfire, a torch, an explosion. Cheap.</summary>
+    System,
+    /// <summary>Lights riding on some of the particles (<c>Ratio</c>, at most <c>MaxLights</c>): sparks, fireworks, magic.</summary>
+    PerParticle,
 }
 
 /// <summary>Where the density of a volumetric system (<see cref="ParticleVolumetricModule"/>) comes from.</summary>
@@ -460,6 +474,51 @@ public sealed class ParticleRendererModule
     public float LengthScale { get; set; } = 2f;
     /// <summary>Stretched only: extra length per metre per second of speed.</summary>
     public float SpeedScale { get; set; }
+}
+
+/// <summary>
+/// Lets the system light the scene like Unity's Lights module: shadowless point lights (one shadowed light in
+/// System mode with <see cref="CastShadows"/>) that the renderer adds to the scene's own for the deferred, forward
+/// and volumetric fog passes. They follow the particles, die with them and can flicker like flames.
+/// </summary>
+public sealed class ParticleLightsModule
+{
+    public const int MaxLightsLimit = 16;
+
+    public bool Enabled { get; set; }
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ParticleLightMode Mode { get; set; } = ParticleLightMode.System;
+    /// <summary>The light's colour (sRGB), unless <see cref="UseParticleColor"/>.</summary>
+    [JsonConverter(typeof(ParticleColorJsonConverter))]
+    public Color Color { get; set; } = new(255, 150, 70);
+    /// <summary>Takes the colour of the particles (System: their glow-weighted average) instead of <see cref="Color"/>.</summary>
+    public bool UseParticleColor { get; set; }
+    /// <summary>Same scale as a scene Point Light's intensity.</summary>
+    public float Intensity { get; set; } = 5f;
+    /// <summary>Metres the light reaches.</summary>
+    public float Range { get; set; } = 8f;
+    /// <summary>
+    /// System: the light follows how much the particles glow, so it fades as a fire dies down or an explosion
+    /// cools. Per Particle: each particle's alpha dims its own light.
+    /// </summary>
+    public bool AlphaAffectsIntensity { get; set; } = true;
+    /// <summary>0..1: how much the intensity wavers (0 steady, 0.3 a campfire, 0.6 a torch in the wind).</summary>
+    public float Flicker { get; set; }
+    /// <summary>Flickers per second, roughly.</summary>
+    public float FlickerSpeed { get; set; } = 8f;
+    /// <summary>System: offset of the light from the particles' glowing centre (world metres; Z up).</summary>
+    [JsonConverter(typeof(ParticleVector3JsonConverter))]
+    public Vector3 Offset { get; set; }
+    /// <summary>System: the light casts point light shadows (six shadow faces, redrawn each frame it moves: costly).</summary>
+    public bool CastShadows { get; set; }
+    /// <summary>Per Particle: share of the particles that carry a light, 0..1.</summary>
+    public float Ratio { get; set; } = 0.1f;
+    /// <summary>Per Particle: most lights at once (the brightest carriers win).</summary>
+    public int MaxLights { get; set; } = 4;
+    /// <summary>Per Particle: the range scales with the particle's size (relative to its start size).</summary>
+    public bool SizeAffectsRange { get; set; }
+
+    [JsonIgnore] public int ClampedMaxLights => Math.Clamp(MaxLights, 0, MaxLightsLimit);
 }
 
 /// <summary>

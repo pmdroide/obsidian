@@ -11,13 +11,15 @@ using DirectionalLight = Engine.Entities.DirectionalLight;
 
 namespace Engine.Renderer.RenderModules
 {
-    public class ShadowMapRenderModule : IRenderModule
+    public class ShadowMapRenderModule : IRenderModule, IFoliageWindModule
     {
         private Effect _shader;
 
         private EffectParameter _WorldViewProj;
         private EffectParameter _WorldView;
         private EffectParameter _World;
+        private EffectParameter _View;
+        private EffectParameter _ViewProjection;
         private EffectParameter _LightPositionWS;
         private EffectParameter _FarClip;
         private EffectParameter _SizeBias;
@@ -25,6 +27,8 @@ namespace Engine.Renderer.RenderModules
 
         //Linear = VS Depth -> used for directional lights
         private EffectPass _linearPass;
+        //Linear with a mask texture (leaves) -> cut-out shadows
+        private EffectPass _linearAlphaPass;
 
         //Distance = distance(pixel, light) -> used for omnidirectional lights
         private EffectPass _distancePass;
@@ -37,6 +41,7 @@ namespace Engine.Renderer.RenderModules
         private enum Passes
         {
             Directional,
+            DirectionalAlpha,
             Omnidirectional,
             OmnidirectionalAlpha
         };
@@ -52,15 +57,22 @@ namespace Engine.Renderer.RenderModules
             _WorldViewProj = _shader.Parameters["WorldViewProj"];
             _WorldView = _shader.Parameters["WorldView"];
             _World = _shader.Parameters["World"];
+            _View = _shader.Parameters["View"];
+            _ViewProjection = _shader.Parameters["ViewProjection"];
+            Wind = new FoliageWindParameters(_shader);
             _LightPositionWS = _shader.Parameters["LightPositionWS"];
             _FarClip = _shader.Parameters["FarClip"];
             _SizeBias = _shader.Parameters["SizeBias"];
             _MaskTexture = _shader.Parameters["MaskTexture"];
 
             _linearPass = _shader.Techniques["DrawLinearDepth"].Passes[0];
+            _linearAlphaPass = _shader.Techniques["DrawLinearDepthAlpha"].Passes[0];
             _distancePass = _shader.Techniques["DrawDistanceDepth"].Passes[0];
             _distanceAlphaPass = _shader.Techniques["DrawDistanceDepthAlpha"].Passes[0];
         }
+
+        /// <summary>Foliage Wind parameters of the shadow map shader.</summary>
+        public FoliageWindParameters Wind { get; private set; }
 
         public void Load(ContentManager content, string shaderPath)
         {
@@ -392,12 +404,21 @@ namespace Engine.Renderer.RenderModules
         public void Apply(Matrix localWorldMatrix, Matrix? view, Matrix viewProjection)
         {
             _WorldViewProj.SetValue(localWorldMatrix * viewProjection);
+            // Swaying (Foliage Wind) meshes are moved in world space, then projected.
+            _World.SetValue(localWorldMatrix);
+            _ViewProjection.SetValue(viewProjection);
 
             switch (_pass)
             {
                 case Passes.Directional:
                     _WorldView.SetValue(localWorldMatrix * (Matrix)view);
+                    _View.SetValue((Matrix)view);
                     _linearPass.Apply();
+                    break;
+                case Passes.DirectionalAlpha:
+                    _WorldView.SetValue(localWorldMatrix * (Matrix)view);
+                    _View.SetValue((Matrix)view);
+                    _linearAlphaPass.Apply();
                     break;
                 case Passes.Omnidirectional:
                     _World.SetValue(localWorldMatrix);
@@ -426,6 +447,19 @@ namespace Engine.Renderer.RenderModules
                     _pass = Passes.Omnidirectional;
                 }
 
+            }
+            else if (renderType == MeshMaterialLibrary.RenderType.ShadowLinear)
+            {
+                // Leaves and other masked materials cast cut-out shadows from the sun too.
+                if (material.HasMask)
+                {
+                    _pass = Passes.DirectionalAlpha;
+                    _MaskTexture.SetValue(material.Mask);
+                }
+                else
+                {
+                    _pass = Passes.Directional;
+                }
             }
         }
     }

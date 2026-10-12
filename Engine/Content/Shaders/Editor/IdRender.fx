@@ -5,9 +5,26 @@
 
 matrix  WorldViewProj;
 matrix World;
+// Only used by gameobjects with the Foliage Wind component, which move their vertices in world space
+matrix ViewProjection;
 
 float4 ColorId = float4(0.8f, 0.8f, 0.8f, 1);
 float OutlineSize = 0.4f;
+
+#include "../Common/FoliageWind.fx"
+
+// Clip position of a vertex, swaying with the Foliage Wind component (no flutter: this pass has no UVs).
+float4 ClipPosition(float4 position, float3 normal)
+{
+    float4 clip = mul(position, WorldViewProj);
+    [branch]
+    if (WindEnabled)
+    {
+        float3 tilt;
+        clip = mul(float4(FoliageWorldPosition(position, normal, float2(0, 1), tilt), 1), ViewProjection);
+    }
+    return clip;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCT DEFINITIONS
@@ -35,7 +52,7 @@ struct DrawNormal_VSOut
 DrawBasic_VSIn DrawBasic_VertexShader(DrawBasic_VSIn input)
 {
     DrawBasic_VSIn Output;
-    Output.Position = mul(input.Position, WorldViewProj);
+    Output.Position = ClipPosition(input.Position, float3(0, 0, 1));
     
     return Output;
 }
@@ -60,7 +77,7 @@ DrawNormal_VSOut DrawOutline_VertexShader(DrawNormal_VSIn input)
 	//if (normal.w < -0.2f)
 	//    normal.w = -normal.w;
 
-	Output.Position = mul(input.Position, WorldViewProj) + normalize(float4(normal.rgb,0)) * factor;
+	Output.Position = ClipPosition(input.Position, input.Normal) + normalize(float4(normal.rgb,0)) * factor;
 
 	//Output.Position = mul(input.Position + float4(input.Normal, 0)* OutlineSize, WorldViewProj); /*+ float4(normalize(normal.rgb),0) * OutlineSize*/;
 	//Output.Position = mul(input.Position, WorldViewProj); /*+ float4(normalize(normal.rgb),0) * OutlineSize*/;

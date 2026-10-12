@@ -76,6 +76,7 @@ public sealed class ParticleSimulation
 
     private readonly ParticleSystemComponent _system;
     private ParticleVolume _volume;
+    private ParticleLights _lights;
     private Particle[] _particles = Array.Empty<Particle>();
     private int _count;
 
@@ -121,6 +122,8 @@ public sealed class ParticleSimulation
     public Matrix World => _world;
     /// <summary>The density grid of a Volumetric system (null until the module first runs).</summary>
     public ParticleVolume Volume => _volume;
+    /// <summary>The point lights of the Lights module (null until the module first runs).</summary>
+    public ParticleLights Lights => _lights;
     /// <summary>Emitting right now (past the Start Delay): a voxel smoke floods while this holds.</summary>
     internal bool IsVolumeEmitting => _playing && _emitting && !_paused && _delay <= 0;
     /// <summary>Where a voxel smoke starts: the shape's position on the gameobject.</summary>
@@ -176,6 +179,7 @@ public sealed class ParticleSimulation
     public void Clear()
     {
         _volume?.Clear();
+        _lights?.Clear();
         _count = 0;
         CollisionCount = 0;
         EmittedCount = 0;
@@ -248,6 +252,7 @@ public sealed class ParticleSimulation
         UpdateParticles(dt, context);
         if (_playing) EmitOverTime(dt);
         if (_system.Volumetric.Enabled || _volume != null) (_volume ??= new ParticleVolume()).Update(this, dt, context);
+        if (_system.Lights.Enabled || _lights != null) (_lights ??= new ParticleLights()).Update(_system.Lights, Particles, dt);
         // A voxel smoke keeps the system playing until it has dissipated.
         if (_playing && !_emitting && _count == 0 && _volume?.HasDensity != true) _playing = false;
     }

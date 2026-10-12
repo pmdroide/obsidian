@@ -98,7 +98,7 @@ internal static class SampleSceneChecks
             "double-clicking a scene in Assets queues that scene file to load");
     }
 
-    /// <summary>Engine/Content/Scenes/GodRayTest.obsc: a slatted hall for checking sun and moon shafts over the day/night cycle.</summary>
+    /// <summary>Engine/Content/Scenes/GodRayTest.obsc: a slatted hall (shafts outdoors) and a dark attic (shafts indoors).</summary>
     public static void RunGodRays()
     {
         var bridge = new EditorBridge();
@@ -107,22 +107,41 @@ internal static class SampleSceneChecks
         var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds) };
         var scene = SceneSerialization.LoadFromFile(path, assets);
 
-        Check(scene.BasicEntities.Count == 29 && scene.DirectionalLights.Count == 1 && scene.Environment.DayNightCycle &&
+        Check(scene.BasicEntities.Count == 55 && scene.DirectionalLights.Count == 1 && !scene.Environment.DayNightCycle &&
               scene.MainCamera.GetComponent<Engine.Components.ScriptBehaviourComponent>() is { ScriptId: Engine.Scripting.FreecamScript.ScriptId, Enabled: true },
-            "the god ray scene loads the hall, the sun template, the day/night cycle and a Freecam camera");
+            "the god ray scene loads the hall, the attic, a fixed sun (no day/night cycle) and a Freecam camera");
 
-        // The cycle copies the template's shadow box, and fog outside it counts as lit: the whole hall must fit inside.
+        // Fog outside the sun's shadow box counts as lit (no shafts): the hall and the attic must fit inside.
         var sun = scene.DirectionalLights[0];
-        var hall = scene.BasicEntities.Where(e => e.Name != "Ground" && e.Name != "Backdrop Wall").Select(WorldBox).ToList();
-        float reach = hall.SelectMany(b => b.GetCorners()).Max(c => Vector3.Distance(c, sun.Position));
+        var solids = scene.BasicEntities.Where(e => e.Name != "Ground" && e.Name != "Backdrop Wall").Select(WorldBox).ToList();
+        float reach = solids.SelectMany(b => b.GetCorners()).Max(c => Vector3.Distance(c, sun.Position));
         Check(sun.CastShadows && reach < sun.ShadowSize / 2 && reach < sun.ShadowDepth,
-            "every hall slat sits inside the sun's shadow box from any direction");
+            "every hall slat and attic wall sits inside the sun's shadow box");
 
-        // Froxel fog is zero within Start Dist. of the camera, so the shafts have to form well beyond it.
+        // Outdoors the scene fog stays thin near the camera, so the hall's shafts form well beyond Start Dist.
+        var fog = scene.Environment;
+        var hall = scene.BasicEntities.Where(e => !e.Name.StartsWith("Attic") && e.Name != "Ground" && e.Name != "Backdrop Wall")
+            .Select(WorldBox).ToList();
         Vector3 eye = scene.MainCamera.Position;
         float nearest = hall.Min(b => Vector3.Distance(eye, Vector3.Clamp(eye, b.Min, b.Max)));
-        Check(nearest > 2 * GameSettings.g_FroxelFogDistanceStart,
-            "the camera sits far enough from the hall for the default fog to show the shafts");
+        Check(fog.FogStartDistance == 30 && fog.FogNearDensity == 0 && nearest > 2 * fog.FogStartDistance,
+            "the camera sits far enough from the hall for the default outdoor fog to show the shafts");
+
+        // Indoors a Fog Volume fills the attic, and auto exposure may not brighten the dark room past 0 EV.
+        var dust = scene.BasicEntities.Single(e => e.Name == "Attic Dust");
+        var volume = dust.GetComponent<Engine.Components.FogVolumeComponent>();
+        var room = WorldBox(dust);
+        var skylight = scene.BasicEntities.Where(e => e.Name.StartsWith("Attic Skylight Slat")).Select(WorldBox).ToList();
+        Vector3 under = new Vector3((skylight[0].Min.X + skylight[0].Max.X) / 2, 0, room.Max.Z - 1);
+        Check(volume is { Enabled: true, Density: > 0.1f } && volume.DensityAt(dust, under) > 0.1f &&
+              volume.DensityAt(dust, new Vector3(0, 0, 4)) == 0 && fog.MaxAutoExposure == 0,
+            "the attic has dusty air under the skylight (not in the hall) and a capped auto exposure");
+        // The sun has to reach the skylight: a ray up towards the sun from under it leaves through the gap.
+        Vector3 toSun = -Vector3.Normalize(sun.Direction);
+        var roof = scene.BasicEntities.Where(e => e.Name.StartsWith("Attic Roof") || e.Name.StartsWith("Attic Wall")).Select(WorldBox).ToList();
+        Vector3 start = new Vector3(under.X - toSun.X / toSun.Z * 3, under.Y, room.Max.Z - 3);
+        var ray = new Ray(start, toSun);
+        Check(roof.All(b => ray.Intersects(b) == null), "sunlight falls through the attic skylight");
     }
 
     private static BoundingBox WorldBox(BasicEntity e)

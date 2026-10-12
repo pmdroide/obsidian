@@ -41,6 +41,7 @@ namespace Engine.Recources
             "Graphical User Interface",     // legacy, still in Content.mgcb
             "GameObjects/Default",          // Assets: cube, sphere, isosphere, capsule, dragons
             "GameObjects/Cloth",            // Assets.Cloth
+            "GameObjects/Tree",             // Assets.Tree (+ its bark/leaf textures and generator)
             "GameObjects/Error",            // fallback model for failed imports
             "GameObjects/error.png",        // fallback material texture
             "GameObjects/sky.dds",          // default sky

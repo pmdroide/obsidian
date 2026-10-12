@@ -1,5 +1,255 @@
 # Changelog
 
+## Added: A tree, and a foliage wind shader with fluttering, backlit leaves (2026-10-12)
+
+**Why:** The engine had no vegetation. Nothing could sway in the scene wind, and masked materials (leaves) cast solid square shadows from the sun.
+
+- **Tree model:** New built-in `Assets.Tree` (model key `Tree`) in `Engine/Content/GameObjects/Tree/`.
+  - About 8 m tall, Z up, trunk base at the origin.
+  - **Bark** part: trunk with root flare, 12 limbs, ~100 twigs.
+  - **Leaves** part: ~1500 double-sided, cupped leaf cards. Each card's U is offset by a whole number that the shader reads as a per-card id.
+  - Painted textures: tileable bark albedo/normal, and a leaf sprig albedo/mask/normal with its stem at the bottom of the card.
+  - Everything comes from `Source/generate_tree.py` (Python + numpy + Pillow, fixed seed).
+  - `Assets.LoadTree` binds the new `TreeBarkMaterial` and `TreeLeavesMaterial` to the two parts and widens the bounds for the sway.
+  - The folder is in `ProjectReset.KeptPaths`, and the files are listed in `Content.mgcb`.
+- **Wind shader:** New include `Content/Shaders/Common/FoliageWind.fx` (`ApplyFoliageWind`), used by the G-buffer (`Gbuffer.fx`), the shadow maps (`ShadowMap.fx`) and editor picking/outlines (`IdRender.fx`). Shadows and the selection outline follow the tree. Three layers, computed from the vertex position alone, so it works on any tree model:
+  - **Trunk bend:** a lean plus gusts that roll downwind across the scene, growing with height². Each vertex keeps its distance to the trunk base, so the crown arcs over instead of stretching.
+  - **Branch sway:** grows with distance from the trunk axis.
+  - **Leaf flutter:** each card flaps along its normal and shimmers, fading to nothing at its stem. Both faces of a card move together.
+- **New material type `Foliage` (8)**, Inspector > Material > Shader > Foliage:
+  - Leaves are alpha-cut through the Mask.
+  - They flutter with the wind component.
+  - The sun shines through them: `IsFoliage`/`FoliageTransmission` in `DeferredDirectionalLight.fx`, shadow-tested on the leaf's back too.
+- **Cut-out sun shadows:** New `DrawLinearDepthAlpha` technique, used by `ShadowMapRenderModule` for every masked material under a directional light. Before, only point lights alpha-tested; Sponza's plants benefit too.
+- **Foliage Wind component** (`foliage-wind`, `Engine/Components/FoliageWindComponent.cs`):
+  - Settings: Trunk Bend, Branch Sway, Leaf Flutter, Wind Scale, Min Wind, Speed, Height (0 = the model's height).
+  - It follows Environment > Wind Speed/Direction in Edit and Play and holds while paused.
+  - `UpdateAll` (called from `MainSceneLogic.Update`) advances each tree's wind clock (faster in stronger wind, slower for taller trees) and puts a `FoliageWind` on the new `TransformMatrix.Wind`. It flags the transform as moved every frame so the shadow maps redraw.
+- **Renderer plumbing:**
+  - New `Engine/Renderer/Helper/FoliageWind.cs` (`FoliageWind`, `FoliageWindParameters`, `IFoliageWindModule`).
+  - `MeshMaterialLibrary.Draw` sets the wind per material and per instance.
+  - The G-buffer and shadow modules gained `ViewProjection`/`View`.
+  - `Shaders.cs` gained `IdRenderEffectParameterViewProjection` and `IdRenderEffectWind`.
+- **Anvil:**
+  - Foliage Wind inspector (`FoliageWindComponentViewModel` + template).
+  - Foliage in the Shader list.
+  - New **GameObject > Nature > Tree** (also in the Hierarchy "+" menu): the tree with Foliage Wind attached.
+- **Sample:** New `Content/Scenes/FoliageTest.obsc`: six trees of different sizes and rotations on rocky dirt, a 5 m/s breeze, an afternoon sun, and one tree sheltered from the wind (Wind Scale 0.4). It is not in the scene list.
+- **Docs:** New `Docs/markdown/Foliage_Wind.md`. Updated `Material_Component.md` (Foliage shader), `Engine_Wiring.md` (frame loop, components, material library, materials, shadows, picking, "where to start") and `CLAUDE.md` (repo map + recipe).
+- **Checks:** New `Tests/Components/FoliageChecks.cs`, and the GameObject menu check now covers Tree.
+  - Without a GPU: wind state, inspector edits, save round-trip, cloning, and the sample scene.
+  - With `--graphics`: the shaders compile; the tree's two parts and materials; the cut-out crown; motion over time with a planted trunk base; a rest pose when every layer is 0; flutter on the leaves only; wind in the shadow map; mask cut-outs in the sun's shadow map.
+
+  All component checks pass. `--graphics` still stops at the existing pause-menu check (`PauseChecks`, whose UI files had uncommitted edits before this session). With that one check skipped, every graphics check passes, including all the foliage ones. I also looked at FoliageTest in the standalone engine (temporary boot into the scene, scene list restored afterwards), but not in Anvil.
+
+- Claude
+
+## Changed: A more realistic explosion in the particle sample (2026-10-12)
+
+**Why:** The ParticleTest explosion was about 30 Additive Smoke Sheet particles at Brightness 4. They added up to flat, speckled orange blobs, with no soot, no smoke growing out of the fire and nothing thrown out but sparks.
+
+- **Engine, Fireball Sheet texture:** New built-in `ParticleTexture.FireballSheet`, a 4 x 4 flipbook painted in `ParticleTextures.Fireball`. Each frame is a lumpy cloud of rolling billows. The temperature is hottest in the middle of each billow and drops in the crevices, at the rim and with age. Over the frames it goes white-hot, then orange and soot red, then dark grey soot that tears into wisps. Fire colours come from `FireRamp`. It is meant for Alpha blending, so the soot hides what is behind it while Brightness makes the fire glow. Anvil lists it automatically in the Texture box.
+- **Sample (`ParticleTest.obsc`), the explosion is now seven systems:**
+  - **Explosion Fireball:** Fireball Sheet with Alpha blend, Distance sort and Brightness 3. About 20 large particles burst out in two waves, stop on Drag 4.5, and rise on an upward Force with some Noise. Color over Lifetime darkens to grey once the fire has burned (the soot frames). Its light is stronger (Intensity 60, Range 20) and fades as the colour darkens.
+  - **Explosion Smoke:** darker, delayed 0.25 s, rising faster (Force 2), in two bursts. Its gameobject sits 15 cm lower so it sorts behind the fireball when seen from above.
+  - **Explosion Dust** (was Explosion Shockwave, which drew an Additive ring): a Circle shape on the ground throws Lit dust puffs outwards with strong Drag.
+  - **Explosion Debris:** fewer, finer sparks with a little Drag.
+  - **New Explosion Chunks:** 7-10 burning Glow fragments that fall with gravity, bounce off colliders and leave a smoke Trail through the **new Explosion Chunk Smoke** system (Play On Awake off, World).
+  - **Explosion Flash:** shorter and smaller.
+- **Docs:** New "A realistic explosion" section in `Docs/markdown/Particle_Systems.md` (also covers the station table, the texture list and implementation notes). Updated `Engine_Wiring.md` (change table) and `CLAUDE.md` (particle notes plus a recipe).
+- **Checks:** The sample-scene check now expects seven one-shot explosion systems. It also checks for the Alpha-blended Fireball Sheet fireball, the Lit smoke and dust, and the chunks' Trail into a waiting World-space system. The existing "every texture draws" GPU check covers the new texture.
+
+  All component checks pass. `--graphics` still stops at the existing pause-menu check (`PauseChecks`). Run on their own, every particle GPU check passes, including "the FireballSheet texture draws". I looked at the new explosion in a temporary offscreen render of its systems at 0.08-3.5 s (since removed), not in Anvil.
+
+- Claude
+
+## Added: Particle systems that emit light, and a more realistic campfire (2026-10-12)
+
+**Why:** Particle effects couldn't light the scene. The campfire needed a separate static point light that didn't flicker, follow the flames or go out with them. Its flames were a single white teardrop texture tinted orange.
+
+- **Engine, Lights module:** New `ParticleLightsModule` (`ParticleSystemComponent.Lights`, saved in the scene) with two modes, `ParticleLightMode`:
+  - **System:** one light at the glow-weighted centre of the particles, eased so it glides, plus an Offset. With Alpha Affects Intensity it follows the particles' glow relative to their recent peak, so it fades when a fire stops or an explosion cools. Optional Cast Shadows.
+  - **Per Particle:** lights on a share of the particles (Ratio), at most Max Lights (16), the brightest carriers first. Alpha Affects Intensity and Size Affects Range apply per light.
+  - Shared: Color or Use Particle Color, Intensity, Range (a scene Point Light's scale), and Flicker + Flicker Speed (two octaves of noise; a System light also sways a few centimetres).
+- **Engine, light pool:** New `Engine/Particles/ParticleLights.cs` holds engine-owned `PointLight`s, refreshed at the end of each simulation step (`ParticleSimulation.Lights`) and cleared with the particles. They are never added to `Scene.PointLights`, so they are not saved, picked or listed. New `ParticleSystemComponent.CollectLights` and `LightCount`.
+- **Renderer:** `Renderer.Draw` copies the scene's point lights into a per-frame list (`_frameLights`) and appends the particle lights. That list feeds shadow maps, deferred lights, froxel fog, the forward pass and particles. The editor ID pass and light icons keep the scene's own list. `ForwardRenderModule.SetupLighting` now reallocates its light arrays only when the clamped light count changes, instead of whenever the list length changes.
+- **Lit particles take point lights:** `ParticleRenderModule.SetPointLights` picks the 4 point lights that shine most on each Lit system. `Particles.fx` adds them with the deferred point light falloff and a wrap/back-light term, so smoke over a fire glows orange.
+- **Flame Sheet texture:** New built-in `ParticleTexture.FlameSheet`, a 4 x 4 flipbook painted in `ParticleTextures.Flame`. A flame tongue is born as a low bulb (blue at its root), licks upwards, tears into wisps, lifts off and burns away. It is coloured by temperature through `FireRamp` (soot red, orange, yellow, pale yellow-white).
+- **Anvil:** New **Lights** expander in the Particle System inspector (`ParticleSystemComponentViewModel` + `MainWindow.axaml`). Offset and Cast Shadows show for System; Ratio, Max Lights and Size Affects Range show for Per Particle.
+- **Sample (`ParticleTest.obsc`):**
+  - The Campfire is now Flame Sheet tongues: fewer, larger particles leaning with the wind, with a flickering System light (Intensity 6, Range 10, Flicker 0.35).
+  - New **Campfire Core** system: a hot Glow bed at the base of the flames.
+  - Removed the static "Campfire Light" point light.
+  - The Spark Fountain has Per Particle lights. The Explosion Fireball has a System light that fades as it cools.
+- **Docs:** New "Lights" and "A realistic fire" sections in `Docs/markdown/Particle_Systems.md`. Updated `Engine_Wiring.md` (component notes, renderer phase 1b, particle pass, change table) and `CLAUDE.md`.
+- **Checks:** New `ParticleChecks.CheckLights` covers:
+  - System position, offset, intensity, fading with the particles and going out;
+  - Use Particle Color, Flicker and Cast Shadows;
+  - Per Particle carriers, Ratio 0 and turning the module off;
+  - Stop(clear) and `CollectLights`, including skipping disabled systems.
+
+  Saving, inspector and sample-scene checks cover the module and the new campfire. A new GPU check confirms that point lights shade Lit particles, and the FlameSheet texture draws.
+
+  All component checks pass. `--graphics` stops at an existing pause-menu check (`PauseChecks`: it expects 9 settings rows, and the uncommitted audio-volume menu work changed that). With that one check skipped, every particle GPU check passes. The new campfire was looked at in an offscreen render of its particle systems, not in Anvil.
+
+- Claude
+
+## Added: Script timers, coroutines, tweens, easing and maths/random helpers (2026-10-12)
+
+**Why:** Scripts had only `DeltaTime`. Every delay, cooldown, repeat or smooth movement was a hand-written float countdown in `Update`.
+
+- **Engine, scripting:** `ScriptBehaviour` is now `partial`. The new `Engine/Scripting/ScriptBehaviour.Timing.cs` adds:
+  - Timers: `After(seconds, action)`, `Every(seconds, action, times)` (catches up on missed runs after a long frame) and `StartTimer(seconds)` (a countdown or cooldown with no action). `CancelAllTimers()` cancels them all.
+  - Tweens: `Tween` for `float`, `Vector3` and `Color`, a 0-1 progress overload, and `MoveTo`/`MoveBy`/`ScaleTo`/`RotateTo` (quaternion slerp).
+  - Coroutines: `StartCoroutine(IEnumerator)`, `StopCoroutine` and `StopAllCoroutines`.
+  - `Time` (game-time seconds since the script started) and `FrameCount`.
+- **Timer handle:** Timers and tweens return a `ScriptTimer` (`Engine/Scripting/ScriptTimer.cs`):
+  - `Pause/Resume/Cancel/Complete/Restart`, `OnComplete`, and `Loop(cycles, pingPong)`.
+  - State: `Elapsed/Remaining/Progress/Completed/IsDone/IsCancelled`.
+- **Coroutine yields:** `Engine/Scripting/ScriptCoroutine.cs` adds `ScriptCoroutine`. A coroutine can yield:
+  - `null` or a number of seconds;
+  - `WaitForSeconds`, `WaitForSecondsRealtime`, `WaitForFrames`, `WaitUntil` or `WaitWhile`;
+  - a `ScriptTimer`, another coroutine, or a nested `IEnumerator`.
+- **Easing:** `Engine/Scripting/Ease.cs` adds the `Ease` enum: Linear, SmoothStep, and In/Out/InOut variants of Quad, Cubic, Quart, Sine, Expo, Circ, Back, Elastic and Bounce. `Ease` also works as a serialized script field. `Easing.Evaluate` gives a curve's value.
+- **Maths and random:** `Engine/Scripting/ScriptMath.cs` adds two static classes.
+  - `ScriptMath`: `Damp`/`DampAngle` (the same result at any frame rate), `SmoothDamp`, `MoveTowards`, `InverseLerp`, `Remap`, `Repeat`, `PingPong`, `DeltaAngle`, `Approximately`.
+  - `ScriptRandom`: `Seed`, `Value`, `Range` (the `int` max is exclusive), `Chance`, `Sign`, `OnUnitSphere`, `InsideUnitSphere`, `InsideUnitCircle`, `Color`, `Pick`, `Shuffle`.
+- **Timing rules:** Timers, tweens and coroutines advance after the script's `Update` in game time and end when the script stops (`Shutdown`).
+  - While `GameFlow.Paused`, game-time timers hold even in scripts that update while paused. Pass `realtime: true` to keep one counting.
+  - A callback that throws stops the script, like a throwing `Update`.
+- **Sample:** New `Content/Scripts/TimerExampleScript.cs`, registered as **Timer Example**. Attach it to any gameobject: it breathes (a ping-pong scale tween), counts down with `After`/`Every`, then hops (a coroutine yielding `MoveTo`).
+- **Docs:** New "Timers, coroutines and tweens" section in `Docs/markdown/Script_Behaviours.md`. Updated `Engine_Wiring.md` (7.4 Scripts) and `CLAUDE.md`.
+- **Checks:** New `Tests/Components/ScriptTimingChecks.cs` covers:
+  - timer runs, catch-up, pause/cancel/restart and cooldowns;
+  - tween values, easing endpoints, ping-pong and `Complete`;
+  - every coroutine yield kind;
+  - game time against realtime while paused, and that timers run after `Update`;
+  - cleanup on stop, and that an exception in a callback faults the script;
+  - the transform tweens, the Timer Example, and `ScriptMath`/`ScriptRandom`.
+
+  All component checks pass. The Timer Example was not run in Anvil.
+
+- Claude
+
+## Added: Music and sound effects volumes, and audio settings in the game menus (2026-10-11)
+
+**Why:** The engine had only a master volume. Everything played on FMOD's master group, so music and sound effects could not be set apart, and scripts had no way to play music.
+
+- **Engine, buses:** New `AudioBus` enum (`Effects`, `Music`, `Master`; saved by name) in `Engine/Recources/AudioManager.cs`.
+  - `AudioManager.Initialize` creates FMOD channel groups `Music` and `Effects` under the master group; `Dispose` releases them.
+  - New `MusicVolume`, `EffectsVolume`, `GetVolume(bus)`, `SetVolume(bus, volume)` and `IsMusicPlaying`, also on the `Audio` facade. Volumes clamp to 0-1 (an invalid number sets 1).
+  - `PlayMusic` plays on Music (and takes `contentRelativePath`). `PlaySound`/`PlaySound3D` take an optional `bus`, Effects by default.
+  - `Audio.Instance` is now set before FMOD starts, so the volume settings keep their values even without FMOD. `Audio.MasterVolume` reads 1 (was 0) before audio exists.
+- **Scripts:** `ScriptBehaviour.PlayMusic(clip, volume, loop)` and `StopMusic()`. `PlaySound`/`PlaySound3D`/`PlaySoundAt` take an optional `bus`.
+- **Audio component:** New `Output` (Effects or Music), saved by name, with an Output dropdown in Anvil's Inspector. Changing it while playing restarts the clip on the new bus.
+- **Menus:** `MenuSettings.Audio()` (Master volume, Music volume, Sound effects volume, 10% steps) plus `MusicVolume()`, `EffectsVolume()` and `Volume(name, description, bus)`.
+  - The main menu and the pause menu Settings pages start with the three rows. The main menu's Settings description now mentions sound.
+  - Both settings lists now show 8 rows at a time and scroll with the selection, with "‹ more" / "more ›" hints (`#settings-scroll-up/down` in `MainMenu`/`PauseMenu` `.xml`/`.css`). The pause menu list was already full.
+- **Docs:** New `Docs/markdown/Audio_Volume.md` (buses, API, menu rows, saving the volume, adding a bus). Updated `Audio_Architecture.md`, `Script_Behaviours.md`, `Engine_Wiring.md` and `CLAUDE.md`.
+- **Checks:** `Tests/Components/Program.cs` checks bus volumes and clamping, the menu rows and the Output save format. With `--audio` it checks on FMOD that Audio components play on the Effects group, `PlayMusic` on the Music group, and that changing Output moves a playing clip. All component checks pass with `--audio`. The menus were not run and checked on screen.
+
+- Claude
+
+## Added: Water splashes, raindrop rings on water and the WaterTest sample scene (2026-10-11)
+
+**Why:** Objects dropped into water floated or sank without any visible impact, rain didn't touch water surfaces, and no scene was set up for testing water physics and the water shader.
+
+- **Engine, water contacts:** `ScenePhysics.UpdateWaterContacts` runs after each physics step. It checks every Dynamic body (with or without Buoyancy) against the water volumes of that step.
+  - A body is in when its collider's bottom drops below the wave height under its centre. It is out when the bottom rises more than `WaterExitMargin` (5 cm) above it, so floaters don't flicker in and out.
+  - Each crossing is a new `WaterContact` (`Engine/Physics/WaterContact.cs`): point, velocity, speed, radius, mass.
+  - Crossings go to the new events `ScenePhysics.WaterEntered`/`WaterExited`, then to the new script hooks `ScriptBehaviour.OnWaterEnter`/`OnWaterExit`.
+  - Also new: `ScenePhysics.IsInWater` and `RaycastWater` (ordinary raycasts ignore water).
+- **Engine, splashes:** New `Engine/Particles/WaterSplashes.cs`, owned by `MainSceneLogic.WaterSplashes`. It is connected to the water events, updated each frame (frozen while paused) and cleared on scene swap and Stop.
+  - Entries at 1.2 m/s or faster throw a crown of droplets, a central jet for hard hits and a spray puff, scaled by speed and body size. The droplets come from a pool of 12 engine-owned particle systems that have no gameobject. They die when they land back on the water.
+  - Slower entries, exits and every splash leave a ring.
+  - Script API: `ScriptBehaviour.Splash(point, speed, radius)`, `WaterSplashes` (`AddRipple`, `Enabled`, `Splashed` event, counts).
+- **Rendering:**
+  - `ParticleRenderModule.Draw` takes `extraSystems` (the splash droplets).
+  - `WaterRenderModule` passes up to 16 rings (`SplashCount/SplashPositions/SplashShapes`) and `RainRipples` (the weather's puddle-ripple strength) to `Water.fx`.
+  - `Water.fx` has two new functions. `SplashRings` draws expanding wave packets with bubbly foam where bodies went in; this foam shows even when the material's Foam is 0. `RainRings` draws raindrop rings that fade with distance and pixel size.
+- **Sample:** New `Content/Scenes/WaterTest.obsc`, added to the end of the scene list.
+  - A rainy deck with a pool (gentle waves, underwater lights, raft, buoys, a barrel, a sunken crate) and a wave tank (0.9 m swell, boat, crates, ball).
+  - A diving tower and lamp posts.
+  - New `Content/Scripts/WaterTestScript.cs` ("Water Test", registered) with HUD `Content/UI/WaterTest.xml/.css`. Click drops a beach ball, crate, plank or boulder (1-4) from an adjustable height. It also has volleys, splash-only, pool wave presets, rain toggle and intensity, automatic drops, time of day and clear. Waves and dropped objects are restored on Stop.
+- **Checks:** New `Tests/Components/WaterSplashChecks.cs`:
+  - entry speed, point and radius; hooks fire once; non-buoyant and outside bodies;
+  - no flicker while floating; exits; water raycasts;
+  - splash droplets rise and die at the surface; ring ageing, pause and limits; slow entries; slot reuse; invalid input; Clear; Disabled;
+  - the sample scene's setup, plus an 8 s physics run: every floater stays on its water, the sunken crate stays on the floor, and nothing splashes at Play start.
+  - `MaterialGraphicsChecks` (`--graphics`) checks on the GPU that splash rings and rain rings change the rendered water.
+  - All component checks pass, with and without `--graphics`. The scene was also run in the standalone engine and checked from screenshots (splashes, rings, floaters, HUD).
+- **Docs:** New `Docs/markdown/Water.md`. Updated `Script_Behaviours.md` (Water Test, Water helpers), `Engine_Wiring.md` (frame order, water contacts, pass 17, ownership, where to start), `Weather.md`, `Material_Component.md`, `Particle_Systems.md` and `CLAUDE.md`.
+
+- Claude
+
+## Added: SaveData, save and load files from scripts (2026-10-11)
+
+**Why:** Games had no way to keep progress, settings or high scores between runs. The sample menus even note that their settings "are not saved".
+
+- **Engine:** New static `SaveData` (`Engine/Logic/SaveData.cs`, namespace `Engine.Logic`), callable from scripts, components and engine code.
+  - **Objects:** `Save<T>`, `SaveAsync<T>`, `Load<T>(name, fallback)` and `TryLoad<T>`. Saved as indented JSON: public fields and properties, enums by name, and `Vector2/3/4`, `Quaternion`, `Color`, `Point` and `Matrix` as number arrays. Loading accepts any case, comments, trailing commas and a byte order mark. `SaveData.JsonOptions` exposes these settings.
+  - **Text and bytes:** `SaveText/LoadText` and `SaveBytes/LoadBytes`.
+  - **Managing saves:** `Exists`, `Delete` (with the backup), `List(subfolder)` (names you can load directly), `GetLastWriteTime`, `GetPath` and `Flush`.
+  - **Folder:** `%LOCALAPPDATA%/<game name>/Saves`, where the game name is the Game Settings window name. Play inside Anvil and the built game share it. `SaveData.Folder` overrides it.
+  - **Names:** relative paths. A name without an extension gets `.json`. Names that are rooted, use `..`, contain invalid characters or end in `.bak`/`.tmp` throw `ArgumentException`.
+  - **Safety:** every write goes to `<file>.tmp`, is flushed, then replaces the file, keeping the previous one as `<file>.bak`. A damaged save loads from its backup. Writes to one file stay in order, including async ones. Reads wait for pending writes. Disk and format errors are logged and returned as false or the fallback, never thrown.
+  - `Engine.UnloadContent` calls `SaveData.Flush()`, so async saves finish before exit.
+- **Checks:** New `Tests/Components/SaveDataChecks.cs` covers:
+  - the default folder and round trips of every supported type;
+  - subfolders and hand-edited JSON;
+  - backups and fallbacks;
+  - text and bytes;
+  - `List`, `GetLastWriteTime` and `Delete`;
+  - refused names;
+  - async ordering, snapshots and `Flush`.
+  All component checks pass. The examples in the new doc were compiled against the engine.
+- **Docs:** New `Docs/markdown/Save_Data.md`. Also updated `Script_Behaviours.md` (Game flow table), `Engine_Wiring.md` (static state, where to start) and `CLAUDE.md`.
+
+- Claude
+
+## Added: Editor ground grid, toggled from Anvil's viewport toolbar (2026-10-11)
+
+**Why:** The viewport had no reference for where the ground is (Z = 0), so it was hard to judge heights and place objects on the floor.
+
+- **Engine:**
+  - New `GridRenderModule` + `Content/Shaders/Editor/Grid.fx` (added to `Content.mgcb`): an infinite grid on the ground plane, drawn as one full-screen pass over the final image, after `DrawIds` and before outlines and gizmos.
+  - Each pixel's view ray is cut with the plane. Lines are anti-aliased with screen-space derivatives. Three levels (1, 10 and 100 cells) fade in and out with how many pixels a cell covers, so the grid stays readable from any height. The grid fades with distance and at grazing angles.
+  - The X axis is drawn red and the Y axis green.
+  - Geometry in front of the plane hides the grid (linear G-buffer depth). A floor lying on the plane keeps the grid visible.
+  - Only drawn in edit mode: never in Play or in the standalone game.
+  - New settings in `GameSettings`: `e_showgrid` (default on), `e_gridheight` (ground Z, 0), `e_gridcellsize` (1 m) and `e_gridfadedistance` (250 m).
+- **Anvil:** New **Grid** button (grid icon) in the viewport toolbar, before Stats. `MainWindowViewModel.IsGridVisible` / `ToggleGridCommand` set `e_showgrid` on the game thread. The toggle isn't saved: every session starts with the grid on.
+- **Checks:** New `Tests/Components/GridChecks.cs`:
+  - Run: the toggle reaches the engine through the bridge.
+  - `--graphics`: the grid draws below the horizon, leaves the sky clear, is hidden behind nearer depth, draws coloured axes, and draws nothing when off or in Play. Set `OBSIDIAN_GRID_PNG` to save the frame.
+  - All component checks pass, with and without `--graphics`. The look was checked on that offscreen frame, not in the Anvil viewport.
+- **Docs:** `Engine_Wiring.md` (module order, Draw step 22, where to start) and `CLAUDE.md`.
+
+- Claude
+
+## Added: Indoor god rays (Fog Volumes, per-scene fog), fixed shafts facing the sun and objects vanishing in view (2026-10-11)
+
+**Why:** GodRayTest's shafts looked right from the side but not when facing the light, nothing like a dark attic with beams through a hole in the roof, and stretched objects (the roof slats) disappeared while still on screen. Four causes, found by rendering GodRayTest in a hidden engine instance:
+1. Culling sized every bounding sphere by `Scale.X` only, so a 3 × 60 slat got a sphere 20× too small. It was culled from the view as soon as its centre left the screen, and from the sun's shadow map too, which also removed the gaps between shafts.
+2. Facing the sun, a shaft sits in front of the sky (the gap it shines through), and `DeferredCompose.fx` multiplied all fog on sky pixels by Sky Fog Strength (0.1).
+3. Fog density is 0 within 30 m of the camera and ramps to full only at 400 m, so shafts inside a room had no fog to light. Fog dense enough for indoor shafts whites out the open air, and the fog settings were global and never saved.
+4. Eye adaptation lifted a dark room to near-white (+3 EV).
+
+- **Engine:**
+  - `MeshLibrary.UpdatePositionAndCheckRender` (view and shadow-map culling) sizes the sphere by the largest axis scale of the world matrix.
+  - Sky pixels keep the froxel fog in front of them up to **Sky Shaft Distance** (default 200 m) at full strength; only the haze beyond it is scaled by Sky Fog Strength.
+  - Volumetric fog is per scene: `EnvironmentSettings` gains `FogDensity`, `FogAbsorption`, `FogSunScatter`, `FogLightScatter`, `FogAnisotropy`, `FogStartDistance`, `FogFullDistance`, `FogNearDensity` (new: fraction of the density kept before Start), `FogSkyStrength`, `FogSkyShaftDistance` and `MaxAutoExposure`. Defaults equal the old global values, so older scenes look the same. `Renderer.ApplySceneFog` copies them into `GameSettings.g_Froxel*` every frame (new `g_FroxelNearDensity`, `g_FroxelSkyShaftDistance`), and `AutoExposureFilter.SceneMaxExposure` caps eye adaptation (it can only lower the global Max EV).
+  - New **Fog Volume** component (`FogVolumeComponent`, type id `fog-volume`): Density and Edge Fade inside a box (the gameobject's transform, like a Cube), without the distance ramp. Its mesh is hidden while enabled. `FroxelRenderModule.SetFogVolumes` sends up to 8 boxes to `Froxel.fx` (`FogVolumeDensity`); `DensityAt` matches the shader.
+- **Anvil:**
+  - Inspector > Environment gains a **Volumetric Fog** section with the fields above and **Reset fog**.
+  - Post Processing > Volumetric Fog keeps only Enable Fog and History.
+  - Add Component > **Fog Volume** (Density, Edge Fade).
+- **Sample:** `GodRayTest.obsc` gains a closed attic at (-105, 0): an east window, a slatted roof skylight, rafters, a couch and a crate, and an **Attic Dust** Fog Volume. The day/night cycle is off (the saved sun at (-0.6, 0.1, -0.8) is used), and Max Auto Exposure is 0 EV. The hall outdoors keeps the default fog.
+- **Checks:** new `Tests/Components/FogChecks.cs` covers scene fog (inspector, renderer copy, save/load, old scenes, normalizing, reset), Fog Volume (Add Component, inspector, box and edge fade, collection, mesh hiding, save, clone, removal) and culling a stretched mesh. `SampleSceneChecks.RunGodRays` is updated for the attic. All component checks pass, with and without `--graphics`. The look was checked on offscreen frames of the real engine (attic from below the skylight and towards the window, hall from the side), not in the Anvil viewport.
+- **Docs:** `Scene_Lighting_and_Fog.md` (Volumetric fog, Fog Volume, GodRayTest, current issues), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
 ## Added: Volumetric particle systems and Counter-Strike 2 style voxel smoke (2026-10-11)
 
 **Why:** Smoke made of billboards looks flat up close, can't be walked into and can't be shot through. A Volumetric option draws a particle system as a lit volume, and a Voxels source recreates the CS2 smoke grenade: it floods the space around it, stays out of walls, and bullets and HE grenades open holes in it.

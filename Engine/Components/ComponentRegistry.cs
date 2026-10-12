@@ -37,6 +37,8 @@ public static class ComponentRegistry
         Register<NpcComponent>(NpcComponent.TypeId, "NPC");
         Register<LodComponent>(LodComponent.TypeId, "LOD");
         Register<ParticleSystemComponent>(ParticleSystemComponent.TypeId, "Particle System");
+        Register<FogVolumeComponent>(FogVolumeComponent.TypeId, "Fog Volume");
+        Register<FoliageWindComponent>(FoliageWindComponent.TypeId, "Foliage Wind");
     }
 
     /// <summary>Definitions in registration order (the Add Component menu order).</summary>

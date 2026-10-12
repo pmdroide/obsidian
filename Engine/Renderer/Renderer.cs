@@ -20,6 +20,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using DirectionalLight = Engine.Entities.DirectionalLight;
+using ParticleSystemComponent = Engine.Components.ParticleSystemComponent;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    MAIN RENDER FUNCTIONS, TheKosmonaut 2016
@@ -61,7 +62,10 @@ namespace Engine.Renderer
         private ForwardRenderModule _forwardRenderModule;
         private WaterRenderModule _waterRenderModule;
         private WeatherRenderModule _weatherRenderModule;
+        private GridRenderModule _gridRenderModule;
         private ParticleRenderModule _particleRenderModule;
+        // The scene's point lights plus the particle systems' (Lights module), rebuilt each frame.
+        private readonly List<PointLight> _frameLights = new List<PointLight>();
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
@@ -219,6 +223,7 @@ namespace Engine.Renderer
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
             _waterRenderModule = new WaterRenderModule(content);
             _weatherRenderModule = new WeatherRenderModule(content);
+            _gridRenderModule = new GridRenderModule(content);
             _particleRenderModule = new ParticleRenderModule(content);
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
@@ -336,7 +341,11 @@ namespace Engine.Renderer
             // The day/night cycle swaps in its own sun/moon; editor gizmos keep showing the scene's lights.
             List<DirectionalLight> sceneDirectionalLights = directionalLights;
             if (scene != null)
+            {
                 directionalLights = _environmentSky.Apply(scene, gameTime, _graphicsDevice, _assets, _deferredEnvironmentMapRenderModule);
+                ApplySceneFog(scene.Environment);
+                _autoExposureFilter.SceneMaxExposure = scene.Environment?.MaxAutoExposure ?? float.MaxValue;
+            }
             // Set every frame: GameSettings.Exposure writes the base value whenever it is edited.
             Shaders.PostProcessingParameter_PowExposure.SetValue(
                 (float)Math.Pow(2, GameSettings.Exposure + (scene != null ? _environmentSky.ExposureOffset : 0)));
@@ -364,6 +373,14 @@ namespace Engine.Renderer
                     ProjectionMatrix = _projection
                 };
             } 
+
+            //Particle System Lights modules: their lights join the scene's for every lighting pass (shadows,
+            //deferred, forward, fog), while the editor passes below keep using the scene's own list.
+            List<PointLight> sceneLights = pointLights;
+            _frameLights.Clear();
+            _frameLights.AddRange(sceneLights);
+            ParticleSystemComponent.CollectLights(entities, _frameLights);
+            pointLights = _frameLights;
 
             //Update the mesh data for changes in physics etc.
             meshMaterialLibrary.FlagMovedObjects(entities);
@@ -432,6 +449,7 @@ namespace Engine.Renderer
                         _inverseProjection,
                         FroxelRenderModule.CameraNearPlane,
                         _g_FarClip);
+                    _froxelRenderModule.SetFogVolumes(entities);
                     _froxelRenderModule.BuildFroxels(
                         pointLights,
                         directionalLights,
@@ -471,12 +489,17 @@ namespace Engine.Renderer
                     _graphicsDevice.SetRenderTarget(_currentOutput);
                     ReconstructDepth();
                 }
+                // Splash rings (MainSceneLogic.WaterSplashes) and raindrop rings on the water surface.
+                Particles.WaterSplashes splashes = GameFlow.SceneLogic?.WaterSplashes;
+                _waterRenderModule.Splashes = splashes;
+                _waterRenderModule.RainRipples = _surfaceWetness.Ripples;
                 _waterRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, _viewProjection,
                     camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
 
                 // Particle System components: fire, smoke, sparks... fading into the depth they read.
+                // Splash droplets have no gameobject and are passed alongside.
                 _particleRenderModule.Draw(_graphicsDevice, entities, camera, _view, _viewProjection,
-                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip);
+                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, splashes?.VisibleSystems(), pointLights);
 
                 // Rain, sandstorm or snow: haze and particles over the opaque and transparent scene.
                 // Paused (pause menu): the particles hang in the air.
@@ -511,7 +534,7 @@ namespace Engine.Renderer
             
             //Draw the elements that we are hovering over with outlines
             if(GameSettings.e_enableeditor && GameStats.e_EnableSelection)
-                _editorRender.DrawIds(meshMaterialLibrary, decals, pointLights, sceneDirectionalLights, envSample, debugEntities, _staticViewProjection, _view, editorData);
+                _editorRender.DrawIds(meshMaterialLibrary, decals, sceneLights, sceneDirectionalLights, envSample, debugEntities, _staticViewProjection, _view, editorData);
 
             //Draw the final rendered image, change the output based on user input to show individual buffers/rendertargets
             RenderMode(_currentOutput);
@@ -519,9 +542,12 @@ namespace Engine.Renderer
             //Draw signed distance field functions
             DrawSignedDistanceFieldFunctions(camera);
             
+            //Editor ground grid (Anvil's viewport Grid button), under the outlines and gizmos
+            _gridRenderModule.Draw(_graphicsDevice, camera, _view, _staticViewProjection, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
+
             //Additional editor elements that overlay our screen
             
-            RenderEditorOverlays(editorData, meshMaterialLibrary, decals, pointLights, sceneDirectionalLights, envSample, debugEntities);
+            RenderEditorOverlays(editorData, meshMaterialLibrary, decals, sceneLights, sceneDirectionalLights, envSample, debugEntities);
             
 
             //Debug ray marching
@@ -1390,6 +1416,7 @@ namespace Engine.Renderer
 
             Shaders.DeferredComposeEffectParameter_UseFroxelFog?.SetValue(fogActive);
             Shaders.DeferredComposeEffectParameter_SkyFogStrength?.SetValue(GameSettings.g_FroxelSkyFogStrength);
+            Shaders.DeferredComposeEffectParameter_SkyShaftDistance?.SetValue(GameSettings.g_FroxelSkyShaftDistance);
         }
 
         /// <summary>
@@ -1480,6 +1507,25 @@ namespace Engine.Renderer
                 //_spriteBatch.End();
                 return input;
             }
+        }
+
+        /// <summary>
+        /// The scene owns its volumetric fog (Anvil > Environment > Volumetric Fog); the froxel and compose passes
+        /// read the GameSettings copies, so scripts change fog through ScriptBehaviour.SceneEnvironment.
+        /// </summary>
+        public static void ApplySceneFog(EnvironmentSettings fog)
+        {
+            if (fog == null) return;
+            GameSettings.g_FroxelDensity = fog.FogDensity;
+            GameSettings.g_FroxelAbsorption = fog.FogAbsorption;
+            GameSettings.g_FroxelDirectionalScatter = fog.FogSunScatter;
+            GameSettings.g_FroxelPointScatter = fog.FogLightScatter;
+            GameSettings.g_FroxelAnisotropy = fog.FogAnisotropy;
+            GameSettings.g_FroxelFogDistanceStart = fog.FogStartDistance;
+            GameSettings.g_FroxelFogDistanceFull = fog.FogFullDistance;
+            GameSettings.g_FroxelNearDensity = fog.FogNearDensity;
+            GameSettings.g_FroxelSkyFogStrength = fog.FogSkyStrength;
+            GameSettings.g_FroxelSkyShaftDistance = fog.FogSkyShaftDistance;
         }
 
         /// <summary>
@@ -1927,6 +1973,7 @@ namespace Engine.Renderer
             _decalRenderModule?.Dispose();
             _waterRenderModule?.Dispose();
             _weatherRenderModule?.Dispose();
+            _gridRenderModule?.Dispose();
             _particleRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();

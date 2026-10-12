@@ -9,7 +9,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Engine.Renderer.RenderModules
 {
     //Just a template
-    public class GBufferRenderModule : IRenderModule, IDisposable
+    public class GBufferRenderModule : IRenderModule, IFoliageWindModule, IDisposable
     {
         private Effect _clearShader;
         private Effect _gbufferShader;
@@ -20,6 +20,7 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _WorldView;
         private EffectParameter _WorldViewProj;
         private EffectParameter _WorldViewIT;
+        private EffectParameter _ViewProjection;
         private EffectParameter _Camera;
         private EffectParameter _FarClip;
 
@@ -99,6 +100,9 @@ namespace Engine.Renderer.RenderModules
             set { _Time?.SetValue(value); }
         }
 
+        /// <summary>Foliage Wind parameters of the G-buffer shader.</summary>
+        public FoliageWindParameters Wind { get; private set; }
+
         public void Initialize(GraphicsDevice graphicsDevice)
         {
             _clearGBufferPass = _clearShader.Techniques["Clear"].Passes[0];
@@ -110,6 +114,8 @@ namespace Engine.Renderer.RenderModules
             _WorldView = _gbufferShader.Parameters["WorldView"];
             _WorldViewProj = _gbufferShader.Parameters["WorldViewProj"];
             _WorldViewIT = _gbufferShader.Parameters["WorldViewIT"];
+            _ViewProjection = _gbufferShader.Parameters["ViewProjection"];
+            Wind = new FoliageWindParameters(_gbufferShader);
             _Camera = _gbufferShader.Parameters["Camera"];
             _FarClip = _gbufferShader.Parameters["FarClip"];
 
@@ -187,6 +193,7 @@ namespace Engine.Renderer.RenderModules
             _View.SetValue((Matrix)view);
             _WorldView.SetValue(worldView);
             _WorldViewProj.SetValue(localWorldMatrix * viewProjection);
+            _ViewProjection.SetValue(viewProjection);
 
             worldView = Matrix.Invert(Matrix.Transpose(worldView));
             _WorldViewIT.SetValue(worldView);

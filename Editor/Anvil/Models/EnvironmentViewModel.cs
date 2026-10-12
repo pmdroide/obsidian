@@ -50,6 +50,17 @@ public partial class EnvironmentViewModel : ObservableObject
     [ObservableProperty] private double _weatherHaze = 0.6;
     [ObservableProperty] private double _windSpeed = 4;
     [ObservableProperty] private double _windDirection = 45;
+    [ObservableProperty] private double _fogDensity = 0.03;
+    [ObservableProperty] private double _fogAbsorption = 0.1;
+    [ObservableProperty] private double _fogSunScatter = 0.1;
+    [ObservableProperty] private double _fogLightScatter = 1.5;
+    [ObservableProperty] private double _fogAnisotropy = 0.45;
+    [ObservableProperty] private double _fogStartDistance = 30;
+    [ObservableProperty] private double _fogFullDistance = 400;
+    [ObservableProperty] private double _fogNearDensity = 0;
+    [ObservableProperty] private double _fogSkyStrength = 0.1;
+    [ObservableProperty] private double _fogSkyShaftDistance = 200;
+    [ObservableProperty] private double _maxAutoExposure = 3;
     [ObservableProperty] private bool _voxelsEnabled;
     [ObservableProperty] private int _selectedVoxelTerrain = 1;
     [ObservableProperty] private decimal _voxelSeed = 1337;
@@ -125,6 +136,17 @@ public partial class EnvironmentViewModel : ObservableObject
             WeatherHaze = settings.WeatherHaze;
             WindSpeed = settings.WindSpeed;
             WindDirection = settings.WindDirection;
+            FogDensity = settings.FogDensity;
+            FogAbsorption = settings.FogAbsorption;
+            FogSunScatter = settings.FogSunScatter;
+            FogLightScatter = settings.FogLightScatter;
+            FogAnisotropy = settings.FogAnisotropy;
+            FogStartDistance = settings.FogStartDistance;
+            FogFullDistance = settings.FogFullDistance;
+            FogNearDensity = settings.FogNearDensity;
+            FogSkyStrength = settings.FogSkyStrength;
+            FogSkyShaftDistance = settings.FogSkyShaftDistance;
+            MaxAutoExposure = settings.MaxAutoExposure;
             VoxelsEnabled = settings.Voxels;
             SelectedVoxelTerrain = Math.Max(0, Array.IndexOf(VoxelTerrainValues, settings.VoxelTerrain));
             VoxelSeed = settings.VoxelSeed;
@@ -173,6 +195,17 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnWeatherHazeChanged(double value) => Push(s => s.WeatherHaze = (float)value);
     partial void OnWindSpeedChanged(double value) => Push(s => s.WindSpeed = (float)value);
     partial void OnWindDirectionChanged(double value) => Push(s => s.WindDirection = (float)value);
+    partial void OnFogDensityChanged(double value) => Push(s => s.FogDensity = (float)value);
+    partial void OnFogAbsorptionChanged(double value) => Push(s => s.FogAbsorption = (float)value);
+    partial void OnFogSunScatterChanged(double value) => Push(s => s.FogSunScatter = (float)value);
+    partial void OnFogLightScatterChanged(double value) => Push(s => s.FogLightScatter = (float)value);
+    partial void OnFogAnisotropyChanged(double value) => Push(s => s.FogAnisotropy = (float)value);
+    partial void OnFogStartDistanceChanged(double value) => Push(s => s.FogStartDistance = (float)value);
+    partial void OnFogFullDistanceChanged(double value) => Push(s => s.FogFullDistance = (float)value);
+    partial void OnFogNearDensityChanged(double value) => Push(s => s.FogNearDensity = (float)value);
+    partial void OnFogSkyStrengthChanged(double value) => Push(s => s.FogSkyStrength = (float)value);
+    partial void OnFogSkyShaftDistanceChanged(double value) => Push(s => s.FogSkyShaftDistance = (float)value);
+    partial void OnMaxAutoExposureChanged(double value) => Push(s => s.MaxAutoExposure = (float)value);
     partial void OnVoxelsEnabledChanged(bool value) => Push(s => s.Voxels = value);
     partial void OnSelectedVoxelTerrainChanged(int value)
     {
@@ -189,6 +222,17 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnVoxelTreesChanged(double value) => Push(s => s.VoxelTrees = (float)value);
     partial void OnVoxelSeaLevelChanged(double value) => Push(s => s.VoxelSeaLevel = (float)value);
     partial void OnVoxelCollisionChanged(bool value) => Push(s => s.VoxelCollision = value);
+
+    /// <summary>Restores the default (outdoor) volumetric fog and auto exposure cap of a new scene.</summary>
+    [RelayCommand]
+    private void ResetFog()
+    {
+        var d = new EnvironmentSettings();
+        FogDensity = d.FogDensity; FogAbsorption = d.FogAbsorption; FogSunScatter = d.FogSunScatter;
+        FogLightScatter = d.FogLightScatter; FogAnisotropy = d.FogAnisotropy; FogStartDistance = d.FogStartDistance;
+        FogFullDistance = d.FogFullDistance; FogNearDensity = d.FogNearDensity; FogSkyStrength = d.FogSkyStrength;
+        FogSkyShaftDistance = d.FogSkyShaftDistance; MaxAutoExposure = d.MaxAutoExposure;
+    }
 
     /// <summary>A random seed: a different world of the same kind.</summary>
     [RelayCommand]
