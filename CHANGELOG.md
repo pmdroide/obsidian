@@ -1,5 +1,79 @@
 # Changelog
 
+## Added: `build-editor.ps1`, a Release build of the Anvil editor (2026-10-12)
+
+**Why:** there was no single command to produce a release `Anvil.exe`. `bootstrap.bat` is broken and only builds Debug.
+
+- **`build-editor.ps1`** (repo root, same style as `clean.ps1`) runs these steps:
+  - checks for `dotnet`
+  - restores the local dotnet tools (`dotnet-mgcb`) and NuGet packages for `win-x64`
+  - publishes `Editor/Anvil/Anvil.csproj` as a self-contained Release app into `Builds/Anvil` (git-ignored)
+  - checks that `Anvil.exe` and `Content/` were produced
+- **Options:** `-Clean` deletes the output folder first, `-Run` starts the editor afterwards, `-Output <folder>` picks another folder.
+- **Output folder:** the script refuses folders under `Engine/` and warns for folders outside the repo. Anvil finds its source `Engine/Content` by walking up from its exe, so asset import, saving and File > Build only work from inside the checkout.
+- **Steam:** the script copies `steam_appid.txt` next to the exe, so Steam starts in Play mode. Published games still leave it out.
+- **Checked:** both runs succeeded (752.8 MB, 88 `.xnb` files, fmod/steam/libvlc present), and the release editor started.
+- **Docs:** `Docs/markdown/Engine_Wiring.md` §1 documents the release build.
+
+- Claude
+
+## Added: Background scene loading with a loading screen, and the SceneLoadingTest sample (2026-10-12)
+
+**Why:** `GameFlow.LoadScene` read the file, built every gameobject and swapped scenes in one frame. A big scene froze the game, and there was no way to show a loading screen or the real progress.
+
+- **`GameFlow.LoadSceneAsync(index or name, carryPersistent = true, loadingScreen = true)`** returns a `SceneLoadOperation` (new, `Engine/Logic/SceneLoadOperation.cs`). The running scene keeps playing while the load runs:
+  - **Reading:** a worker thread streams the `.obsc` and its `.probes` and parses the JSON.
+  - **Building:** the game thread creates the gameobjects, lights and decals, `GameFlow.LoadBudgetMs` per frame (default 4 ms).
+  - **Swap:** on a frame of its own, through the same steps as before (persistent gameobjects, Stop/Play).
+  - **Finishing:** the new scene runs 3 frames before the load is Done.
+  - `Progress` is the real work: bytes read (0-30%), objects built (30-90%), finishing frames (90-100%).
+  - `AllowSceneActivation = false` holds a built scene at 90% ("press any key"). `Cancel()` works until the swap.
+  - It reports `Status`, `Error`, `BytesRead/TotalBytes`, `ObjectsBuilt/ObjectCount`, `Frames`, `Seconds`, `ReadMs`, `BuildMs`, `ActivationMs`, `LongestFrameMs` and `WaitedSeconds`.
+  - Coroutines can `yield return` a load (waits until it is built or ended).
+- **More `GameFlow` members:** `CurrentLoad`, `IsLoading`, `LastLoad`, `SceneLoaded`, `CancelLoad()`, `LoadBudgetMs`, `LoadingScreenDocument`.
+- **One loader for both kinds of load:** `LoadScene`/`ReloadScene`/`LoadNextScene` are now blocking `SceneLoadOperation`s (same one-frame behaviour), so they report their cost through `LastLoad` too. One load runs at a time: a new request cancels one that hasn't swapped yet. Stop and opening a scene in the editor cancel a load in progress.
+- **Loading screen:** `Content/UI/LoadingScreen.xml` + `.css`, driven by `Engine/Logic/LoadingScreen.cs`.
+  - It fades in over the running scene, and the swap waits until it is opaque. It stays up through the new scene's first frames, then fades out.
+  - It shows the scene name, the stage, a progress bar with percentage, bytes or objects so far, and the elapsed time. A light slides along the bar in real time, so hitches show.
+  - Held loads show `ReadyMessage`; failures show the error for 2.5 s.
+  - Replace it with `GameFlow.LoadingScreenDocument`. Kept by Delete Project (`ProjectReset.KeptPaths`).
+- **`GameUI`:** engine overlay layers (`OpenOverlay`, internal) draw above every script layer and survive `CloseAll`.
+- **`SceneSerialization`:** loading is split into `ReadFile` (thread-safe, returns a `SceneFile`) and `SceneBuilder` (one object per `Step`). `LoadFromFile` runs both at once and gives the same scene as before.
+- **`MainSceneLogic`:** `ApplyPendingSceneLoad` became `ActivateLoadedScene` (just the swap), called by `GameFlow.UpdateLoad` at the start of each update.
+- **Sample:** `Content/Scenes/SceneLoadingTest.obsc` (hub with spinning cubes) and `SceneLoadingArena.obsc` (a city of 1,550 gameobjects with falling spheres, 636 KB), both at the end of the scene list.
+  - Both run the new **Scene Loading Test** script (`Content/Scripts/SceneLoadingTestScript.cs`, HUD `Content/UI/SceneLoadingTest.xml`/`.css`) on their Main Camera.
+  - Load the Arena, the Hub, Auto Exposure Test or Water Test in Loading screen, Background or Blocking mode. Options: hold at ready, build budget 1-16 ms, Esc cancels.
+  - A frame-time graph that carries across the swap, and a table of the last loads' times, frames, worst frame and swap cost.
+- **Tests:** `Tests/Components/GameFlowChecks.cs` has 21 new checks:
+  - the build spread over frames, rising progress, the old scene active until the swap, IDs kept, the same result as `LoadFromFile`;
+  - holding at ready, cancel while reading and once built, replacement by a newer or blocking load;
+  - a blocking load's report, a broken file failing cleanly, Stop canceling.
+  - The persistence and project reset checks were updated for the new loader and the kept loading screen.
+- **Measured in the engine** (arena): the read takes 4-6 ms on the worker and the build 3 ms spread over frames. The swap takes 19-42 ms. The worst frame is the one after the swap: the new scene's HUD first layout (`GameUI.Update`, 70-90 ms) and BEPU creating the bodies (190 ms the first time). The loading screen covers it; Background mode shows it.
+- Docs: `Docs/markdown/Scenes_and_Game_Flow.md` (new sections), `Docs/markdown/Engine_Wiring.md` (section 7.5 rewritten), `CLAUDE.md`.
+
+- Claude
+
+## Changed: Anvil uses a neutral dark theme (2026-10-12)
+
+**Why:** The editor's dark theme was tinted blue-purple everywhere (backgrounds, borders, text) with a very saturated purple accent.
+
+- `Editor/Anvil/App.axaml`: the `Anvil*Brush` resources are now hue-free greys. Same order of lightness as before: title bar `#151515`, window `#1B1B1B`, panels `#232323`, borders `#313131`/`#3B3B3B`. Text goes from `#E8E8E8` to `#4A4A4A`.
+- The brand purple stays as the accent only, muted: Primary `#5A4FCF` (was `#4300D4`), selection `#433D7A` (was `#4101CA`).
+- Unchanged: the play button, log/warn/error colours and the asset-type icon colours.
+
+- Claude
+
+## Fixed: Anvil title bar shows an extra fullscreen button and draws "Anvil" over the logo (2026-10-12)
+
+**Why:** Avalonia 12 draws its own window decorations over the extended title bar. They add a fullscreen caption button (the arrows icon beside minimize) and paint the window title in the top-left corner, on top of Anvil's brand mark.
+
+- `Editor/Anvil/Views/MainWindow.axaml`: new `Window.WindowDecorationsTheme`, based on the Fluent `WindowDrawnDecorations` theme, that hides `PART_FullScreenButton`, `PART_PopoverFullScreenButton` and the title `TextBlock` inside `PART_TitleTextPanel`. The panel itself can't be hidden by a style: its `IsVisible` is a template binding to `HasTitleBar`, which outranks style setters. The window keeps `Title="Anvil"` for the taskbar.
+- The title bar's render-stats badges (DX11 / fps) moved closer to the caption buttons (right margin 160 → 136) now that one button is gone.
+- `Docs/markdown/Engine_Wiring.md`: notes on Anvil's window chrome.
+
+- Claude
+
 ## Added: A tree, and a foliage wind shader with fluttering, backlit leaves (2026-10-12)
 
 **Why:** The engine had no vegetation. Nothing could sway in the scene wind, and masked materials (leaves) cast solid square shadows from the sun.

@@ -32,6 +32,8 @@ How each kind of file reaches the running game (`Engine/Engine.csproj`):
 
 NuGet dependencies that matter at runtime: `MonoGame.Framework.WindowsDX 3.8.4.1`, `BepuPhysics 2.4.0`, `FmodForFoxes 3.2.0`, `LibVLCSharp`, Steamworks.NET (from `thirdparty/steam`).
 
+**Release build of the editor:** `build-editor.ps1` (repo root; `-Clean`, `-Run`, `-Output`) runs `dotnet tool restore` in `Engine/`, then a self-contained win-x64 Release `dotnet publish` of `Anvil.csproj` into `Builds/Anvil` (git-ignored). The Engine's `.xnb` content and native DLLs come along through the project reference. The script also copies `steam_appid.txt`, which `Engine.csproj` keeps out of published games, because `SteamService.Connect` needs it next to the exe outside the Steam client. The output must stay **inside the checkout**: Anvil finds the source `Engine/Content` through `AssetImporter.LocateEngineContentRoot`, which walks up from the exe folder. Asset import, scene/settings saving and `GameBuilder` (File > Build, which needs the .NET SDK) all depend on that path.
+
 ---
 
 ## 2. Threads
@@ -150,7 +152,7 @@ Engine.Update
 │   ├─ #if DEBUG _shaderManager.CheckForChanges()
 │   ├─ _editorLogic.Update(..., _editorReceivedDataBuffer, ...)   ← uses LAST frame's hovered ID
 │   ├─ _sceneLogic.Update
-│   │   ├─ ApplyPendingSceneLoad()      ← GameFlow.LoadScene queued last frame
+│   │   ├─ GameFlow.UpdateLoad(...)     ← CurrentLoad: a blocking load runs whole, an async one takes a step (7.5); LoadingScreen fades/fills
 │   │   ├─ Input.Update(gameTime, Camera)   ← snapshot keyboard/mouse; drives the editor camera
 │   │   ├─ GameInput.Update(dt)         ← script-facing input, gamepads, menu repeat
 │   │   ├─ PlayMode.UpdateScripts(gameTime) ← component OnUpdate (Play only; particle systems step here)
@@ -195,7 +197,7 @@ Engine.Draw
     ├─ _editorReceivedDataBuffer = _renderer.Draw(camera, meshMaterialLibrary, entities, decals,
     │        pointLights, directionalLights, envSample, debugEntities, editorData, gameTime,
     │        lighting, lightingSettings, scene)          (section 9.4)
-    ├─ GameUI.Draw(spriteBatch)         ← script menus and HUDs over the 3D image
+    ├─ GameUI.Draw(spriteBatch)         ← script menus and HUDs over the 3D image, then engine overlays (loading screen)
     └─ _debug.Draw(gameTime)            ← stats and console on top
 ```
 
@@ -213,6 +215,8 @@ Anvil's side is in `MonoGameHost`:
 - A boot watchdog does the same every 50 ms for 3 s.
 - `SyncPreferredBackBuffer` pre-sets `PreferredBackBuffer*` so MonoGame's own `OnResize` returns early. `ApplyPendingResize` is the only place the swap chain is actually resized.
 
+Anvil's window chrome: `MainWindow` extends its client area into the title bar (`ExtendClientAreaToDecorationsHint`, 36 px), and Avalonia 12 draws the caption buttons itself (`WindowDrawnDecorations`). `MainWindow.WindowDecorationsTheme` derives from the Fluent theme and hides its fullscreen button (`PART_FullScreenButton`) and title text (the `TextBlock` in `PART_TitleTextPanel`; the panel's own `IsVisible` is a template binding that beats style setters), so only minimize/maximize/close remain and the brand mark isn't overdrawn. The render-stats badges keep a 136 px right margin for those three buttons. Every editor colour is an `Anvil*Brush` resource in `Editor/Anvil/App.axaml`: neutral dark greys, with the muted brand purple only as the accent (`AnvilPrimaryBrush`, `AnvilSelectedBackgroundBrush`). The views reference these keys; the only raw colours are a few overlay tints and the Delete Project button in `ProjectSettingsWindow`.
+
 ---
 
 ## 5. Global and static state
@@ -225,11 +229,12 @@ Most cross-system wiring goes through statics. Knowing them saves a lot of searc
 | `Shaders.*` | static init | Cached `Effect`, `EffectParameter` and `EffectPass` objects for shared shaders |
 | `GameSettings.*` | defaults, `ApplySettings`, the editor | Render, editor and physics switches. Prefixes: `g_` graphics, `e_` editor, `d_` debug, `sdf_`, `u_` UI, `p_` physics. Some setters push straight into shader parameters |
 | `GameStats.*` | renderer, editor | Per-frame counters, `e_gizmoMode`, `e_EnableSelection`, `e_LocalTransformation` |
-| `GameFlow.SceneLogic`, `QuitHandler`, `Paused`, `EscapeQuits`, pending scene | `MainSceneLogic.Initialize`, `Engine` ctor, scripts | Script API for scenes and pausing |
+| `GameFlow.SceneLogic`, `QuitHandler`, `Paused`, `EscapeQuits`, `CurrentLoad`/`LastLoad`, `LoadBudgetMs`, `LoadingScreenDocument` | `MainSceneLogic.Initialize`, `Engine` ctor, scripts | Script API for scenes, loads and pausing |
+| `LoadingScreen` (`_ui`, `_load`, fade) | `GameFlow.UpdateLoad` | The engine loading screen overlay of `LoadSceneAsync` |
 | `ScenePhysics.Current` | `ScenePhysics` ctor | Script raycasts (also `RaycastWater`), navigation |
 | `Input.*` state, `Input.HostBridge` | `Input.Update`, `EditorBridge.Bind` | Raw keyboard/mouse, Anvil key merge |
 | `GameInput.*` | `GameInput.Update` | Script input |
-| `GameUI.Layers` | `GameUI.Open/Close` | Script UI layers |
+| `GameUI.Layers` | `GameUI.Open/Close`, `OpenOverlay` (engine) | Script UI layers and engine overlays |
 | `Audio.Instance` | `AudioManager.Initialize` | Static audio facade |
 | `ScriptBehaviour.Running` | `ScriptBehaviourComponent` around each call | Records which script owns a `GameUI` layer |
 | `SteamService.Current` | `Engine` ctor | Steam session for scripts |
@@ -385,20 +390,28 @@ ScriptBehaviourComponent  (component "script-behaviour"; persisted: ScriptId, Fi
 - Script transform helpers use Z-up conventions: Forward = local +Y, Up = local +Z.
 - Timers, tweens and coroutines (`Engine/Scripting/ScriptBehaviour.Timing.cs`, `ScriptTimer.cs`, `ScriptCoroutine.cs`, `Ease.cs`) are per script instance, with no global scheduler. They advance only inside `Tick`, after `Update`, so they follow the script's own update rules: they get no frames while paused unless the script has `UpdateWhilePaused`, and even then game-time ones get a delta of 0 (only `realtime` ones count). A callback that throws escapes `Tick`, so `ScriptBehaviourComponent` marks the script faulted, the same as a throwing `Update`. Timers and coroutines started during the pass run from the next frame. `StartCoroutine` runs the first step at once, inside the caller (`Start`, `Update` or a hook). `ScriptMath`/`ScriptRandom` are static helpers with no engine state; `ScriptRandom` is one shared `System.Random`, game thread only.
 
-### 7.5 Scene loads during Play (`GameFlow` → `ApplyPendingSceneLoad`)
+### 7.5 Scene loads during Play (`GameFlow` → `SceneLoadOperation` → `ActivateLoadedScene`)
 
-`GameFlow.LoadScene(...)` only **queues** a path and a `carryPersistent` flag. The load happens at the start of the next `MainSceneLogic.Update`:
+Every load is a `SceneLoadOperation` (`Engine/Logic/SceneLoadOperation.cs`) in `GameFlow.CurrentLoad`; one at a time, a new request cancels one that hasn't swapped (or ends one that is finishing). `GameFlow.UpdateLoad(assets, ActivateLoadedScene)` runs at the start of each `MainSceneLogic.Update` and advances it:
 
-1. Unpause, then `SceneSerialization.LoadFromFile`.
-2. If playing:
-   - In Anvil, remember `_editScene` (the scene being edited) the first time.
-   - If carrying, `_persistent.TakeFrom(ActiveScene)` removes the persistent objects first and unregisters them from the mesh library.
-   - `PlayMode.Stop()` stops the old scene and restores its transforms. `_switchingScene` keeps `OnPlayModeChanged` from treating this as a real Stop.
-   - `_persistent.PrepareArrival(loaded)` drops the new scene's own copies of carried objects and re-IDs any collisions.
-3. `SceneManager.SetActiveScene(loaded)` (section 6.2).
-4. If playing: `_persistent.Arrive`, register the carried objects in the library, `PlayMode.Play(carried)` (carried objects keep running instead of restarting), then `NotifySceneLoaded` (`ScriptBehaviour.OnSceneLoaded`).
+- **Blocking** (`LoadScene`, `ReloadScene`, `LoadNextScene`): the first tick does `SceneSerialization.ReadFile` + every `SceneBuilder.Step` + the swap. Same frame as before the async loader existed.
+- **Async** (`LoadSceneAsync`): the constructor starts `Task.Run(ReadFile)` (worker thread: streams the `.obsc` and `.probes` with byte progress and parses the `SceneDocument`; it touches no engine object). Once the task completes, a tick creates the `SceneBuilder` and each tick runs `Step()` until `GameFlow.LoadBudgetMs` is used (one gameobject/light/decal per step, then a final step for camera, environment, baked probes and ID reseed). The built scene then waits (`WaitingForActivation`) at least one tick, longer while `AllowSceneActivation` is false or the loading screen isn't fully opaque (`LoadingScreen.IsCovering`).
+- **Swap** (`ActivateLoadedScene`, both kinds):
+  1. Unpause.
+  2. If playing:
+     - In Anvil, remember `_editScene` (the scene being edited) the first time.
+     - If carrying, `_persistent.TakeFrom(ActiveScene)` removes the persistent objects first and unregisters them from the mesh library.
+     - `PlayMode.Stop()` stops the old scene and restores its transforms. `_switchingScene` keeps `OnPlayModeChanged` from treating this as a real Stop.
+     - `_persistent.PrepareArrival(loaded)` drops the new scene's own copies of carried objects and re-IDs any collisions.
+  3. `SceneManager.SetActiveScene(loaded)` (section 6.2).
+  4. If playing: `_persistent.Arrive`, register the carried objects in the library, `PlayMode.Play(carried)` (carried objects keep running instead of restarting), then `NotifySceneLoaded` (`ScriptBehaviour.OnSceneLoaded`).
+- **Finishing**: `FinishFrames` (3) more ticks, so the new scene's first frames (physics bodies, shadow/environment maps, its UI's first layout) happen under the loading screen. Then `Done`: `GameFlow.LastLoad` and `SceneLoaded`.
+- Each tick measures the previous whole frame with a `Stopwatch` (`LongestFrameMs`), plus `ReadMs`, `BuildMs`, `ActivationMs`. Measured in the real engine on the 1,550-object arena: read 4-6 ms (worker), build 3 ms over many frames, swap 19-42 ms; the worst frame is the one after the swap, in `GameUI.Update` (the new scene's HUD first layout, 70-90 ms) and the first physics step (BEPU creating the bodies, 190 ms the first time, 22 ms after).
+- Cancel (`Cancel()`, `CancelLoad()`, a newer load, Stop, or an editor Open Scene through `OnSceneChanged` with `_switchingScene` false → `GameFlow.AbortLoad`) is only possible before the swap; the half-built scene is dropped (nothing was registered yet).
+- `LoadingScreen` (`Engine/Logic/LoadingScreen.cs`) opens `GameFlow.LoadingScreenDocument` with `GameUI.OpenOverlay` (overlay layers draw after script layers and `CloseAll` skips them), fades in over 0.15 s, fills the ids from the operation each tick, keeps a failed load on screen for 2.5 s and fades out when the load ends. Without a graphics device (tests) it doesn't open and loads don't wait for it.
+- `ScriptCoroutine` accepts a `SceneLoadOperation` as a yield (waits until it is ready or ended).
 
-On Anvil's Stop, `OnPlayModeChanged(Edit)` closes the UI, unpauses, drops any pending load, raises `PlayStopped`, sends carried objects back home, and swaps back to `_editScene`. Before that it calls `VoxelSystem.OnPlayStopped()`: a voxel world that scripts edited (`EditCount > 0`) is regenerated on the next update. The environment snapshot restore also undoes voxel setting changes, which regenerates the world too.
+On Anvil's Stop, `OnPlayModeChanged(Edit)` closes the script UI, unpauses, cancels any load in progress and hides the loading screen (`GameFlow.AbortLoad`), raises `PlayStopped`, sends carried objects back home, and swaps back to `_editScene`. Before that it calls `VoxelSystem.OnPlayStopped()`: a voxel world that scripts edited (`EditCount > 0`) is regenerated on the next update. The environment snapshot restore also undoes voxel setting changes, which regenerates the world too.
 
 ---
 
@@ -600,6 +613,7 @@ Two things depend on the material:
   - Model and texture keys are resolved by **reflection over the public fields of `Assets`**.
   - A legacy entity-level `Physics` record becomes a `PhysicsComponent` on load.
   - Baked probes go into a sibling `.probes` file.
+  - Loading is two halves: `ReadFile` (I/O + JSON + probes, thread-safe, returns a `SceneFile`) and `SceneBuilder` (game thread, one object per `Step`). `LoadFromFile` runs both at once; `SceneLoadOperation` spreads them out.
 - **`GameInfo.ResolveContentFile`** prefers the *source* `Engine/Content` copy when it exists, which is the dev case, and falls back to `<exe>/Content`. That is why scenes, UI and audio edits show up without a rebuild during development.
 
 ---
@@ -666,7 +680,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 - **`GameUI`** (static):
   - `Open("UI/Name")` creates a `Vista.UIManager` layer, loading `.xml` + `.css` through `ResolveContentFile`. It records the owning script's gameobject.
   - `Update` hot-reloads changed files every 0.5 s, then lays out each layer, scaled from a 1080-high canvas.
-  - `Draw` draws the layers in the order they were opened.
+  - `Draw` draws the layers in the order they were opened, then the engine overlays (`OpenOverlay`: the loading screen), which `CloseAll` leaves open.
   - Vista has **no input handling**. Scripts poll `GameInput` and hit-test with `GameUI.ElementAt` / `UIManager.ElementAt`.
 - **Audio** (`AudioManager`, FMOD Core through FmodForFoxes):
   - `SystemUpdate` runs every frame. `UpdateListener(camera)` moves the listener and the 3D emitters.
@@ -705,7 +719,8 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Make a new object visible to the renderer | `BasicEntity.RegisterInLibrary` / `Dispose(library)` |
 | Add per-object behaviour | a `GameComponent` (see CLAUDE.md "Adding a Gameobject Component") or a script + `ScriptRegistry` |
 | Change Play/Stop semantics | `PlayModeController.Play/Stop/UpdateScripts`, `MainSceneLogic.OnPlayModeChanged` |
-| Change scene switching | `GameFlow`, `MainSceneLogic.ApplyPendingSceneLoad`, `OnSceneChanged`, `PersistentGameObjects` |
+| Change scene switching | `GameFlow`, `SceneLoadOperation`, `MainSceneLogic.ActivateLoadedScene`, `OnSceneChanged`, `PersistentGameObjects` |
+| Change the loading screen | `Content/UI/LoadingScreen.xml`/`.css` (ids listed in `LoadingScreen.cs`), or `GameFlow.LoadingScreenDocument` |
 | Change physics sync | `ScenePhysics.Update/Reconcile/PushPose/PullPose`, `PhysicsSystem` |
 | Expose engine state to Anvil | `IEditorBridge` + `EditorBridge.BuildSnapshot` + `BridgeReconciler` + view model + XAML |
 | Change scene file format | `SceneSerialization` DTOs (bump `CurrentVersion`, keep loading v1–v2) |

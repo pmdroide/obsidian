@@ -1,0 +1,29 @@
+<!--
+  Engine loading screen (Vista), shown by GameFlow.LoadSceneAsync(..., loadingScreen: true).
+  Driven by Engine/Logic/LoadingScreen.cs, which fades #root and fills #scene, #status, #fill (width),
+  #sweep (slides along the track), #percent, #detail and #time with the load's real numbers.
+  #root gets .ready while a load waits for AllowSceneActivation and .failed after an error.
+  Replace it with GameFlow.LoadingScreenDocument; keep these ids. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="backdrop"></div>
+    <div id="glow"></div>
+
+    <div id="block">
+        <div id="eyebrow">Loading</div>
+        <div id="scene"></div>
+        <div id="status"></div>
+        <div id="percent"></div>
+
+        <div id="track">
+            <div id="fill"></div>
+            <div id="sweep"></div>
+        </div>
+
+        <div id="detail"></div>
+        <div id="time"></div>
+    </div>
+
+</div>

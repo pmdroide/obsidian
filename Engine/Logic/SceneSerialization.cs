@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using Engine.Editor;
 using Engine.Components;
 using Engine.Entities;
@@ -64,9 +65,25 @@ namespace Engine.Logic
         public static Scene LoadFromFile(string path, Assets assets, GraphicsDevice graphicsDevice = null)
         {
             if (assets == null) throw new ArgumentNullException(nameof(assets));
+            var builder = new SceneBuilder(ReadFile(path), assets);
+            while (builder.Step()) { }
+            return builder.Scene;
+        }
+
+        /// <summary>
+        /// Reads and parses a .obsc file and its baked probes without creating any engine object, so it can run
+        /// on a worker thread (<see cref="SceneLoadOperation"/>). <paramref name="progress"/> gets (bytes read,
+        /// total bytes) as the files stream in. <see cref="SceneBuilder"/> turns the result into a <see cref="Scene"/>.
+        /// </summary>
+        public static SceneFile ReadFile(string path, Action<long, long> progress = null, CancellationToken cancel = default)
+        {
             if (!File.Exists(path)) throw new FileNotFoundException("Scene file not found", path);
 
-            string json = File.ReadAllText(path);
+            long sceneBytes = new FileInfo(path).Length;
+            // Bakes are saved as "<scene>.probes" (SaveBakedProbes), so the total is known before the JSON names it.
+            string expectedProbes = Path.ChangeExtension(path, ".probes");
+            long expectedTotal = sceneBytes + (File.Exists(expectedProbes) ? new FileInfo(expectedProbes).Length : 0);
+            byte[] json = ReadAllBytes(path, cancel, read => progress?.Invoke(read, expectedTotal));
             SceneDocument doc;
             try { doc = JsonSerializer.Deserialize<SceneDocument>(json, Options); }
             catch (JsonException ex) { throw new InvalidDataException("Invalid .obsc JSON: " + ex.Message, ex); }
@@ -74,46 +91,129 @@ namespace Engine.Logic
             if (doc.Version < 1 || doc.Version > CurrentVersion)
                 throw new InvalidDataException($"Unsupported .obsc version {doc.Version} (this build expects {CurrentVersion})");
 
-            Scene scene = new Scene
+            var file = new SceneFile { Path = path, Document = doc, Bytes = sceneBytes };
+            if (doc.Lighting != null)
             {
-                Name = Path.GetFileNameWithoutExtension(path),
-                FilePath = path,
-                IsDirty = false,
-            };
+                // The probe file is usually the bulk of a baked scene, so it counts towards the progress too.
+                string probePath = ProbePath(doc.Lighting.ProbeDataFile, path);
+                long probeBytes = probePath != null && File.Exists(probePath) ? new FileInfo(probePath).Length : 0;
+                cancel.ThrowIfCancellationRequested();
+                file.BakedProbes = LoadBakedProbes(doc.Lighting.ProbeDataFile, path);
+                file.Bytes += probeBytes;
+            }
+            progress?.Invoke(file.Bytes, file.Bytes);
+            return file;
+        }
 
-            // Models/textures by name via reflection. Same lookup as EditorBridge.
-            var modelLookup = BuildAssetLookup<ModelDefinition>(assets);
-            var textureLookup = BuildAssetLookup<Texture2D>(assets);
-            var materialLookup = BuildAssetLookup<MaterialEffect>(assets);
+        private static byte[] ReadAllBytes(string path, CancellationToken cancel, Action<long> progress)
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+            long length = stream.Length;
+            var buffer = new byte[length];
+            int read = 0;
+            while (read < length)
+            {
+                cancel.ThrowIfCancellationRequested();
+                int n = stream.Read(buffer, read, (int)Math.Min(1 << 16, length - read));
+                if (n <= 0) throw new EndOfStreamException($"'{path}' ended early");
+                read += n;
+                progress?.Invoke(read);
+            }
+            return buffer;
+        }
 
+        /// <summary>A parsed scene file (see <see cref="ReadFile"/>): plain data, nothing in the engine refers to it yet.</summary>
+        public sealed class SceneFile
+        {
+            public string Path;
+            public SceneDocument Document;
+            public ProbeVolumeData BakedProbes;
+            /// <summary>Size of the .obsc plus its .probes file.</summary>
+            public long Bytes;
+        }
+
+        /// <summary>
+        /// Builds a <see cref="Scene"/> from a <see cref="SceneFile"/> one object per <see cref="Step"/>, so a load can be
+        /// spread over several frames (<see cref="SceneLoadOperation"/>). Runs on the game thread (gameobject IDs,
+        /// components). The scene isn't live until it is passed to <see cref="SceneManager.SetActiveScene"/>.
+        /// </summary>
+        public sealed class SceneBuilder
+        {
+            private readonly SceneFile _file;
+            private readonly Assets _assets;
+            private readonly List<Action> _steps = new();
+            private readonly Dictionary<string, ModelDefinition> _models;
+            private readonly Dictionary<string, Texture2D> _textures;
+            private readonly Dictionary<string, MaterialEffect> _materials;
             // Persisted IDs are what selection, picking and the editor bridge address objects by.
             // A missing or duplicate ID gets a fresh one once the generator is past every saved ID.
-            int maxId = 0;
-            var usedIds = new HashSet<int>();
-            var needsNewId = new List<TransformableObject>();
-            void ClaimId(TransformableObject obj, int persistedId)
+            private int _maxId;
+            private readonly HashSet<int> _usedIds = new();
+            private readonly List<TransformableObject> _needsNewId = new();
+            private int _next;
+
+            public Scene Scene { get; }
+            /// <summary>One step per gameobject, light and decal, plus a last one (camera, environment, IDs).</summary>
+            public int TotalSteps => _steps.Count;
+            public int StepsDone => _next;
+            public bool IsDone => _next >= _steps.Count;
+
+            public SceneBuilder(SceneFile file, Assets assets)
             {
-                if (persistedId > 0 && usedIds.Add(persistedId))
+                _file = file ?? throw new ArgumentNullException(nameof(file));
+                _assets = assets ?? throw new ArgumentNullException(nameof(assets));
+                Scene = new Scene
                 {
-                    obj.Id = persistedId;
-                    maxId = Math.Max(maxId, persistedId);
-                }
-                else needsNewId.Add(obj);
+                    Name = System.IO.Path.GetFileNameWithoutExtension(file.Path),
+                    FilePath = file.Path,
+                    IsDirty = false,
+                };
+
+                // Models/textures by name via reflection. Same lookup as EditorBridge.
+                _models = BuildAssetLookup<ModelDefinition>(assets);
+                _textures = BuildAssetLookup<Texture2D>(assets);
+                _materials = BuildAssetLookup<MaterialEffect>(assets);
+
+                SceneDocument doc = file.Document;
+                foreach (var rec in doc.Entities) _steps.Add(() => AddEntity(rec, doc.Version));
+                foreach (var rec in doc.PointLights) _steps.Add(() => AddPointLight(rec));
+                foreach (var rec in doc.SpotLights ?? new List<SpotLightRecord>()) _steps.Add(() => AddSpotLight(rec));
+                foreach (var rec in doc.DirectionalLights) _steps.Add(() => AddDirectionalLight(rec));
+                foreach (var rec in doc.Decals) _steps.Add(() => AddDecal(rec));
+                _steps.Add(Finish);
             }
 
-            foreach (var rec in doc.Entities)
+            /// <summary>Builds the next object. False once the scene is complete.</summary>
+            public bool Step()
             {
-                if (string.IsNullOrEmpty(rec.ModelKey) || !modelLookup.TryGetValue(rec.ModelKey, out var model))
+                if (IsDone) return false;
+                _steps[_next++]();
+                return !IsDone;
+            }
+
+            private void ClaimId(TransformableObject obj, int persistedId)
+            {
+                if (persistedId > 0 && _usedIds.Add(persistedId))
+                {
+                    obj.Id = persistedId;
+                    _maxId = Math.Max(_maxId, persistedId);
+                }
+                else _needsNewId.Add(obj);
+            }
+
+            private void AddEntity(BasicEntityRecord rec, int version)
+            {
+                if (string.IsNullOrEmpty(rec.ModelKey) || !_models.TryGetValue(rec.ModelKey, out var model))
                 {
                     EditorBridge.Log($"LoadScene: skipping entity '{rec.Name}' — unknown ModelKey '{rec.ModelKey}'");
-                    continue;
+                    return;
                 }
-                MaterialEffect material = ResolveMaterial(rec.Material, materialLookup, textureLookup, assets);
+                MaterialEffect material = ResolveMaterial(rec.Material, _materials, _textures, _assets);
                 Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
                 var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
                 be.Name = rec.Name ?? be.Name;
                 // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
-                be.IsEnabled = rec.IsEnabled || doc.Version < 2;
+                be.IsEnabled = rec.IsEnabled || version < 2;
                 be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
                 be.Persistent = rec.Persistent;
                 foreach (var record in rec.Components ?? new())
@@ -128,10 +228,10 @@ namespace Engine.Logic
                 if (rec.Physics != null && rec.Physics.Type != PhysicsBodyType.None && be.Physics == null)
                     be.AddComponent(new PhysicsComponent { BodyType = rec.Physics.Type, Mass = rec.Physics.Mass });
                 ClaimId(be, rec.Id);
-                scene.BasicEntities.Add(be);
+                Scene.BasicEntities.Add(be);
             }
 
-            foreach (var rec in doc.PointLights)
+            private void AddPointLight(PointLightRecord rec)
             {
                 var pl = new PointLight(rec.Position, rec.Radius, rec.Color, rec.Intensity,
                     castShadows: rec.CastShadows, isVolumetric: rec.IsVolumetric,
@@ -140,10 +240,10 @@ namespace Engine.Logic
                 pl.Name = rec.Name ?? pl.Name;
                 pl.IsEnabled = rec.IsEnabled;
                 ClaimId(pl, rec.Id);
-                scene.PointLights.Add(pl);
+                Scene.PointLights.Add(pl);
             }
 
-            foreach (var rec in doc.SpotLights ?? new List<SpotLightRecord>())
+            private void AddSpotLight(SpotLightRecord rec)
             {
                 var sl = new SpotLight(rec.Position, rec.Radius, rec.Color, rec.Intensity,
                     Matrix.CreateFromQuaternion(rec.Rotation), rec.SpotAngle, rec.InnerSpotAngle,
@@ -153,10 +253,10 @@ namespace Engine.Logic
                 sl.Name = rec.Name ?? sl.Name;
                 sl.IsEnabled = rec.IsEnabled;
                 ClaimId(sl, rec.Id);
-                scene.PointLights.Add(sl);
+                Scene.PointLights.Add(sl);
             }
 
-            foreach (var rec in doc.DirectionalLights)
+            private void AddDirectionalLight(DirectionalLightRecord rec)
             {
                 var dl = new DirectionalLight(rec.Color, rec.Intensity, rec.Direction, rec.Position,
                     castShadows: rec.CastShadows, shadowSize: rec.ShadowSize, shadowDepth: rec.ShadowDepth,
@@ -166,63 +266,67 @@ namespace Engine.Logic
                 dl.Name = rec.Name ?? dl.Name;
                 dl.IsEnabled = rec.IsEnabled;
                 ClaimId(dl, rec.Id);
-                scene.DirectionalLights.Add(dl);
+                Scene.DirectionalLights.Add(dl);
             }
 
-            foreach (var rec in doc.Decals)
+            private void AddDecal(DecalRecord rec)
             {
                 Texture2D tex = null;
-                if (!string.IsNullOrEmpty(rec.TextureKey)) textureLookup.TryGetValue(rec.TextureKey, out tex);
+                if (!string.IsNullOrEmpty(rec.TextureKey)) _textures.TryGetValue(rec.TextureKey, out tex);
                 if (tex == null)
                 {
                     EditorBridge.Log($"LoadScene: skipping decal '{rec.Name}' — unknown TextureKey '{rec.TextureKey}'");
-                    continue;
+                    return;
                 }
                 Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
                 var dc = new Decal(tex, rec.Position, rot, rec.Scale);
                 dc.Name = rec.Name ?? dc.Name;
                 dc.IsEnabled = rec.IsEnabled;
                 ClaimId(dc, rec.Id);
-                scene.Decals.Add(dc);
+                Scene.Decals.Add(dc);
             }
 
-            if (doc.EnvironmentSample != null)
+            private void Finish()
             {
-                scene.EnvironmentSample = new EnvironmentSample(doc.EnvironmentSample.Position);
-                scene.EnvironmentSample.SpecularStrength = doc.EnvironmentSample.SpecularStrength;
-                scene.EnvironmentSample.DiffuseStrength = doc.EnvironmentSample.DiffuseStrength;
-                scene.EnvironmentSample.AutoUpdate = doc.EnvironmentSample.AutoUpdate;
-                scene.EnvironmentSample.UseSDFAO = doc.EnvironmentSample.UseSDFAO;
-            }
-
-            if (doc.MainCamera != null)
-            {
-                scene.MainCamera = new Camera(doc.MainCamera.Position, doc.MainCamera.Position + doc.MainCamera.Forward);
-                scene.MainCamera.FieldOfView = doc.MainCamera.FieldOfView;
-                foreach (var record in doc.MainCamera.Components ?? new())
+                SceneDocument doc = _file.Document;
+                Scene scene = Scene;
+                if (doc.EnvironmentSample != null)
                 {
-                    var component = ComponentRegistry.Restore(record);
-                    if (component == null || !scene.MainCamera.AddComponent(component))
-                        EditorBridge.Log($"LoadScene: main camera can't use component '{record.Type}'");
+                    scene.EnvironmentSample = new EnvironmentSample(doc.EnvironmentSample.Position);
+                    scene.EnvironmentSample.SpecularStrength = doc.EnvironmentSample.SpecularStrength;
+                    scene.EnvironmentSample.DiffuseStrength = doc.EnvironmentSample.DiffuseStrength;
+                    scene.EnvironmentSample.AutoUpdate = doc.EnvironmentSample.AutoUpdate;
+                    scene.EnvironmentSample.UseSDFAO = doc.EnvironmentSample.UseSDFAO;
                 }
+
+                if (doc.MainCamera != null)
+                {
+                    scene.MainCamera = new Camera(doc.MainCamera.Position, doc.MainCamera.Position + doc.MainCamera.Forward);
+                    scene.MainCamera.FieldOfView = doc.MainCamera.FieldOfView;
+                    foreach (var record in doc.MainCamera.Components ?? new())
+                    {
+                        var component = ComponentRegistry.Restore(record);
+                        if (component == null || !scene.MainCamera.AddComponent(component))
+                            EditorBridge.Log($"LoadScene: main camera can't use component '{record.Type}'");
+                    }
+                }
+
+                if (doc.Lighting != null)
+                {
+                    scene.Lighting = doc.Lighting.Settings ?? new LightingSettings();
+                    scene.BakedProbes = _file.BakedProbes;
+                }
+
+                // Advance the global ID generator so newly-added objects can't collide.
+                IdGenerator.Reseed(_maxId);
+                // The probe is not saved with an ID, so its constructor ID may equal a loaded one.
+                if (scene.EnvironmentSample != null) _needsNewId.Add(scene.EnvironmentSample);
+                foreach (var obj in _needsNewId) obj.Id = IdGenerator.GetNewId();
+                scene.Environment = doc.Environment ?? new EnvironmentSettings();
+                scene.Environment.Normalize();
+
+                EditorBridge.Log($"SceneSerialization.LoadFromFile: '{_file.Path}' loaded ({scene.BasicEntities.Count}/{scene.PointLights.Count}/{scene.DirectionalLights.Count}/{scene.Decals.Count})");
             }
-
-            if (doc.Lighting != null)
-            {
-                scene.Lighting = doc.Lighting.Settings ?? new LightingSettings();
-                scene.BakedProbes = LoadBakedProbes(doc.Lighting.ProbeDataFile, path);
-            }
-
-            // Advance the global ID generator so newly-added objects can't collide.
-            IdGenerator.Reseed(maxId);
-            // The probe is not saved with an ID, so its constructor ID may equal a loaded one.
-            if (scene.EnvironmentSample != null) needsNewId.Add(scene.EnvironmentSample);
-            foreach (var obj in needsNewId) obj.Id = IdGenerator.GetNewId();
-            scene.Environment = doc.Environment ?? new EnvironmentSettings();
-            scene.Environment.Normalize();
-
-            EditorBridge.Log($"SceneSerialization.LoadFromFile: '{path}' loaded ({scene.BasicEntities.Count}/{scene.PointLights.Count}/{scene.DirectionalLights.Count}/{scene.Decals.Count})");
-            return scene;
         }
 
         // Baked probes live in "<scene>.probes" next to the .obsc (binary, can be large).
@@ -236,10 +340,13 @@ namespace Engine.Logic
             return Path.GetFileName(probePath);
         }
 
+        private static string ProbePath(string fileName, string scenePath) =>
+            string.IsNullOrEmpty(fileName) ? null : Path.Combine(Path.GetDirectoryName(scenePath) ?? "", Path.GetFileName(fileName));
+
         private static ProbeVolumeData LoadBakedProbes(string fileName, string scenePath)
         {
-            if (string.IsNullOrEmpty(fileName)) return null;
-            string probePath = Path.Combine(Path.GetDirectoryName(scenePath) ?? "", Path.GetFileName(fileName));
+            string probePath = ProbePath(fileName, scenePath);
+            if (probePath == null) return null;
             if (!File.Exists(probePath))
             {
                 EditorBridge.Log($"LoadScene: baked lighting '{probePath}' not found — rebake to restore it");

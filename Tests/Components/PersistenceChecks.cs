@@ -382,8 +382,8 @@ internal static class PersistenceChecks
         GameFlow.SceneLogic = logic;
     }
 
-    internal static void ApplyPending(MainSceneLogic logic) =>
-        typeof(MainSceneLogic).GetMethod("ApplyPendingSceneLoad", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(logic, null);
+    // A queued GameFlow.LoadScene runs whole in the scene-load step of the next frame.
+    internal static void ApplyPending(MainSceneLogic logic) => GameFlowChecks.Frame(logic);
 
     private static void Drain(EditorBridge bridge)
     {

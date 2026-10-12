@@ -13,6 +13,8 @@
     "Scenes/VoxelTest.obsc",
     "Scenes/ParticleTest.obsc",
     "Scenes/SmokeTest.obsc",
-    "Scenes/WaterTest.obsc"
+    "Scenes/WaterTest.obsc",
+    "Scenes/SceneLoadingTest.obsc",
+    "Scenes/SceneLoadingArena.obsc"
   ]
 }

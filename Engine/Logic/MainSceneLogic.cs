@@ -165,22 +165,15 @@ namespace Engine.Logic
             return true;
         }
 
-        /// <summary>Applies a scene load queued with <see cref="GameFlow.LoadScene(int, bool)"/>, keeping Play running.</summary>
-        private void ApplyPendingSceneLoad()
+        /// <summary>
+        /// Swaps in a scene built by a <see cref="SceneLoadOperation"/> (<see cref="GameFlow.LoadScene(int, bool)"/> or
+        /// <see cref="GameFlow.LoadSceneAsync(int, bool, bool)"/>), keeping Play running.
+        /// </summary>
+        private bool ActivateLoadedScene(SceneLoadOperation load, Scene loaded)
         {
-            string path = GameFlow.TakePendingScene();
-            bool carry = GameFlow.TakePendingCarriesPersistent();
-            if (path == null) return;
+            bool carry = load.CarryPersistent;
             // A paused game resumes in the new scene.
             GameFlow.Paused = false;
-
-            Scene loaded;
-            try { loaded = SceneSerialization.LoadFromFile(path, _assets); }
-            catch (Exception ex)
-            {
-                EditorBridge.Log($"GameFlow: couldn't load '{path}': {ex.Message}");
-                return;
-            }
 
             bool playing = PlayMode.Mode == GameMode.Play;
             _switchingScene = true;
@@ -212,6 +205,7 @@ namespace Engine.Logic
                 }
             }
             finally { _switchingScene = false; }
+            return ReferenceEquals(ActiveScene, loaded);
         }
 
         /// <summary>
@@ -238,7 +232,7 @@ namespace Engine.Logic
             GameUI.CloseAll();
             GameFlow.EscapeQuits = true;
             GameFlow.Paused = false;
-            GameFlow.TakePendingScene();
+            GameFlow.AbortLoad();
             GameFlow.RaisePlayStopped();
 
             Scene editScene = _editScene;
@@ -269,6 +263,7 @@ namespace Engine.Logic
             {
                 _editScene = null;
                 _persistent.Clear();
+                GameFlow.AbortLoad();
             }
             IReadOnlyCollection<BasicEntity> carried = _switchingScene ? _persistent.Entities : null;
 
@@ -381,8 +376,9 @@ namespace Engine.Logic
         {
             if (!isActive) return;
 
-            // Scene switches requested by scripts last frame (GameFlow.LoadScene).
-            ApplyPendingSceneLoad();
+            // Scene loads requested by scripts (GameFlow.LoadScene / LoadSceneAsync): a blocking one runs
+            // whole here, an async one advances a step (worker read, a time slice of building, the swap).
+            GameFlow.UpdateLoad(_assets, ActivateLoadedScene);
 
             //Upd
             Input.Update(gameTime, Camera);

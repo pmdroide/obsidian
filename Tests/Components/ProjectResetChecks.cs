@@ -19,8 +19,10 @@ internal static class ProjectResetChecks
     {
         string root = GameInfo.SourceContentRoot;
         List<string> plan = ProjectReset.Plan(root);
-        Check(plan.Contains("Scenes") && plan.Contains("UI") && plan.Contains("GameObjects/Textures"),
+        Check(plan.Contains("Scenes") && plan.Contains("UI/MainMenu.xml") && plan.Contains("GameObjects/Textures"),
             "Delete Project removes the scenes, UI documents and sample textures");
+        Check(!plan.Contains("UI") && !plan.Any(p => p.StartsWith("UI/LoadingScreen", StringComparison.OrdinalIgnoreCase)),
+            "the engine's loading screen document is kept");
         Check(plan.All(p => !ProjectReset.IsKept(p)) &&
               !plan.Any(p => p.StartsWith("Shaders", StringComparison.OrdinalIgnoreCase) ||
                              p.StartsWith("Fonts", StringComparison.OrdinalIgnoreCase) ||
@@ -52,6 +54,8 @@ internal static class ProjectResetChecks
             Write(root, "GameObjects/Textures/stone.png");
             Write(root, "Scenes/Level.obsc");
             Write(root, "UI/Menu.xml");
+            Write(root, "UI/LoadingScreen.xml");
+            Write(root, "UI/LoadingScreen.css");
             Write(root, "Content/userfile.png");   // a user folder named like a built-output root
             Write(root, "readme.txt");
             Write(root, "System/Editor/arrow.fbx");
@@ -84,7 +88,7 @@ internal static class ProjectResetChecks
             });
 
             Check(result.Succeeded && result.Removed.Count == deletedThroughCallback.Count &&
-                  result.Removed.SequenceEqual(new[] { "Content", "GameObjects/Models", "GameObjects/Textures", "readme.txt", "Scenes", "UI" }),
+                  result.Removed.SequenceEqual(new[] { "Content", "GameObjects/Models", "GameObjects/Textures", "readme.txt", "Scenes", "UI/Menu.xml" }),
                 "Delete Project removes every top-most project item through the delete callback (Recycle Bin in Anvil)");
             Check(!File.Exists(Path.Combine(root, "GameObjects", "Models", "Rock", "rock.fbx")) &&
                   !File.Exists(Path.Combine(root, "UI", "Menu.xml")) &&
@@ -93,8 +97,9 @@ internal static class ProjectResetChecks
                 "project files are gone and an empty Scenes folder is left for the new scene");
             Check(File.Exists(Path.Combine(root, "Shaders", "a.fx")) && File.Exists(Path.Combine(root, "Scripts", "MyScript.cs")) &&
                   File.Exists(Path.Combine(root, "GameObjects", "Default", "cube.fbx")) && File.Exists(Path.Combine(root, "GameObjects", "sky.dds")) &&
-                  File.Exists(Path.Combine(root, "System", "Editor", "arrow.fbx")) && File.Exists(Path.Combine(root, "Fonts", "defaultFont.spritefont")),
-                "engine content, scripts and editor gizmos survive Delete Project");
+                  File.Exists(Path.Combine(root, "System", "Editor", "arrow.fbx")) && File.Exists(Path.Combine(root, "Fonts", "defaultFont.spritefont")) &&
+                  File.Exists(Path.Combine(root, "UI", "LoadingScreen.xml")) && File.Exists(Path.Combine(root, "UI", "LoadingScreen.css")),
+                "engine content, scripts, editor gizmos and the loading screen survive Delete Project");
 
             string mgcb = File.ReadAllText(Path.Combine(root, "Content.mgcb"));
             Check(mgcb.Contains("#begin Shaders/a.fx") && mgcb.Contains("#begin GameObjects/Default/cube.fbx") &&

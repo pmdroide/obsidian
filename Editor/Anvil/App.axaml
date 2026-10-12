@@ -12,26 +12,27 @@
         <ResourceDictionary>
             <FontFamily x:Key="AnvilFontFamily">avares://Avalonia.Fonts.Inter/Assets#Inter, Segoe UI, system-ui, sans-serif</FontFamily>
 
-            <SolidColorBrush x:Key="AnvilWindowBackgroundBrush"   Color="#13131A" />
-            <SolidColorBrush x:Key="AnvilTitleBarBackgroundBrush" Color="#0F0F17" />
-            <SolidColorBrush x:Key="AnvilPanelBackgroundBrush"    Color="#1A1A24" />
-            <SolidColorBrush x:Key="AnvilToolRailBackgroundBrush" Color="#1A1A1F" />
-            <SolidColorBrush x:Key="AnvilViewportBackgroundBrush" Color="#16161E" />
-            <SolidColorBrush x:Key="AnvilViewportGridBrush"       Color="#222230" />
-            <SolidColorBrush x:Key="AnvilBorderBrush"             Color="#2A2A35" />
-            <SolidColorBrush x:Key="AnvilBorderStrongBrush"       Color="#2A2A3F" />
-            <SolidColorBrush x:Key="AnvilInputBackgroundBrush"    Color="#0F0F17" />
-            <SolidColorBrush x:Key="AnvilSubtleBandBrush"         Color="#16161E" />
-            <SolidColorBrush x:Key="AnvilHoverBackgroundBrush"    Color="#22222F" />
-            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#4101CA" />
-            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#4300D4" />
-            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#4000C9" />
+            <!-- Neutral dark greys (no hue); the brand purple is kept, muted, as the accent only. -->
+            <SolidColorBrush x:Key="AnvilWindowBackgroundBrush"   Color="#1B1B1B" />
+            <SolidColorBrush x:Key="AnvilTitleBarBackgroundBrush" Color="#151515" />
+            <SolidColorBrush x:Key="AnvilPanelBackgroundBrush"    Color="#232323" />
+            <SolidColorBrush x:Key="AnvilToolRailBackgroundBrush" Color="#1F1F1F" />
+            <SolidColorBrush x:Key="AnvilViewportBackgroundBrush" Color="#191919" />
+            <SolidColorBrush x:Key="AnvilViewportGridBrush"       Color="#2B2B2B" />
+            <SolidColorBrush x:Key="AnvilBorderBrush"             Color="#313131" />
+            <SolidColorBrush x:Key="AnvilBorderStrongBrush"       Color="#3B3B3B" />
+            <SolidColorBrush x:Key="AnvilInputBackgroundBrush"    Color="#161616" />
+            <SolidColorBrush x:Key="AnvilSubtleBandBrush"         Color="#1E1E1E" />
+            <SolidColorBrush x:Key="AnvilHoverBackgroundBrush"    Color="#2D2D2D" />
+            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#433D7A" />
+            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#5A4FCF" />
+            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#5045BD" />
             <SolidColorBrush x:Key="AnvilPlayBrush"               Color="#E06C5A" />
-            <SolidColorBrush x:Key="AnvilTextPrimaryBrush"        Color="#EEEEFF" />
-            <SolidColorBrush x:Key="AnvilTextSecondaryBrush"      Color="#CCCCEE" />
-            <SolidColorBrush x:Key="AnvilTextMutedBrush"          Color="#8888AA" />
-            <SolidColorBrush x:Key="AnvilTextSubtleBrush"         Color="#666688" />
-            <SolidColorBrush x:Key="AnvilTextDisabledBrush"       Color="#44445A" />
+            <SolidColorBrush x:Key="AnvilTextPrimaryBrush"        Color="#E8E8E8" />
+            <SolidColorBrush x:Key="AnvilTextSecondaryBrush"      Color="#C6C6C6" />
+            <SolidColorBrush x:Key="AnvilTextMutedBrush"          Color="#8E8E8E" />
+            <SolidColorBrush x:Key="AnvilTextSubtleBrush"         Color="#6A6A6A" />
+            <SolidColorBrush x:Key="AnvilTextDisabledBrush"       Color="#4A4A4A" />
 
             <SolidColorBrush x:Key="AnvilLogBrush"     Color="#5D9CF7" />
             <SolidColorBrush x:Key="AnvilWarnBrush"    Color="#E0C34E" />

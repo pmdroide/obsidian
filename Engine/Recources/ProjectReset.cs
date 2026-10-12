@@ -46,6 +46,8 @@ namespace Engine.Recources
             "GameObjects/error.png",        // fallback material texture
             "GameObjects/sky.dds",          // default sky
             "GameObjects/Player",           // Assets.PlayerYBot / PlayerWalking (built-in model keys)
+            "UI/LoadingScreen.xml",         // GameFlow.LoadSceneAsync's loading screen (LoadingScreen.cs)
+            "UI/LoadingScreen.css",
         };
 
         /// <summary>Project settings files deleted outright (their absence is the default).</summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Engine.Editor;
 using Engine.Recources;
 using Microsoft.Xna.Framework;
@@ -26,6 +27,8 @@ namespace Engine.Logic
             public UIManager UI;
             // The gameobject whose script opened it (null for the main camera or outside a script).
             public Entities.BasicEntity Owner;
+            // Engine overlays (the loading screen) draw above every script layer and survive CloseAll.
+            public bool Overlay;
             public string Xml, Css;
             public DateTime XmlTime, CssTime;
         }
@@ -51,7 +54,12 @@ namespace Engine.Logic
         /// <paramref name="referenceHeight"/> is the design height: the layer scales with the window
         /// (0 = one UI unit per pixel). Returns null (and logs) when the files can't be loaded.
         /// </summary>
-        public static UIManager Open(string path, float referenceHeight = 1080f)
+        public static UIManager Open(string path, float referenceHeight = 1080f) => Open(path, referenceHeight, overlay: false);
+
+        /// <summary>An engine layer (the loading screen): drawn over every script layer, left open by scene changes and Stop.</summary>
+        internal static UIManager OpenOverlay(string path) => Open(path, 1080f, overlay: true);
+
+        private static UIManager Open(string path, float referenceHeight, bool overlay)
         {
             if (_device == null)
             {
@@ -60,7 +68,8 @@ namespace Engine.Logic
             }
             var layer = new Layer
             {
-                Owner = Scripting.ScriptBehaviour.Running?.GameObject,
+                Owner = overlay ? null : Scripting.ScriptBehaviour.Running?.GameObject,
+                Overlay = overlay,
                 Xml = GameInfo.ResolveContentFile(path + ".xml"),
                 Css = GameInfo.ResolveContentFile(path + ".css"),
             };
@@ -98,6 +107,7 @@ namespace Engine.Logic
             for (int i = Layers.Count - 1; i >= 0; i--)
             {
                 Layer layer = Layers[i];
+                if (layer.Overlay) continue;
                 if (layer.Owner != null && keepOwnedBy?.Contains(layer.Owner) == true) continue;
                 layer.UI.Dispose();
                 Layers.RemoveAt(i);
@@ -107,11 +117,13 @@ namespace Engine.Logic
         /// <summary>Topmost layer element under a viewport position, or null (for "is the cursor over UI").</summary>
         public static UIElement ElementAt(Point viewportPosition)
         {
-            for (int i = Layers.Count - 1; i >= 0; i--)
-            {
-                UIElement hit = Layers[i].UI.ElementAt(viewportPosition);
-                if (hit != null && hit != Layers[i].UI.RootView) return hit;
-            }
+            for (int pass = 0; pass < 2; pass++)
+                for (int i = Layers.Count - 1; i >= 0; i--)
+                {
+                    if (Layers[i].Overlay != (pass == 0)) continue;
+                    UIElement hit = Layers[i].UI.ElementAt(viewportPosition);
+                    if (hit != null && hit != Layers[i].UI.RootView) return hit;
+                }
             return null;
         }
 
@@ -123,7 +135,8 @@ namespace Engine.Logic
 
         internal static void Draw(SpriteBatch spriteBatch)
         {
-            foreach (var layer in Layers)
+            // Script layers in the order they were opened, then the engine overlays on top.
+            foreach (var layer in Layers.Where(l => !l.Overlay).Concat(Layers.Where(l => l.Overlay)))
             {
                 spriteBatch.Begin(transformMatrix: layer.UI.Transform);
                 layer.UI.Draw(spriteBatch);

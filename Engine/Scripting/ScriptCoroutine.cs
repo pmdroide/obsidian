@@ -10,6 +10,7 @@ namespace Engine.Scripting;
 /// <item>a number or <see cref="WaitForSeconds"/>: that many seconds of game time (held while paused).</item>
 /// <item><see cref="WaitForSecondsRealtime"/>, <see cref="WaitForFrames"/>, <see cref="WaitUntil"/>, <see cref="WaitWhile"/>.</item>
 /// <item>a <see cref="ScriptTimer"/> (e.g. a tween) or another <see cref="ScriptCoroutine"/>: until it is done.</item>
+/// <item>a <see cref="Logic.SceneLoadOperation"/>: until the scene is built (ready to swap) or the load ended.</item>
 /// <item>an <see cref="IEnumerator"/>: runs it as a nested step, then carries on.</item>
 /// </list>
 /// It ends with its script (Stop, disable, removal); an exception inside it stops the script like one in Update.
@@ -84,6 +85,7 @@ public sealed class ScriptCoroutine
             case WaitWhile w: _wait = WaitKind.While; _condition = w.Condition; break;
             case ScriptTimer t: _wait = WaitKind.Timer; _timer = t; break;
             case ScriptCoroutine c when c != this: _wait = WaitKind.Coroutine; _other = c; break;
+            case Logic.SceneLoadOperation load: _wait = WaitKind.Until; _condition = () => load.IsReady || load.IsDone; break;
             default: _wait = WaitKind.Frames; _frames = 1; break; // null and anything else: next frame
         }
     }

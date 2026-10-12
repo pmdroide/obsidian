@@ -33,6 +33,24 @@
         <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding BuildCommand}" />
     </Window.KeyBindings>
 
+    <!-- Avalonia 12 draws its own title bar over the extended client area: hide its
+         fullscreen caption button and its title text (it overlapped the brand mark). -->
+    <Window.WindowDecorationsTheme>
+        <ControlTheme TargetType="WindowDrawnDecorations"
+                      BasedOn="{StaticResource {x:Type WindowDrawnDecorations}}">
+            <Style Selector="^ /template/ Button#PART_FullScreenButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="^ /template/ Button#PART_PopoverFullScreenButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <!-- The panel's IsVisible is a template binding (beats styles); hide its text instead. -->
+            <Style Selector="^ /template/ Panel#PART_TitleTextPanel > TextBlock">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </ControlTheme>
+    </Window.WindowDecorationsTheme>
+
     <Window.Resources>
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
         <conv:ColorToBrushConverter x:Key="ColorToBrush" />
@@ -432,7 +450,7 @@
 
                 <!-- render stats -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Center" Margin="0,0,160,0">
+                            VerticalAlignment="Center" Margin="0,0,136,0">
                     <Border CornerRadius="4" Padding="6,2"
                             Background="{StaticResource AnvilInputBackgroundBrush}">
                         <TextBlock Text="{Binding GraphicsApi}" FontSize="10"

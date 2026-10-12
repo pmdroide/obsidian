@@ -55,7 +55,7 @@ Before scene 0, the standalone game plays its intro videos back to back. Edit th
 | `PlayStopped` | Event raised when Play stops (not on scene switches). Use it to undo engine-wide changes made in Anvil. |
 
 Loads are **queued** and happen at the start of the next frame, so it is safe to call `LoadScene` from
-`Update`. During Play, the departing scene's scripts stop and the new scene's scripts start in the
+`Update`. `LoadScene` does the whole load in that frame; for big scenes use `LoadSceneAsync` (next section). During Play, the departing scene's scripts stop and the new scene's scripts start in the
 same frame; Play mode never ends.
 
 **Inside Anvil**, switching scenes during Play does not lose your work. The scene you were editing is
@@ -66,6 +66,90 @@ during Play replaces it for good, as before.
 unload: they move into the new scene with their scripts still running. A player keeps its state from
 level to level. See [Persistent_GameObjects.md](Persistent_GameObjects.md) and the PersistenceTest
 sample.
+
+## Loading screens and background loads: `GameFlow.LoadSceneAsync`
+
+`LoadScene` does the whole load in one frame: read the file, create every gameobject, swap. On a big
+scene that is a visible freeze. `LoadSceneAsync` spreads the same work out while the running scene
+keeps playing, and by default covers the switch with the engine's loading screen:
+
+```csharp
+// Loading screen, then the new scene (Play carries on in it).
+GameFlow.LoadSceneAsync("Level2");
+
+// No screen: this scene keeps running and you show the progress yourself.
+SceneLoadOperation load = GameFlow.LoadSceneAsync("Level2", loadingScreen: false);
+_ui.SetText("#progress", $"{load.Progress:P0}");
+
+// "Press any key to continue": built, then held until the script allows the swap.
+load.AllowSceneActivation = false;
+load.ReadyMessage = "Press Enter to continue";
+if (load.IsReady && GameInput.MenuConfirm) load.AllowSceneActivation = true;
+
+// In a coroutine: yield the load to wait until it is built (or ended).
+yield return GameFlow.LoadSceneAsync("Level2", loadingScreen: false);
+```
+
+| Member | What it does |
+| --- | --- |
+| `LoadSceneAsync(index or name, carryPersistent = true, loadingScreen = true)` | Starts a background load and returns its `SceneLoadOperation` (null when the scene doesn't exist). A new load cancels one that hasn't swapped yet. |
+| `CurrentLoad`, `IsLoading` | The load in progress (null when none). |
+| `LastLoad` | The last load that finished, blocking or not. Its timings say what it cost. |
+| `SceneLoaded` | Event raised when a load is Done, a few frames after the new scene started. |
+| `CancelLoad()` | Stops the load if the scenes haven't swapped yet. |
+| `LoadBudgetMs` | Milliseconds per frame spent creating gameobjects (default 4). |
+| `LoadingScreenDocument` | The loading screen's Vista document (default `UI/LoadingScreen`). |
+
+**What happens, frame by frame.** A `SceneLoadOperation` goes through these `Status` values:
+
+1. **Reading**: a worker thread streams the `.obsc` (and its baked `.probes`) and parses the JSON.
+   Nothing in the engine is touched.
+2. **Building**: on the game thread, gameobjects, lights and decals are created one at a time until
+   `LoadBudgetMs` is used up, then the frame goes on. They are created on the game thread because
+   gameobject IDs and components aren't thread-safe.
+3. **WaitingForActivation**: the scene is built. It swaps on the next frame, unless `AllowSceneActivation` is
+   false or the loading screen is still fading in (the swap is never seen).
+4. **Activating**: the swap itself, the same as a blocking load (persistent gameobjects carried, scripts
+   stopped and started; see *Switching scenes* above).
+5. **Finishing**: the new scene runs its first 3 frames: physics bodies, shadow and environment maps, the
+   new scene's UI. Those frames are the slowest of a load, so the loading screen stays up over them.
+6. **Done** (or **Failed** with `Error`, or **Canceled**). `Completed` fires.
+
+`Progress` is the real work done: bytes read (0 to 30%), objects built (30 to 90%), then the finishing
+frames (90 to 100%). A load held by `AllowSceneActivation = false` waits at 90%, like Unity.
+`BytesRead`/`TotalBytes`, `ObjectsBuilt`/`ObjectCount`, `Frames`, `Seconds`, `ReadMs`, `BuildMs`,
+`ActivationMs` (the swap) and `LongestFrameMs` (the worst frame while it ran, which is the hitch the
+player saw) are there for menus and profiling. A blocking `LoadScene` fills in the same report
+(`GameFlow.LastLoad.Blocking` is true).
+
+**The loading screen.** `Content/UI/LoadingScreen.xml` + `.css`, driven by `Engine/Logic/LoadingScreen.cs`. It
+is an engine layer: drawn above every script HUD, it survives the scene change and fades out once the
+load is Done. It shows the scene name, the stage ("Reading scene file", "Building scene", "Starting"),
+the progress bar and percentage, the bytes or objects so far, and the elapsed time. The light that
+slides along the bar moves with real time, so if the game hitches, it stutters. Make your own by
+pointing `GameFlow.LoadingScreenDocument` at another document that keeps the ids `#root`, `#scene`,
+`#status`, `#fill`, `#sweep`, `#percent`, `#detail` and `#time`. While a held load waits, `#root` gets
+the class `ready`; after an error it gets `failed`.
+
+Stop (in Anvil) and opening a scene from the editor cancel a load in progress.
+
+## The SceneLoadingTest sample
+
+`Content/Scenes/SceneLoadingTest.obsc` (a hub with spinning cubes) and `SceneLoadingArena.obsc` (a city
+of 1,550 gameobjects with falling spheres, 636 KB) both run the **Scene Loading Test** script on their
+Main Camera (`Content/Scripts/SceneLoadingTestScript.cs`, HUD `Content/UI/SceneLoadingTest.xml`).
+
+- **Load**: Arena, Hub, Auto Exposure Test (1.5 MB of baked lighting to read) or Water Test.
+- **Mode** (M): *Loading screen* (`LoadSceneAsync`), *Background* (`LoadSceneAsync(..., loadingScreen: false)`, so
+  the hub keeps spinning and the HUD shows the progress), or *Blocking* (`LoadScene`).
+- **Hold at ready** (H): `AllowSceneActivation = false`. Enter starts the held scene.
+- **Build budget** (B): `LoadBudgetMs` 1, 2, 4, 8 or 16.
+- **Esc** cancels a load that hasn't swapped.
+- **Frame time**: every frame measured with a stopwatch. The history carries across the swap, so a
+  blocking load's freeze shows as one tall bar in the next scene.
+- **Last loads**: `GameFlow.LastLoad` for each load: time, frames, worst frame, swap.
+
+Both scenes are at the end of the scene list. Open `Scenes/SceneLoadingTest.obsc` in Anvil and press Play.
 
 ## Pausing: `GameFlow.Paused`
 
@@ -166,4 +250,5 @@ Anvil, open `Scenes/MainMenu.obsc` from the Assets panel and press Play.
 4. Add the scene to **Game Settings > Scenes**, and move it to index 0 if the game should start there.
 
 Run `dotnet run --project Tests\Components\Components.csproj` to check the scene list, scene switching
-(including the return to the edited scene in Anvil), menu input, and Vista layout and styles.
+(blocking and `LoadSceneAsync`: spread over frames, held at ready, canceled, replaced, failed;
+including the return to the edited scene in Anvil), menu input, and Vista layout and styles.
