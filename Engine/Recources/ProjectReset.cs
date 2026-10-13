@@ -183,7 +183,7 @@ namespace Engine.Recources
 
         /// <summary>
         /// The settings a new project starts with: default game/window settings, no intro videos,
-        /// Steam off, and <see cref="FirstScene"/> as the only scene. Written rather than deleted:
+        /// Steam off, the default input actions, and <see cref="FirstScene"/> as the only scene. Written rather than deleted:
         /// a missing file would make the engine read the stale copy next to the executable.
         /// </summary>
         public static void WriteDefaultSettings(string contentRoot)
@@ -192,6 +192,7 @@ namespace Engine.Recources
             WriteJson(contentRoot, GameInfo.FileName, new GameInfo.Data(), json);
             WriteJson(contentRoot, IntroVideoList.FileName, new IntroVideoList.Data(), json);
             WriteJson(contentRoot, SceneList.FileName, new SceneList.Data { Scenes = { FirstScene } }, json);
+            File.WriteAllText(ToAbsolute(contentRoot, Logic.InputActionList.FileName), Logic.InputActionList.ToJson(Logic.InputActionList.Defaults()));
             new SteamSettingsStore(ToAbsolute(contentRoot, "System/SteamSettings.json")).Save(new SteamSettings());
             foreach (string rel in DeletedSettings)
             {

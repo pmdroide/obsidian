@@ -122,6 +122,9 @@ internal static class ProjectResetChecks
                   intro.Videos.Count == 0 && steam.Contains("\"Enabled\": false") &&
                   !File.Exists(Path.Combine(root, GameInfo.DefaultIconPath.Replace('/', Path.DirectorySeparatorChar))),
                 "settings are reset: default window, Scenes/Main.obsc as the only scene, no intro, Steam off, no icon");
+            Check(File.ReadAllText(Path.Combine(root, "System", "InputActions.json")) ==
+                  Engine.Logic.InputActionList.ToJson(Engine.Logic.InputActionList.Defaults()),
+                "a new project starts with the default input actions");
         }
         finally
         {

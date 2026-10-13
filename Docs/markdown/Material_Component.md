@@ -28,6 +28,33 @@ ground texture at its real-world scale; 1 keeps the model's UVs. Textures use th
 images need a content build before they can load. Missing maps are logged and
 leave the original map in place. Texture choices save in scenes and copy with objects.
 
+## Material assets (.mat)
+
+A material can live in the Assets folder and be shared by many gameobjects, like a Unity material. A material
+asset is a `.mat` file in Content (by default `Content/Materials`) holding everything the Material component edits:
+colour, roughness, metallic, emission, opacity, transparency, shadows, tiling, the shader and its water / wet
+surface settings, and the six texture slots (Base Color, Normal, Roughness, Metallic, Mask, Displacement).
+
+- **Create one:** right-click in Assets > **Create Material** (in that folder), or **GameObject > Create Material
+  from Selection** / Inspector > Material > **Save as Material Asset**. Saving from a gameobject keeps the textures
+  it shows: slots that follow the model are filled with the model's own texture files, and maps the model doesn't
+  have become None, so the material looks the same on any other mesh. A new blank material keeps each model's own
+  maps ("From model") until you pick textures.
+- **Edit it:** click it in Assets. The Inspector shows the same controls as the Material component; changes save to
+  the file and every gameobject using it updates at once. Editing the file outside Anvil also works (it is picked up
+  within half a second).
+- **Assign it:** drag it from Assets onto a gameobject in the Hierarchy, double-click it with a gameobject
+  selected, use its context menu or the Inspector's **Assign to Selected GameObject**, or pick/drop it on the
+  Material component's **Asset** slot. A gameobject without a Material component gets one.
+- **Linked components:** the Material section shows the asset's name. Its settings edit the asset itself (every
+  gameobject using it follows); **Edit Asset** opens the asset, **Unlink** keeps the values as the gameobject's own.
+  The scene saves the link and a copy of the values, used when the file is missing.
+- **Scripts:** `MaterialAsset.Assign(entity, "Brick")` (or `"Materials/Brick.mat"`) links a gameobject;
+  `new MaterialComponent { MaterialPath = "Brick" }` added with `AddComponent` takes the asset's surface;
+  `MaterialAsset.Load("Brick")`. Changing a linked component from a script changes only that gameobject until the
+  asset is edited again.
+- Builds ship every `.mat` file. Edits made during Play are saved to the file (Stop doesn't undo them).
+
 **Shader** is a separate section with the existing shader choices, including
 Water, WetSurface and Foliage. The water preset, wave controls and wet surface controls live there. These are registered engine
 shaders; arbitrary `.fx` files need renderer integration before appearing as choices.

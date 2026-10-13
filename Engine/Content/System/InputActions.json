@@ -1,0 +1,145 @@
+{
+  "Actions": [
+    {
+      "Name": "Move",
+      "Type": "Vector2",
+      "Bindings": [
+        {
+          "Up": "Keyboard/W",
+          "Down": "Keyboard/S",
+          "Left": "Keyboard/A",
+          "Right": "Keyboard/D"
+        },
+        {
+          "Path": "GamePad/LeftStick"
+        }
+      ]
+    },
+    {
+      "Name": "Look",
+      "Type": "Vector2",
+      "Bindings": [
+        {
+          "Path": "Mouse/Delta",
+          "Modifier": "Mouse/RightButton",
+          "Scale": 0.15
+        },
+        {
+          "Up": "Keyboard/Up",
+          "Down": "Keyboard/Down",
+          "Left": "Keyboard/Left",
+          "Right": "Keyboard/Right",
+          "Scale": 120,
+          "PerSecond": true
+        },
+        {
+          "Path": "GamePad/RightStick",
+          "Scale": 150,
+          "PerSecond": true
+        }
+      ]
+    },
+    {
+      "Name": "Jump",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/Space"
+        },
+        {
+          "Path": "GamePad/A"
+        }
+      ]
+    },
+    {
+      "Name": "Sprint",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/LeftShift"
+        },
+        {
+          "Path": "Keyboard/RightShift"
+        },
+        {
+          "Path": "GamePad/LeftStickButton"
+        }
+      ]
+    },
+    {
+      "Name": "Crouch",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/C"
+        },
+        {
+          "Path": "Keyboard/LeftControl"
+        },
+        {
+          "Path": "GamePad/B"
+        }
+      ]
+    },
+    {
+      "Name": "Interact",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/E"
+        },
+        {
+          "Path": "GamePad/X"
+        }
+      ]
+    },
+    {
+      "Name": "Attack",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Mouse/LeftButton"
+        },
+        {
+          "Path": "GamePad/RightTrigger"
+        }
+      ]
+    },
+    {
+      "Name": "Previous",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/D1"
+        },
+        {
+          "Path": "GamePad/LeftShoulder"
+        }
+      ]
+    },
+    {
+      "Name": "Next",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/D2"
+        },
+        {
+          "Path": "GamePad/RightShoulder"
+        }
+      ]
+    },
+    {
+      "Name": "Pause",
+      "Type": "Button",
+      "Bindings": [
+        {
+          "Path": "Keyboard/Escape"
+        },
+        {
+          "Path": "GamePad/Start"
+        }
+      ]
+    }
+  ]
+}

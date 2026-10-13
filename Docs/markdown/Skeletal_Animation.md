@@ -111,6 +111,29 @@ The **Animator Actions** script (`Content/Scripts/AnimatorActionsScript.cs`) con
 The script moves the character at a speed that matches each clip's stride, and keeps it within
 Leash of its start. The Mixamo bots face their local -Y.
 
+## Posing bones in the editor
+
+Every gameobject with a skinned model lists an **Armature** under it in the Hierarchy, with its bones
+nested in skeleton order (Hips > Spine > Spine1 > ...). Expand the gameobject to see it.
+
+- Select a bone and rotate it with the rotation gizmo (E) or the Inspector's **Rotation**. It turns
+  about its joint, and its child bones and the mesh follow, in Edit mode too.
+- The bone's Inspector **Rotation** is its turn away from the rest pose. **Position** is the joint in
+  the world and is read-only. Bones don't scale.
+- Rotating the **Armature** turns the whole skeleton about the model origin. Rotating the gameobject
+  carries its armature with it.
+- **Reset Bone** / **Reset Pose** (Inspector > Bone, or the row's context menu) go back to the rest
+  pose. Posed rows show a marker.
+- While a skinned gameobject or one of its bones is selected, the viewport draws its armature as lines.
+  The selected bone and its children are orange.
+- The pose is saved with the scene. During Play it sits on top of the Animator's clip, so a turned
+  head stays turned while the character walks. Stop restores the pose from before Play.
+
+Code: `BasicEntity.BonePose` (`Engine/Animation/BonePose.cs`) stores one rotation per posed bone by
+name, and `AnimationPlayer.Overrides` applies them before the model-space pass. `BonePose.UpdateAll`
+skins posed gameobjects that no Animator or limp Ragdoll skins. `Engine/Entities/BoneObject.cs` is the
+selectable proxy the gizmo writes through. Checks: `BoneChecks` in `Tests/Components`.
+
 ## Adding an animated model
 
 1. Put the FBX under `Engine/Content` and give it a `Content.mgcb` entry with
@@ -142,6 +165,7 @@ to animate them.
 - Cost: about 2 ms per frame for a 35k-vertex Mixamo character. A clip that has finished, plays at
   Speed 0, or is paused is not re-skinned. A crossfade evaluates both clips and blends them with
   `AnimationPlayer.BlendFrom` (decompose, lerp/slerp per bone), which adds little to the skinning.
-- Picking, SDFs and baked lighting still use the bind pose.
+- Picking, SDFs and baked lighting still use the bind pose (posed bones included). Bones can't be
+  picked in the viewport; select them in the Hierarchy.
 
 Checks: `AnimationChecks` in `Tests/Components`. The real-asset and rendering checks need `--graphics`.

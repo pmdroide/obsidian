@@ -20,6 +20,12 @@ namespace Engine.Animation
         /// <summary>Removes the root bone's horizontal travel (root motion), keeping its bob.</summary>
         public bool InPlace;
 
+        /// <summary>
+        /// Posed bones (Anvil Hierarchy > Armature) applied on top of every evaluated pose, each in its bone's own
+        /// space; null = none.
+        /// </summary>
+        public BonePose Overrides;
+
         /// <summary>Model-space skin matrices (inverse bind * posed bone), indexed like BlendIndices.</summary>
         public Matrix[] SkinTransforms { get; }
         /// <summary>Model-space bone transforms of the last <see cref="Evaluate"/>.</summary>
@@ -34,6 +40,8 @@ namespace Engine.Animation
         private readonly Quaternion _rootRotation;
         private readonly int _root;
         private Vector3 _up = Vector3.UnitZ;
+        // Model-space transform above the root bones for the last pose (the skeleton's, turned by the Armature).
+        private Matrix _poseRoot;
 
         // Clip mapping. Same skeleton: track -> bone. Retargeted: target bone -> source bone.
         private int[] _trackBone = Array.Empty<int>();
@@ -65,6 +73,7 @@ namespace Engine.Animation
             }
             Globals(skeleton, _bindRotation, _rootRotation, _bindGlobalRotation);
 
+            _poseRoot = skeleton.RootTransform;
             _root = Array.IndexOf(skeleton.ParentIndices, -1);
             if (_root >= 0 && _bindTranslation[_root].LengthSquared() > 1e-8f)
                 _up = Vector3.Normalize(_bindTranslation[_root]); // the root (hips) sits above the origin
@@ -118,6 +127,8 @@ namespace Engine.Animation
             if (Clip == null) Array.Copy(Skeleton.BindPose, _local, _local.Length);
             else if (IsRetargeted) PoseRetargeted(time);
             else PoseDirect(time);
+            _poseRoot = Skeleton.RootTransform;
+            Overrides?.ApplyTo(Skeleton, _local, ref _poseRoot);
             Finish();
         }
 
@@ -147,7 +158,7 @@ namespace Engine.Animation
             for (int i = 0; i < _local.Length; i++)
             {
                 int parent = Skeleton.ParentIndices[i];
-                BoneTransforms[i] = _local[i] * (parent >= 0 ? BoneTransforms[parent] : Skeleton.RootTransform);
+                BoneTransforms[i] = _local[i] * (parent >= 0 ? BoneTransforms[parent] : _poseRoot);
                 SkinTransforms[i] = Skeleton.InverseBindPose[i] * BoneTransforms[i];
             }
         }

@@ -25,7 +25,7 @@ public abstract partial class ComponentViewModel : ObservableObject
         });
     }
 
-    protected void Push(Action<GameComponent> mutate)
+    protected virtual void Push(Action<GameComponent> mutate)
     {
         if (!Owner.SuppressPush && Owner.EngineId is int id)
             Owner.Bridge?.EnqueueMutateComponent(id, TypeId, mutate, InstanceId);

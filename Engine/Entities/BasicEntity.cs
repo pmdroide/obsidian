@@ -147,6 +147,12 @@ namespace Engine.Entities
         /// <summary>True when this gameobject is linked to a prefab (<see cref="PrefabPath"/>).</summary>
         public bool IsPrefabInstance => !string.IsNullOrEmpty(PrefabPath);
 
+        /// <summary>
+        /// Posed bones of a skinned model (Anvil Hierarchy > Armature; saved): rotations on top of the rest pose or
+        /// the Animator's clip. Empty for other models. See <see cref="Animation.BonePose"/>.
+        /// </summary>
+        public Animation.BonePose BonePose { get; } = new();
+
         public override TransformableObject Clone {
             get
             {
@@ -159,6 +165,7 @@ namespace Engine.Entities
                     // A duplicate of a prefab instance is another instance of that prefab, like Unity.
                     PrefabPath = PrefabPath,
                 };
+                copy.BonePose.CopyFrom(BonePose);
                 // Script fields that reference this gameobject reference the copy instead, like Unity.
                 foreach (var script in copy.Components.OfType<ScriptBehaviourComponent>())
                     script.RemapGameObjectReferences(Id, copy.Id);
@@ -332,6 +339,7 @@ namespace Engine.Entities
         public void Dispose(MeshMaterialLibrary library)
         {
             library.DeleteFromRegistry(this);
+            BonePose.Release(this);
             foreach (var instance in _materialInstances) instance.Dispose();
             _materialInstances.Clear();
             _lodModels.Clear();

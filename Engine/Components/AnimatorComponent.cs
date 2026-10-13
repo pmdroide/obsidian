@@ -107,6 +107,8 @@ public sealed class AnimatorComponent : GameComponent
     private bool _resolved;
     private float _time;
     private float _posedTime = float.NaN;
+    // BasicEntity.BonePose version of the last upload: posed bones (Anvil Armature) sit on top of the clip.
+    private int _posedBones = -1;
 
     // What plays. Kept from a Play/Stop call made before OnStart (a script listed above the Animator).
     private bool _started, _selected, _stopped, _paused, _finished;
@@ -288,7 +290,7 @@ public sealed class AnimatorComponent : GameComponent
         }
 
         // A finished one-shot (or Speed 0) keeps its last pose without re-skinning.
-        if (_time != _posedTime || _player.InPlace != InPlace) Pose();
+        if (_time != _posedTime || _player.InPlace != InPlace || _posedBones != owner.BonePose.Version) Pose();
 
         if (reachedEnd && !_finished) Finish();
     }
@@ -296,6 +298,7 @@ public sealed class AnimatorComponent : GameComponent
     private void Pose()
     {
         _posedTime = _time;
+        _posedBones = _owner.BonePose.Version;
         _player.InPlace = InPlace;
         _player.Evaluate(_time);
         if (_fading)
@@ -406,7 +409,7 @@ public sealed class AnimatorComponent : GameComponent
             return;
         }
 
-        AnimationPlayer next = _fadePlayer ?? new AnimationPlayer(_skeleton);
+        AnimationPlayer next = _fadePlayer ?? new AnimationPlayer(_skeleton) { Overrides = _owner.BonePose };
         if (!BindClip(next))
         {
             Fail();
@@ -490,7 +493,7 @@ public sealed class AnimatorComponent : GameComponent
             _actionName = DefaultClip;
         }
         _action = FindAction(_actionName);
-        _player = new AnimationPlayer(_skeleton);
+        _player = new AnimationPlayer(_skeleton) { Overrides = _owner.BonePose };
         if (!BindClip(_player))
         {
             Fail();

@@ -743,6 +743,25 @@ public sealed class EngineSoundScript : ScriptBehaviour
 }
 ```
 
+### Input actions
+
+Read the project's named actions (Anvil > Window > Input Actions) instead of keys, so keyboard, mouse and
+gamepad all work and players can rebind them. Details: [Input_Actions.md](Input_Actions.md).
+
+| Helper | Returns |
+| --- | --- |
+| `WasActionPressed("Jump")`, `IsActionDown("Sprint")`, `WasActionReleased("Attack")` | Button state this frame |
+| `GetAxis("Zoom")` / `GetVector("Move")` | an Axis value / a Vector2 value (+Y forward) |
+| `BindingText("Interact")` | the key or button to show in a prompt, for the device the player uses ("E" or "X") |
+| `GetAction("Jump")` | the `InputAction`: `HeldTime`, `WasPressedWithin` + `ConsumePress` (input buffering), `Enabled`, `Rebind` |
+
+```csharp
+Vector2 move = GetVector("Move");                     // length up to 1
+Translate((Forward * move.Y + Right * move.X) * Speed * DeltaTime);
+if (WasActionPressed("Jump")) AddImpulse(Vector3.UnitZ * JumpImpulse);
+Prompt = $"{BindingText("Interact")}  Open";          // "E  Open" or "X  Open"
+```
+
 ### Game flow, input and UI
 
 Static APIs in `Engine.Logic` for game scripts (details in
@@ -753,6 +772,7 @@ Static APIs in `Engine.Logic` for game scripts (details in
 | `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. Pass `carryPersistent: false` to leave persistent gameobjects behind. |
 | `GameFlow.Paused` | Freezing the game (scripts, components, physics) behind a pause menu. |
 | `GameInput.MenuUp/Down/Confirm/Back`, `AnyInputPressed`, `WasPressed(...)` | Keyboard, mouse and gamepad input with pressed edges and key repeat. |
+| `InputActions.ListenForControl()`, `SaveBindings()` / `LoadBindings()`, `ResetBindings()` | Rebinding menus ([Input_Actions.md](Input_Actions.md#rebinding-in-a-game-menu)). |
 | `GameUI.Open("UI/Name")` / `GameUI.Close(ui)` | A Vista XML/CSS layer over the scene. |
 | `SaveData.Save(name, data)` / `Load<T>(name, fallback)`, `SaveAsync`, `SaveText`, `List`, `Delete` | Save games, settings and high scores in the player's save folder ([Save_Data.md](Save_Data.md)). |
 

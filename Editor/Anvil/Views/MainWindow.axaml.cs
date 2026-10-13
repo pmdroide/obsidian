@@ -134,6 +134,9 @@ public partial class MainWindow : Window
     // Content-relative .prefab path (Assets -> Hierarchy places an instance).
     private static readonly DataFormat<string> PrefabAssetFormat =
         DataFormat.CreateInProcessFormat<string>("obsidian/prefabAsset");
+    // Content-relative .mat path (Assets -> a Hierarchy row or the Material component assigns it).
+    private static readonly DataFormat<string> MaterialAssetFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/materialAsset");
     // A Hierarchy gameobject's view model (Hierarchy -> Assets saves it as a prefab).
     private static readonly DataFormat<SceneObjectViewModel> GameObjectFormat =
         DataFormat.CreateInProcessFormat<SceneObjectViewModel>("obsidian/gameObject");
@@ -151,6 +154,60 @@ public partial class MainWindow : Window
         if ((sender as Control)?.DataContext is MaterialTextureSlotViewModel slot &&
             MaterialComponent.IsTextureAsset(path)) slot.Assign(path!);
         e.Handled = true;
+    }
+
+    // ---- Material assets (Engine.Recources.MaterialAsset) ----
+
+    private void MaterialAsset_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = e.DataTransfer.Contains(MaterialAssetFormat) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    // Drop on the Material component's asset slot.
+    private void MaterialAsset_Drop(object? sender, DragEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is MaterialInfo material &&
+            e.DataTransfer.TryGetValue(MaterialAssetFormat) is { Length: > 0 } path) material.AssignAsset(path);
+        e.Handled = true;
+    }
+
+    // The Material component's asset slot: a menu of every material in Content, built on each click.
+    private void MaterialAssetPicker_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: MaterialInfo material } button) return;
+        var menu = new MenuFlyout();
+        var files = Engine.Recources.MaterialAsset.List();
+        foreach (string path in files)
+        {
+            string file = path;
+            var item = new MenuItem { Header = file };
+            item.Click += (_, _) => material.AssignAsset(file);
+            menu.Items.Add(item);
+        }
+        if (files.Count == 0)
+            menu.Items.Add(new MenuItem { Header = "No materials yet: Assets > right-click > Create Material", IsEnabled = false });
+        menu.ShowAt(button);
+    }
+
+    // Opens the linked asset in the Inspector.
+    private void MaterialAssetEdit_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && (sender as Control)?.DataContext is MaterialInfo { IsLinked: true } material)
+            vm.OpenMaterialAsset(material.MaterialPath);
+    }
+
+    // Assets context menu > Create Material (in the folder under the cursor).
+    private void AssetCreateMaterial_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm) vm.CreateMaterialAsset((sender as Control)?.DataContext as AssetNode);
+    }
+
+    // Assets context menu > Assign to Selection (a material).
+    private void AssetAssignMaterial_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && (sender as Control)?.DataContext is AssetNode { Kind: AssetKind.Material } node)
+            vm.AssignMaterialAsset(null, node.RelativePath);
     }
 
     private async void MaterialTexture_Browse(object? sender, RoutedEventArgs e)
@@ -177,8 +234,8 @@ public partial class MainWindow : Window
     /// <summary>A texture file inside the engine's source Content folder, as a Content-relative path; null when cancelled.</summary>
     private async System.Threading.Tasks.Task<string?> PickContentTextureAsync(string title)
     {
-        if (DataContext is not MainWindowViewModel vm || vm.SelectedObject?.Bridge is not { } bridge) return null;
-        string root = bridge.ContentSourceRoot;
+        // The material asset Inspector has no selected gameobject: take the Content folder from the window.
+        if (DataContext is not MainWindowViewModel { ContentSourceRoot: { Length: > 0 } root }) return null;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = title,
@@ -402,6 +459,12 @@ public partial class MainWindow : Window
             dt.Add(DataTransferItem.Create(TextureAssetFormat, node.RelativePath));
         else if (node?.Kind == AssetKind.Prefab)
             dt.Add(DataTransferItem.Create(PrefabAssetFormat, node.RelativePath));
+        else if (node?.Kind == AssetKind.Material)
+        {
+            // A click shows the material in the Inspector; dragging it onto a gameobject assigns it.
+            (DataContext as MainWindowViewModel)?.OpenMaterialAsset(node.RelativePath);
+            dt.Add(DataTransferItem.Create(MaterialAssetFormat, node.RelativePath));
+        }
         else if (ModelKeyFromVisual(v) is { } modelKey)
             dt.Add(DataTransferItem.Create(ModelKeyFormat, modelKey));
         else return;
@@ -435,6 +498,12 @@ public partial class MainWindow : Window
         if (node?.Kind == AssetKind.Prefab)
         {
             vm.InstantiatePrefabAsset(node.RelativePath);
+            e.Handled = true;
+            return;
+        }
+        if (node?.Kind == AssetKind.Material)
+        {
+            vm.AssignMaterialAsset(null, node.RelativePath);
             e.Handled = true;
             return;
         }
@@ -482,7 +551,8 @@ public partial class MainWindow : Window
 
     private void Hierarchy_DragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = e.DataTransfer.Contains(ModelKeyFormat) || e.DataTransfer.Contains(PrefabAssetFormat)
+        e.DragEffects = e.DataTransfer.Contains(ModelKeyFormat) || e.DataTransfer.Contains(PrefabAssetFormat) ||
+                        e.DataTransfer.Contains(MaterialAssetFormat)
             ? DragDropEffects.Copy
             : DragDropEffects.None;
         e.Handled = true;
@@ -502,6 +572,15 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(prefab))
         {
             vm.InstantiatePrefabAsset(prefab);
+            e.Handled = true;
+            return;
+        }
+        string? material = e.DataTransfer.TryGetValue(MaterialAssetFormat);
+        if (!string.IsNullOrEmpty(material))
+        {
+            // The gameobject row under the cursor, else the selection.
+            var target = e.Source is Visual v ? FindDataContext<SceneObjectViewModel>(v) : null;
+            vm.AssignMaterialAsset(target, material);
             e.Handled = true;
         }
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Engine.Animation;
 using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
@@ -394,6 +395,10 @@ namespace Engine.Logic
             // Trees with a Foliage Wind component sway in the scene wind while editing too; the pause menu holds them.
             FoliageWindComponent.UpdateAll(ActiveScene?.BasicEntities,
                 GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds, WeatherProfile.Wind(ActiveScene?.Environment));
+            // Posed bones (Anvil Hierarchy > Armature) skin their mesh unless an Animator or Ragdoll already does.
+            BonePose.UpdateAll(ActiveScene?.BasicEntities);
+            // Material components linked to a material asset (.mat) follow edits of the file, in Edit and Play.
+            MaterialAsset.SyncScene(ActiveScene?.BasicEntities);
             // Splash droplets and water rings; paused (pause menu) they hang where they are.
             WaterSplashes.Update(GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
                 _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f), WeatherProfile.Wind(ActiveScene?.Environment));

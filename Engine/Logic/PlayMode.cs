@@ -31,6 +31,8 @@ namespace Engine.Logic
         private readonly List<TransformSnap> _decalSnap = new();
         private readonly List<TransformSnap> _pointLightSnap = new();
         private readonly List<TransformSnap> _dirLightSnap = new();
+        // Posed bones (BasicEntity.BonePose) by gameobject ID; a script or the Inspector may re-pose them in Play.
+        private readonly Dictionary<int, Dictionary<string, Quaternion>> _bonePoseSnap = new();
         // The main camera's pose, so a camera script (e.g. Freecam) can't move the saved camera.
         private Vector3 _cameraPosition, _cameraForward, _cameraUp;
         private Camera _snappedCamera;
@@ -197,6 +199,8 @@ namespace Engine.Logic
             RestoreSnapshot();
             // Render feature values scripts changed (RenderFeatures.Find) go back to the saved ones.
             Renderer.Features.RenderFeatures.RestoreSaved();
+            // Bindings scripts rebound and actions they disabled go back to the project's.
+            InputActions.Load();
             // DontDestroyOnLoad lasts one Play session (carried gameobjects already left a departing scene).
             if (_sceneLogic.ActiveScene is { } stopped)
                 foreach (var entity in stopped.BasicEntities) entity.RuntimePersistent = false;
@@ -211,11 +215,15 @@ namespace Engine.Logic
         {
             _entitySnap.Clear(); _decalSnap.Clear();
             _pointLightSnap.Clear(); _dirLightSnap.Clear();
+            _bonePoseSnap.Clear();
 
             Scene s = _sceneLogic.ActiveScene;
             if (s == null) return;
             foreach (var e in s.BasicEntities)
+            {
                 _entitySnap.Add(new TransformSnap(e.Id, e.Position, e.RotationMatrix, e.Scale));
+                _bonePoseSnap[e.Id] = e.BonePose.ToRecord();
+            }
             foreach (var d in s.Decals)
                 _decalSnap.Add(new TransformSnap(d.Id, d.Position, d.RotationMatrix, d.Scale));
             foreach (var pl in s.PointLights)
@@ -238,6 +246,9 @@ namespace Engine.Logic
             Scene s = _sceneLogic.ActiveScene;
             if (s == null) return;
             ApplyById(_entitySnap, s.BasicEntities);
+            foreach (var e in s.BasicEntities)
+                if (_bonePoseSnap.TryGetValue(e.Id, out var pose)) e.BonePose.Load(pose);
+            _bonePoseSnap.Clear();
             ApplyById(_decalSnap, s.Decals);
             ApplyById(_pointLightSnap, s.PointLights);
             ApplyById(_dirLightSnap, s.DirectionalLights);

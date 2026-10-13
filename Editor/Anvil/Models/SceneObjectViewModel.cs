@@ -21,6 +21,9 @@ public enum SceneObjectType
     Light,
     Camera,
     Group,
+    // A skinned gameobject's Armature node and its bones (Engine.Entities.BoneObject).
+    Armature,
+    Bone,
 }
 
 public enum LightType
@@ -58,6 +61,45 @@ public partial class MaterialInfo : ComponentViewModel
     public bool IsWetSurface => MaterialType == (int)Engine.Recources.MaterialEffect.MaterialTypes.WetSurface;
 
     public MaterialTextureSlotViewModel[] TextureSlots { get; }
+
+    // -------- Material asset link (MaterialComponent.MaterialPath, Engine.Recources.MaterialAsset) --------
+
+    // Content-relative .mat this component shows ("Materials/Brick.mat"), or null for its own settings.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsLinked), nameof(IsNotLinked), nameof(MaterialAssetLabel),
+        nameof(IsMaterialAssetMissing), nameof(MaterialAssetTip))]
+    private string? _materialPath;
+
+    public bool IsLinked => !string.IsNullOrEmpty(MaterialPath);
+    public bool IsNotLinked => !IsLinked;
+    public string MaterialAssetLabel => IsLinked ? System.IO.Path.GetFileNameWithoutExtension(MaterialPath)! : "None (own settings)";
+    public bool IsMaterialAssetMissing => IsLinked && !Engine.Recources.MaterialAsset.Exists(MaterialPath);
+    public string MaterialAssetTip => !IsLinked
+        ? "This gameobject's own surface. Pick or drop a material asset (.mat) from Assets to share one, or Save as Asset."
+        : IsMaterialAssetMissing ? $"{MaterialPath} doesn't exist any more. The gameobject keeps its last values; Unlink or pick another material."
+        : $"{MaterialPath}: the settings below edit this asset, and every gameobject using it follows.";
+
+    /// <summary>Links this gameobject to a material asset (Content-relative .mat path); adds nothing else.</summary>
+    public void AssignAsset(string? path)
+    {
+        if (!Engine.Recources.MaterialAsset.IsMaterialAsset(path)) return;
+        // Not through the asset-saving Push: the link takes the asset's values, it doesn't overwrite them.
+        base.Push(c => ((MaterialComponent)c).Link(path));
+    }
+
+    /// <summary>Keeps the current values but stops following the asset.</summary>
+    [RelayCommand]
+    private void Unlink() => base.Push(c => ((MaterialComponent)c).MaterialPath = null);
+
+    // A linked component's edits are the asset's: write them into its file so every gameobject using it follows.
+    protected override void Push(Action<GameComponent> mutate)
+    {
+        if (!IsLinked) { base.Push(mutate); return; }
+        base.Push(c =>
+        {
+            mutate(c);
+            Engine.Recources.MaterialAsset.SaveFrom((MaterialComponent)c);
+        });
+    }
 
     public MaterialInfo(SceneObjectViewModel owner) : base(owner, MaterialComponent.TypeId)
     {
@@ -146,8 +188,9 @@ public partial class MaterialInfo : ComponentViewModel
     public override void Apply(GameComponent component, bool freezeFields)
     {
         base.Apply(component, freezeFields);
-        if (freezeFields) return;
         var material = (MaterialComponent)component;
+        if (MaterialPath != material.MaterialPath) MaterialPath = material.MaterialPath;
+        if (freezeFields) return;
         Color = BridgeReconciler.FromVector3(new XnaVector3(material.Red, material.Green, material.Blue));
         Roughness = material.Roughness; Metallic = material.Metallic;
         EmissiveStrength = material.EmissiveStrength; IsTransparent = material.IsTransparent;
@@ -308,6 +351,12 @@ public partial class SceneObjectViewModel : ObservableObject
         (Kind == EditorObjectKind.BasicEntity || Kind == EditorObjectKind.Camera);
     public bool HasRole => EngineId.HasValue && Kind == EditorObjectKind.BasicEntity;
     public bool IsDecal => EngineId.HasValue && Kind == EditorObjectKind.Decal;
+    // A bone or the Armature of a skinned gameobject: only rotates (position follows the skeleton), can't be
+    // renamed, hidden or deleted.
+    public bool IsBone => EngineId.HasValue && Kind == EditorObjectKind.Bone;
+    public bool IsNotBone => !IsBone;
+    // Bone only: rotated away from its rest pose.
+    [ObservableProperty] private bool _isPosed;
 
     // Decal only: Content-relative texture path; null projects the built-in scorch mark (Assets.DefaultDecal).
     [ObservableProperty, NotifyPropertyChangedFor(nameof(DecalTextureLabel))]
@@ -377,6 +426,8 @@ public partial class SceneObjectViewModel : ObservableObject
         OnPropertyChanged(nameof(CanAddComponents));
         OnPropertyChanged(nameof(HasRole));
         OnPropertyChanged(nameof(IsDecal));
+        OnPropertyChanged(nameof(IsBone));
+        OnPropertyChanged(nameof(IsNotBone));
         OnPropertyChanged(nameof(IsPrefabInstance));
         OnPropertyChanged(nameof(IsNotPrefabInstance));
     }
@@ -388,6 +439,22 @@ public partial class SceneObjectViewModel : ObservableObject
     }
 
     [RelayCommand] private void ResetDecalTexture() => DecalTexture = null;
+
+    /// <summary>Bone: back to its rest pose.</summary>
+    [RelayCommand]
+    private void ResetBone()
+    {
+        if (Bridge is { } bridge && EngineId is int id && IsBone)
+            bridge.EnqueueMutate(id, obj => (obj as BoneObject)?.ResetBone());
+    }
+
+    /// <summary>Bone: every bone of its gameobject back to the rest pose.</summary>
+    [RelayCommand]
+    private void ResetPose()
+    {
+        if (Bridge is { } bridge && EngineId is int id && IsBone)
+            bridge.EnqueueMutate(id, obj => (obj as BoneObject)?.ResetPose());
+    }
 
     partial void OnDecalTextureChanged(string? value)
     {
@@ -426,13 +493,13 @@ public partial class SceneObjectViewModel : ObservableObject
 
     partial void OnNameChanged(string value)
     {
-        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || IsBone) return;
         bridge.EnqueueMutate(id, obj => obj.Name = value);
     }
 
     private void PushPosition()
     {
-        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || IsBone) return;
         var v = new XnaVector3((float)PositionX, (float)PositionY, (float)PositionZ);
         bridge.EnqueueMutate(id, obj => obj.Position = v);
     }
@@ -441,12 +508,14 @@ public partial class SceneObjectViewModel : ObservableObject
     {
         if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
         var mat = RotationConversion.EulerToMatrix(RotationX, RotationY, RotationZ);
-        bridge.EnqueueMutate(id, obj => obj.RotationMatrix = mat);
+        // A bone's Rotation is its turn away from the rest pose, not its world rotation.
+        if (IsBone) bridge.EnqueueMutate(id, obj => { if (obj is BoneObject bone) bone.LocalRotation = mat; });
+        else bridge.EnqueueMutate(id, obj => obj.RotationMatrix = mat);
     }
 
     private void PushScale()
     {
-        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || IsBone) return;
         var v = new XnaVector3((float)ScaleX, (float)ScaleY, (float)ScaleZ);
         bridge.EnqueueMutate(id, obj => obj.Scale = v);
     }

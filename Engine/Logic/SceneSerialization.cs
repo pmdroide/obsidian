@@ -343,6 +343,7 @@ namespace Engine.Logic
             be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
             be.Persistent = rec.Persistent;
             be.PrefabPath = string.IsNullOrEmpty(rec.Prefab) ? null : rec.Prefab;
+            be.BonePose.Load(rec.BonePose);
             foreach (var record in rec.Components ?? new())
             {
                 var component = ComponentRegistry.Restore(record);
@@ -373,6 +374,7 @@ namespace Engine.Logic
                 Role = be.Role,
                 Persistent = be.Persistent,
                 ModelKey = modelKey,
+                BonePose = be.BonePose.ToRecord(),
                 Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
                 Position = be.Position,
                 Rotation = Quaternion.CreateFromRotationMatrix(be.RotationMatrix),
@@ -665,6 +667,12 @@ namespace Engine.Logic
             /// value is taken from the prefab on load, so prefab edits reach the instance.
             /// </summary>
             public List<string> PrefabOverrides { get; set; }
+            /// <summary>
+            /// Skinned models: posed bones (<see cref="Animation.BonePose"/>), bone name ("" = the Armature) -> rotation
+            /// in the bone's own space. Only written when something is posed.
+            /// </summary>
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public Dictionary<string, Quaternion> BonePose { get; set; }
         }
 
         public class PhysicsRecord

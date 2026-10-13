@@ -176,16 +176,23 @@ Main menu and Quit game. Main menu loads scene list entry 0 with `carryPersisten
 `Engine.Logic.GameInput` merges the keyboard (standalone, or the keys Anvil forwards), the mouse and up
 to four XInput gamepads, with pressed-this-frame edges. It updates once per frame, before scripts.
 
+For gameplay, prefer the project's **input actions** (Anvil > Window > Input Actions): named actions such as
+Move, Look and Jump, each bound to keys, mouse and gamepad controls, read with `WasActionPressed("Jump")` or
+`GetVector("Move")` from a script (also `GameInput.WasActionPressed/IsActionDown/GetAxis/GetVector/Action`).
+See [Input_Actions.md](Input_Actions.md).
+
 | Member | What it does |
 | --- | --- |
 | `MenuUp/Down/Left/Right` | Arrows, WASD, D-pad or left stick. Fire on press, then repeat after 0.4 s every 0.085 s while held. |
 | `MenuConfirm` / `MenuBack` | Enter, Space, A or Start / Escape, Backspace, B or Back. |
 | `AnyInputPressed` | Any key, mouse button or gamepad button went down this frame ("press any button"). |
 | `WasPressed(Keys)`, `IsDown(Keys)`, `WasPressed(Buttons)`, `IsDown(Buttons)` | Single keys and buttons. |
-| `MousePosition`, `MouseMoved`, `MouseClicked`, `MouseRightClicked`, `MouseScroll` | Mouse, in viewport pixels. |
+| `MousePosition`, `MouseMoved`, `MouseClicked`, `MouseRightClicked`, `MouseScroll`, `MouseDelta` | Mouse, in viewport pixels (`MouseDelta` is zero in Anvil while the cursor is over a panel). |
+| `LeftStick`, `RightStick`, `LeftTrigger`, `RightTrigger`, `KeysPressedThisFrame` | The first connected gamepad's analog values; the keys that went down this frame. |
 | `LastDevice` | `Keyboard`, `Mouse` or `GamePad`: the device used last, for showing the right prompts. |
 
-Anvil forwards letters, Space, Shift/Ctrl/Alt, F1–F3, Escape, the arrows, Enter, Backspace and Tab.
+Anvil forwards the whole keyboard (`Anvil.Services.KeyMap`): letters, digits, F1–F24, the numpad,
+punctuation, modifiers, arrows and navigation keys.
 
 In Play, the old dev hotkeys (Space toggles editor mode, L spawns lights, X and M play test audio) are
 off, because they would collide with game controls. F1 (render mode) still works.

@@ -54,6 +54,174 @@
     <Window.Resources>
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
         <conv:ColorToBrushConverter x:Key="ColorToBrush" />
+        <!-- Material surface editor (colour, sliders, textures, shader) shared by the Material component and the
+             material asset Inspector (MaterialAssetViewModel derives MaterialInfo). -->
+        <DataTemplate x:Key="MaterialSurfaceTemplate" DataType="m:MaterialInfo" x:DataType="m:MaterialInfo">
+            <StackPanel Spacing="8">
+
+                <Grid ColumnDefinitions="60,*" RowDefinitions="Auto"
+                      ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Color"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Background="Transparent"
+                            BorderThickness="0" Padding="0"
+                            HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="28" Height="20" CornerRadius="3"
+                                    Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                    BorderBrush="{StaticResource AnvilBorderBrush}"
+                                    BorderThickness="1" />
+                            <TextBlock Text="{Binding ColorHex}" FontSize="11"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <!-- Flyout content is outside the template tree; OwnedFlyout_Opening
+                                 pins it to this component so it never edits another object. -->
+                            <Flyout Opening="OwnedFlyout_Opening">
+                                <ColorPicker x:DataType="m:MaterialInfo" Color="{Binding Color, Mode=TwoWay}" />
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+
+                <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Roughness"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                            Value="{Binding Roughness, Mode=TwoWay}"
+                            MinHeight="18" />
+                    <TextBlock Grid.Column="2" Text="{Binding Roughness, StringFormat={}{0:0.00}}"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+                </Grid>
+
+                <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Metallic"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                            Value="{Binding Metallic, Mode=TwoWay}"
+                            MinHeight="18" />
+                    <TextBlock Grid.Column="2" Text="{Binding Metallic, StringFormat={}{0:0.00}}"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+                </Grid>
+
+                <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Emissive"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="8"
+                            Value="{Binding EmissiveStrength, Mode=TwoWay}"
+                            MinHeight="18" />
+                    <TextBlock Grid.Column="2" Text="{Binding EmissiveStrength, StringFormat={}{0:0.00}}"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+                </Grid>
+
+                <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Opacity"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                            Value="{Binding Opacity, Mode=TwoWay}"
+                            MinHeight="18" />
+                    <TextBlock Grid.Column="2" Text="{Binding Opacity, StringFormat={}{0:0.00}}"
+                               Classes="muted" FontSize="11"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+                </Grid>
+
+                <CheckBox Content="Transparent"
+                          IsChecked="{Binding IsTransparent, Mode=TwoWay}"
+                          FontSize="11" />
+                <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" IsVisible="{Binding !IsWater}" FontSize="11" />
+
+                <Expander Header="Textures" IsExpanded="True">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Text="Choose a texture or drag one from Assets." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="60,*,*" ColumnSpacing="8">
+                            <TextBlock Grid.Column="0" Text="Tiling" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                       ToolTip.Tip="How often the textures repeat across the mesh UVs (U, V)" />
+                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="0.01" Maximum="1000" Increment="1" Value="{Binding TilingU, Mode=TwoWay}" FormatString="0.##" />
+                            <NumericUpDown Grid.Column="2" Classes="field" Minimum="0.01" Maximum="1000" Increment="1" Value="{Binding TilingV, Mode=TwoWay}" FormatString="0.##" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding TextureSlots}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="m:MaterialTextureSlotViewModel" x:DataType="m:MaterialTextureSlotViewModel">
+                                    <StackPanel Spacing="4" Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding Name}" Classes="muted" FontSize="11" />
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                                            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="MaterialTexture_Browse"
+                                                    DragDrop.AllowDrop="True" DragDrop.DragOver="MaterialTexture_DragOver" DragDrop.Drop="MaterialTexture_Drop"
+                                                    ToolTip.Tip="{Binding Label}">
+                                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" FontSize="11" />
+                                            </Button>
+                                            <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" ToolTip.Tip="Remove this texture map" />
+                                            <Button Grid.Column="2" Content="Reset" Command="{Binding ResetCommand}" ToolTip.Tip="Use the model's texture map" />
+                                        </Grid>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+                <Expander Header="Shader" IsExpanded="True">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                            <TextBlock Grid.Column="0" Text="Shader"
+                                       Classes="muted" FontSize="11"
+                                       VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="field"
+                                      HorizontalAlignment="Stretch"
+                                      SelectedIndex="{Binding MaterialType, Mode=TwoWay}">
+                                <ComboBoxItem>Basic</ComboBoxItem>
+                                <ComboBoxItem>Hologram</ComboBoxItem>
+                                <ComboBoxItem>ProjectHologram</ComboBoxItem>
+                                <ComboBoxItem>Emissive</ComboBoxItem>
+                                <ComboBoxItem>SubsurfaceScattering</ComboBoxItem>
+                                <ComboBoxItem>ForwardShaded</ComboBoxItem>
+                                <ComboBoxItem>Water</ComboBoxItem>
+                                <ComboBoxItem>WetSurface</ComboBoxItem>
+                                <ComboBoxItem>Foliage</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+                        <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
+                        <Button Content="Apply Wet Floor Example" Command="{Binding WetFloorExampleCommand}" HorizontalAlignment="Stretch" />
+                        <StackPanel Spacing="8" IsVisible="{Binding IsWetSurface}">
+                            <TextBlock Text="Wetness (dry weather)" Classes="muted" FontSize="11" />
+                            <Slider Minimum="0" Maximum="1" Value="{Binding Wetness, Mode=TwoWay}" />
+                            <TextBlock Text="Puddle Amount" Classes="muted" FontSize="11" />
+                            <Slider Minimum="0" Maximum="1" Value="{Binding PuddleAmount, Mode=TwoWay}" />
+                            <TextBlock Text="Puddle Size (m)" Classes="muted" FontSize="11" />
+                            <NumericUpDown Classes="field" Minimum="0.1" Maximum="50" Increment="0.5" Value="{Binding PuddleSize, Mode=TwoWay}" FormatString="0.0" />
+                            <CheckBox Content="Wet in Rain" IsChecked="{Binding WeatherWetness, Mode=TwoWay}" FontSize="11"
+                                      ToolTip.Tip="Rain soaks the surface beyond Wetness, fills its puddles and ripples them; it dries after the rain" />
+                            <TextBlock Text="Darkens and glosses the surface and pools mirror-like puddles on faces that look up. Puddles fill the dark parts of the Base Color first, or the low parts of the Displacement texture when one is set (used as height, no parallax). Puddle placement is world space, so it does not repeat with Tiling." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
+                            <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
+                            <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
+                            <TextBlock Text="Wave Speed" Classes="muted" FontSize="11" />
+                            <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveSpeed, Mode=TwoWay}" FormatString="0.00" />
+                            <TextBlock Text="Wave Height (swell, m)" Classes="muted" FontSize="11" />
+                            <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveHeight, Mode=TwoWay}" FormatString="0.00" />
+                            <TextBlock Text="Ripple Strength" Classes="muted" FontSize="11" />
+                            <Slider Minimum="0" Maximum="2" Value="{Binding WaveStrength, Mode=TwoWay}" />
+                            <TextBlock Text="Clarity (visible depth, m)" Classes="muted" FontSize="11" />
+                            <NumericUpDown Classes="field" Minimum="0.05" Maximum="50" Increment="0.5" Value="{Binding Clarity, Mode=TwoWay}" FormatString="0.00" />
+                            <TextBlock Text="Foam" Classes="muted" FontSize="11" />
+                            <Slider Minimum="0" Maximum="1" Value="{Binding Foam, Mode=TwoWay}" />
+                            <TextBlock Text="Apply to a flat mesh on the XY plane; it is subdivided so the swell moves the surface. Waves animate in Edit and Play mode; shore foam and depth colour appear where geometry sits below or through the surface. Give the gameobject the Water role to float Buoyancy bodies on it." Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
 
     <Window.Styles>
@@ -435,6 +603,9 @@
                              Hierarchy into Assets). Place copies by double-clicking or dragging the prefab. -->
                         <MenuItem Header="Create Prefab from Selection"
                                   Command="{Binding CreatePrefabCommand}" />
+                        <!-- Saves the selection's surface and the textures it shows as Content/Materials/<name>.mat. -->
+                        <MenuItem Header="Create Material from Selection"
+                                  Command="{Binding CreateMaterialFromObjectCommand}" />
                     </MenuItem>
                     <MenuItem Header="Game Settings"
                               Command="{Binding OpenGameSettingsCommand}"
@@ -443,6 +614,9 @@
                         <MenuItem Header="Input"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="Input" />
+                        <MenuItem Header="Input Actions..."
+                                  Command="{Binding OpenInputActionsCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
                         <MenuItem Header="Steam"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="Steam" />
@@ -765,7 +939,13 @@
                                                               Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).UnpackPrefabCommand}"
                                                               CommandParameter="{Binding}" />
                                                     <Separator IsVisible="{Binding HasRole}" />
-                                                    <MenuItem Header="Delete"
+                                                    <MenuItem Header="Reset Bone" IsVisible="{Binding IsBone}"
+                                                              ToolTip.Tip="Put this bone back in its rest pose"
+                                                              Command="{Binding ResetBoneCommand}" />
+                                                    <MenuItem Header="Reset Pose" IsVisible="{Binding IsBone}"
+                                                              ToolTip.Tip="Put every bone of this gameobject back in its rest pose"
+                                                              Command="{Binding ResetPoseCommand}" />
+                                                    <MenuItem Header="Delete" IsVisible="{Binding IsNotBone}"
                                                               Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteSceneObjectCommand}"
                                                               CommandParameter="{Binding}" />
                                                 </ContextMenu>
@@ -798,6 +978,12 @@
                                                 <controls:LucideIcon Icon="Folder"
                                                     Foreground="{StaticResource AnvilFolderBrush}"
                                                     IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Group}" />
+                                                <controls:LucideIcon Icon="PersonStanding"
+                                                    Foreground="{StaticResource AnvilMeshBrush}"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Armature}" />
+                                                <controls:LucideIcon Icon="Bone"
+                                                    Foreground="{StaticResource AnvilTextDisabledBrush}"
+                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Bone}" />
                                             </Grid>
 
                                             <!-- name -->
@@ -807,8 +993,16 @@
                                                        Classes="objectName"
                                                        Classes.prefabInstance="{Binding IsPrefabInstance}" />
 
+                                            <!-- posed bone marker (bones can't be locked or hidden) -->
+                                            <controls:LucideIcon Grid.Column="2" Grid.ColumnSpan="2" Icon="Rotate3d"
+                                                                 Width="12" Height="12" Margin="0,0,6,0"
+                                                                 HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                 Foreground="{StaticResource AnvilPrefabBrush}"
+                                                                 IsVisible="{Binding IsPosed}"
+                                                                 ToolTip.Tip="Rotated away from its rest pose" />
+
                                             <!-- lock toggle -->
-                                            <Button Grid.Column="2" Classes="rowIcon"
+                                            <Button Grid.Column="2" Classes="rowIcon" IsVisible="{Binding IsNotBone}"
                                                     Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSceneObjectLockedCommand}"
                                                     CommandParameter="{Binding}"
                                                     ToolTip.Tip="Lock">
@@ -824,7 +1018,7 @@
                                             </Button>
 
                                             <!-- visible toggle -->
-                                            <Button Grid.Column="3" Classes="rowIcon"
+                                            <Button Grid.Column="3" Classes="rowIcon" IsVisible="{Binding IsNotBone}"
                                                     Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSceneObjectVisibleCommand}"
                                                     CommandParameter="{Binding}"
                                                     ToolTip.Tip="Visible">
@@ -895,9 +1089,18 @@
                         <!-- Input devices section opened from Window > Input. -->
                         <ScrollViewer Grid.Row="1" IsVisible="{Binding IsInspectorInputView}"
                                       HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel DataContext="{Binding InputDevices}" x:DataType="m:InputDevicesViewModel"
-                                        Spacing="12" Margin="14,12">
+                            <StackPanel Spacing="12" Margin="14,12">
                                 <TextBlock Text="Input" FontSize="14" FontWeight="SemiBold" />
+                                <!-- The project's named actions (Move, Jump, ...) scripts read with WasActionPressed/GetVector. -->
+                                <TextBlock Text="Input actions" FontWeight="SemiBold" FontSize="11.5" />
+                                <TextBlock Text="Name actions and bind them to keys, mouse and gamepad controls; scripts read them by name, e.g. WasActionPressed(&quot;Jump&quot;)."
+                                           TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                <Button Content="Edit Input Actions..." HorizontalAlignment="Left"
+                                        Command="{Binding OpenInputActionsCommand}"
+                                        CommandParameter="{Binding $parent[Window]}" />
+                                <Separator />
+                            <StackPanel DataContext="{Binding InputDevices}" x:DataType="m:InputDevicesViewModel"
+                                        Spacing="12">
                                 <TextBlock Text="Available inputs" FontWeight="SemiBold" FontSize="11.5" />
                                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
                                     <TextBlock Text="Keyboard" Margin="0,0,12,10" />
@@ -937,6 +1140,7 @@
                                 <TextBlock Text="Updates automatically as devices connect or disconnect. Controller detection supports Xbox-compatible controllers."
                                            TextWrapping="Wrap" Classes="subtle" FontSize="11" />
                                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
 
@@ -980,6 +1184,38 @@
                             </StackPanel>
                         </ScrollViewer>
 
+                        <!-- Material asset (.mat) clicked in Assets: edits save to the file; linked gameobjects follow. -->
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsInspectorMaterialAssetView}"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Spacing="0" DataContext="{Binding MaterialAsset}" x:DataType="m:MaterialAssetViewModel">
+                                <Border Padding="12,10" Background="{StaticResource AnvilSubtleBandBrush}"
+                                        BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="0,0,0,1">
+                                    <StackPanel Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Palette" Foreground="{StaticResource AnvilPrimaryAltBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Path}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding Path}" />
+                                        <TextBlock Text="Material asset. Changes save to the file and update every gameobject using it. Drag it onto a gameobject in the Hierarchy (or double-click it with one selected) to assign it."
+                                                   Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                        <Button Content="Assign to Selected GameObject" HorizontalAlignment="Stretch" FontSize="11"
+                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AssignOpenMaterialAssetCommand}" />
+                                    </StackPanel>
+                                </Border>
+                                <Expander IsExpanded="True">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Palette" />
+                                            <TextBlock Text="Material" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <ContentControl Margin="12,8,12,12" Content="{Binding}" ContentTemplate="{StaticResource MaterialSurfaceTemplate}" />
+                                </Expander>
+                            </StackPanel>
+                        </ScrollViewer>
+
                         <!-- Empty selection state. -->
                         <TextBlock Grid.Row="1"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -1012,9 +1248,11 @@
                                         BorderThickness="0,0,0,1">
                                     <StackPanel Spacing="8">
                                         <TextBox Classes="field"
-                                                 Text="{Binding Name, Mode=TwoWay}" />
+                                                 Text="{Binding Name, Mode=TwoWay}"
+                                                 IsReadOnly="{Binding IsBone}" />
                                         <Grid ColumnDefinitions="*,*" ColumnSpacing="6"
-                                              RowDefinitions="Auto,Auto" RowSpacing="3">
+                                              RowDefinitions="Auto,Auto" RowSpacing="3"
+                                              IsVisible="{Binding IsNotBone}">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Tag"
                                                        Classes="muted" FontSize="10" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Text="Layer"
@@ -1106,7 +1344,8 @@
                                                        Classes="muted" FontSize="11"
                                                        VerticalAlignment="Center" />
                                             <Grid Grid.Row="0" Grid.Column="1"
-                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4"
+                                                  IsEnabled="{Binding IsNotBone}">
                                                 <NumericUpDown Grid.Column="0" Classes="field"
                                                                Value="{Binding PositionX, Mode=TwoWay}"
                                                                ShowButtonSpinner="False" FormatString="0.#" />
@@ -1136,9 +1375,10 @@
 
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Scale"
                                                        Classes="muted" FontSize="11"
-                                                       VerticalAlignment="Center" />
+                                                       VerticalAlignment="Center" IsVisible="{Binding IsNotBone}" />
                                             <Grid Grid.Row="2" Grid.Column="1"
-                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                  ColumnDefinitions="*,*,*" ColumnSpacing="4"
+                                                  IsVisible="{Binding IsNotBone}">
                                                 <NumericUpDown Grid.Column="0" Classes="field"
                                                                Value="{Binding ScaleX, Mode=TwoWay}"
                                                                ShowButtonSpinner="False" FormatString="0.#" />
@@ -1149,6 +1389,32 @@
                                                                Value="{Binding ScaleZ, Mode=TwoWay}"
                                                                ShowButtonSpinner="False" FormatString="0.#" />
                                             </Grid>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Bone (Engine.Entities.BoneObject): a skinned gameobject's bone or Armature -->
+                                <Expander IsExpanded="True" IsVisible="{Binding IsBone}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="Bone" />
+                                            <TextBlock Text="Bone" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="8" Margin="12,8,12,12">
+                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                   Text="Rotate it with the gizmo (E) or Rotation above: the mesh follows and its child bones move with it. Rotation is the turn away from the rest pose; Position is the joint in the world. The pose is saved with the scene and sits on top of an Animator's clip in Play. The Armature turns the whole skeleton." />
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                            <Button Grid.Column="0" Content="Reset Bone" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center" FontSize="11"
+                                                    IsEnabled="{Binding IsPosed}"
+                                                    Command="{Binding ResetBoneCommand}"
+                                                    ToolTip.Tip="Put this bone back in its rest pose." />
+                                            <Button Grid.Column="1" Content="Reset Pose" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center" FontSize="11"
+                                                    Command="{Binding ResetPoseCommand}"
+                                                    ToolTip.Tip="Put every bone of this gameobject back in its rest pose." />
                                         </Grid>
                                     </StackPanel>
                                 </Expander>
@@ -1288,169 +1554,45 @@
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
                                                     <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
-
-                                                    <Grid ColumnDefinitions="60,*" RowDefinitions="Auto"
-                                                          ColumnSpacing="8">
-                                                        <TextBlock Grid.Column="0" Text="Color"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center" />
-                                                        <Button Grid.Column="1" Background="Transparent"
-                                                                BorderThickness="0" Padding="0"
-                                                                HorizontalAlignment="Left">
-                                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                                <Border Width="28" Height="20" CornerRadius="3"
-                                                                        Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
-                                                                        BorderBrush="{StaticResource AnvilBorderBrush}"
-                                                                        BorderThickness="1" />
-                                                                <TextBlock Text="{Binding ColorHex}" FontSize="11"
-                                                                           VerticalAlignment="Center" />
-                                                            </StackPanel>
-                                                            <Button.Flyout>
-                                                                <!-- Flyout content is outside the template tree; OwnedFlyout_Opening
-                                                                     pins it to this component so it never edits another object. -->
-                                                                <Flyout Opening="OwnedFlyout_Opening">
-                                                                    <ColorPicker x:DataType="m:MaterialInfo" Color="{Binding Color, Mode=TwoWay}" />
-                                                                </Flyout>
-                                                            </Button.Flyout>
-                                                        </Button>
-                                                    </Grid>
-
-                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                                        <TextBlock Grid.Column="0" Text="Roughness"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center" />
-                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
-                                                                Value="{Binding Roughness, Mode=TwoWay}"
-                                                                MinHeight="18" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding Roughness, StringFormat={}{0:0.00}}"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center"
-                                                                   HorizontalAlignment="Right" />
-                                                    </Grid>
-
-                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                                        <TextBlock Grid.Column="0" Text="Metallic"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center" />
-                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
-                                                                Value="{Binding Metallic, Mode=TwoWay}"
-                                                                MinHeight="18" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding Metallic, StringFormat={}{0:0.00}}"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center"
-                                                                   HorizontalAlignment="Right" />
-                                                    </Grid>
-
-                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                                        <TextBlock Grid.Column="0" Text="Emissive"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center" />
-                                                        <Slider Grid.Column="1" Minimum="0" Maximum="8"
-                                                                Value="{Binding EmissiveStrength, Mode=TwoWay}"
-                                                                MinHeight="18" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding EmissiveStrength, StringFormat={}{0:0.00}}"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center"
-                                                                   HorizontalAlignment="Right" />
-                                                    </Grid>
-
-                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8">
-                                                        <TextBlock Grid.Column="0" Text="Opacity"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center" />
-                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1"
-                                                                Value="{Binding Opacity, Mode=TwoWay}"
-                                                                MinHeight="18" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding Opacity, StringFormat={}{0:0.00}}"
-                                                                   Classes="muted" FontSize="11"
-                                                                   VerticalAlignment="Center"
-                                                                   HorizontalAlignment="Right" />
-                                                    </Grid>
-
-                                                    <CheckBox Content="Transparent"
-                                                              IsChecked="{Binding IsTransparent, Mode=TwoWay}"
-                                                              FontSize="11" />
-                                                    <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" IsVisible="{Binding !IsWater}" FontSize="11" />
-
-                                                    <Expander Header="Textures" IsExpanded="True">
-                                                        <StackPanel Spacing="8" Margin="0,8,0,0">
-                                                            <TextBlock Text="Choose a texture or drag one from Assets." Classes="muted" FontSize="10" TextWrapping="Wrap" />
-                                                            <Grid ColumnDefinitions="60,*,*" ColumnSpacing="8">
-                                                                <TextBlock Grid.Column="0" Text="Tiling" Classes="muted" FontSize="11" VerticalAlignment="Center"
-                                                                           ToolTip.Tip="How often the textures repeat across the mesh UVs (U, V)" />
-                                                                <NumericUpDown Grid.Column="1" Classes="field" Minimum="0.01" Maximum="1000" Increment="1" Value="{Binding TilingU, Mode=TwoWay}" FormatString="0.##" />
-                                                                <NumericUpDown Grid.Column="2" Classes="field" Minimum="0.01" Maximum="1000" Increment="1" Value="{Binding TilingV, Mode=TwoWay}" FormatString="0.##" />
-                                                            </Grid>
-                                                            <ItemsControl ItemsSource="{Binding TextureSlots}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate DataType="m:MaterialTextureSlotViewModel" x:DataType="m:MaterialTextureSlotViewModel">
-                                                                        <StackPanel Spacing="4" Margin="0,0,0,8">
-                                                                            <TextBlock Text="{Binding Name}" Classes="muted" FontSize="11" />
-                                                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
-                                                                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="MaterialTexture_Browse"
-                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="MaterialTexture_DragOver" DragDrop.Drop="MaterialTexture_Drop"
-                                                                                        ToolTip.Tip="{Binding Label}">
-                                                                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" FontSize="11" />
-                                                                                </Button>
-                                                                                <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" ToolTip.Tip="Remove this texture map" />
-                                                                                <Button Grid.Column="2" Content="Reset" Command="{Binding ResetCommand}" ToolTip.Tip="Use the model's texture map" />
-                                                                            </Grid>
-                                                                        </StackPanel>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
-                                                    </Expander>
-                                                    <Expander Header="Shader" IsExpanded="True">
-                                                        <StackPanel Spacing="8" Margin="0,8,0,0">
+                                                    <!-- Material asset (Engine.Recources.MaterialAsset): pick/drop a .mat to share its surface;
+                                                         while linked, the settings below edit the asset itself. -->
+                                                    <Border Padding="8,6" CornerRadius="4"
+                                                            Background="{StaticResource AnvilInputBackgroundBrush}"
+                                                            BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1"
+                                                            ToolTip.Tip="{Binding MaterialAssetTip}">
+                                                        <StackPanel Spacing="6">
                                                             <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
-                                                                <TextBlock Grid.Column="0" Text="Shader"
-                                                                           Classes="muted" FontSize="11"
-                                                                           VerticalAlignment="Center" />
-                                                                <ComboBox Grid.Column="1" Classes="field"
-                                                                          HorizontalAlignment="Stretch"
-                                                                          SelectedIndex="{Binding MaterialType, Mode=TwoWay}">
-                                                                    <ComboBoxItem>Basic</ComboBoxItem>
-                                                                    <ComboBoxItem>Hologram</ComboBoxItem>
-                                                                    <ComboBoxItem>ProjectHologram</ComboBoxItem>
-                                                                    <ComboBoxItem>Emissive</ComboBoxItem>
-                                                                    <ComboBoxItem>SubsurfaceScattering</ComboBoxItem>
-                                                                    <ComboBoxItem>ForwardShaded</ComboBoxItem>
-                                                                    <ComboBoxItem>Water</ComboBoxItem>
-                                                                    <ComboBoxItem>WetSurface</ComboBoxItem>
-                                                                    <ComboBoxItem>Foliage</ComboBoxItem>
-                                                                </ComboBox>
+                                                                <TextBlock Grid.Column="0" Text="Asset" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                <Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                                                        Click="MaterialAssetPicker_Click"
+                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="MaterialAsset_DragOver" DragDrop.Drop="MaterialAsset_Drop">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                        <controls:LucideIcon Icon="Palette" Width="12" Height="12" VerticalAlignment="Center" />
+                                                                        <TextBlock Text="{Binding MaterialAssetLabel}" TextTrimming="CharacterEllipsis" FontSize="11" />
+                                                                    </StackPanel>
+                                                                </Button>
                                                             </Grid>
-                                                            <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
-                                                            <Button Content="Apply Wet Floor Example" Command="{Binding WetFloorExampleCommand}" HorizontalAlignment="Stretch" />
-                                                            <StackPanel Spacing="8" IsVisible="{Binding IsWetSurface}">
-                                                                <TextBlock Text="Wetness (dry weather)" Classes="muted" FontSize="11" />
-                                                                <Slider Minimum="0" Maximum="1" Value="{Binding Wetness, Mode=TwoWay}" />
-                                                                <TextBlock Text="Puddle Amount" Classes="muted" FontSize="11" />
-                                                                <Slider Minimum="0" Maximum="1" Value="{Binding PuddleAmount, Mode=TwoWay}" />
-                                                                <TextBlock Text="Puddle Size (m)" Classes="muted" FontSize="11" />
-                                                                <NumericUpDown Classes="field" Minimum="0.1" Maximum="50" Increment="0.5" Value="{Binding PuddleSize, Mode=TwoWay}" FormatString="0.0" />
-                                                                <CheckBox Content="Wet in Rain" IsChecked="{Binding WeatherWetness, Mode=TwoWay}" FontSize="11"
-                                                                          ToolTip.Tip="Rain soaks the surface beyond Wetness, fills its puddles and ripples them; it dries after the rain" />
-                                                                <TextBlock Text="Darkens and glosses the surface and pools mirror-like puddles on faces that look up. Puddles fill the dark parts of the Base Color first, or the low parts of the Displacement texture when one is set (used as height, no parallax). Puddle placement is world space, so it does not repeat with Tiling." Classes="muted" FontSize="10" TextWrapping="Wrap" />
-                                                            </StackPanel>
-                                                            <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
-                                                                <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
-                                                                <NumericUpDown Classes="field" Minimum="0.001" Maximum="10" Increment="0.05" Value="{Binding WaveScale, Mode=TwoWay}" FormatString="0.000" />
-                                                                <TextBlock Text="Wave Speed" Classes="muted" FontSize="11" />
-                                                                <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveSpeed, Mode=TwoWay}" FormatString="0.00" />
-                                                                <TextBlock Text="Wave Height (swell, m)" Classes="muted" FontSize="11" />
-                                                                <NumericUpDown Classes="field" Minimum="0" Maximum="10" Increment="0.1" Value="{Binding WaveHeight, Mode=TwoWay}" FormatString="0.00" />
-                                                                <TextBlock Text="Ripple Strength" Classes="muted" FontSize="11" />
-                                                                <Slider Minimum="0" Maximum="2" Value="{Binding WaveStrength, Mode=TwoWay}" />
-                                                                <TextBlock Text="Clarity (visible depth, m)" Classes="muted" FontSize="11" />
-                                                                <NumericUpDown Classes="field" Minimum="0.05" Maximum="50" Increment="0.5" Value="{Binding Clarity, Mode=TwoWay}" FormatString="0.00" />
-                                                                <TextBlock Text="Foam" Classes="muted" FontSize="11" />
-                                                                <Slider Minimum="0" Maximum="1" Value="{Binding Foam, Mode=TwoWay}" />
-                                                                <TextBlock Text="Apply to a flat mesh on the XY plane; it is subdivided so the swell moves the surface. Waves animate in Edit and Play mode; shore foam and depth colour appear where geometry sits below or through the surface. Give the gameobject the Water role to float Buoyancy bodies on it." Classes="muted" FontSize="10" TextWrapping="Wrap" />
-                                                            </StackPanel>
+                                                            <TextBlock Text="Material file missing: the gameobject keeps its last values." Classes="muted"
+                                                                       FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsMaterialAssetMissing}" />
+                                                            <TextBlock Text="Shared asset: edits below change every gameobject using it." Classes="muted"
+                                                                       FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsLinked}" />
+                                                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4" IsVisible="{Binding IsLinked}">
+                                                                <Button Grid.Column="0" Content="Edit Asset" HorizontalAlignment="Stretch"
+                                                                        HorizontalContentAlignment="Center" FontSize="11" Click="MaterialAssetEdit_Click"
+                                                                        ToolTip.Tip="Show the material asset in the Inspector" />
+                                                                <Button Grid.Column="1" Content="Unlink" HorizontalAlignment="Stretch"
+                                                                        HorizontalContentAlignment="Center" FontSize="11" Command="{Binding UnlinkCommand}"
+                                                                        ToolTip.Tip="Keep these values as this gameobject's own surface; it stops following the asset" />
+                                                            </Grid>
+                                                            <Button Content="Save as Material Asset" HorizontalAlignment="Stretch" FontSize="11"
+                                                                    IsVisible="{Binding IsNotLinked}"
+                                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CreateMaterialFromObjectCommand}"
+                                                                    ToolTip.Tip="Save this surface, with the textures the gameobject shows, as Content/Materials/&lt;name&gt;.mat and use it here. Other gameobjects can then share it." />
                                                         </StackPanel>
-                                                    </Expander>
+                                                    </Border>
+
+                                                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MaterialSurfaceTemplate}" />
+
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -4198,7 +4340,7 @@
                              though TreeViewItem marks those events handled. -->
                         <TreeView Name="AssetsTreeView"
                                   ItemsSource="{Binding AssetTree}"
-                                  ToolTip.Tip="Double-click a mesh or prefab to add it to the scene (or drag it into the Hierarchy). Drag a gameobject from the Hierarchy into a folder here to save it as a prefab. Double-click a shader, XML or CSS file to open it in a text editor.">
+                                  ToolTip.Tip="Double-click a mesh or prefab to add it to the scene (or drag it into the Hierarchy). Drag a gameobject from the Hierarchy into a folder here to save it as a prefab. Click a material to edit it; drag it onto a gameobject in the Hierarchy (or double-click it) to assign it. Right-click > Create Material makes a new one. Double-click a shader, XML or CSS file to open it in a text editor.">
 
                             <!-- Two-way so folder expansion survives tree rebuilds
                                  (the tree is rebuilt whenever Engine/Content changes). -->
@@ -4216,6 +4358,10 @@
                                             <ContextMenu>
                                                 <MenuItem Header="Place in Scene" Click="AssetPlacePrefab_Click"
                                                           IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Prefab}" />
+                                                <MenuItem Header="Assign to Selected GameObject" Click="AssetAssignMaterial_Click"
+                                                          IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Material}" />
+                                                <MenuItem Header="Create Material" Click="AssetCreateMaterial_Click"
+                                                          ToolTip.Tip="A new material asset (.mat) in this folder; edit it in the Inspector and drag it onto gameobjects" />
                                                 <MenuItem Header="Delete" Click="AssetDelete_Click" />
                                             </ContextMenu>
                                         </StackPanel.ContextMenu>
@@ -4235,7 +4381,7 @@
                                             <controls:LucideIcon Icon="Music"
                                                   Foreground="{StaticResource AnvilAudioBrush}"
                                                   IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Audio}" />
-                                            <controls:LucideIcon Icon="Box"
+                                            <controls:LucideIcon Icon="Palette"
                                                   Foreground="{StaticResource AnvilPrimaryAltBrush}"
                                                   IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Material}" />
                                             <controls:LucideIcon Icon="FileImage"

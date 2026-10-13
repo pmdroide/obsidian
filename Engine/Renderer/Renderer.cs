@@ -628,6 +628,16 @@ namespace Engine.Renderer
             return false;
         }
 
+        private readonly List<(Vector3 From, Vector3 To, int Bone)> _armatureLines = new();
+
+        // True when `bone` is `root` or one of its descendants.
+        private static bool IsInBranch(Animation.SkinningData skeleton, int bone, int root)
+        {
+            for (int i = bone; i >= 0; i = skeleton.ParentIndices[i])
+                if (i == root) return true;
+            return false;
+        }
+
         private void RenderEditorOverlays(EditorLogic.EditorSendData editorData, MeshMaterialLibrary meshMaterialLibrary, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities)
         {
 
@@ -655,6 +665,22 @@ namespace Engine.Renderer
                             HelperGeometryManager.GetInstance()
                                 .AddBoundingBox(editorData.SelectedObject as BasicEntity);
                         }
+
+                    // The armature of a selected skinned gameobject (or of the selected bone's), the selected bone's
+                    // branch highlighted, so the bones listed in Anvil's Hierarchy can be found in the viewport.
+                    var bone = editorData.SelectedObject as BoneObject;
+                    if ((editorData.SelectedObject as BasicEntity ?? bone?.Owner) is { } skinned)
+                    {
+                        _armatureLines.Clear();
+                        skinned.BonePose.CollectLines(skinned, _armatureLines);
+                        var skeleton = Animation.SkinningData.From(skinned.Model);
+                        foreach (var (from, to, index) in _armatureLines)
+                        {
+                            bool highlighted = bone != null && (bone.IsArmature || IsInBranch(skeleton, index, bone.BoneIndex));
+                            Color color = highlighted ? Color.Orange : Color.DeepSkyBlue;
+                            HelperGeometryManager.GetInstance().AddLineStartEnd(from, to, 1, color, color);
+                        }
+                    }
 
                     // Physics > Collider Size, so it can be fitted by eye.
                     if (editorData.SelectedObject is BasicEntity { Physics: { Enabled: true } physics } selected)

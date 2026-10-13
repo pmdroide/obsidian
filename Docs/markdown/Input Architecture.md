@@ -8,6 +8,10 @@ and the exact steps to add a new input binding.
 
 ## 1. The mental model
 
+> Game scripts should use **input actions** ([Input_Actions.md](Input_Actions.md)): named actions bound
+> to keys, mouse and gamepad controls, read with `WasActionPressed("Jump")`/`GetVector("Move")`. They sit on
+> top of `GameInput`, which sits on top of `Input`. This page is about the raw layer underneath.
+
 There is one and only one place the engine reads input: the static class
 [`Engine.Logic.Input`](../Engine/Logic/Input.cs). Everything else (camera fly,
 gizmos, selection, the debug console, render‑mode cycling, audio test hooks)
@@ -103,9 +107,9 @@ EditorCamera fly (W/A/S/D/Q/E), etc.
 Two things make a key reachable in the editor:
 
 1. It must be mapped in
-   [`MonoGameHost.MapAvaloniaKey`](../Editor/Anvil/Controls/MonoGameHost.cs#L168)
-   (only a curated subset — WASDQE, Shift/Ctrl/Alt, F1–F3, Space, Escape — is
-   currently mapped; everything else returns `Keys.None` and is dropped).
+   [`KeyMap.ToXna`](../Editor/Anvil/Services/KeyMap.cs), which `MonoGameHost.MapAvaloniaKey`
+   calls. It covers the whole keyboard (letters, digits, F1–F24, numpad, punctuation,
+   modifiers, arrows, navigation keys); anything else returns `Keys.None` and is dropped.
 2. The consumer must read it via `Input.IsKeyDown`, **not** `WasKeyPressed`.
 
 The handler is registered at the Avalonia *window* level
@@ -210,15 +214,9 @@ if (Input.IsKeyDown(Keys.H))
 }
 ```
 
-If the key must work **inside the Anvil editor too**, also add it to
-[`MonoGameHost.MapAvaloniaKey`](../Editor/Anvil/Controls/MonoGameHost.cs#L168):
-
-```csharp
-Key.G => XnaKeys.G,
-Key.H => XnaKeys.H,
-```
-
-…and read it with `Input.IsKeyDown` (not `WasKeyPressed`).
+Anvil forwards every keyboard key ([`KeyMap.ToXna`](../Editor/Anvil/Services/KeyMap.cs)), so for the key
+to work **inside the Anvil editor too**, read it with `Input.IsKeyDown` (not `WasKeyPressed`). A key
+Avalonia reports that `KeyMap` doesn't know yet needs an arm there.
 
 ### 6.2 — Add an editor‑mode keybind (selection/gizmo context)
 
@@ -258,8 +256,7 @@ The bridge currently forwards only *held* state (`_hostKeysDown`), so
 key without routing through the UI, add a tiny "was‑down‑last‑frame" check on top
 of the host set:
 
-1. Map the key in
-   [`MonoGameHost.MapAvaloniaKey`](../Editor/Anvil/Controls/MonoGameHost.cs#L168).
+1. Check the key is in [`KeyMap.ToXna`](../Editor/Anvil/Services/KeyMap.cs) (the whole keyboard is).
 2. In [`Input.cs`](../Engine/Logic/Input.cs), add a host‑aware edge helper that
    remembers the previous merged state:
 
@@ -323,8 +320,8 @@ For richer commands, extend `UseConsoleCommand()` in `DebugScreen`.
 - **`WasKeyPressed` ≠ Anvil.** Native‑state edge helpers don't fire when hosted.
   Use `Input.IsKeyDown` (held) or a UI/bridge command (one‑shot) for editor
   features.
-- **Map before you forward.** A key not in `MonoGameHost.MapAvaloniaKey` is
-  invisible to the engine inside Anvil, no matter how you read it.
+- **Map before you forward.** A key not in `KeyMap.ToXna` (used by
+  `MonoGameHost.MapAvaloniaKey`) is invisible to the engine inside Anvil, no matter how you read it.
 - **Console guard.** Gate new keybinds behind `!DebugScreen.ConsoleOpen` so they
   don't fire while the user is typing.
 - **Game thread only.** From Avalonia, never touch engine lists/objects directly;
@@ -340,7 +337,8 @@ For richer commands, extend `UseConsoleCommand()` in `DebugScreen`.
 
 | I want to… | Do this |
 |------------|---------|
-| Held key, both contexts | `Input.IsKeyDown(Keys.X)` + map in `MapAvaloniaKey` |
+| Gameplay input in a script | an input action: `WasActionPressed("Jump")`, `GetVector("Move")` ([Input_Actions.md](Input_Actions.md)) |
+| Held key, both contexts | `Input.IsKeyDown(Keys.X)` (Anvil forwards it through `KeyMap`) |
 | One‑shot key, standalone only | `Input.WasKeyPressed(Keys.X)` |
 | One‑shot action in the editor | Toolbar button → `IEditorBridge` command (§6.5) |
 | Detect a click | `Input.WasLMBClicked()` |

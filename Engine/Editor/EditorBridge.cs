@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Engine.Animation;
 using Engine.Entities;
 using Engine.Components;
 using GameComponent = Engine.Components.GameComponent;
@@ -1068,7 +1069,9 @@ namespace Engine.Editor
                 _spawnPoint = _scene.Camera.Position + _scene.Camera.Forward * 5f;
             }
 
-            // 3. Selection sync.
+            // 3. Selection sync. A selected bone follows its gameobject when that is rebuilt, and goes with it.
+            if (_editor.SelectedObject is BoneObject bone && !_scene.BasicEntities.Contains(bone.Owner))
+                _editor.SelectedObject = LookupById(bone.Id);
             int? sel = _editor.SelectedObject?.Id;
             if (sel != _selectedId)
             {
@@ -1153,7 +1156,8 @@ namespace Engine.Editor
                     isPersistent: be.Persistent,
                     prefabPath: be.PrefabPath,
                     prefabOverrides: overrides,
-                    prefabMissing: prefabMissing));
+                    prefabMissing: prefabMissing,
+                    bones: BuildBones(be)));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)
@@ -1223,8 +1227,34 @@ namespace Engine.Editor
             return list;
         }
 
+        // The Armature and bones of a skinned gameobject (Anvil lists them under it), or null for other models.
+        private static BoneSnapshot[] BuildBones(BasicEntity be)
+        {
+            SkinningData skeleton = SkinningData.From(be.Model);
+            if (skeleton == null || skeleton.BoneCount == 0 || BoneObject.IdFor(be.Id, skeleton.BoneCount - 1) == 0) return null;
+            Matrix[] bones = be.BonePose.ModelBones(be);
+            Matrix world = Matrix.CreateScale(be.Scale) * be.RotationMatrix * Matrix.CreateTranslation(be.Position);
+            var list = new BoneSnapshot[skeleton.BoneCount + 1];
+            Quaternion armature = be.BonePose.Get(skeleton, BoneObject.ArmatureIndex);
+            list[0] = new BoneSnapshot(BoneObject.IdFor(be.Id, BoneObject.ArmatureIndex), "Armature", BoneObject.ArmatureIndex, -2,
+                be.Position, Matrix.CreateFromQuaternion(armature), armature != Quaternion.Identity);
+            for (int i = 0; i < skeleton.BoneCount; i++)
+            {
+                Quaternion rotation = be.BonePose.Get(skeleton, i);
+                list[i + 1] = new BoneSnapshot(BoneObject.IdFor(be.Id, i), skeleton.BoneNames[i], i, skeleton.ParentIndices[i],
+                    Vector3.Transform(bones[i].Translation, world), Matrix.CreateFromQuaternion(rotation), rotation != Quaternion.Identity);
+            }
+            return list;
+        }
+
         private TransformableObject LookupById(int id)
         {
+            // Bones (Anvil Hierarchy > Armature): negative IDs below the Main Camera's.
+            if (id < MainCameraId && BoneObject.TryDecode(id, out int ownerId, out int boneIndex))
+            {
+                BasicEntity owner = LookupEntityById(ownerId);
+                return owner?.BonePose.Proxy(owner, boneIndex);
+            }
             for (int i = 0; i < _scene.BasicEntities.Count; i++)
                 if (_scene.BasicEntities[i].Id == id) return _scene.BasicEntities[i];
             for (int i = 0; i < _scene.PointLights.Count; i++)

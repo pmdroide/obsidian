@@ -14,6 +14,10 @@ namespace Engine.Logic
     ///
     /// The Menu* properties merge arrows/WASD, the D-pad and the left stick, and repeat while held
     /// (after <see cref="RepeatDelay"/>, every <see cref="RepeatInterval"/>).
+    ///
+    /// Gameplay should prefer the project's input actions (<see cref="InputActions"/>, Anvil > Window > Input
+    /// Actions): <see cref="WasActionPressed"/>, <see cref="GetVector"/>, ... They are updated at the end of
+    /// <see cref="Update"/>, so they see this frame's keys, mouse and pads.
     /// </summary>
     public static class GameInput
     {
@@ -25,8 +29,10 @@ namespace Engine.Logic
 
         private static readonly Keys[] AllKeys = (Keys[])Enum.GetValues(typeof(Keys));
         private static HashSet<Keys> _keys = new HashSet<Keys>(), _lastKeys = new HashSet<Keys>();
-        private static readonly GamePadState[] Pads = new GamePadState[GamePad.MaximumGamePadCount];
-        private static readonly GamePadState[] LastPads = new GamePadState[GamePad.MaximumGamePadCount];
+        internal static readonly GamePadState[] Pads = new GamePadState[GamePad.MaximumGamePadCount];
+        internal static readonly GamePadState[] LastPads = new GamePadState[GamePad.MaximumGamePadCount];
+        // Checks set these instead of the hardware (GamePad.GetState).
+        private static readonly GamePadState?[] PadOverrides = new GamePadState?[GamePad.MaximumGamePadCount];
         private static float _padPollTimer;
 
         private static readonly bool[] DirectionHeld = new bool[4];
@@ -49,6 +55,27 @@ namespace Engine.Logic
         /// <summary>Escape, Backspace, gamepad B or Back.</summary>
         public static bool MenuBack =>
             WasPressed(Keys.Escape) || WasPressed(Keys.Back) || WasPressed(Buttons.B) || WasPressed(Buttons.Back);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //  INPUT ACTIONS (the project's list, see InputActions)
+        ////////////////////////////////////////////////////////////////////////////////
+
+        /// <summary>The project's action called <paramref name="name"/> (never null).</summary>
+        public static InputAction Action(string name) => InputActions.Get(name);
+        /// <summary>The action is held this frame.</summary>
+        public static bool IsActionDown(string name) => InputActions.Get(name).IsPressed;
+        /// <summary>The action went down this frame.</summary>
+        public static bool WasActionPressed(string name) => InputActions.Get(name).WasPressed;
+        /// <summary>The action came up this frame.</summary>
+        public static bool WasActionReleased(string name) => InputActions.Get(name).WasReleased;
+        /// <summary>An Axis action's value (a Button's 0..1, a Vector2's length).</summary>
+        public static float GetAxis(string name) => InputActions.Get(name).Value;
+        /// <summary>A Vector2 action's value (+Y up/forward).</summary>
+        public static Vector2 GetVector(string name) => InputActions.Get(name).Vector;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //  RAW KEYS, BUTTONS AND MOUSE
+        ////////////////////////////////////////////////////////////////////////////////
 
         public static bool IsDown(Keys key) => _keys.Contains(key);
         public static bool WasPressed(Keys key) => _keys.Contains(key) && !_lastKeys.Contains(key);
@@ -77,14 +104,29 @@ namespace Engine.Logic
         public static bool AnyInputPressed => AnyKeyPressed || AnyMouseButtonPressed || AnyGamePadButtonPressed;
 
         /// <summary>Left stick of the first connected gamepad (Y up).</summary>
-        public static Vector2 LeftStick
+        public static Vector2 LeftStick => FirstPad().ThumbSticks.Left;
+        /// <summary>Right stick of the first connected gamepad (Y up).</summary>
+        public static Vector2 RightStick => FirstPad().ThumbSticks.Right;
+        /// <summary>Left trigger of the first connected gamepad, 0..1.</summary>
+        public static float LeftTrigger => FirstPad().Triggers.Left;
+        /// <summary>Right trigger of the first connected gamepad, 0..1.</summary>
+        public static float RightTrigger => FirstPad().Triggers.Right;
+
+        /// <summary>Keys that went down this frame.</summary>
+        public static IEnumerable<Keys> KeysPressedThisFrame
         {
             get
             {
-                for (int i = 0; i < Pads.Length; i++)
-                    if (Pads[i].IsConnected) return Pads[i].ThumbSticks.Left;
-                return Vector2.Zero;
+                foreach (Keys key in _keys)
+                    if (!_lastKeys.Contains(key)) yield return key;
             }
+        }
+
+        private static GamePadState FirstPad()
+        {
+            for (int i = 0; i < Pads.Length; i++)
+                if (Pads[i].IsConnected) return Pads[i];
+            return GamePadState.Default;
         }
 
         /// <summary>Cursor in viewport pixels.</summary>
@@ -96,6 +138,11 @@ namespace Engine.Logic
         /// <summary>Right button went down this frame.</summary>
         public static bool MouseRightClicked =>
             Input.mouseState.RightButton == ButtonState.Pressed && Input.mouseLastState.RightButton == ButtonState.Released;
+        /// <summary>
+        /// How far the cursor moved this frame, in pixels (screen axes: +Y down). Zero in Anvil while the cursor is
+        /// over an editor panel, unless a drag that started in the viewport is still held.
+        /// </summary>
+        public static Vector2 MouseDelta { get; private set; }
         /// <summary>Scroll wheel notches this frame (positive = up).</summary>
         public static int MouseScroll => (Input.mouseState.ScrollWheelValue - Input.mouseLastState.ScrollWheelValue) / 120;
 
@@ -123,11 +170,30 @@ namespace Engine.Logic
                 if (Pads[i].IsConnected && LastPads[i].IsConnected && Pads[i].Buttons != LastPads[i].Buttons)
                     AnyGamePadButtonPressed = PressedAnyButton(Pads[i], LastPads[i]);
 
+            MouseDelta = MouseInViewport(m)
+                ? new Vector2(m.X - lm.X, m.Y - lm.Y)
+                : Vector2.Zero;
+
             if (AnyKeyPressed) LastDevice = InputDevice.Keyboard;
-            else if (AnyGamePadButtonPressed || LeftStick.LengthSquared() > StickPress * StickPress) LastDevice = InputDevice.GamePad;
-            else if (AnyMouseButtonPressed || MouseMoved) LastDevice = InputDevice.Mouse;
+            else if (AnyGamePadButtonPressed || LeftStick.LengthSquared() > StickPress * StickPress ||
+                     RightStick.LengthSquared() > StickPress * StickPress) LastDevice = InputDevice.GamePad;
+            else if (AnyMouseButtonPressed || MouseDelta != Vector2.Zero) LastDevice = InputDevice.Mouse;
 
             UpdateDirections(deltaSeconds);
+            InputActions.Update(deltaSeconds);
+        }
+
+        /// <summary>Uses <paramref name="state"/> for pad <paramref name="index"/> instead of the hardware; null to read it again (checks).</summary>
+        internal static void OverrideGamePad(int index, GamePadState? state) => PadOverrides[index] = state;
+
+        // Standalone: always. In Anvil the cursor must be over the viewport, or dragging from it
+        // (Input.FilterHostMouse already released the buttons of a press that began over a panel).
+        private static bool MouseInViewport(MouseState m)
+        {
+            if (Input.HostBridge == null || !Input.HostBridge.IsHostedByEditor) return true;
+            if (m.LeftButton == ButtonState.Pressed || m.RightButton == ButtonState.Pressed || m.MiddleButton == ButtonState.Pressed)
+                return true;
+            return m.X >= 0 && m.Y >= 0 && m.X < Recources.GameSettings.g_screenwidth && m.Y < Recources.GameSettings.g_screenheight;
         }
 
         private static void PollGamePads(float dt)
@@ -138,6 +204,7 @@ namespace Engine.Logic
             for (int i = 0; i < Pads.Length; i++)
             {
                 LastPads[i] = Pads[i];
+                if (PadOverrides[i] is { } overridden) { Pads[i] = overridden; continue; }
                 if (!Pads[i].IsConnected && !pollEmpty) continue;
                 try { Pads[i] = GamePad.GetState(i); }
                 catch { Pads[i] = GamePadState.Default; }

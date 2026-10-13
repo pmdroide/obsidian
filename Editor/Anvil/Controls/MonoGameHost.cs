@@ -10,6 +10,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Anvil.Services;
 using XnaKeys = Microsoft.Xna.Framework.Input.Keys;
 
 namespace Anvil.Controls;
@@ -199,32 +200,8 @@ public class MonoGameHost : NativeControlHost
         return focused is not (TextBox or MenuItem);
     }
 
-    /// <summary>
-    /// Map the subset of Avalonia keys the engine cares about (WASD/QE camera
-    /// fly, Shift/Ctrl modifiers, F1 render-mode cycle, Space editor toggle,
-    /// arrows/Enter/Backspace for game menus).
-    /// Everything else returns <see cref="XnaKeys.None"/> and is ignored.
-    /// </summary>
-    private static XnaKeys MapAvaloniaKey(Key k) => k switch
-    {
-        Key.A => XnaKeys.A, Key.B => XnaKeys.B, Key.C => XnaKeys.C, Key.D => XnaKeys.D,
-        Key.E => XnaKeys.E, Key.F => XnaKeys.F, Key.G => XnaKeys.G, Key.H => XnaKeys.H,
-        Key.I => XnaKeys.I, Key.J => XnaKeys.J, Key.K => XnaKeys.K, Key.L => XnaKeys.L,
-        Key.M => XnaKeys.M, Key.N => XnaKeys.N, Key.O => XnaKeys.O, Key.P => XnaKeys.P,
-        Key.Q => XnaKeys.Q, Key.R => XnaKeys.R, Key.S => XnaKeys.S, Key.T => XnaKeys.T,
-        Key.U => XnaKeys.U, Key.V => XnaKeys.V, Key.W => XnaKeys.W, Key.X => XnaKeys.X,
-        Key.Y => XnaKeys.Y, Key.Z => XnaKeys.Z,
-        Key.Space => XnaKeys.Space,
-        Key.LeftShift => XnaKeys.LeftShift, Key.RightShift => XnaKeys.RightShift,
-        Key.LeftCtrl => XnaKeys.LeftControl, Key.RightCtrl => XnaKeys.RightControl,
-        Key.LeftAlt => XnaKeys.LeftAlt, Key.RightAlt => XnaKeys.RightAlt,
-        Key.F1 => XnaKeys.F1, Key.F2 => XnaKeys.F2, Key.F3 => XnaKeys.F3,
-        Key.Escape => XnaKeys.Escape,
-        // Menu navigation for game UI in Play mode (GameInput).
-        Key.Up => XnaKeys.Up, Key.Down => XnaKeys.Down, Key.Left => XnaKeys.Left, Key.Right => XnaKeys.Right,
-        Key.Enter => XnaKeys.Enter, Key.Back => XnaKeys.Back, Key.Tab => XnaKeys.Tab,
-        _ => XnaKeys.None,
-    };
+    /// <summary>The whole keyboard; keys <see cref="KeyMap"/> doesn't know return <see cref="XnaKeys.None"/> and are ignored.</summary>
+    private static XnaKeys MapAvaloniaKey(Key k) => KeyMap.ToXna(k);
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {

@@ -40,6 +40,8 @@ namespace Engine.Logic
             nameof(BasicEntityRecord.Id), nameof(BasicEntityRecord.Name), nameof(BasicEntityRecord.Position),
             nameof(BasicEntityRecord.Rotation), nameof(BasicEntityRecord.Prefab), nameof(BasicEntityRecord.PrefabOverrides),
             nameof(BasicEntityRecord.Physics),
+            // Posed bones belong to the instance, like its transform.
+            nameof(BasicEntityRecord.BonePose),
         };
 
         // ------------------------------------------------------------------

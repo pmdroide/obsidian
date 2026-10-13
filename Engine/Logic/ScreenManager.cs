@@ -79,6 +79,8 @@ namespace Engine.Logic
 
             // Build order of the game's scenes; entry 0 starts the standalone game (see Update).
             SceneList.Load();
+            // Named input actions scripts read (Anvil > Window > Input Actions).
+            InputActions.Load();
             GameUI.Bind(graphicsDevice, _uiFonts);
 
             // User render passes (Anvil > Render Pipeline): loads or compiles their shaders.

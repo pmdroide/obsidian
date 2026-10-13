@@ -1,5 +1,63 @@
 # Changelog
 
+## Added: Armature and posable bones in the Hierarchy (2026-10-13)
+
+**Why:** a skinned gameobject (Y Bot, the Wolf) showed as one row in the Hierarchy. Its skeleton was invisible to the editor and there was no way to pose a bone: in Edit mode the mesh always drew its bind pose.
+
+- **Hierarchy:** every gameobject with a skinned model now has an **Armature** child, with the bone tree under it (Hips > Spine > ... in skeleton order). Bone rows show a bone icon and a marker when posed. They have no lock, visible or Delete; their context menu has **Reset Bone** / **Reset Pose**. The flat snapshot list is unchanged: bones travel on their gameobject's entry (`EditorObjectSnapshot.Bones`, new `BoneSnapshot`, `EditorObjectKind.Bone`), and `BridgeReconciler.ApplyBones` nests them, keeping the rows while the skeleton is the same.
+- **Rotating bones:** selecting a bone row selects a `BoneObject` (`Engine/Entities/BoneObject.cs`), a `TransformableObject` proxy with a negative editor ID (`BoneObject.IdFor/TryDecode`, resolved by `EditorBridge.LookupById`). The rotation gizmo turns it about its joint, and its child bones and the skinned vertices follow. Inspector Rotation is the bone's turn away from its rest pose; Position is the joint in the world (read-only); Scale is hidden. The Armature turns the whole skeleton about the model origin. Rotating the gameobject carries its armature with it.
+- **Pose:** `BasicEntity.BonePose` (`Engine/Animation/BonePose.cs`) keeps one rotation per posed bone, applied in the bone's own space by `AnimationPlayer` (new `Overrides`). `BonePose.UpdateAll` (every frame in `MainSceneLogic.Update`, Edit and Play) skins posed gameobjects that no Animator or limp Ragdoll is skinning, and gives an unposed one back its shared buffers. The Animator applies the pose on top of its clips (re-posing when it changes). Saved per gameobject as `BasicEntityRecord.BonePose` (bone name -> rotation, `""` = Armature; only when posed). It is a prefab instance key, copied on duplicate, and Stop restores the pose from before Play.
+- **Viewport:** the selected skinned gameobject (or the selected bone's) draws its armature as lines; the selected bone's branch is orange.
+- **Checks:** new `Tests/Components/BoneChecks.cs`. 8 checks without a GPU: IDs, pose math, the Armature, saving. 15 with `--graphics` on Y Bot: the Hierarchy tree, selecting a bone, gizmo rotation about the joint with the children following, Edit-mode skinning, the gameobject's rotation carrying the armature, Inspector rotation, save/load, duplicate, Play/Stop, Reset Bone/Pose, deleting the owner. Every check up to the known `PauseChecks` failure passes (1410). Not checked by hand in Anvil: the driver's screenshot showed other windows covering it.
+- **Docs:** `Docs/markdown/Skeletal_Animation.md` (Posing bones in the editor), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Material assets (2026-10-13)
+
+**Why:** a surface (colour, shader settings, textures) lived only on one gameobject's Material component. Reusing it meant copying every value and texture slot by hand, and changing it meant editing every gameobject again.
+
+- **Material asset files** (`Engine/Recources/MaterialAsset.cs`): `.mat` JSON in any Content folder (default `Content/Materials`) holding a Material component's whole surface: colour, roughness, metallic, emission, opacity, transparency, shadows, tiling, the shader type with its water/wet settings, and the Base Color/Normal/Roughness/Metallic/Mask/Displacement textures. `Create`, `Load("Brick")`/`Resolve`, `List`, `Write` (atomic), `UniquePath`, `Exists`. `Engine.csproj` ships `Content/**/*.mat`.
+- **Linking:** `MaterialComponent.MaterialPath` links a component to an asset. It keeps a copy of the values, saved in the scene as a fallback. `MaterialAsset.SyncScene` (every frame, Edit and Play, in `MainSceneLogic.Update`) updates every linked gameobject when the file changes: at once after Anvil writes it, within 30 frames after an outside edit. An unchanged asset never overwrites runtime changes. `MaterialComponent.Link`, `MaterialAsset.Assign(entity, nameOrPath)` (adds a Material component when needed), and `OnAdded` takes the asset's values for components added already linked.
+- **Capturing what a gameobject shows:** `MaterialAsset.Capture`/`CreateFrom` fill slots that follow the model with the model's own texture files (`TexturePathOf`: `Texture2D.Name` → Content source file, including model textures built as `<name>_0`). Maps the model doesn't have become None. `MaterialComponent` now loads `<path>_0` when a texture has no xnb of its own.
+- **Anvil:**
+  - Assets > right-click > **Create Material**; `.mat` files show with a palette icon.
+  - Clicking a material opens it in the Inspector (new `MaterialAssetViewModel`). Edits save to the file and every gameobject using it updates.
+  - Assign a material by dragging it onto a Hierarchy row, double-clicking it, Assets context menu > Assign to Selected GameObject, or the asset Inspector button.
+  - The Material component has an **Asset** slot (pick from a menu or drop a `.mat`), plus **Edit Asset**, **Unlink** and **Save as Material Asset**. Edits to a linked component write the asset (virtual `ComponentViewModel.Push`, `MaterialAsset.SaveFrom`).
+  - **GameObject > Create Material from Selection**.
+  - The Material editor body is now the shared `MaterialSurfaceTemplate` resource in `MainWindow.axaml`.
+  - The texture picker takes the Content folder from the window, so it also works in the asset Inspector.
+- **Checks:** new `Tests/Components/MaterialAssetChecks.cs`, 28 checks: files, lookup, linking, following writes and outside edits, runtime changes kept, linked Inspector edits writing the asset, Unlink, scene round trip, missing files, capture, and Anvil's view models. There are also 3 GPU checks: content textures map back to their source files, captured textures load again. All 1273 component checks pass. The GPU material checks now run first in `MaterialGraphicsChecks`, before the known `PauseChecks` failure. Checked in Anvil: Create Material from Selection on a cube, the linked Material section, Edit Asset, a Metallic change in the asset Inspector reaching the file and the cube live, and Assets > Create Material.
+- **Docs:** `Docs/markdown/Material_Component.md` (Material assets), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Input actions (2026-10-13)
+
+**Why:** scripts read raw keys and buttons (`GameInput.IsDown(Keys.W)`, `WasPressed(Buttons.A)`). Every script repeated its own keyboard and gamepad pairs, nothing could be rebound, and changing a control meant editing code.
+
+- **Actions** (`Engine/Logic/InputActions.cs`, `InputActionList.cs`): the project has a list of named actions in `Content/System/InputActions.json` (shipped in builds; the defaults when it is missing). Each is a **Button**, **Axis** or **Vector2** with any number of bindings:
+  - a single control, or a **composite** of keys: Up/Down/Left/Right for a Vector2 (W/A/S/D), Negative/Positive for an Axis (Q/E);
+  - an optional **Modifier** that must be held (Right Mouse + Mouse Delta, Left Ctrl + S), plus **Scale**, **Per Second** (times the frame time, so sticks and mouse deltas add up alike) and **Invert X/Y**.
+  - Each frame the strongest binding wins. Analog values press at 0.5 and release below 0.375. Actions read released while the debug console is open or when `Enabled` is false.
+  - Default set (like Unity's): Move, Look (already in degrees), Jump, Sprint, Crouch, Interact, Attack, Previous, Next and Pause, each on keyboard/mouse and gamepad.
+- **Controls** (`Engine/Logic/InputControls.cs`): paths for the whole keyboard (`Keyboard/<Keys>`), the mouse (buttons, `Mouse/Delta` with +Y up, `Mouse/Scroll`, `ScrollUp/Down`) and gamepads (buttons, triggers 0..1, sticks and D-pad as 2D values, stick axes and directions). Gamepad controls read every connected controller. `DetectPressed`/`DetectGamePad` find the control that went down, for rebinding.
+- **Script API** (`Engine/Scripting/ScriptBehaviour.Input.cs`): `WasActionPressed("Jump")`, `IsActionDown`, `WasActionReleased`, `GetAxis`, `GetVector("Move")`, `BindingText("Interact")` (the key or button for the device in use, for prompts) and `GetAction`. The action has `HeldTime`, `ActiveDevice`, `WasPressedWithin` + `ConsumePress` (input buffering), `Rebind`, `SetBinding`/`SetBindingPart` and `ResetBindings`. The same shortcuts are static on `GameInput`. An unknown name logs once and never fires. For rebinding menus: `InputActions.ListenForControl()`, `SaveBindings()`/`LoadBindings()` (SaveData, changed actions only) and `ResetBindings()`.
+- **`GameInput`**: updates the actions at the end of `Update`. New: `MouseDelta` (zero in Anvil while the cursor is over a panel), `RightStick`, `LeftTrigger`, `RightTrigger` and `KeysPressedThisFrame`. `LastDevice` now also switches to the gamepad on the right stick, and to the mouse only when it moves over the viewport.
+- **Anvil:** **Window > Input Actions...** (also **Edit Input Actions...** in the Window > Input panel) opens the editor:
+  - the action list (Add, Remove, Duplicate, Up/Down), the name and type, and the line to use in a script;
+  - binding cards with device and control dropdowns and **Listen**: press a key, click or scroll on the overlay, or use a gamepad button, trigger or stick direction. Esc cancels.
+  - Reset to Defaults. Save is disabled while a name is empty or used twice. Save writes the file, and the running engine reloads it on the next frame, also during Play.
+  - Stop restores the project's actions (`InputActions.Load` in `PlayModeController.Stop`), so script rebinds last one Play session.
+- **Key forwarding:** `MonoGameHost` now forwards the whole keyboard through the new `Anvil.Services.KeyMap`: digits, F1–F24, the numpad, punctuation, Insert/Delete/Home/End/Page Up/Page Down, Caps Lock and so on. Before, every key outside letters, modifiers, arrows and a few others was dropped, so it never reached scripts in Anvil's Play.
+- **Delete Project** writes the default input actions (`ProjectReset.WriteDefaultSettings`).
+- **Sample:** `CollisionTestPlayerScript` reads Move, Look, Sprint, Jump (with a 0.15 s input buffer), Interact and Attack. The CollisionTest scene now plays fully on a gamepad (the right stick looks, RT carries), and its HUD prompts show "E"/"X" and "Left Mouse"/"RT" for the device in use. F, Q and R stay raw keys.
+- **Checks:** new `Tests/Components/InputActionChecks.cs` (55 checks). They cover the shipped file, the JSON format and normalization, control paths, buttons, triggers and their hysteresis, composites, sticks, mouse look with its modifier, axes, modifiers, invert, buffering, console/disabled blocking, unknown names, reloads keeping instances, rebinding with saved overrides, listening, and the Anvil window's view models and key map. `ProjectResetChecks` checks the default actions, and the CollisionTest player checks now move through the Move action. All 1245 component checks pass. Checked in Anvil: the window lists the defaults, switching actions keeps their bindings, Listen picks a key (K) and a mouse button (Left Mouse), and Cancel writes nothing.
+- **Docs:** new `Docs/markdown/Input_Actions.md`; `Script_Behaviours.md`, `Scenes_and_Game_Flow.md`, `Collisions_and_Interaction.md`, `Input Architecture.md`, `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
 ## Fixed: Space/Enter stopping Play in Anvil (2026-10-13)
 
 **Why:** after you clicked Play, the Play button kept keyboard focus. Avalonia clicks a focused button on Space or Enter, so jumping or confirming a menu toggled Play off.

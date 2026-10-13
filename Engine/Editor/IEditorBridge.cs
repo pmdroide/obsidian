@@ -17,6 +17,39 @@ namespace Engine.Editor
         Camera,
         Decal,
         SpotLight,
+        // A bone (or the Armature) of a skinned gameobject: Entities.BoneObject, listed in EditorObjectSnapshot.Bones.
+        Bone,
+    }
+
+    /// <summary>
+    /// A bone of a skinned gameobject for Anvil's Hierarchy (Entities.BoneObject). The first entry of a gameobject's
+    /// list is its Armature (<see cref="Index"/> -1); the bones follow in skeleton order, parents first.
+    /// </summary>
+    public readonly struct BoneSnapshot
+    {
+        /// <summary>Editor ID (Entities.BoneObject.IdFor): select / mutate it like any object.</summary>
+        public readonly int Id;
+        public readonly string Name;
+        /// <summary>Bone index; -1 = the Armature.</summary>
+        public readonly int Index;
+        /// <summary>Parent bone index; -1 = under the Armature, -2 (the Armature) = under the gameobject.</summary>
+        public readonly int ParentIndex;
+        /// <summary>World position of the joint.</summary>
+        public readonly Vector3 Position;
+        /// <summary>Rotation away from the rest pose, in the bone's own space (BoneObject.LocalRotation).</summary>
+        public readonly Matrix Rotation;
+        public readonly bool IsPosed;
+
+        public BoneSnapshot(int id, string name, int index, int parentIndex, Vector3 position, Matrix rotation, bool isPosed)
+        {
+            Id = id;
+            Name = name;
+            Index = index;
+            ParentIndex = parentIndex;
+            Position = position;
+            Rotation = rotation;
+            IsPosed = isPosed;
+        }
     }
 
     public readonly struct LightSnapshot
@@ -91,10 +124,13 @@ namespace Engine.Editor
         // other gameobjects and when the prefab file is missing (PrefabMissing).
         public readonly IReadOnlyList<string> PrefabOverrides;
         public readonly bool PrefabMissing;
+        // BasicEntity with a skinned model only: its Armature and bones (Anvil shows them as its children); else null.
+        public readonly IReadOnlyList<BoneSnapshot> Bones;
 
         public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false, string decalTexture = null,
-            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false)
+            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null)
         {
+            Bones = bones;
             PrefabPath = prefabPath;
             PrefabOverrides = prefabOverrides;
             PrefabMissing = prefabMissing;

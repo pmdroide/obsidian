@@ -153,7 +153,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
         nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
         nameof(IsInspectorWorldView), nameof(IsInspectorSteamView), nameof(IsInspectorInputView),
-        nameof(IsInspectorRenderPipelineView))]
+        nameof(IsInspectorRenderPipelineView), nameof(IsInspectorMaterialAssetView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
@@ -165,10 +165,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsInspectorSteamView => InspectorView == "Steam";
     public bool IsInspectorInputView => InspectorView == "Input";
     public bool IsInspectorRenderPipelineView => InspectorView == "RenderPipeline";
+    /// <summary>A material asset (.mat) clicked in Assets; see <see cref="MaterialAsset"/>.</summary>
+    public bool IsInspectorMaterialAssetView => InspectorView == "MaterialAsset" && MaterialAsset != null;
 
     [RelayCommand]
     private void SetInspectorView(string view)
     {
+        if (view != "MaterialAsset") MaterialAsset?.Flush();
         InspectorView = view;
         // The built-in passes' on/off state follows the render settings, which don't notify.
         if (view == "RenderPipeline") RenderPipeline.Refresh();
@@ -384,6 +387,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // Picking a gameobject (viewport or Hierarchy) leaves a material asset's Inspector.
+            if (id != null && InspectorView == "MaterialAsset") SetInspectorView("Selection");
             _selectionRoundTripGuard = true;
             try { SelectedObjectId = id == null ? null : ("engine-" + id.Value); }
             finally { _selectionRoundTripGuard = false; }
@@ -540,7 +545,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteSelected()
     {
-        if (_bridge == null || SelectedObject is null || SelectedObject.EngineId is not int id) return;
+        // Bones belong to their gameobject's model.
+        if (_bridge == null || SelectedObject is null || SelectedObject.EngineId is not int id || SelectedObject.IsBone) return;
         _bridge.EnqueueDelete(id);
     }
 
@@ -624,6 +630,119 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (id == null) Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error,
                 $"Couldn't place {prefabPath}: the file is missing or uses an unknown model.", "Anvil:Prefabs"));
+        });
+    }
+
+    // -------- Material assets (Content/Materials/*.mat, Engine.Recources.MaterialAsset) --------
+
+    /// <summary>The material asset the Inspector shows (Assets click), or null.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsInspectorMaterialAssetView))]
+    private MaterialAssetViewModel? _materialAsset;
+
+    /// <summary>The engine's source Content folder ("" before the engine is up).</summary>
+    public string ContentSourceRoot => _bridge?.ContentSourceRoot ?? string.Empty;
+
+    /// <summary>Shows a material asset (Content-relative .mat path) in the Inspector, where its settings can be edited.</summary>
+    public void OpenMaterialAsset(string? path)
+    {
+        if (_bridge == null || !Engine.Recources.MaterialAsset.IsMaterialAsset(path)) return;
+        if (MaterialAsset != null && Engine.Recources.MaterialAsset.SamePath(MaterialAsset.Path, path))
+        {
+            InspectorView = "MaterialAsset";
+            return;
+        }
+        MaterialAsset?.Flush();
+        var asset = new MaterialAssetViewModel(path!);
+        asset.SaveFailed += message => AddConsoleEntry(ConsoleLevel.Error, message, "Anvil:Materials");
+        MaterialAsset = asset;
+        InspectorView = "MaterialAsset";
+    }
+
+    /// <summary>Material asset Inspector > Assign to Selected GameObject.</summary>
+    [RelayCommand]
+    private void AssignOpenMaterialAsset()
+    {
+        if (MaterialAsset == null) return;
+        MaterialAsset.Flush();
+        AssignMaterialAsset(null, MaterialAsset.Path);
+    }
+
+    private void CloseMaterialAsset()
+    {
+        MaterialAsset = null;
+        if (InspectorView == "MaterialAsset") InspectorView = "Selection";
+    }
+
+    /// <summary>Assets context menu > Create Material: a new material in the folder under the cursor (Materials when null).</summary>
+    public void CreateMaterialAsset(AssetNode? node)
+    {
+        if (_bridge == null) return;
+        try
+        {
+            var asset = Engine.Recources.MaterialAsset.Create(FolderFor(node), "New Material");
+            AddConsoleEntry(ConsoleLevel.Log, $"Created material {asset.Path}. Edit it in the Inspector, then drag it onto a gameobject in the Hierarchy (or double-click it with the gameobject selected).", "Anvil:Materials");
+            RefreshAssetTree();
+            OpenMaterialAsset(asset.Path);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't create a material: " + ex.Message, "Anvil:Materials");
+        }
+    }
+
+    /// <summary>
+    /// Makes a gameobject (the selection when null) use a material asset; adds a Material component when it has none.
+    /// Its Material component then follows the asset's edits.
+    /// </summary>
+    public void AssignMaterialAsset(SceneObjectViewModel? obj, string? path)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || !Engine.Recources.MaterialAsset.IsMaterialAsset(path)) return;
+        if (obj?.EngineId is not int id || obj.Kind != EditorObjectKind.BasicEntity)
+        {
+            AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject (or drop the material on one in the Hierarchy) to assign it.", "Anvil:Materials");
+            return;
+        }
+        // Add then link: both are queued in order and mark the scene changed.
+        if (!obj.HasMaterialComponent) _bridge.EnqueueAddComponent(id, Engine.Components.MaterialComponent.TypeId);
+        _bridge.EnqueueMutateComponent(id, Engine.Components.MaterialComponent.TypeId,
+            c => ((Engine.Components.MaterialComponent)c).Link(path));
+        AddConsoleEntry(ConsoleLevel.Log, $"\"{obj.Name}\" uses material {path}.", "Anvil:Materials");
+    }
+
+    /// <summary>
+    /// Saves the surface a gameobject (the selection when null) shows, with the textures it draws, as a new material
+    /// asset in Content/Materials and links the gameobject to it.
+    /// </summary>
+    [RelayCommand]
+    private void CreateMaterialFromObject(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null) return;
+        if (obj?.EngineId is not int id || obj.Kind != EditorObjectKind.BasicEntity)
+        {
+            AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject to save its material as an asset.", "Anvil:Materials");
+            return;
+        }
+        string name = obj.Name;
+        // Captured on the game thread (the textures its model draws), then linked like any assignment.
+        _bridge.EnqueueMutate(id, o =>
+        {
+            if (o is not Engine.Entities.BasicEntity entity) return;
+            string? path = null, error = null;
+            try { path = Engine.Recources.MaterialAsset.Create(null, entity.Name, Engine.Recources.MaterialAsset.Capture(entity))?.Path; }
+            catch (Exception ex) { error = ex.Message; }
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (path == null)
+                {
+                    AddConsoleEntry(ConsoleLevel.Error, $"Couldn't save \"{name}\"'s material: {error ?? "unknown error"}", "Anvil:Materials");
+                    return;
+                }
+                AssignMaterialAsset(obj, path);
+                RefreshAssetTree();
+                AddConsoleEntry(ConsoleLevel.Log, $"Saved \"{name}\"'s material as {path}. Drag it onto other gameobjects to share it.", "Anvil:Materials");
+            });
         });
     }
 
@@ -724,6 +843,28 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             AddConsoleEntry(ConsoleLevel.Error, "Couldn't save game settings: " + ex.Message, "Anvil:GameSettings");
+        }
+    }
+
+    // -------- Input actions (Window > Input Actions, Content/System/InputActions.json) --------
+
+    [RelayCommand]
+    private async Task OpenInputActionsAsync(Window? owner)
+    {
+        if (owner == null) return;
+        var vm = new InputActionsViewModel();
+        var dialog = new Views.InputActionsWindow { DataContext = vm };
+        if (!await dialog.ShowDialog<bool>(owner)) return;
+
+        try
+        {
+            vm.Apply();
+            AddConsoleEntry(ConsoleLevel.Log,
+                $"Input actions saved to {Engine.Logic.InputActionList.FileName} ({vm.Actions.Count} actions)", "Anvil:Input");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't save input actions: " + ex.Message, "Anvil:Input");
         }
     }
 
@@ -907,6 +1048,7 @@ public partial class MainWindowViewModel : ViewModelBase
             [".cs"] = AssetKind.Script, [".xml"] = AssetKind.Script, [".css"] = AssetKind.Script,
             [".obsc"] = AssetKind.Scene,
             [Engine.Logic.Prefab.Extension] = AssetKind.Prefab,
+            [Engine.Recources.MaterialAsset.Extension] = AssetKind.Material,
         };
 
     // Folders the user has expanded, by relative path, so rebuilds keep the tree open.
@@ -938,6 +1080,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyAssetFilter();
         // Prefab fields in the Inspector offer the prefabs on disk.
         ScriptPrefabFieldViewModel.InvalidateFiles();
+        // The open material asset follows outside edits (a linked gameobject's Inspector writes the file too).
+        if (MaterialAsset != null && !MaterialAsset.ReloadIfChanged()) CloseMaterialAsset();
     }
 
     private void ApplyAssetFilter()

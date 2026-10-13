@@ -6,6 +6,7 @@ It complements the topic docs instead of repeating them:
 
 - [Editor_Architecture.md](Editor_Architecture.md): Anvil in depth (MVVM, reconciler, XAML).
 - [Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md): scene list, `GameFlow`, `GameInput`, `GameUI` from a script's view.
+- [Input_Actions.md](Input_Actions.md): named input actions (Move, Jump...) and their bindings, Anvil's Input Actions window, rebinding.
 - [Gameobject_Components.md](Gameobject_Components.md) and [Script_Behaviours.md](Script_Behaviours.md): writing components and scripts.
 - [Collisions_and_Interaction.md](Collisions_and_Interaction.md): physics events from a script's view.
 
@@ -159,10 +160,12 @@ Engine.Update
 │   ├─ _sceneLogic.Update
 │   │   ├─ GameFlow.UpdateLoad(...)     ← CurrentLoad: a blocking load runs whole, an async one takes a step (7.5); LoadingScreen fades/fills
 │   │   ├─ Input.Update(gameTime, Camera)   ← snapshot keyboard/mouse; drives the editor camera
-│   │   ├─ GameInput.Update(dt)         ← script-facing input, gamepads, menu repeat
+│   │   ├─ GameInput.Update(dt)         ← script-facing input, gamepads, menu repeat, MouseDelta
+│   │   │   └─ InputActions.Update(dt)  ← reload if Anvil saved; every action reads its bindings (strongest wins)
 │   │   ├─ PlayMode.UpdateScripts(gameTime) ← component OnUpdate (Play only; particle systems step here)
 │   │   ├─ ParticleSystemComponent.UpdatePreviews(...) ← Edit only: Play On Awake particle systems preview
 │   │   ├─ FoliageWindComponent.UpdateAll(entities, dt (0 while paused), scene wind) ← Edit and Play: tree wind clocks, TransformMatrix.Wind, HasChanged
+│   │   ├─ MaterialAsset.SyncScene(entities) ← Edit and Play: Material components linked to a .mat copy the file's surface when it changed (10)
 │   │   ├─ WaterSplashes.Update(dt, 0 while paused) ← splash droplets and water rings age and move
 │   │   └─ dev hotkeys (F1 render mode; Space/L/X/M outside Play)
 │   ├─ _audio.UpdateListener(Camera)
@@ -239,7 +242,8 @@ Most cross-system wiring goes through statics. Knowing them saves a lot of searc
 | `LoadingScreen` (`_ui`, `_load`, fade) | `GameFlow.UpdateLoad` | The engine loading screen overlay of `LoadSceneAsync` |
 | `ScenePhysics.Current` | `ScenePhysics` ctor | Script raycasts (also `RaycastWater`), navigation |
 | `Input.*` state, `Input.HostBridge` | `Input.Update`, `EditorBridge.Bind` | Raw keyboard/mouse, Anvil key merge |
-| `GameInput.*` | `GameInput.Update` | Script input |
+| `GameInput.*` (pad overrides for checks: `OverrideGamePad`) | `GameInput.Update` | Script input |
+| `InputActions` (action instances by name, `_reloadRequested`), `InputControls` (control catalogue) | `ScreenManager.Load` → `Load`, `InputActions.Update`, Anvil's Save (`RequestReload`, thread-safe), `PlayModeController.Stop` (`Load`), scripts (rebinds) | Named actions scripts read (`WasActionPressed`, `GetVector`) |
 | `GameUI.Layers` | `GameUI.Open/Close`, `OpenOverlay` (engine) | Script UI layers and engine overlays |
 | `Audio.Instance` | `AudioManager.Initialize` | Static audio facade |
 | `ScriptBehaviour.Running` | `ScriptBehaviourComponent` around each call | Records which script owns a `GameUI` layer |
@@ -301,6 +305,7 @@ Scene loads that scripts request during Play take a different path (section 7.5)
 - Every `BasicEntity`, light, decal and environment sample takes an ID in its constructor. `BasicEntity.Id` mirrors into `WorldTransform.Id`, which the ID render pass reads.
 - Scene load keeps the IDs stored in the file, calls `IdGenerator.Reseed(maxId)`, and only then gives new IDs to duplicates or missing ones. Script `GameObject` fields are saved as these IDs.
 - `EditorBridge.MainCameraId = -1` is a synthetic ID for the scene camera in snapshots.
+- Bones of skinned gameobjects get synthetic **negative** IDs below -1: `BoneObject.IdFor(ownerId, bone) = -(2 + ownerId * 1024 + bone + 1)` (bone -1 = the Armature, up to 1023 bones), decoded by `BoneObject.TryDecode`. They are never saved and never drawn into the ID buffer, so bones are selected from the Hierarchy only.
 - **ID ⇄ color:** `GetColorFromId` packs an ID into RGB in **base 255** (`r + g*255 + b*255²`), not 256. `GetIdFromColor` maps white to 0. Keep both functions in sync if you change one.
 
 ---
@@ -315,6 +320,7 @@ Scene loads that scripts request during Play take a different path (section 7.5)
 - `Position`, `RotationMatrix`, `Scale`
 - `IsEnabled`, `Role`, `Persistent` / `RuntimePersistent`, `IsRuntimeSpawned`
 - `Components`
+- `BonePose` (`Engine/Animation/BonePose.cs`): posed bones of a skinned model, saved as `BasicEntityRecord.BonePose`, copied by `Clone`, released (own skin dropped) by `Dispose(library)`
 - BEPU runtime state: `StaticBody`, `DynamicBody`, `Attached*` caches, `SyncedPosition/Rotation`, `CollisionGroup`, `Ragdoll`
 - `WorldTransform : TransformMatrix`
 
@@ -372,7 +378,7 @@ Renderer.Draw (end) → FrustumCullingFinalizeFrame → HasChanged = false
 **`Stop()`**
 
 1. `OnStop()` on every component.
-2. Restores the snapshot by ID.
+2. Restores the snapshot by ID, then the saved render feature values (`RenderFeatures.RestoreSaved`) and the project's input actions (`InputActions.Load`: script rebinds and disabled actions are undone).
 3. Clears `RuntimePersistent`.
 4. Restores `e_enableeditor`.
 5. `Mode = Edit`, then `ModeChanged`.
@@ -642,6 +648,10 @@ Two things depend on the material:
   - Loading is two halves: `ReadFile` (I/O + JSON + probes, thread-safe, returns a `SceneFile`) and `SceneBuilder` (game thread, one object per `Step`). `LoadFromFile` runs both at once; `SceneLoadOperation` spreads them out.
 - **Prefabs** (`Engine/Logic/Prefab.cs`, `PrefabUtility.cs`): `.prefab` files anywhere in Content (default `Content/Prefabs`) holding one `BasicEntityRecord` (`{ Version, GameObject }`, attachment IDs blanked, position at the origin). `Prefab.Load(nameOrPath)` resolves "Crate", "Prefabs/Crate" or a moved file by name (`Resolve`, on-disk casing, remembered per name), reads it through `GameInfo.ResolveContentFile` and caches the parsed record until the file's write time changes. It is written to the source Content (`Prefab.Write`, atomic `.tmp` + move); `Engine.csproj` copies `Content/**/*.prefab` into builds. See [Prefabs.md](Prefabs.md).
   - **Overrides** are JSON paths from diffing the instance's record against the prefab's: `Scale`, `Material/Roughness`, `Components/<type>#<n>` (a component added or removed; matched by type id + index among that type) or `Components/<type>#<n>/<setting>` (only public settable properties; derived get-only ones like `ClampedMass` are skipped). Id, Name, Position and Rotation are always the instance's own. Script fields pointing at the gameobject itself are compared in the prefab's ID space (`WithId` → `RemapGameObjectReferences`).
+- **Material assets** (`Engine/Recources/MaterialAsset.cs`): `.mat` files anywhere in Content (default `Content/Materials`) holding `{ Version, Material }`, where `Material` is a `MaterialComponent`'s surface (colour, roughness/metallic/emission, shader type and its water/wet settings, tiling, the six texture slots; `null` slot = the model's own map, `""` = none). `MaterialAsset.CopySurface` copies every public settable property declared on `MaterialComponent` except `MaterialPath` (not `[JsonIgnore]`, not `Enabled`), so a new material setting is part of the asset without further wiring. Lookup/caching/atomic writes work like prefabs (`Resolve`, `Load` cached per write time, `Write` = `.tmp` + move); `Engine.csproj` copies `Content/**/*.mat` into builds.
+  - **The link:** `MaterialComponent.MaterialPath`. A linked component keeps a *copy* of the asset's values (saved in the scene as the fallback for a missing file); `SyncedAsset`/`SyncedPath` (runtime only) record which asset version it copied. `MaterialAsset.SyncScene` (every frame in `MainSceneLogic.Update`) re-copies and calls `RefreshMaterials` only when the file's parsed instance changed: at once after a write from this process (`_revision`), else after a poll every 30 frames (outside edits). An unchanged asset never overwrites runtime changes, so a script can still tint a linked gameobject.
+  - **Writes back:** only `MaterialAsset.SaveFrom(component)` (Anvil's linked Material Inspector) and `MaterialAsset.Write` (the asset Inspector) write a file. `OnAdded` with a `MaterialPath` (scripts, `Assign`, scene loads) takes the asset's values instead, so adding a component can never overwrite an asset.
+  - **Capture** (`MaterialAsset.Capture/CreateFrom`): the component's values (or `MaterialComponent.FromOwner`) with every `null` slot filled from the model's displayed `MaterialEffect` (`entity.Material`, else the first textured part). `TexturePathOf` maps a `Texture2D.Name` (set by the content manager) to its source file, trying `<name>` and `<name minus _0>` (textures a model references are built as `<name>_0`) with each image extension; no texture becomes `""`, an untraceable one stays `null`. `MaterialComponent.ApplyTexture` loads `<path>_0` when `<path>` has no xnb of its own.
 - **`GameInfo.ResolveContentFile`** prefers the *source* `Engine/Content` copy when it exists, which is the dev case, and falls back to `<exe>/Content`. That is why scenes, UI and audio edits show up without a rebuild during development.
 
 ---
@@ -684,11 +694,26 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 - `EnqueueAddDecal(position, scale)` → `MainSceneLogic.EditorAddDecal` adds an enabled `Decal` with `Assets.DefaultDecal` (falls back to `ErrorTexture`; a decal whose texture isn't an `Assets` field is skipped when saving). The box spans ±`Scale` around its position and projects down its local -Z; the snapshot shows it as kind `Decal` (Name, Enabled, transform; no components or role).
 - Inspector > Decal > Texture (`SceneObjectViewModel.DecalTexture`, Browse or a drop from Assets, Reset) → `IEditorBridge.EnqueueSetDecalTexture(id, path)` → `Decal.LoadTexture` (Content-relative source path through `Globals.content`, like Material textures; must already be built) sets `Decal.Texture` + `Decal.TexturePath` and dirties the scene. A texture that can't load leaves the decal unchanged; null/empty goes back to `Assets.DefaultDecal`. `EditorObjectSnapshot.DecalTexture` carries the path back.
 
+**Armature and bones (Hierarchy children of a skinned gameobject)**
+- `BuildSnapshot` adds `EditorObjectSnapshot.Bones` (`BoneSnapshot[]`) to each gameobject whose model has `SkinningData`: the Armature first (`Index` -1, `ParentIndex` -2), then every bone in skeleton order with its parent index, world joint position, pose rotation and `IsPosed`. The flat list keeps one entry per scene object.
+- `BridgeReconciler.ApplyBones` nests them as `SceneObjectViewModel.Children` (kind `EditorObjectKind.Bone`, type `Armature`/`Bone`), rebuilding the tree only when the set of bone IDs changes.
+- `RequestSelect`/`EnqueueMutate` with a bone ID resolve through `LookupById` -> `BonePose.Proxy(owner, bone)`, a cached `BoneObject : TransformableObject`. The gizmo writes its `RotationMatrix` (world): the setter turns the pose rotation by `value * inverse(current)`. The Inspector writes `LocalRotation` (the pose rotation itself). `Position`/`Scale`/`Name`/`IsEnabled` setters are no-ops. A selected bone whose owner left the scene list is re-resolved (or dropped) in `DrainAndPublish`.
+- `BonePose` applies its rotations in `AnimationPlayer.Evaluate` (`Overrides`: `local[i] = R * local[i]`, the Armature's after the root transform). `BonePose.UpdateAll` (in `MainSceneLogic.Update`, Edit and Play) owns a `SkinnedMeshInstance` per posed gameobject, used only while `WorldTransform.Skin` is null or its own; the Animator and Ragdoll take over by setting theirs. The Animator's players also carry `Overrides` and re-pose when `BonePose.Version` changes. `PlayModeController` snapshots and restores the poses.
+- `Renderer.RenderEditorOverlays` draws the selected skinned gameobject's armature with `HelperGeometryManager` lines (`BonePose.CollectLines`).
+
 **Prefabs (Assets panel, Hierarchy, Inspector prefab bar)**
 - `EnqueueCreatePrefab(id, folder, done)` → `PrefabUtility.CreatePrefab` writes `<folder>/<name>.prefab` (`Prefab.UniquePath`: `_2`, `_3` …, never overwrites) and sets `BasicEntity.PrefabPath`. Anvil: Hierarchy drag onto Assets (`GameObjectFormat` → `AssetsPanel_Drop` → `MainWindowViewModel.CreatePrefabIn(obj, FolderFor(node))`), the Hierarchy context menu, the Inspector button, GameObject > Create Prefab from Selection.
 - `EnqueueInstantiatePrefab(nameOrPath, SpawnPoint, done)` → `MainSceneLogic.InstantiatePrefab` (fresh attachment IDs, self references remapped, named after the prefab, registered in the library, scene dirty) and selects it. Anvil: double-click, drag into the Hierarchy (`PrefabAssetFormat`), Assets context menu > Place in Scene. Scripts reach the same method with `runtime: true` through `ScriptBehaviour.Instantiate`.
 - `EnqueueApplyPrefab` / `EnqueueRevertPrefab` / `EnqueueUnpackPrefab` are Edit mode only. Apply measures every other instance's overrides against the *old* prefab, writes the file, then `Sync`s them. Instances whose record changed are rebuilt by `MainSceneLogic.ReplaceGameObject`: a new `BasicEntity` with the same ID, list slot and runtime flags, the old one stopped, disposed and detached like a delete. `KeepSelectionOnReplaced` reselects a rebuilt selection.
 - `BuildSnapshot` sends `PrefabPath` for every gameobject, but `PrefabOverrides` (or `PrefabMissing`) only for the **selected** instance, since working them out costs a capture and a JSON diff. `SceneObjectViewModel.PrefabStatus/PrefabOverridesTip` label them with `PrefabUtility.Describe`.
+
+**Material assets (Assets panel, Hierarchy, Inspector)** — no bridge methods of their own
+- Assets context menu > **Create Material** → `MainWindowViewModel.CreateMaterialAsset(node)` → `MaterialAsset.Create(FolderFor(node), "New Material")` on the UI thread (plain file I/O), then opens it.
+- A left click on a `.mat` node (`AssetsTree_PointerPressed`) opens it in the Inspector (`OpenMaterialAsset` → `MaterialAssetViewModel`, `InspectorView = "MaterialAsset"`) and starts a `MaterialAssetFormat` drag. `MaterialAssetViewModel` derives `MaterialInfo` and overrides `Push`: edits go into a local `MaterialComponent` and `MaterialAsset.Write` 200 ms after they settle; the engine's `SyncScene` picks the file up. `RefreshAssetTree` (content watcher) calls `ReloadIfChanged` and closes it when the file is gone. Selecting a gameobject returns to the Selection view.
+- **Assign** (`AssignMaterialAsset(obj, path)`): drop on a Hierarchy row (`Hierarchy_Drop`, else the selection), double-click, Assets context menu, the asset Inspector button. It enqueues `EnqueueAddComponent(material)` when the gameobject has none, then `EnqueueMutateComponent(c => c.Link(path))`; both mark the scene dirty.
+- The Material component's **Asset** slot (`MaterialInfo.MaterialPath`, `MaterialAssetPicker_Click` menu of `MaterialAsset.List()`, `MaterialAsset_Drop`, Edit Asset, Unlink). `MaterialInfo.Push` (virtual `ComponentViewModel.Push`) wraps every edit of a **linked** component with `MaterialAsset.SaveFrom`, so the bridge op writes the asset on the game thread. Link/Unlink go through `base.Push` (no save).
+- **Create Material from Selection** (GameObject menu, Inspector "Save as Material Asset") → `EnqueueMutate` runs `MaterialAsset.Capture` + `Create` on the game thread, then posts `AssignMaterialAsset`.
+- The editor body of the Material component is the `MaterialSurfaceTemplate` resource in `MainWindow.axaml`, shared by the component template and the asset Inspector.
 
 **Delete Project (Edit > Project Settings)**
 - `ProjectSettingsWindow` only collects the confirmation (the project name typed). `MainWindowViewModel.ResetProject` then calls `IEditorBridge.EnqueueResetProject(MoveToRecycleBin, done)`, refused during Play because Stop would swap the old scene back in.
@@ -702,7 +727,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 - When hosted, the engine ignores window activation (`active = _isActive || IsHostedByEditor`) and skips `GameInfo`.
 
 **Input from Anvil**
-- **Keyboard:** Avalonia key events are mapped to XNA `Keys` (A–Z, modifiers, arrows, F1–F3, Esc, Enter, Back, Tab, Space). They go into `EditorBridge._hostKeysDown` through `SetHostKeyState`.
+- **Keyboard:** Avalonia key events are mapped to XNA `Keys` by `Anvil.Services.KeyMap.ToXna` (the whole keyboard: letters, digits, F1–F24, numpad, punctuation, modifiers, arrows, navigation keys). They go into `EditorBridge._hostKeysDown` through `SetHostKeyState`.
 - **Mouse:** not forwarded. The engine reads `Mouse.GetState()` and `Input.FilterHostMouse` masks out presses that start outside the viewport or happen during an asset drag.
 
 ---
@@ -715,8 +740,13 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
   - `IsKeyDown` merges the Anvil keys. **`WasKeyPressed` / `WasKeyReleased` read only the native keyboard.**
 - **`GameInput`** (script-level):
   - Rebuilds its key set each frame through `Input.IsKeyDown`, so its edges *do* include Anvil keys.
-  - Adds XInput gamepads, `AnyKey`/`LastDevice`, menu directions with repeat, and the filtered mouse.
-  - Scripts should use `GameInput`.
+  - Adds XInput gamepads, `AnyKey`/`LastDevice`, menu directions with repeat, and the filtered mouse (`MouseDelta` is zero in Anvil while the cursor is over a panel).
+  - Ends by updating the input actions.
+- **`InputActions`** (script-level, named; [Input_Actions.md](Input_Actions.md)):
+  - The project list is `Content/System/InputActions.json` (`InputActionList`; the defaults when it is missing), edited in Anvil's Input Actions window (`InputActionsViewModel`, a modal dialog like Game Settings). Save writes the file and calls `InputActions.RequestReload()`; the next `InputActions.Update` reloads it, also during Play.
+  - Each `InputAction` resolves its binding paths once (`InputControls.Find`) and each frame keeps the strongest binding's value (modifiers gate a binding; Scale, Per Second and Invert apply per binding). Pressed at 0.5, released below 0.375. All actions read released while the debug console is open.
+  - `Load` keeps `InputAction` instances (scripts may store them) and resets bindings and `Enabled`. `PlayModeController.Stop` calls it, so runtime rebinds last one Play session unless a script saves them (`SaveBindings`, SaveData).
+  - Scripts should use the actions (`WasActionPressed`, `GetVector`, ...) for gameplay and `GameInput` for menus and raw keys.
 - **`GameUI`** (static):
   - `Open("UI/Name")` creates a `Vista.UIManager` layer, loading `.xml` + `.css` through `ResolveContentFile`. It records the owning script's gameobject.
   - `Update` hot-reloads changed files every 0.5 s, then lays out each layer, scaled from a 1080-high canvas.
@@ -734,7 +764,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 ## 13. Sharp edges (checked against the source)
 
 1. **Apply/Revert replace prefab instances.** A rebuilt instance is a new `BasicEntity` under the same ID, so a reference to the old object (outside the scene list, e.g. held by editor code) goes stale. Apply/Revert are Edit-mode only, so running scripts never see it. Look objects up by ID after a prefab operation.
-2. **Two keyboard APIs.** `Input.WasKeyPressed` ignores Anvil-forwarded keys, but `GameInput` includes them. In-engine editor hotkeys (Delete, Insert, Ctrl+C, R/T/Z, F1, Space) only work when the engine window itself has keyboard focus. Delete and Insert are also missing from `MonoGameHost.MapAvaloniaKey`.
+2. **Two keyboard APIs.** `Input.WasKeyPressed` ignores Anvil-forwarded keys, but `GameInput` includes them. In-engine editor hotkeys (Delete, Insert, Ctrl+C, R/T/Z, F1, Space) only work when the engine window itself has keyboard focus, even though Anvil now forwards every key (`KeyMap`).
 3. **`EditorLogic` has two delete paths.** The Delete key path removes the object from its list and disposes it from the mesh library. It does **not** call component `OnStop` or `ScenePhysics.Detach`. The bridge path (`MainSceneLogic.EditorDelete`) does both.
 4. **Debug-entity picking indexes the wrong list.** In `EditorLogic.Update`, the `debugEntities` loop reads `dirLights[index]`.
 5. **Play does not snapshot component state or spawned objects.** Stop restores only transforms, the environment and the camera pose. Spawned objects are removed by the scripts' `Shutdown`.
@@ -745,7 +775,8 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 10. **Shader hot reload is effectively off** (section 9.6).
 11. `BasicEntity.Scripts` (`IScript`) is a legacy hook path. `PlayModeController` still calls it, but nothing adds to it.
 12. **The environment pass shades non-wet pixels with a different view vector.** `DeferredEnvironmentMap.fx` uses `ViewDir - CameraPositionWS` for ordinary pixels and `ViewDir` as is for Wet Surface pixels (albedo alpha). Rough Basic materials can look washed out next to Wet Surface ones. The voxel surfaces all use Wet Surface for this reason (see `VoxelSurfaceStyle`).
-13. **`new ModelMeshPart()` is marked obsolete in MonoGame 3.8.4,** but it is the only way to build parts outside the content pipeline. `VoxelSystem` suppresses CS0618 around it.
+13. **Material asset edits during Play are kept.** Inspector edits of a linked Material component (or the asset Inspector) write the `.mat` file, which Stop doesn't restore (component state isn't snapshotted either, see 5). A prefab whose Material component is linked keeps a copy of the asset's values in the prefab file, so an asset edit can show up as overrides on its instances.
+14. **`new ModelMeshPart()` is marked obsolete in MonoGame 3.8.4,** but it is the only way to build parts outside the content pipeline. `VoxelSystem` suppresses CS0618 around it.
 
 ---
 
@@ -757,6 +788,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Add a render pass | `Renderer.Load/Initialize/Draw`, `SetUpRenderTargets` + `UpdateRenderMapBindings`, a module in `RenderModules/`, `.fx` + `Content.mgcb`, settings in `GameSettings` |
 | Add a full-screen effect without touching the engine | a render feature: Anvil viewport toolbar > Pipeline > + New, then edit `Content/RenderFeatures/<Name>.fx`; see [Render_Features.md](Render_Features.md) |
 | Change render features (injection points, blend modes, shader inputs, compiling) | `RenderFeatureEvent` (saved by name; a new point also needs a `DrawRenderFeatures` call in `Renderer.Draw` and a `Point(...)` in `RenderFeatures.Publish`), `RenderFeatureRenderModule.Draw/DrawFeature`, `RenderFeatures` (`Prepare`, `StartCompile`, `Update`, `Move`), `RenderFeatureCompiler`, `RenderFeatureShaderTemplate`; Anvil `RenderPipelineViewModel` + the Render Pipeline panel in `MainWindow.axaml` |
+| Add or change gameplay controls (actions, bindings, rebinding) | Anvil > Window > Input Actions (`Content/System/InputActions.json`); code: `InputActions`/`InputAction` (`Engine/Logic/InputActions.cs`), `InputControls` (new control paths), `InputActionList` (file, defaults), script shortcuts in `ScriptBehaviour.Input.cs`; Anvil `InputActionsViewModel` + `InputActionsWindow`; see [Input_Actions.md](Input_Actions.md) |
 | Change how a material is drawn | `GBufferRenderModule.SetMaterialSettings`, `Gbuffer.fx`, `MeshMaterialLibrary.Draw` filters |
 | Make a new object visible to the renderer | `BasicEntity.RegisterInLibrary` / `Dispose(library)` |
 | Add per-object behaviour | a `GameComponent` (see CLAUDE.md "Adding a Gameobject Component") or a script + `ScriptRegistry` |
@@ -766,9 +798,11 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Change physics sync | `ScenePhysics.Update/Reconcile/PushPose/PullPose`, `PhysicsSystem` |
 | Expose engine state to Anvil | `IEditorBridge` + `EditorBridge.BuildSnapshot` + `BridgeReconciler` + view model + XAML |
 | Change scene file format | `SceneSerialization` DTOs (bump `CurrentVersion`, keep loading v1–v2) |
+| Change material assets (file format, what a material holds, capture, sync timing) | `MaterialAsset` (`SurfaceProperties`/`CopySurface`, `Capture`/`TexturePathOf`, `SyncScene`, `SaveFrom`), `MaterialComponent.MaterialPath/Link/OnAdded`; Anvil `MaterialInfo` (asset slot, `Push`), `MaterialAssetViewModel`, `MaterialSurfaceTemplate` in `MainWindow.axaml`, `MaterialAssetFormat` in `MainWindow.axaml.cs`; see [Material_Component.md](Material_Component.md) |
 | Change prefabs (what follows the prefab, override granularity, Apply/Revert, file lookup) | `PrefabUtility` (`InstanceKeys`, `Overrides`/`DiffComponents`, `Sync`, `ApplyToPrefab`), `Prefab` (`Resolve`, `Load`, `Write`), `MainSceneLogic.InstantiatePrefab/ReplaceGameObject`, bridge `Enqueue*Prefab`; Anvil prefab bar in `MainWindow.axaml`, drag formats in `MainWindow.axaml.cs`; see [Prefabs.md](Prefabs.md) |
 | Draw geometry that isn't a gameobject | `MeshMaterialLibrary.Register(material, part, transform, sphere)` / `Unregister`, as `VoxelSystem.Upload` / `Release` do |
 | Ragdoll joints for a body type (humanoid, quadruped, generic creature) | `RagdollRig.Detect/AssignJoints/AssignQuadrupedJoints/AssignGenericJoints/IsLegRoot`, limits in `RagdollJointLimits.For`, hinges in `Ragdoll.AddJoint`; inspector `RagdollComponentViewModel.Skeleton`; sample Wolves in `Content/Scenes/AnimationTest.obsc`; see [Ragdoll_Physics.md](Ragdoll_Physics.md) |
+| Pose bones in the editor / the Hierarchy Armature | `BonePose` (pose store, Edit-mode skin), `BoneObject` (gizmo proxy, IDs), `AnimationPlayer.Overrides`, `EditorBridge.BuildBones/LookupById`, `BridgeReconciler.ApplyBones`, `SceneObjectViewModel.IsBone/ResetBone/ResetPose`; checks in `Tests/Components/BoneChecks.cs`; see [Skeletal_Animation.md](Skeletal_Animation.md) |
 | Change skeletal animation playback (actions, crossfades, one-shots) | `AnimatorComponent` (`Switch`, `Pose`, `Finish`, `Select`/`Forget`), `AnimationPlayer.Evaluate/BlendFrom`, inspector `AnimatorComponentViewModel` + `AnimationActionViewModel`; sample `Y Bot - Actions` in `Content/Scenes/AnimationTest.obsc` + `Content/Scripts/AnimatorActionsScript.cs`; see [Skeletal_Animation.md](Skeletal_Animation.md) |
 | Change the voxel world | `Engine/Voxels/` (`VoxelGenerator`, `VoxelMesher`, `VoxelTextures`, `VoxelSystem`), settings in `EnvironmentSettings`; see [Voxel_World.md](Voxel_World.md) |
 | Change particle systems | `Engine/Particles/` (`ParticleModules`, `ParticleSimulation`, `ParticleTextures` (Flame Sheet: `Flame` + `FireRamp`; Fireball Sheet: `Fireball`), `ParticleVolume`, `ParticleLights`), `ParticleSystemComponent`, `ParticleRenderModule` + `Shaders/Forward/Particles.fx` (techniques `Particles` and `Volume`); see [Particle_Systems.md](Particle_Systems.md) |
