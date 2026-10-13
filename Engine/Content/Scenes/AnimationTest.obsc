@@ -384,6 +384,164 @@
         }
       ],
       "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Y Bot - Actions (arrow keys)",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        6.4,
+        3.4,
+        0
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "3b7d2c4e-9a1f-4e65-8d0b-5f2a6c1e7a93",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Actions": [
+              {
+                "Name": "Idle",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 0.0,
+                "Loop": true
+              },
+              {
+                "Name": "Walk",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 1.0,
+                "Loop": true
+              },
+              {
+                "Name": "Run",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 1.8,
+                "Loop": true
+              },
+              {
+                "Name": "Walk Back",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": -1.0,
+                "Loop": true
+              },
+              {
+                "Name": "Dash",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 2.5,
+                "Loop": false
+              }
+            ],
+            "StartAction": "Idle",
+            "FadeTime": 0.25,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "e2c94f71-6b0d-4a3e-9f58-1d7c3a2b8e46",
+          "Data": {
+            "ScriptId": "animator-actions",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Wolf - Ragdoll (limp on Play)",
+      "ModelKey": "Wolf",
+      "Position": [
+        -4.4,
+        2.6,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.70710677,
+        0.70710677
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "6a0f3c1e-2b7d-4f9a-8e15-3c9d7b2a4f61",
+          "Data": {
+            "ClipSource": "",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "9c4e2a7b-5d1f-4a83-b6e0-7f2c1d9a3e58",
+          "Data": {
+            "Mass": 35.0,
+            "ActiveOnStart": true,
+            "ImpactThreshold": 0.0,
+            "JointFriction": 0.2,
+            "Skeleton": "Quadruped",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Wolf - Ragdoll (click to knock over)",
+      "ModelKey": "Wolf",
+      "Position": [
+        4.6,
+        2.4,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.70710677,
+        0.70710677
+      ],
+      "Components": [
+        {
+          "Type": "animator",
+          "InstanceId": "2d8b6f0a-9e3c-4b17-a5d2-8f1e6c4b0a93",
+          "Data": {
+            "ClipSource": "",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "b7e1d5c3-0a6f-4e29-9b84-1c3f7a5e2d06",
+          "Data": {
+            "Mass": 35.0,
+            "ActiveOnStart": false,
+            "ImpactThreshold": 3.0,
+            "JointFriction": 0.2,
+            "Skeleton": "Auto",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
     }
   ],
   "PointLights": [],

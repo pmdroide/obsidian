@@ -290,6 +290,27 @@
             <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
         </Style>
 
+        <!-- ============================== ListBox (render pipeline layers) ============================== -->
+        <Style Selector="ListBox.pipeline">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ListBox.pipeline ListBoxItem">
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="ListBox.pipeline ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.pipeline ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.pipeline ListBoxItem:selected:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+
         <!-- ============================== Panel header ============================== -->
         <Style Selector="Border.panelHeader">
             <Setter Property="Background" Value="{StaticResource AnvilPanelBackgroundBrush}" />
@@ -402,11 +423,18 @@
                         <MenuItem Header="Effects">
                             <MenuItem Header="Particle System"
                                       Command="{Binding AddParticleSystemCommand}" />
+                            <MenuItem Header="Decal"
+                                      Command="{Binding AddDecalCommand}" />
                         </MenuItem>
                         <MenuItem Header="Nature">
                             <MenuItem Header="Tree"
                                       Command="{Binding AddTreeCommand}" />
                         </MenuItem>
+                        <Separator />
+                        <!-- Saves the selected gameobject as Content/Prefabs/<name>.prefab (also: drag it from the
+                             Hierarchy into Assets). Place copies by double-clicking or dragging the prefab. -->
+                        <MenuItem Header="Create Prefab from Selection"
+                                  Command="{Binding CreatePrefabCommand}" />
                     </MenuItem>
                     <MenuItem Header="Game Settings"
                               Command="{Binding OpenGameSettingsCommand}"
@@ -427,6 +455,9 @@
                         <MenuItem Header="Lighting"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="Lighting" />
+                        <MenuItem Header="Render Pipeline"
+                                  Command="{Binding SetInspectorViewCommand}"
+                                  CommandParameter="RenderPipeline" />
                     </MenuItem>
                     <MenuItem Header="Help">
                         <MenuItem Header="Anvil Docs" />
@@ -542,8 +573,19 @@
                                 Command="{Binding SetInspectorViewCommand}" CommandParameter="World"
                                 Classes.active="{Binding IsInspectorWorldView}"
                                 ToolTip.Tip="World generation (voxel world)" VerticalAlignment="Center" />
+                        <Button Grid.Column="2" Classes="environmentButton" Margin="4,0,0,0"
+                                Command="{Binding SetInspectorViewCommand}" CommandParameter="RenderPipeline"
+                                Classes.active="{Binding IsInspectorRenderPipelineView}"
+                                ToolTip.Tip="Render pipeline: the engine's passes and your render features (custom shader passes)"
+                                AutomationProperties.Name="Pipeline"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <controls:LucideIcon Icon="Layers" Width="12" Height="12" />
+                                <TextBlock Text="Pipeline" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
 
-                        <Rectangle Grid.Column="2" Width="1" Margin="10,4"
+                        <Rectangle Grid.Column="3" Width="1" Margin="10,4"
                                    Fill="{StaticResource AnvilBorderBrush}" />
 
                         <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="2"
@@ -552,9 +594,6 @@
                                     Command="{Binding ToggleAudioCommand}" ToolTip.Tip="{Binding AudioToggleTip}"
                                     AutomationProperties.Name="Game audio">
                                 <controls:LucideIcon Icon="{Binding AudioIcon}" />
-                            </Button>
-                            <Button Classes="iconButton" ToolTip.Tip="Camera">
-                                <controls:LucideIcon Icon="Camera" />
                             </Button>
                             <Button Classes="iconButton" ToolTip.Tip="Lighting">
                                 <controls:LucideIcon Icon="Sun" />
@@ -692,6 +731,16 @@
                                       DragDrop.AllowDrop="True"
                                       DragDrop.DragOver="Hierarchy_DragOver"
                                       DragDrop.Drop="Hierarchy_Drop">
+                                <TreeView.Styles>
+                                    <!-- Prefab instances read blue, like Unity. Both colours are styles: a local
+                                         Foreground would win over the class. -->
+                                    <Style Selector="TextBlock.objectName">
+                                        <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+                                    </Style>
+                                    <Style Selector="TextBlock.objectName.prefabInstance">
+                                        <Setter Property="Foreground" Value="{StaticResource AnvilPrefabBrush}" />
+                                    </Style>
+                                </TreeView.Styles>
                                 <TreeView.KeyBindings>
                                     <KeyBinding Gesture="Delete"
                                                 Command="{Binding DeleteSelectedCommand}" />
@@ -702,6 +751,20 @@
                                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="22">
                                             <Grid.ContextMenu>
                                                 <ContextMenu>
+                                                    <MenuItem Header="Create Prefab" IsVisible="{Binding HasRole}"
+                                                              ToolTip.Tip="Save it as Content/Prefabs/&lt;name&gt;.prefab and link it (or drag it into Assets)"
+                                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).CreatePrefabCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Apply to Prefab" IsVisible="{Binding IsPrefabInstance}"
+                                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).ApplyPrefabCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Revert to Prefab" IsVisible="{Binding IsPrefabInstance}"
+                                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).RevertPrefabCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Unpack Prefab" IsVisible="{Binding IsPrefabInstance}"
+                                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).UnpackPrefabCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator IsVisible="{Binding HasRole}" />
                                                     <MenuItem Header="Delete"
                                                               Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteSceneObjectCommand}"
                                                               CommandParameter="{Binding}" />
@@ -712,8 +775,18 @@
                                             <Grid Grid.Column="0" Width="14" Height="14"
                                                   VerticalAlignment="Center" Margin="0,0,6,0">
                                                 <controls:LucideIcon Icon="Box"
-                                                    Foreground="{StaticResource AnvilMeshBrush}"
-                                                    IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Mesh}" />
+                                                    Foreground="{StaticResource AnvilMeshBrush}">
+                                                    <controls:LucideIcon.IsVisible>
+                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                            <Binding Path="Type" Converter="{StaticResource EnumEquals}" ConverterParameter="Mesh" />
+                                                            <Binding Path="!IsPrefabInstance" />
+                                                        </MultiBinding>
+                                                    </controls:LucideIcon.IsVisible>
+                                                </controls:LucideIcon>
+                                                <controls:LucideIcon Icon="Package"
+                                                    Foreground="{StaticResource AnvilPrefabBrush}"
+                                                    IsVisible="{Binding IsPrefabInstance}"
+                                                    ToolTip.Tip="{Binding PrefabPath}" />
                                                 <controls:LucideIcon Icon="Lightbulb"
                                                     Foreground="{StaticResource AnvilLightBrush}"
                                                     IsVisible="{Binding Type, Converter={StaticResource EnumEquals}, ConverterParameter=Light}" />
@@ -731,7 +804,8 @@
                                             <TextBlock Grid.Column="1" Text="{Binding Name}"
                                                        FontSize="11.5"
                                                        VerticalAlignment="Center"
-                                                       Foreground="{StaticResource AnvilTextPrimaryBrush}" />
+                                                       Classes="objectName"
+                                                       Classes.prefabInstance="{Binding IsPrefabInstance}" />
 
                                             <!-- lock toggle -->
                                             <Button Grid.Column="2" Classes="rowIcon"
@@ -973,6 +1047,46 @@
                                         <CheckBox Content="Persistent" IsChecked="{Binding Persistent, Mode=TwoWay}" FontSize="11"
                                                   IsVisible="{Binding HasRole}"
                                                   ToolTip.Tip="Keep this gameobject, with its scripts still running, when a script loads another scene during Play (like Unity's DontDestroyOnLoad)." />
+
+                                        <!-- Prefab (Engine.Logic.PrefabUtility): save a plain gameobject as one, or the
+                                             instance's link with Apply / Revert / Unpack. -->
+                                        <Button Content="Create Prefab" HorizontalAlignment="Stretch" FontSize="11"
+                                                IsVisible="{Binding IsNotPrefabInstance}"
+                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CreatePrefabCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Save this gameobject (model, material, components and their settings) as Content/Prefabs/&lt;name&gt;.prefab and make it an instance. You can also drag it from the Hierarchy into an Assets folder." />
+                                        <Border IsVisible="{Binding IsPrefabInstance}" Padding="8,6" CornerRadius="4"
+                                                Background="{StaticResource AnvilInputBackgroundBrush}"
+                                                BorderBrush="{StaticResource AnvilPrefabBrush}" BorderThickness="1">
+                                            <StackPanel Spacing="6">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                                    <controls:LucideIcon Icon="Package" Width="14" Height="14"
+                                                                         Foreground="{StaticResource AnvilPrefabBrush}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding PrefabName}" FontSize="11.5" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding PrefabPath}" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding PrefabStatus}" Classes="muted" FontSize="10"
+                                                               VerticalAlignment="Center" ToolTip.Tip="{Binding PrefabOverridesTip}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                                    <Button Grid.Column="0" Content="Apply" HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center" FontSize="11"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ApplyPrefabCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Save this instance's changes into the prefab. Other instances follow, keeping their own overrides." />
+                                                    <Button Grid.Column="1" Content="Revert" HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center" FontSize="11"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RevertPrefabCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Drop this instance's overrides and take the prefab's values again (position, rotation and name stay)." />
+                                                    <Button Grid.Column="2" Content="Unpack" HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center" FontSize="11"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).UnpackPrefabCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Unlink from the prefab: a plain gameobject that no longer follows prefab edits." />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </Border>
 
@@ -1131,6 +1245,32 @@
                                         <CheckBox Content="Cast Shadows"
                                                   IsChecked="{Binding CastShadows, Mode=TwoWay}"
                                                   FontSize="11" />
+                                    </StackPanel>
+                                </Expander>
+
+                                <!-- Decal: the texture it projects down its local -Z (Decal.TexturePath). -->
+                                <Expander IsExpanded="True" IsVisible="{Binding IsDecal}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:LucideIcon Icon="FileImage" />
+                                            <TextBlock Text="Decal" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6" Margin="12,8,12,12">
+                                        <TextBlock Text="Choose a texture or drag one from Assets. Its alpha cuts the decal's shape."
+                                                   Classes="muted" FontSize="10" TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="60,*,Auto" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Texture" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                                    Click="DecalTexture_Browse"
+                                                    DragDrop.AllowDrop="True" DragDrop.DragOver="MaterialTexture_DragOver" DragDrop.Drop="DecalTexture_Drop"
+                                                    ToolTip.Tip="{Binding DecalTextureLabel}">
+                                                <TextBlock Text="{Binding DecalTextureLabel}" TextTrimming="CharacterEllipsis" FontSize="11" />
+                                            </Button>
+                                            <Button Grid.Column="2" Content="Reset" Command="{Binding ResetDecalTextureCommand}"
+                                                    ToolTip.Tip="Use the built-in scorch mark" />
+                                        </Grid>
                                     </StackPanel>
                                 </Expander>
 
@@ -1408,6 +1548,56 @@
                                                     <CheckBox Content="In Place" IsChecked="{Binding InPlace, Mode=TwoWay}" FontSize="11" />
                                                     <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
                                                                Text="Plays a skeletal clip in Play mode (the bind pose shows while editing). Source is the content path of another skinned model with the same bone names, e.g. GameObjects/Player/Walking; empty uses this model's own clips. In Place removes the clip's forward travel." />
+                                                    <TextBlock Text="Actions" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <ItemsControl ItemsSource="{Binding Actions}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="m:AnimationActionViewModel" x:DataType="m:AnimationActionViewModel">
+                                                                <Border Background="{StaticResource AnvilInputBackgroundBrush}"
+                                                                        BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1"
+                                                                        CornerRadius="4" Padding="8" Margin="0,0,0,6">
+                                                                    <StackPanel Spacing="6">
+                                                                        <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="6">
+                                                                            <TextBlock Grid.Column="0" Text="Name" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                            <TextBox Grid.Column="1" Classes="field" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                                     PlaceholderText="Walk" ToolTip.Tip="What scripts play it by: GetComponent&lt;AnimatorComponent&gt;().Play(&quot;Walk&quot;)" />
+                                                                            <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this action" />
+                                                                        </Grid>
+                                                                        <Grid ColumnDefinitions="48,*" ColumnSpacing="6">
+                                                                            <TextBlock Grid.Column="0" Text="Source" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                            <TextBox Grid.Column="1" Classes="field" Text="{Binding ClipSource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                                     PlaceholderText="Animator's Source" ToolTip.Tip="Content path of the model holding the clip; empty uses the Animator's Source" />
+                                                                        </Grid>
+                                                                        <Grid ColumnDefinitions="48,*" ColumnSpacing="6">
+                                                                            <TextBlock Grid.Column="0" Text="Clip" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                            <TextBox Grid.Column="1" Classes="field" Text="{Binding ClipName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                                     PlaceholderText="Longest clip" />
+                                                                        </Grid>
+                                                                        <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="6">
+                                                                            <TextBlock Grid.Column="0" Text="Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Speed, Mode=TwoWay}"
+                                                                                           Minimum="-10" Maximum="10" Increment="0.1" FormatString="0.##"
+                                                                                           ToolTip.Tip="Multiplies the Animator's Speed; negative plays backwards, 0 holds the first frame" />
+                                                                            <CheckBox Grid.Column="2" Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11"
+                                                                                      ToolTip.Tip="Without Loop the last frame holds and ActionFinished fires" />
+                                                                        </Grid>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <Button Content="Add Action" Command="{Binding AddActionCommand}" HorizontalAlignment="Stretch" />
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8" ToolTip.Tip="Action that plays when Play starts; empty plays the clip above">
+                                                        <TextBlock Grid.Column="0" Text="Start Action" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding StartAction, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 PlaceholderText="Clip above" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8" ToolTip.Tip="Seconds Play(action) blends from the previous animation; 0 switches at once">
+                                                        <TextBlock Grid.Column="0" Text="Fade (s)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FadeTime, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Actions are named clips scripts switch between: Animator.Play(&quot;Walk&quot;) crossfades to one (again for the one already playing does nothing, so call it every frame), PlayOnce(&quot;Jump&quot;) plays one through and returns, Stop/Play, Pause/Resume and Restart control playback." />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -1422,6 +1612,12 @@
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
                                                     <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Skeleton" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:RagdollComponentViewModel.Skeletons}"
+                                                                  SelectedItem="{Binding Skeleton, Mode=TwoWay}" />
+                                                    </Grid>
                                                     <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
                                                         <TextBlock Grid.Column="0" Text="Mass" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Mass, Mode=TwoWay}"
@@ -1439,7 +1635,7 @@
                                                     </Grid>
                                                     <CheckBox Content="Active on Start" IsChecked="{Binding ActiveOnStart, Mode=TwoWay}" FontSize="11" />
                                                     <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Rigid bodies for the bones of a skinned model. In Play they follow the animation (other bodies bounce off them) until the ragdoll goes limp: on start, when a body hits it faster than Impact m/s (0 = never), or from a script (GetComponent&lt;RagdollComponent&gt;().Activate()). Mass is the whole body's, in kg; Friction stiffens the joints." />
+                                                               Text="Rigid bodies for the bones of a skinned model. In Play they follow the animation (other bodies bounce off them) until the ragdoll goes limp: on start, when a body hits it faster than Impact m/s (0 = never), or from a script (GetComponent&lt;RagdollComponent&gt;().Activate()). Skeleton shapes the joints: Humanoid (knees and elbows hinge), Quadruped (four legs with hinged elbows, knees, wrists and hocks; tails curl), Generic (any creature: cones from the bone tree) or Auto. Mass is the whole body's, in kg; Friction stiffens the joints." />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -2608,6 +2804,26 @@
                                                                     </ComboBox.ItemTemplate>
                                                                 </ComboBox>
                                                             </DataTemplate>
+                                                            <DataTemplate DataType="m:ScriptPrefabFieldViewModel" x:DataType="m:ScriptPrefabFieldViewModel">
+                                                                <!-- Pick a prefab, or drag one from Assets onto the box. -->
+                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
+                                                                          ItemsSource="{Binding Options}"
+                                                                          SelectedItem="{Binding Value, Mode=TwoWay}"
+                                                                          DragDrop.AllowDrop="True"
+                                                                          DragDrop.DragOver="PrefabField_DragOver"
+                                                                          DragDrop.Drop="PrefabField_Drop">
+                                                                    <ComboBox.ItemTemplate>
+                                                                        <DataTemplate x:DataType="m:PrefabOption">
+                                                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                                <controls:LucideIcon Icon="Package" Width="12" Height="12"
+                                                                                                     Foreground="{StaticResource AnvilPrefabBrush}"
+                                                                                                     IsVisible="{Binding IsPrefab}" />
+                                                                                <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                                            </StackPanel>
+                                                                        </DataTemplate>
+                                                                    </ComboBox.ItemTemplate>
+                                                                </ComboBox>
+                                                            </DataTemplate>
                                                         </ItemsControl.DataTemplates>
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate x:DataType="m:ScriptFieldViewModel">
@@ -3335,6 +3551,201 @@
                             </StackPanel>
                         </ScrollViewer>
 
+                        <!-- Render Pipeline panel - opened by the viewport toolbar's Pipeline button (or Window >
+                             Render Pipeline). The engine's passes in draw order, with the project's render features
+                             (user full-screen shaders, Engine/Renderer/Features) at their injection points. -->
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      IsVisible="{Binding IsInspectorRenderPipelineView}">
+                            <StackPanel Spacing="10" Margin="12" DataContext="{Binding RenderPipeline}"
+                                        x:DataType="m:RenderPipelineViewModel">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Render Pipeline" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Summary}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
+
+                                <!-- new render feature at the chosen injection point -->
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                    <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding InjectionPoints}"
+                                              SelectedIndex="{Binding NewFeatureEventIndex, Mode=TwoWay}"
+                                              ToolTip.Tip="Where the new render feature runs" />
+                                    <Button Grid.Column="1" Command="{Binding NewFeatureCommand}" Padding="8,3"
+                                            AutomationProperties.Name="New Feature"
+                                            ToolTip.Tip="New render feature at the chosen injection point: writes a shader from the template into Content/RenderFeatures and compiles it">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <controls:LucideIcon Icon="Plus" Width="12" Height="12" />
+                                            <TextBlock Text="New" FontSize="11" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <!-- layers, in draw order -->
+                                <Border BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" CornerRadius="4"
+                                        Background="{StaticResource AnvilInputBackgroundBrush}" Padding="0,4">
+                                    <ListBox Classes="pipeline" ItemsSource="{Binding Rows}"
+                                             SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate DataType="m:RenderPipelineRowViewModel">
+                                                <Panel>
+                                                    <!-- built-in pass: green when on, grey when switched off -->
+                                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Height="20"
+                                                          IsVisible="{Binding IsStage}" Opacity="{Binding Opacity}"
+                                                          ToolTip.Tip="{Binding Detail}">
+                                                        <Ellipse Width="6" Height="6" Fill="{Binding ActiveBrush}" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                                                   Foreground="{StaticResource AnvilTextSecondaryBrush}"
+                                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    </Grid>
+                                                    <!-- injection point -->
+                                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Height="20"
+                                                          IsVisible="{Binding IsInjectionPoint}" ToolTip.Tip="{Binding Detail}">
+                                                        <TextBlock Text="{Binding InjectionLabel}" FontSize="9.5" FontWeight="SemiBold"
+                                                                   LetterSpacing="1" Foreground="{StaticResource AnvilLogBrush}"
+                                                                   VerticalAlignment="Center" />
+                                                        <Rectangle Grid.Column="1" Height="1" Fill="{StaticResource AnvilPrimaryAltBrush}"
+                                                                   VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <!-- render feature: checkbox = Enabled, dot = compile status -->
+                                                    <Border IsVisible="{Binding IsFeature}" BorderBrush="{StaticResource AnvilLogBrush}"
+                                                            BorderThickness="2,0,0,0" Padding="6,0,0,0" Margin="2,1,0,1">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" Height="22">
+                                                            <CheckBox IsChecked="{Binding Active, Mode=TwoWay}" MinHeight="0" MinWidth="0"
+                                                                      Padding="0" VerticalAlignment="Center" ToolTip.Tip="Enabled" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource AnvilTextPrimaryBrush}"
+                                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                                       ToolTip.Tip="{Binding Detail}" />
+                                                            <Ellipse Grid.Column="2" Width="7" Height="7" Margin="0,0,4,0"
+                                                                     Fill="{Binding StatusBrush}" VerticalAlignment="Center"
+                                                                     ToolTip.Tip="{Binding StatusTip}" />
+                                                        </Grid>
+                                                    </Border>
+                                                </Panel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+
+                                <!-- selected built-in pass or injection point -->
+                                <TextBlock Text="{Binding SelectedStageText}" IsVisible="{Binding HasSelectedStage}"
+                                           TextWrapping="Wrap" Classes="muted" FontSize="11" />
+
+                                <!-- selected render feature -->
+                                <StackPanel Spacing="8" IsVisible="{Binding HasSelectedFeature}">
+                                    <Separator />
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                                        <TextBlock Text="Render Feature" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Content="Up" FontSize="11" Padding="8,2"
+                                                Command="{Binding MoveUpCommand}"
+                                                ToolTip.Tip="Run earlier: past the previous feature, or across the passes above into the previous injection point" />
+                                        <Button Grid.Column="2" Content="Down" FontSize="11" Padding="8,2"
+                                                Command="{Binding MoveDownCommand}"
+                                                ToolTip.Tip="Run later: past the next feature, or across the passes below into the next injection point" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Name" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <TextBox Grid.Column="1" Classes="field"
+                                                 Text="{Binding FeatureName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                    </Grid>
+                                    <CheckBox Content="Enabled" IsChecked="{Binding FeatureEnabled, Mode=TwoWay}" FontSize="11" />
+                                    <CheckBox Content="Show in edit mode" IsChecked="{Binding ShowInEditMode, Mode=TwoWay}" FontSize="11"
+                                              ToolTip.Tip="Off: only drawn in Play and the built game" />
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Injection point" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                  ItemsSource="{Binding InjectionPoints}"
+                                                  SelectedIndex="{Binding EventIndex, Mode=TwoWay}" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Blend" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                  ItemsSource="{Binding BlendModes}"
+                                                  SelectedIndex="{Binding BlendIndex, Mode=TwoWay}"
+                                                  ToolTip.Tip="Replace: the output is the image. Alpha Blend / Additive / Multiply: the output is drawn over it" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Text="Intensity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="2" Value="{Binding Intensity, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Intensity, StringFormat={}{0:0.00}}" Classes="muted"
+                                                   FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0"
+                                                HorizontalAlignment="Left" ToolTip.Tip="Shader parameter Color (float4)">
+                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                    Background="{Binding FeatureColor, Converter={StaticResource ColorToBrush}}"
+                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                            <Button.Flyout>
+                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                    <ColorPicker x:DataType="m:RenderPipelineViewModel" Color="{Binding FeatureColor, Mode=TwoWay}" />
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </Grid>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Params (x, y, z, w)" Classes="muted" FontSize="11"
+                                                   ToolTip.Tip="Shader parameter Params (float4), free for the shader to use" />
+                                        <UniformGrid Columns="4" Rows="1">
+                                            <NumericUpDown Classes="field" Margin="0,0,3,0" Value="{Binding Param0, Mode=TwoWay}"
+                                                           Increment="0.1" FormatString="0.###" ShowButtonSpinner="False" />
+                                            <NumericUpDown Classes="field" Margin="0,0,3,0" Value="{Binding Param1, Mode=TwoWay}"
+                                                           Increment="0.1" FormatString="0.###" ShowButtonSpinner="False" />
+                                            <NumericUpDown Classes="field" Margin="0,0,3,0" Value="{Binding Param2, Mode=TwoWay}"
+                                                           Increment="0.1" FormatString="0.###" ShowButtonSpinner="False" />
+                                            <NumericUpDown Classes="field" Value="{Binding Param3, Mode=TwoWay}"
+                                                           Increment="0.1" FormatString="0.###" ShowButtonSpinner="False" />
+                                        </UniformGrid>
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Technique" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <TextBox Grid.Column="1" Classes="field" PlaceholderText="(first technique)"
+                                                 Text="{Binding Technique, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Shader" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding ShaderPath}" FontSize="11"
+                                                             TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                                        <Button Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding EditShaderCommand}" AutomationProperties.Name="Edit Shader" ToolTip.Tip="Open the .fx in Visual Studio Code (or Notepad). Saving recompiles it.">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <controls:LucideIcon Icon="FileCode" Width="12" Height="12" />
+                                                <TextBlock Text="Edit Shader" FontSize="11" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding RecompileCommand}" AutomationProperties.Name="Recompile" ToolTip.Tip="Compile the shader again now">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <controls:LucideIcon Icon="RotateCw" Width="12" Height="12" />
+                                                <TextBlock Text="Recompile" FontSize="11" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Text="Status" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Border IsVisible="{Binding HasError}" Background="#22E0524E" BorderBrush="#55E0524E"
+                                            BorderThickness="1" CornerRadius="3" Padding="8,6">
+                                        <SelectableTextBlock Text="{Binding ErrorText}" FontSize="11" FontFamily="Consolas,monospace"
+                                                             TextWrapping="Wrap" Foreground="{StaticResource AnvilTextPrimaryBrush}" />
+                                    </Border>
+                                    <Button HorizontalAlignment="Left" Command="{Binding DeleteCommand}" Padding="8,3"
+                                            AutomationProperties.Name="Delete Feature"
+                                            ToolTip.Tip="Remove the feature; its shader goes to the Recycle Bin">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <controls:LucideIcon Icon="Trash2" Width="12" Height="12" />
+                                            <TextBlock Text="Delete Feature" FontSize="11" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+
+                                <TextBlock TextWrapping="Wrap" Classes="muted" FontSize="11"
+                                           Text="Render features are your own full-screen shaders, drawn at an injection point between the engine's passes. Each one reads the image so far (ScreenTexture) plus depth, normals, time and its Intensity / Color / Params, and saving its .fx recompiles it live. They are saved for the whole project and ship with the built game." />
+                            </StackPanel>
+                        </ScrollViewer>
                         <!-- World panel - opened by the viewport toolbar's World button. World
                              generation settings are part of the scene environment. -->
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
@@ -3787,7 +4198,7 @@
                              though TreeViewItem marks those events handled. -->
                         <TreeView Name="AssetsTreeView"
                                   ItemsSource="{Binding AssetTree}"
-                                  ToolTip.Tip="Double-click a mesh to add it to the scene (or drag it into the Hierarchy). Double-click a shader, XML or CSS file to open it in a text editor.">
+                                  ToolTip.Tip="Double-click a mesh or prefab to add it to the scene (or drag it into the Hierarchy). Drag a gameobject from the Hierarchy into a folder here to save it as a prefab. Double-click a shader, XML or CSS file to open it in a text editor.">
 
                             <!-- Two-way so folder expansion survives tree rebuilds
                                  (the tree is rebuilt whenever Engine/Content changes). -->
@@ -3803,6 +4214,8 @@
                                     <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
                                         <StackPanel.ContextMenu>
                                             <ContextMenu>
+                                                <MenuItem Header="Place in Scene" Click="AssetPlacePrefab_Click"
+                                                          IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Prefab}" />
                                                 <MenuItem Header="Delete" Click="AssetDelete_Click" />
                                             </ContextMenu>
                                         </StackPanel.ContextMenu>
@@ -3840,6 +4253,9 @@
                                             <controls:LucideIcon Icon="File"
                                                   Foreground="{StaticResource AnvilTextSubtleBrush}"
                                                   IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=File}" />
+                                            <controls:LucideIcon Icon="Package"
+                                                  Foreground="{StaticResource AnvilPrefabBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Prefab}" />
                                         </Grid>
                                         <TextBlock Text="{Binding Name}" FontSize="11.5"
                                                    VerticalAlignment="Center" />

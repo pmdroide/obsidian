@@ -45,6 +45,7 @@ internal static class MaterialGraphicsChecks
             ParticleChecks.RunGraphics(graphics, content);
             VoxelChecks.RunGraphics(graphics, content);
             GridChecks.RunGraphics(graphics, content);
+            RenderFeatureChecks.RunGraphics(graphics, content);
             var model = content.Load<Model>("GameObjects/Default/cube");
             var definition = new ModelDefinition(model, new BoundingBox(-Vector3.One, Vector3.One));
             using var basicEffect = new BasicEffect(graphics);

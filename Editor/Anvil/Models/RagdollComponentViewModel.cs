@@ -1,15 +1,19 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Engine.Components;
+using Engine.Physics;
 
 namespace Anvil.Models;
 
 public partial class RagdollComponentViewModel : ComponentViewModel
 {
+    public static RagdollSkeletonType[] Skeletons { get; } = Enum.GetValues<RagdollSkeletonType>();
+
     [ObservableProperty] private double _mass = 70;
     [ObservableProperty] private bool _activeOnStart;
     [ObservableProperty] private double _impactThreshold;
     [ObservableProperty] private double _jointFriction = 0.2;
+    [ObservableProperty] private RagdollSkeletonType _skeleton = RagdollSkeletonType.Auto;
 
     public RagdollComponentViewModel(SceneObjectViewModel owner) : base(owner, RagdollComponent.TypeId) { }
 
@@ -36,6 +40,12 @@ public partial class RagdollComponentViewModel : ComponentViewModel
         Push(c => ((RagdollComponent)c).JointFriction = friction);
     }
 
+    partial void OnSkeletonChanged(RagdollSkeletonType value)
+    {
+        if (!Enum.IsDefined(value)) return;
+        Push(c => ((RagdollComponent)c).Skeleton = value);
+    }
+
     public override void Apply(GameComponent component, bool freezeFields)
     {
         base.Apply(component, freezeFields);
@@ -45,5 +55,6 @@ public partial class RagdollComponentViewModel : ComponentViewModel
         ActiveOnStart = ragdoll.ActiveOnStart;
         if (Math.Abs(ImpactThreshold - ragdoll.ImpactThreshold) > 0.0001) ImpactThreshold = ragdoll.ImpactThreshold;
         if (Math.Abs(JointFriction - ragdoll.JointFriction) > 0.0001) JointFriction = ragdoll.JointFriction;
+        Skeleton = ragdoll.Skeleton;
     }
 }

@@ -138,6 +138,15 @@ namespace Engine.Entities
         /// <summary>True when the next scene load during Play carries this gameobject over.</summary>
         public bool IsPersistent => Persistent || RuntimePersistent;
 
+        /// <summary>
+        /// Prefab instance: the Content-relative .prefab this gameobject was made from ("Prefabs/Crate.prefab"),
+        /// saved with the scene; null for a plain gameobject. See <c>Logic.PrefabUtility</c>.
+        /// </summary>
+        public string PrefabPath { get; set; }
+
+        /// <summary>True when this gameobject is linked to a prefab (<see cref="PrefabPath"/>).</summary>
+        public bool IsPrefabInstance => !string.IsNullOrEmpty(PrefabPath);
+
         public override TransformableObject Clone {
             get
             {
@@ -147,6 +156,8 @@ namespace Engine.Entities
                     Components = Components.Select(ComponentRegistry.Copy).ToList(),
                     Role = Role,
                     Persistent = Persistent,
+                    // A duplicate of a prefab instance is another instance of that prefab, like Unity.
+                    PrefabPath = PrefabPath,
                 };
                 // Script fields that reference this gameobject reference the copy instead, like Unity.
                 foreach (var script in copy.Components.OfType<ScriptBehaviourComponent>())

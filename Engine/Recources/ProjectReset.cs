@@ -46,12 +46,13 @@ namespace Engine.Recources
             "GameObjects/error.png",        // fallback material texture
             "GameObjects/sky.dds",          // default sky
             "GameObjects/Player",           // Assets.PlayerYBot / PlayerWalking (built-in model keys)
+            "GameObjects/Wolf",             // Assets.Wolf (+ its generator)
             "UI/LoadingScreen.xml",         // GameFlow.LoadSceneAsync's loading screen (LoadingScreen.cs)
             "UI/LoadingScreen.css",
         };
 
         /// <summary>Project settings files deleted outright (their absence is the default).</summary>
-        public static readonly string[] DeletedSettings = { GameInfo.DefaultIconPath, "System/BuildSettings.json" };
+        public static readonly string[] DeletedSettings = { GameInfo.DefaultIconPath, "System/BuildSettings.json", Renderer.Features.RenderFeatures.FileName };
 
         public sealed class Options
         {

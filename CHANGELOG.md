@@ -1,5 +1,157 @@
 # Changelog
 
+## Fixed: Space/Enter stopping Play in Anvil (2026-10-13)
+
+**Why:** after you clicked Play, the Play button kept keyboard focus. Avalonia clicks a focused button on Space or Enter, so jumping or confirming a menu toggled Play off.
+
+- `MonoGameHost` (`Editor/Anvil/Controls/MonoGameHost.cs`): during Play, the window-level key handlers still forward Space/Enter to the engine, then mark them handled on the tunnel pass (`IsGameKeyInPlay`) so the focused button never sees them. A focused `TextBox` or `MenuItem` still gets the keys. Edit mode is unchanged.
+- **Docs:** `Docs/markdown/Engine_Wiring.md`.
+
+- Claude
+
+## Added: Non-humanoid ragdoll skeletons (2026-10-13)
+
+**Why:** ragdolls only understood human bone names. A four-legged animal's legs bent like a person's (or not at all), tails and snakes got one generic cone per part, and the facing was guessed from Left/Right names alone.
+
+- **Skeleton setting:** the Ragdoll component has a new **Skeleton** setting (`RagdollComponent.Skeleton`, enum `RagdollSkeletonType`, saved by name). The options are **Auto** (the default, so existing scenes behave as before), **Humanoid**, **Quadruped** and **Generic**. Anvil's Inspector shows it as a dropdown. Changing it rebuilds the ragdoll the next time it stands.
+- **Rig** (`Engine/Physics/RagdollRig.cs`):
+  - Rigs are cached per model and skeleton type (`RagdollRig.For(model, type)`, `Build(..., type)`), and `Type` holds the resolved type.
+  - Joints are now assigned after the rest directions are known, and each part gets `Flex`: the direction its hinge bends it.
+  - **Auto** picks Humanoid when human limb names sit on a body taller than 1.2× its length, Quadruped with exactly four legs, and Generic otherwise.
+  - A **leg** is a downward chain that never branches and reaches the bottom quarter of the body, so drooping tails and arms don't count.
+  - Without mirrored Left/Right names, the facing comes from the root towards a `head`/`skull` bone.
+- **New joint kinds:** `ForeShoulder`, `ForeElbow`, `ForeWrist`, `HindHip`, `HindKnee`, `HindHock`, `Paw`, `Tail`, `Limb` and `Chain`, with limits in `RagdollJointLimits.For`.
+  - **Quadruped:** front and hind legs get shoulder/hip cones, then elbow (bends forward), wrist (back), knee (back) and hock (forward) hinges. A front scapula is a `Clavicle` cone, and tails are chains.
+  - **Generic:** cones only. A part on a branching parent is a `Limb`, every other part a `Chain` link.
+  - `Ragdoll.AddJoint` builds each hinge from `Part.Flex` instead of checking for knees.
+- **Sample:**
+  - New built-in skinned model `Assets.Wolf` (`Content/GameObjects/Wolf/Wolf.fbx`): 1037 vertices, 21 bones with Rigify-style leg names and an `Idle` clip (tail wag, breathing, a look around). `Content/GameObjects/Wolf/Source/generate_wolf.py` builds it in headless Blender: skin-modifier body, Smart UV Project, automatic weights and FBX export.
+  - Added to `Content.mgcb` with the `SkinnedModelProcessor` (RotationX 90, Scale 1) and kept by Project Settings > Delete Project.
+  - `AnimationTest.obsc` gains **Wolf - Ragdoll (limp on Play)** (Skeleton Quadruped) and **Wolf - Ragdoll (click to knock over)** (Skeleton Auto, Impact 3). Both weigh 35 kg.
+- **Checks:** `RagdollChecks` gains a box quadruped with human limb names, checks of the forced Humanoid/Generic types, a snake rig and a fall test. In the fall test the quadruped topples and rests with all 8 hinges in range, and the snake drapes over a bar. The checks also cover the Skeleton setting's editor round trip and save, and the sample Wolves. `--graphics` adds the real Wolf: Auto picks Quadruped with 20 parts; it stands 1.07 m tall and 1.78 m long, plays its idle, falls onto its side within its hinges and stands back up. All 1189 component checks pass. With `--graphics`, everything up to the known `PauseChecks` failure passes (1298 checks).
+- **Checked in Anvil:** in AnimationTest the Inspector shows Skeleton Auto on the Wolf. In Play the Quadruped Wolf collapses onto its side, and **G** drops the Auto Wolf in one piece.
+- **Docs:** `Docs/markdown/Ragdoll_Physics.md` (skeleton types, quadruped and generic joint tables, the Wolf), `Docs/markdown/Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Prefabs (2026-10-12)
+
+**Why:** there was no way to save a set-up gameobject (model, material, components and their settings) and place copies of it. Every copy had to be built by hand, and a change had to be repeated on each one.
+
+- **Prefab files** (`Engine/Logic/Prefab.cs`): `.prefab` JSON in Content, `Content/Prefabs` by default. Each holds one gameobject record in the scene format, positioned at the origin, without component attachment IDs. `Prefab.Load` takes a name ("Crate") or a path ("Prefabs/Crate.prefab"; the extension and folder are optional). It finds a moved file by its name and caches the prefab until the file changes. `List`, `Resolve` and `UniquePath` are the other helpers. `Engine.csproj` copies `Content/**/*.prefab` into builds.
+- **Instances** (`Engine/Logic/PrefabUtility.cs`): a gameobject with `BasicEntity.PrefabPath`. Name, position and rotation are always the instance's own. The model, scale, Enabled flag, role, Persistent flag, material and every component setting follow the prefab, unless the instance overrides them.
+  - An override is a value that differs from the prefab, for example `Components/physics#0/Mass`, or a component the instance added or removed.
+  - Scenes save each instance's prefab path and overrides (`BasicEntityRecord.Prefab`/`PrefabOverrides`). On every load the instance is rebuilt from the prefab file, with its overrides on top (`PrefabUtility.Sync`), so prefab edits reach every scene.
+  - Script fields that point at the prefab's own gameobject point at each copy. Duplicating an instance gives another instance.
+- **Operations:** `CreatePrefab` (unique file name, links the gameobject). `ApplyToPrefab` writes the file; other instances in the scene update and keep their own overrides, and changed ones are rebuilt in place under the same ID (`MainSceneLogic.ReplaceGameObject`). `RevertToPrefab`, `Unpack` and `MainSceneLogic.InstantiatePrefab`. Apply, Revert and Unpack work in Edit mode only.
+- **Scripts:** `Instantiate(prefab, position, rotation)` with a `Prefab` or a name. Copies are never saved and are removed when the script stops, like `Spawn`. `LoadPrefab(name)` returns the prefab. A new `Prefab` Inspector field type (`ScriptFieldKind.Prefab`, saved as the prefab's path) has a picker in the Inspector that also accepts a prefab dragged from Assets.
+- **Anvil:**
+  - **Creating prefabs:** drag a gameobject from the Hierarchy into an Assets folder (empty space saves to `Prefabs`), or use Hierarchy right-click > Create Prefab, Inspector > Create Prefab, or GameObject > Create Prefab from Selection.
+  - **Placing prefabs:** prefabs show in Assets with a blue package icon. Double-click one, drag it into the Hierarchy, or right-click it > Place in Scene.
+  - **Instances:** they show blue in the Hierarchy. The Inspector's prefab bar shows the prefab's name, an override count (hover for the list) and **Apply** / **Revert** / **Unpack**, which are also in the Hierarchy's right-click menu.
+  - Bridge: `IEditorBridge.EnqueueCreatePrefab/ApplyPrefab/RevertPrefab/UnpackPrefab/InstantiatePrefab`. Snapshot: `EditorObjectSnapshot.PrefabPath`, plus `PrefabOverrides`/`PrefabMissing` for the selected gameobject only.
+- **Scene files:** gameobjects go through `SceneSerialization.CaptureEntity`/`RestoreEntity`, which prefabs share. Runtime-imported models now save and load by their registry key. They used to be skipped with "unregistered ModelDefinition", so this removes the old sharp edge #1 in Engine_Wiring.
+- **Checks:** `Tests/Components/PrefabChecks.cs` (37 checks). They cover create, lookup, instantiating from the editor and scripts, overrides, Apply/Revert/Unpack, scene save/load picking up a changed prefab (model, scale, settings) while keeping overrides, missing prefabs, Prefab script fields, and Anvil's view models and drop targets. All 1173 component checks pass. Checked in Anvil: Inspector > Create Prefab, double-clicking the prefab in Assets to place two instances (blue in the Hierarchy), "1 override" after changing one's scale, and Apply updating the other instance.
+- **Docs:** new `Docs/markdown/Prefabs.md`; `Docs/markdown/Script_Behaviours.md` (Prefab fields, `Instantiate`), `Docs/markdown/Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Decal texture picker (2026-10-12)
+
+**Why:** every new decal projected the same built-in scorch mark, and only `Assets` fields could be saved as decal textures.
+
+- **Anvil Inspector:** a new **Decal** section for selected decals with **Texture** (click to browse Content, or drag a texture from Assets) and **Reset** (back to the built-in scorch mark). `SceneObjectViewModel.IsDecal`/`DecalTexture`/`AssignDecalTexture`/`ResetDecalTextureCommand`; the Material slots and the decal share `MainWindow.PickContentTextureAsync`.
+- **Engine:** `Decal.TexturePath` (Content-relative source path) and `Decal.LoadTexture` (through the content manager, like Material textures; the texture must already be built). Copies keep the path and the Enabled flag.
+- **Bridge:** `IEditorBridge.EnqueueSetDecalTexture(id, path)`; a texture that can't load leaves the decal unchanged, null/empty resets it. `EditorObjectSnapshot.DecalTexture` carries the path to the Inspector (`BridgeReconciler`).
+- **Scene files:** `DecalRecord.TexturePath`. A picked texture saves its path (no `TextureKey`); built-in ones still save `TextureKey`. On load, a path that fails to load falls back to `DefaultDecal` and keeps the path, so a later save doesn't lose it.
+- **Renderer:** the decal blend is now premultiplied alpha (`One, InverseSourceAlpha`), matching the content pipeline default used by imported textures; straight alpha darkened their edges. `default_decal.png` is built premultiplied too.
+- **Checks:** `Tests/Components/GameObjectMenuChecks.cs` (unloadable path, copy, snapshot, save/load round trip, Reset). Checked in Anvil: the Decal section shows, and a scaled decal projects onto a cube.
+- **Docs:** `CLAUDE.md`, `Docs/markdown/Engine_Wiring.md`.
+
+- Claude
+
+## Added: Decals in the GameObject menu (2026-10-12)
+
+**Why:** the engine already drew, selected, saved and loaded deferred decals, but Anvil had no way to create one.
+
+- **Anvil:** new **GameObject > Effects > Decal** and a **Decal** entry in the Hierarchy "+" menu (`MainWindowViewModel.AddDecal`). It adds a 2 x 2 x 2 m decal box at the spawn point (5 m in front of the camera) that projects down its local -Z onto whatever is inside it; move/scale/rotate it with the gizmo or the Inspector.
+- **Bridge:** `IEditorBridge.EnqueueAddDecal(position, scale)` → `MainSceneLogic.EditorAddDecal`.
+- **Default decal texture:** a scorch mark, `Content/System/Decals/default_decal.png` (straight alpha, mipmapped, in `Content.mgcb`), loaded as `Assets.DefaultDecal`. Decals save their texture by `Assets` field name, so this is also what makes a new decal survive a save. It lives under `System`, so Delete Project keeps it.
+- **Renderer:** `DecalRenderModule.Draw` skips disabled decals (the Inspector's Enabled checkbox now hides one) and decals without a texture.
+- **Checks:** `Tests/Components/GameObjectMenuChecks.cs` covers the menu command and the Hierarchy "+" entry.
+- **Docs:** `Docs/markdown/Engine_Wiring.md` (adding objects from Anvil, decal texture keys), `CLAUDE.md`.
+
+- Claude
+
+## Added: Render features (custom shader passes) and the Render Pipeline panel (2026-10-12)
+
+**Why:** every shader belonged to the engine. There was no way to add your own pass to the render pipeline without editing `Renderer.cs` and `Content.mgcb`, and no view of the pipeline's order.
+
+- **Render features** (`Engine/Renderer/Features/`): user full-screen shaders, like URP Renderer Features.
+  - Each one runs at an injection point between the built-in passes (`RenderFeatureEvent`, saved by name): **After Opaques** (after the deferred compose, before forward/water/particles/weather), **After Transparents** (before TAA and bloom), **After Bloom** (HDR, before tonemapping) and **After Post Processing** (final LDR image, under the editor gizmos and game UI).
+  - Settings per feature: Name, Enabled, Show in Edit Mode, Blend (Replace / Alpha Blend / Additive / Multiply; blends keep the image's alpha), Intensity, Color, Params (float4), Technique (every pass is drawn).
+  - Project-wide, saved in run order in `Content/System/RenderFeatures.json`. The shaders live in `Content/RenderFeatures/<Name>.fx`.
+- **Live compiling** (`RenderFeatureCompiler`): the editor runs mgcb on one shader and copies the `.xnb` next to the `.fx`. It recompiles a second or two after each save (the files are checked every 30 frames) and keeps the last good version running when a compile fails. Errors show with file, line and column.
+  - The shaders are not in `Content.mgcb`, so a shader with errors can't break the content build. `Engine.csproj` copies the `.xnb` files and the JSON into builds.
+  - `AssetImporter.LocateMgcb`/`EscapeArg` are now `internal` for this.
+- **`RenderFeatureRenderModule`** draws the features of each injection point. Each feature reads the previous result as `ScreenTexture` and writes one of two scratch targets per format, then the result is copied back.
+  - After Bloom isn't drawn in place, because the image there can be the TAA history.
+  - Inputs set when a shader declares them: `ScreenTexture`, `DepthMap`, `NormalMap`, `AlbedoMap`, `Resolution`, `InverseResolution`, `Time`, `DeltaTime`, `Intensity`, `Color`, `Params`, `CameraPosition`, `FarClip`, `View`, `Projection`, `ViewProjection`, `InverseViewProjection`.
+  - A parameter of the wrong kind stops that feature with "Draw failed" instead of throwing every frame.
+- **New shader template** (`RenderFeatureShaderTemplate`): documents every input and has `WorldPosition`/`DecodeNormal` helpers. Its example is a tint and vignette, so a new feature is visible right away.
+- **Renderer:** `Renderer.Draw` calls `DrawRenderFeatures` at the four points.
+  - `DrawPostProcessing` now builds the final image once per frame (`_finalImage`). The second `RenderMode` call only draws it again, so post processing and After Post Processing features no longer run twice.
+- **Anvil:**
+  - New **Pipeline** button in the viewport toolbar (next to Environment and World) and **Window > Render Pipeline**.
+  - The Inspector's Render Pipeline view lists the whole pipeline in draw order: built-in passes (greyed out when switched off), injection points, and features with an Enabled checkbox and a compile status dot.
+  - **+ New** adds a feature at the chosen injection point.
+  - The selected feature's settings, Up/Down (moving across built-in passes changes the injection point), **Edit Shader** (VS Code or Notepad), **Recompile**, compiler errors, and **Delete Feature** (the shader goes to the Recycle Bin). Compile results are logged to the console.
+  - Code: `RenderPipelineViewModel`, `RenderPipelineRowViewModel`, `MainWindow.axaml`, `MainWindowViewModel.IsInspectorRenderPipelineView`.
+- **Bridge:** `GetRenderPipeline`, `RenderPipelineChanged`, `EnqueueRefreshRenderPipeline`, `EnqueueCreateRenderFeature`, `EnqueueMutateRenderFeature`, `EnqueueMoveRenderFeature`, `EnqueueRecompileRenderFeature`, `EnqueueDeleteRenderFeature`.
+- **Scripts:** `RenderFeatures.Find("Name")` to change a feature during Play. Stop puts the saved values back (`RestoreSaved`, called by `PlayModeController.Stop`).
+- **Delete Project:** removes `RenderFeatures.json` (`ProjectReset.DeletedSettings`) and the `RenderFeatures` folder, then reloads the features.
+- **Checks:** new `Tests/Components/RenderFeatureChecks.cs`.
+  - `Run` covers the pipeline listing and order, save/load, Up/Down across injection points, Stop restoring script changes, the bridge and the Anvil panel.
+  - `RunGraphics` compiles the template with mgcb and draws it. It also covers Color/Intensity, Show in Edit Mode, all four blend modes against a known image, two chained features, a compile error (reported with its line, last good shader kept), hot reload after a save, a draw failure, and loading at startup.
+  - All component checks pass, and every render feature graphics check passes (run before the other graphics checks). The full `--graphics` run still stops at `PauseChecks` ("the document is filled in…"), as before these changes.
+- **Docs:** new `Docs/markdown/Render_Features.md`; `Engine_Wiring.md` (§1, §2, §3.4, §4.1, §5, §9.1, §9.4, §9.6, §11, §13, §14); `CLAUDE.md`.
+
+- Claude
+
+## Added: Animator actions (named clips played from scripts) with crossfades and playback control (2026-10-12)
+
+**Why:** the Animator played one clip, fixed in the Inspector. Scripts couldn't switch to a walk while moving, play a one-shot, or stop and pause the animation.
+
+- **`AnimatorComponent.Actions`** (new `AnimationAction`: Name, Source, Clip, Speed, Loop).
+  - An empty Source uses the Animator's Source.
+  - An action's Speed multiplies the Animator's Speed. Negative plays backwards, and 0 holds the first frame.
+  - The new **Start Action** setting picks the action that plays when Play starts (empty means the existing clip, so old scenes behave as before).
+  - The new **Fade** setting (default 0.2 s) is how long switches blend.
+- **Script API on the Animator** (`ScriptBehaviour.Animator` is the new shortcut):
+  - `Play(name, fade)`: does nothing while that action already plays, so it is safe every frame. `""` is the default clip. It returns `false` and logs once for an unknown name.
+  - `CrossFade(name, seconds)`.
+  - `PlayOnce(name, then)`: returns to the previous action, or `then`, when it ends.
+  - `Stop()` (bind pose) and `Play()`; `Pause()` and `Resume()`; `Restart()`.
+  - State: `CurrentAction`, `IsPlayingAction`, `HasAction`/`FindAction`, a seekable `Time`, `NormalizedTime`, `Duration`, `IsFinished`, `IsFading`, `IsPaused`, `IsStopped`.
+  - The `ActionFinished` event.
+  - Calls made before the Animator has started (a script listed above it) are kept.
+- **Crossfades:** `AnimationPlayer.BlendFrom` blends two evaluated poses bone by bone (lerp/slerp). The outgoing clip keeps playing underneath with a smoothstep weight. Ragdolls follow the blended pose.
+- **Other behaviour changes:**
+  - Animator problems (missing clip, source or skeleton) are logged once per Play session instead of on every retry.
+  - A paused clip is not re-skinned.
+  - The Animator's Speed and Loop, and the current action's, are read live.
+- **Anvil Inspector > Animator:** an Actions list (Name, Source, Clip, Speed, Loop, Remove), Add Action, Start Action and Fade (`AnimatorComponentViewModel`, new `AnimationActionViewModel`, `MainWindow.axaml`).
+- **Sample:** `Y Bot - Actions (arrow keys)` in `Content/Scenes/AnimationTest.obsc`, with Idle/Walk/Run/Walk Back/Dash actions on the walk clip. It is driven by the new **Animator Actions** script (`Content/Scripts/AnimatorActionsScript.cs`, id `animator-actions`):
+  - arrow keys walk and turn, Shift runs
+  - Space dashes (`PlayOnce`)
+  - P pauses, K stops or plays
+- **Checks:** `AnimationChecks` gained inspector/save/clone checks for actions, selection order (Start Action, Play/Stop before the Animator starts, reset on Stop), `BlendFrom` math and the sample.
+  - With `--graphics` they also cover real-asset playback: crossfade halfway pose, no-op replay, one-shot return plus `ActionFinished`, pause/resume, backwards start, and stop/play.
+  - All component checks pass. The `--graphics` run passes every animation and ragdoll check, then stops at `PauseChecks` ("the document is filled in…"), which fails the same way without these changes.
+- **Docs:** `Skeletal_Animation.md` (Actions section, sample), `Script_Behaviours.md` (Animation helpers), `Engine_Wiring.md` (§7.2 Animator, §14), `CLAUDE.md`.
+
+- Claude
+
 ## Added: `build-editor.ps1`, a Release build of the Anvil editor (2026-10-12)
 
 **Why:** there was no single command to produce a release `Anvil.exe`. `bootstrap.bat` is broken and only builds Debug.

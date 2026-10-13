@@ -268,7 +268,7 @@ namespace Engine.Recources
             return result.Length == 0 ? "model" : result;
         }
 
-        private static (string exe, string argPrefix) LocateMgcb()
+        internal static (string exe, string argPrefix) LocateMgcb()
         {
             // 1. Explicit env override.
             string env = Environment.GetEnvironmentVariable("MGCB_PATH");
@@ -360,7 +360,7 @@ namespace Engine.Recources
                 throw new InvalidOperationException($"mgcb exited with code {p.ExitCode}. See log.");
         }
 
-        private static string EscapeArg(string a) =>
+        internal static string EscapeArg(string a) =>
             a.Contains(' ') ? "\"" + a + "\"" : a;
 
         private void CopyXnbForAsset(string contentRelPath)

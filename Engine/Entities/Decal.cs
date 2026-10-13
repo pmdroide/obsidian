@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Engine.Recources;
 using Engine.Recources.Helper;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Engine.Entities
@@ -37,7 +39,7 @@ namespace Engine.Entities
 
         public override TransformableObject Clone
         {
-            get { return new Decal(Texture, Position, RotationMatrix, Scale);}
+            get { return new Decal(Texture, Position, RotationMatrix, Scale) { TexturePath = TexturePath, IsEnabled = IsEnabled };}
         }
 
         public override string Name { get; set; }
@@ -55,6 +57,27 @@ namespace Engine.Entities
         public Matrix World;
         public Matrix InverseWorld;
         public Texture2D Texture;
+        /// <summary>
+        /// Content-relative source path of <see cref="Texture"/> ("Textures/stain.png"), saved with the scene.
+        /// Null when the texture is a built-in <c>Assets</c> field (saved by field name, e.g. DefaultDecal).
+        /// </summary>
+        public string TexturePath;
+
+        /// <summary>Loads a Content texture by its source path (cached by the content manager). Null when it can't.</summary>
+        public static Texture2D LoadTexture(string path, ContentManager content = null)
+        {
+            content ??= Globals.content;
+            if (content == null || !Components.MaterialComponent.IsTextureAsset(path)) return null;
+            try
+            {
+                return content.Load<Texture2D>(System.IO.Path.ChangeExtension(path.Replace('\\', '/'), null));
+            }
+            catch (ContentLoadException ex)
+            {
+                Editor.EditorBridge.Log($"Decal texture '{path}' could not load: {ex.Message}");
+                return null;
+            }
+        }
 
         public Decal(Texture2D texture, Vector3 position, double angleZ, double angleX, double angleY, Vector3 scale) : 
             this(texture, position, Matrix.CreateRotationX((float)angleX) * Matrix.CreateRotationY((float)angleY) *

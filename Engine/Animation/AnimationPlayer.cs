@@ -112,13 +112,38 @@ namespace Engine.Animation
             }
         }
 
-        /// <summary>Poses the skeleton at <paramref name="time"/> seconds into the clip.</summary>
+        /// <summary>Poses the skeleton at <paramref name="time"/> seconds into the clip (bind pose without one).</summary>
         public void Evaluate(float time)
         {
             if (Clip == null) Array.Copy(Skeleton.BindPose, _local, _local.Length);
             else if (IsRetargeted) PoseRetargeted(time);
             else PoseDirect(time);
+            Finish();
+        }
 
+        /// <summary>
+        /// Mixes the last pose of <paramref name="from"/> (same skeleton, evaluated this frame) into this
+        /// player's last pose, bone by bone in parent space: <paramref name="weight"/> 0 keeps
+        /// <paramref name="from"/>'s pose, 1 keeps this one. Used to crossfade between clips.
+        /// </summary>
+        public void BlendFrom(AnimationPlayer from, float weight)
+        {
+            if (from == null || from == this || !ReferenceEquals(from.Skeleton, Skeleton) || !(weight < 1f)) return;
+            weight = Math.Max(weight, 0f);
+            for (int i = 0; i < _local.Length; i++)
+            {
+                from._local[i].Decompose(out Vector3 fromScale, out Quaternion fromRotation, out Vector3 fromTranslation);
+                _local[i].Decompose(out Vector3 scale, out Quaternion rotation, out Vector3 translation);
+                _local[i] = Compose(Vector3.Lerp(fromScale, scale, weight),
+                    Quaternion.Normalize(Quaternion.Slerp(fromRotation, rotation, weight)),
+                    Vector3.Lerp(fromTranslation, translation, weight));
+            }
+            Finish();
+        }
+
+        // Model-space bone and skin matrices from the local pose.
+        private void Finish()
+        {
             for (int i = 0; i < _local.Length; i++)
             {
                 int parent = Skeleton.ParentIndices[i];

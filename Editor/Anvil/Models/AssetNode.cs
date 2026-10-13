@@ -16,6 +16,7 @@ public enum AssetKind
     Font,
     Video,
     File,
+    Prefab,
 }
 
 public partial class AssetNode : ObservableObject

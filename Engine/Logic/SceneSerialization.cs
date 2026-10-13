@@ -30,6 +30,9 @@ namespace Engine.Logic
         public const int CurrentVersion = 2;
         public const string Extension = ".obsc";
 
+        // Shared with prefab files (Prefab), which hold one gameobject record in the same format.
+        internal static JsonSerializerOptions JsonOptions => Options;
+
         private static readonly JsonSerializerOptions Options = new JsonSerializerOptions
         {
             WriteIndented = true,
@@ -142,7 +145,6 @@ namespace Engine.Logic
             private readonly SceneFile _file;
             private readonly Assets _assets;
             private readonly List<Action> _steps = new();
-            private readonly Dictionary<string, ModelDefinition> _models;
             private readonly Dictionary<string, Texture2D> _textures;
             private readonly Dictionary<string, MaterialEffect> _materials;
             // Persisted IDs are what selection, picking and the editor bridge address objects by.
@@ -169,8 +171,7 @@ namespace Engine.Logic
                     IsDirty = false,
                 };
 
-                // Models/textures by name via reflection. Same lookup as EditorBridge.
-                _models = BuildAssetLookup<ModelDefinition>(assets);
+                // Textures/materials by name via reflection; models through Assets.FindModel (built-ins and imports).
                 _textures = BuildAssetLookup<Texture2D>(assets);
                 _materials = BuildAssetLookup<MaterialEffect>(assets);
 
@@ -203,30 +204,15 @@ namespace Engine.Logic
 
             private void AddEntity(BasicEntityRecord rec, int version)
             {
-                if (string.IsNullOrEmpty(rec.ModelKey) || !_models.TryGetValue(rec.ModelKey, out var model))
+                // A prefab instance takes the prefab's current values, except the ones it overrides.
+                if (!string.IsNullOrEmpty(rec.Prefab))
                 {
-                    EditorBridge.Log($"LoadScene: skipping entity '{rec.Name}' — unknown ModelKey '{rec.ModelKey}'");
-                    return;
+                    Prefab prefab = Prefab.Load(rec.Prefab);
+                    if (prefab != null) rec = PrefabUtility.Sync(prefab, rec, rec.PrefabOverrides);
+                    else EditorBridge.Log($"LoadScene: prefab '{rec.Prefab}' of '{rec.Name}' not found, using the values saved in the scene");
                 }
-                MaterialEffect material = ResolveMaterial(rec.Material, _materials, _textures, _assets);
-                Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
-                var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
-                be.Name = rec.Name ?? be.Name;
-                // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
-                be.IsEnabled = rec.IsEnabled || version < 2;
-                be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
-                be.Persistent = rec.Persistent;
-                foreach (var record in rec.Components ?? new())
-                {
-                    var component = ComponentRegistry.Restore(record);
-                    if (component == null)
-                        EditorBridge.Log($"LoadScene: unknown component '{record.Type}' on '{be.Name}'");
-                    else if (!be.AddComponent(component))
-                        EditorBridge.Log($"LoadScene: duplicate component '{record.Type}' on '{be.Name}' ignored");
-                }
-                // Scenes saved before Physics became a component stored it as its own record.
-                if (rec.Physics != null && rec.Physics.Type != PhysicsBodyType.None && be.Physics == null)
-                    be.AddComponent(new PhysicsComponent { BodyType = rec.Physics.Type, Mass = rec.Physics.Mass });
+                BasicEntity be = RestoreEntity(rec, version, _assets, _textures, _materials);
+                if (be == null) return;
                 ClaimId(be, rec.Id);
                 Scene.BasicEntities.Add(be);
             }
@@ -271,8 +257,11 @@ namespace Engine.Logic
 
             private void AddDecal(DecalRecord rec)
             {
-                Texture2D tex = null;
-                if (!string.IsNullOrEmpty(rec.TextureKey)) _textures.TryGetValue(rec.TextureKey, out tex);
+                // A Content texture picked in the Inspector; a built-in Assets field otherwise. A path that
+                // fails to load keeps the decal (on the default texture) and its path, so saving doesn't lose it.
+                Texture2D tex = string.IsNullOrEmpty(rec.TexturePath) ? null : Decal.LoadTexture(rec.TexturePath);
+                if (tex == null && !string.IsNullOrEmpty(rec.TextureKey)) _textures.TryGetValue(rec.TextureKey, out tex);
+                if (tex == null && !string.IsNullOrEmpty(rec.TexturePath)) _textures.TryGetValue(nameof(Assets.DefaultDecal), out tex);
                 if (tex == null)
                 {
                     EditorBridge.Log($"LoadScene: skipping decal '{rec.Name}' — unknown TextureKey '{rec.TextureKey}'");
@@ -280,6 +269,7 @@ namespace Engine.Logic
                 }
                 Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
                 var dc = new Decal(tex, rec.Position, rot, rec.Scale);
+                dc.TexturePath = string.IsNullOrEmpty(rec.TexturePath) ? null : rec.TexturePath;
                 dc.Name = rec.Name ?? dc.Name;
                 dc.IsEnabled = rec.IsEnabled;
                 ClaimId(dc, rec.Id);
@@ -329,6 +319,85 @@ namespace Engine.Logic
             }
         }
 
+        /// <summary>
+        /// Builds a gameobject from its record (scenes and prefabs). It gets a fresh ID and isn't registered for
+        /// drawing yet. Null when the model key is unknown.
+        /// </summary>
+        internal static BasicEntity RestoreEntity(BasicEntityRecord rec, int version, Assets assets,
+            Dictionary<string, Texture2D> textures = null, Dictionary<string, MaterialEffect> materials = null)
+        {
+            ModelDefinition model = string.IsNullOrEmpty(rec.ModelKey) ? null : assets.FindModel(rec.ModelKey);
+            if (model == null)
+            {
+                EditorBridge.Log($"LoadScene: skipping entity '{rec.Name}' — unknown ModelKey '{rec.ModelKey}'");
+                return null;
+            }
+            textures ??= BuildAssetLookup<Texture2D>(assets);
+            materials ??= BuildAssetLookup<MaterialEffect>(assets);
+            MaterialEffect material = ResolveMaterial(rec.Material, materials, textures, assets);
+            Matrix rot = Matrix.CreateFromQuaternion(rec.Rotation);
+            var be = new BasicEntity(model, material, rec.Position, rot, rec.Scale);
+            be.Name = rec.Name ?? be.Name;
+            // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
+            be.IsEnabled = rec.IsEnabled || version < 2;
+            be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
+            be.Persistent = rec.Persistent;
+            be.PrefabPath = string.IsNullOrEmpty(rec.Prefab) ? null : rec.Prefab;
+            foreach (var record in rec.Components ?? new())
+            {
+                var component = ComponentRegistry.Restore(record);
+                if (component == null)
+                    EditorBridge.Log($"LoadScene: unknown component '{record.Type}' on '{be.Name}'");
+                else if (!be.AddComponent(component))
+                    EditorBridge.Log($"LoadScene: duplicate component '{record.Type}' on '{be.Name}' ignored");
+            }
+            // Scenes saved before Physics became a component stored it as its own record.
+            if (rec.Physics != null && rec.Physics.Type != PhysicsBodyType.None && be.Physics == null)
+                be.AddComponent(new PhysicsComponent { BodyType = rec.Physics.Type, Mass = rec.Physics.Mass });
+            return be;
+        }
+
+        /// <summary>The record a gameobject saves as (without its prefab link); null when its model isn't registered.</summary>
+        internal static BasicEntityRecord CaptureEntity(BasicEntity be, Assets assets) =>
+            CaptureEntity(be, BuildReverseLookup<ModelDefinition>(assets), BuildReverseLookup<Texture2D>(assets));
+
+        private static BasicEntityRecord CaptureEntity(BasicEntity be, Dictionary<ModelDefinition, string> modelReverse,
+            Dictionary<Texture2D, string> textureReverse)
+        {
+            if (!modelReverse.TryGetValue(be.ModelDefinition, out string modelKey)) return null;
+            return new BasicEntityRecord
+            {
+                Id = be.Id,
+                Name = be.Name,
+                IsEnabled = be.IsEnabled,
+                Role = be.Role,
+                Persistent = be.Persistent,
+                ModelKey = modelKey,
+                Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
+                Position = be.Position,
+                Rotation = Quaternion.CreateFromRotationMatrix(be.RotationMatrix),
+                Scale = be.Scale,
+                Material = be.Material == null ? null : new MaterialRecord
+                {
+                    DiffuseColor = be.Material.DiffuseColor,
+                    Roughness = be.Material.Roughness,
+                    Metallic = be.Material.Metallic,
+                    EmissiveStrength = be.Material.EmissiveStrength,
+                    IsTransparent = be.Material.IsTransparent,
+                    MaterialType = (int)be.Material.Type,
+                    // Texture refs persisted by their Assets-field name. Reverse
+                    // lookup returns null for textures embedded in the model file
+                    // (those aren't tracked in the Assets registry) — that's the
+                    // signal to fall back to BaseMaterial on load.
+                    AlbedoKey = LookupKey(textureReverse, be.Material.AlbedoMap),
+                    NormalKey = LookupKey(textureReverse, be.Material.NormalMap),
+                    RoughnessKey = LookupKey(textureReverse, be.Material.RoughnessMap),
+                    MetallicKey = LookupKey(textureReverse, be.Material.MetallicMap),
+                    MaskKey = LookupKey(textureReverse, be.Material.Mask),
+                },
+            };
+        }
+
         // Baked probes live in "<scene>.probes" next to the .obsc (binary, can be large).
         // Returns the file name to store in the scene, or null when nothing is baked.
         private static string SaveBakedProbes(Scene scene, string scenePath)
@@ -371,42 +440,22 @@ namespace Engine.Logic
             {
                 // Script-spawned objects (e.g. network players) only exist for the Play session.
                 if (be.IsRuntimeSpawned) continue;
-                if (!modelReverse.TryGetValue(be.ModelDefinition, out string modelKey))
+                BasicEntityRecord rec = CaptureEntity(be, modelReverse, textureReverse);
+                if (rec == null)
                 {
                     EditorBridge.Log($"SaveScene: entity '{be.Name}' has unregistered ModelDefinition, skipping");
                     continue;
                 }
-                doc.Entities.Add(new BasicEntityRecord
+                if (!string.IsNullOrEmpty(be.PrefabPath))
                 {
-                    Id = be.Id,
-                    Name = be.Name,
-                    IsEnabled = be.IsEnabled,
-                    Role = be.Role,
-                    Persistent = be.Persistent,
-                    ModelKey = modelKey,
-                    Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
-                    Position = be.Position,
-                    Rotation = Quaternion.CreateFromRotationMatrix(be.RotationMatrix),
-                    Scale = be.Scale,
-                    Material = be.Material == null ? null : new MaterialRecord
-                    {
-                        DiffuseColor = be.Material.DiffuseColor,
-                        Roughness = be.Material.Roughness,
-                        Metallic = be.Material.Metallic,
-                        EmissiveStrength = be.Material.EmissiveStrength,
-                        IsTransparent = be.Material.IsTransparent,
-                        MaterialType = (int)be.Material.Type,
-                        // Texture refs persisted by their Assets-field name. Reverse
-                        // lookup returns null for textures embedded in the model file
-                        // (those aren't tracked in the Assets registry) — that's the
-                        // signal to fall back to BaseMaterial on load.
-                        AlbedoKey = LookupKey(textureReverse, be.Material.AlbedoMap),
-                        NormalKey = LookupKey(textureReverse, be.Material.NormalMap),
-                        RoughnessKey = LookupKey(textureReverse, be.Material.RoughnessMap),
-                        MetallicKey = LookupKey(textureReverse, be.Material.MetallicMap),
-                        MaskKey = LookupKey(textureReverse, be.Material.Mask),
-                    },
-                });
+                    // Only what differs from the prefab is the instance's own; the rest follows later prefab edits.
+                    rec.Prefab = be.PrefabPath;
+                    Prefab prefab = Prefab.Load(be.PrefabPath);
+                    rec.PrefabOverrides = prefab != null
+                        ? PrefabUtility.Overrides(prefab, rec).ToList()
+                        : new List<string> { PrefabUtility.AllOverridden };
+                }
+                doc.Entities.Add(rec);
             }
 
             foreach (var pl in scene.PointLights)
@@ -450,7 +499,8 @@ namespace Engine.Logic
 
             foreach (var dc in scene.Decals)
             {
-                if (!textureReverse.TryGetValue(dc.Texture, out string texKey))
+                string texKey = dc.Texture == null ? null : textureReverse.GetValueOrDefault(dc.Texture);
+                if (texKey == null && string.IsNullOrEmpty(dc.TexturePath))
                 {
                     EditorBridge.Log($"SaveScene: decal '{dc.Name}' has unregistered texture, skipping");
                     continue;
@@ -458,7 +508,8 @@ namespace Engine.Logic
                 doc.Decals.Add(new DecalRecord
                 {
                     Id = dc.Id, Name = dc.Name, IsEnabled = dc.IsEnabled,
-                    TextureKey = texKey,
+                    TextureKey = string.IsNullOrEmpty(dc.TexturePath) ? texKey : null,
+                    TexturePath = string.IsNullOrEmpty(dc.TexturePath) ? null : dc.TexturePath,
                     Position = dc.Position,
                     Rotation = Quaternion.CreateFromRotationMatrix(dc.RotationMatrix),
                     Scale = dc.Scale,
@@ -553,6 +604,10 @@ namespace Engine.Logic
                 if (fields[i].GetValue(assets) is T v && v != null && !dict.ContainsKey(v))
                     dict[v] = fields[i].Name;
             }
+            // Runtime-imported models are saved by their registry key (Assets.FindModel resolves it on load).
+            if (typeof(T) == typeof(ModelDefinition))
+                foreach (var kvp in assets.DynamicModels)
+                    if (kvp.Value is T model && !dict.ContainsKey(model)) dict[model] = kvp.Key;
             return dict;
         }
 
@@ -603,6 +658,13 @@ namespace Engine.Logic
             // Legacy (read-only): physics is saved as a PhysicsComponent in Components now.
             public PhysicsRecord Physics { get; set; }
             public List<ComponentRecord> Components { get; set; } = new();
+            /// <summary>Prefab instance: the Content-relative .prefab it comes from ("Prefabs/Crate.prefab"); null otherwise.</summary>
+            public string Prefab { get; set; }
+            /// <summary>
+            /// Prefab instance: the values that differ from the prefab (<see cref="PrefabUtility.Overrides"/>); every other
+            /// value is taken from the prefab on load, so prefab edits reach the instance.
+            /// </summary>
+            public List<string> PrefabOverrides { get; set; }
         }
 
         public class PhysicsRecord
@@ -676,7 +738,10 @@ namespace Engine.Logic
             public int Id { get; set; }
             public string Name { get; set; }
             public bool IsEnabled { get; set; } = true;
+            /// <summary>Built-in texture: the name of an <c>Assets</c> Texture2D field. Used when TexturePath is empty.</summary>
             public string TextureKey { get; set; }
+            /// <summary>Content-relative texture source path picked in the Inspector ("Textures/stain.png").</summary>
+            public string TexturePath { get; set; }
             public Vector3 Position { get; set; }
             public Quaternion Rotation { get; set; } = Quaternion.Identity;
             public Vector3 Scale { get; set; } = Vector3.One;

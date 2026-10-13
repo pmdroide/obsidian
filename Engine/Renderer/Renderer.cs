@@ -6,6 +6,7 @@ using Engine.Logic;
 using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
+using Engine.Renderer.Features;
 using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
 using Engine.Renderer.Lighting;
@@ -64,6 +65,11 @@ namespace Engine.Renderer
         private WeatherRenderModule _weatherRenderModule;
         private GridRenderModule _gridRenderModule;
         private ParticleRenderModule _particleRenderModule;
+        // User render features (Anvil > Render Pipeline) at their injection points.
+        private RenderFeatureRenderModule _renderFeatureRenderModule;
+        private RenderFeatureRenderModule.Context _renderFeatureContext;
+        // The post-processed image of this frame (RenderMode draws it twice per frame).
+        private RenderTarget2D _finalImage;
         // The scene's point lights plus the particle systems' (Lights module), rebuilt each frame.
         private readonly List<PointLight> _frameLights = new List<PointLight>();
         private HelperGeometryRenderModule _helperGeometryRenderModule;
@@ -225,6 +231,7 @@ namespace Engine.Renderer
             _weatherRenderModule = new WeatherRenderModule(content);
             _gridRenderModule = new GridRenderModule(content);
             _particleRenderModule = new ParticleRenderModule(content);
+            _renderFeatureRenderModule = new RenderFeatureRenderModule();
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
             _froxelRenderModule = new FroxelRenderModule(shaderManager, "Shaders/Deferred/Froxel");
@@ -273,6 +280,8 @@ namespace Engine.Renderer
             _forwardRenderModule.Initialize();
 
             _helperGeometryRenderModule.Initialize();
+
+            _renderFeatureRenderModule.Initialize(graphicsDevice);
             
             _froxelRenderModule.Initialize(graphicsDevice, _fullScreenTriangle, GameSettings.g_screenwidth, GameSettings.g_screenheight);
             _froxelRenderModule.SetNoiseMap(assets.NoiseMap);
@@ -362,6 +371,7 @@ namespace Engine.Renderer
 
             //Reset the stat counter, so we can count stats/information for this frame only
             ResetStats();
+            _finalImage = null;
 
             if (GameSettings.d_drawnothing)
             {
@@ -409,6 +419,22 @@ namespace Engine.Renderer
 
             //Update our view projection matrices if the camera moved
             UpdateViewProjection(camera, meshMaterialLibrary, entities);
+
+            //What render features read: camera, G-buffer, time
+            _renderFeatureContext = new RenderFeatureRenderModule.Context
+            {
+                View = _view,
+                Projection = _projection,
+                ViewProjection = _viewProjection,
+                InverseViewProjection = _inverseViewProjection,
+                CameraPosition = camera.Position,
+                FarClip = _g_FarClip,
+                DepthMap = _renderTargetDepth,
+                NormalMap = _renderTargetNormal,
+                AlbedoMap = _renderTargetAlbedo,
+                Time = (float)(gameTime.TotalGameTime.TotalSeconds % 3600),
+                DeltaTime = GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+            };
             
             GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "G-Buffer Pass");
             try
@@ -479,6 +505,9 @@ namespace Engine.Renderer
                 //Compose the scene by combining our lighting data with the gbuffer data
                 _currentOutput = Compose(); //-> output _renderTargetComposed
 
+                //Render features: After Opaques (the forward pass reconstructs the depth it needs afterwards)
+                _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterOpaques, _currentOutput, inPlace: true);
+
                 ///*_currentOutput =*/ DrawSubsurfaceScattering(_renderTargetSSS, meshMaterialLibrary);
 
                 //Forward
@@ -506,6 +535,9 @@ namespace Engine.Renderer
                 _weatherRenderModule.Update(scene?.Environment, GameFlow.Paused ? 0 : gameTime.ElapsedGameTime.TotalSeconds);
                 _weatherRenderModule.Draw(_graphicsDevice, scene?.Environment, camera, _view, _viewProjection,
                     _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
+
+                //Render features: After Transparents
+                _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterTransparents, _currentOutput, inPlace: true);
                 
                 //Compose the image and add information from previous frames to apply temporal super sampling
                 _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
@@ -515,6 +547,9 @@ namespace Engine.Renderer
 
                 //Eye adaptation: meter the final HDR image here, once per frame (RenderMode runs twice)
                 UpdateAutoExposure(_currentOutput, gameTime);
+
+                //Render features: After Bloom. Not in place: the image can be the TAA history.
+                _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterBloom, _currentOutput, inPlace: false);
             }
             finally
             {
@@ -1478,6 +1513,23 @@ namespace Engine.Renderer
             return _forwardRenderModule.Draw(_graphicsDevice, input, meshMaterialLibrary, _viewProjection, camera, pointLights, _boundingFrustum);
         }
 
+        /// <summary>
+        /// The user render features of one injection point (Anvil > Render Pipeline), see <see cref="RenderFeatures"/>.
+        /// </summary>
+        private RenderTarget2D DrawRenderFeatures(RenderFeatureEvent at, RenderTarget2D image, bool inPlace)
+        {
+            if (!RenderFeatureRenderModule.HasActive(at)) return image;
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Render Features: " + at);
+            try
+            {
+                return _renderFeatureRenderModule.Draw(_graphicsDevice, at, image, _renderFeatureContext, _fullScreenTriangle, inPlace);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
+        }
+
         private RenderTarget2D DrawBloom(RenderTarget2D input)
         {
             if (GameSettings.g_BloomEnable)
@@ -1661,24 +1713,31 @@ namespace Engine.Renderer
         private void DrawPostProcessing(RenderTarget2D currentInput)
         {
             if (!GameSettings.g_PostProcessing) return;
-            
-            RenderTarget2D destinationRenderTarget;
-            
-            destinationRenderTarget = _renderTargetOutput;
-            
-            Shaders.PostProcessingParameter_ScreenTexture.SetValue(currentInput);
-            _graphicsDevice.SetRenderTarget(destinationRenderTarget);
 
-            _graphicsDevice.DepthStencilState = DepthStencilState.Default;
-            _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
-            
-            Shaders.PostProcessing.CurrentTechnique.Passes[0].Apply();
-            _fullScreenTriangle.Draw(_graphicsDevice);
+            //Drawn once per frame; the second RenderMode call shows the same image again
+            if (_finalImage == null)
+            {
+                RenderTarget2D destinationRenderTarget;
 
-            if(GameSettings.g_ColorGrading)
-            destinationRenderTarget = _colorGradingFilter.Draw(_graphicsDevice, destinationRenderTarget, _lut);
+                destinationRenderTarget = _renderTargetOutput;
 
-            DrawMapToScreenToFullScreen(destinationRenderTarget);
+                Shaders.PostProcessingParameter_ScreenTexture.SetValue(currentInput);
+                _graphicsDevice.SetRenderTarget(destinationRenderTarget);
+
+                _graphicsDevice.DepthStencilState = DepthStencilState.Default;
+                _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+
+                Shaders.PostProcessing.CurrentTechnique.Passes[0].Apply();
+                _fullScreenTriangle.Draw(_graphicsDevice);
+
+                if(GameSettings.g_ColorGrading)
+                destinationRenderTarget = _colorGradingFilter.Draw(_graphicsDevice, destinationRenderTarget, _lut);
+
+                //Render features: After Post Processing (final LDR image)
+                _finalImage = DrawRenderFeatures(RenderFeatureEvent.AfterPostProcessing, destinationRenderTarget, inPlace: false);
+            }
+
+            DrawMapToScreenToFullScreen(_finalImage);
         }
         #endregion
 
@@ -1975,6 +2034,7 @@ namespace Engine.Renderer
             _weatherRenderModule?.Dispose();
             _gridRenderModule?.Dispose();
             _particleRenderModule?.Dispose();
+            _renderFeatureRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();

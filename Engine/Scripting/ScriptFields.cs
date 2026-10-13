@@ -21,6 +21,8 @@ public enum ScriptFieldKind
     Color,
     /// <summary>A <see cref="BasicEntity"/> in the scene, stored by its persisted ID.</summary>
     GameObject,
+    /// <summary>A <see cref="Logic.Prefab"/>, stored by its Content-relative path ("Prefabs/Crate.prefab").</summary>
+    Prefab,
 }
 
 /// <summary>One serialized field of a <see cref="ScriptBehaviour"/> type.</summary>
@@ -44,7 +46,8 @@ public sealed class ScriptFieldInfo
     /// <summary>
     /// The value the script's field initializer gives a fresh instance. The first read constructs one
     /// instance of the script (never attached or started), so keep script constructors free of side effects.
-    /// GameObject fields have no initializer: their default is ID 0 (none).
+    /// GameObject fields have no initializer: their default is ID 0 (none). Prefab fields default to the path of
+    /// the prefab the initializer loads, or null.
     /// </summary>
     public object DefaultValue
     {
@@ -52,6 +55,7 @@ public sealed class ScriptFieldInfo
         {
             if (Kind == ScriptFieldKind.GameObject) return 0;
             object prototype = Prototype?.Value;
+            if (Kind == ScriptFieldKind.Prefab) return (prototype == null ? null : Field.GetValue(prototype) as Logic.Prefab)?.Path;
             if (prototype != null) return Field.GetValue(prototype);
             return FieldType.IsValueType ? Activator.CreateInstance(FieldType) : null;
         }
@@ -64,12 +68,13 @@ public sealed class ScriptFieldInfo
 /// Unity-style serialized fields for script behaviours. A field is serialized when it is an instance
 /// field of the script (or a base class below <see cref="ScriptBehaviour"/>), is not readonly, is either
 /// public without [NonSerialized] or marked [SerializeField], and has a supported type: bool, int, float,
-/// double, string, an enum, Vector2, Vector3, Color or BasicEntity (a gameobject reference). Values are
+/// double, string, an enum, Vector2, Vector3, Color, BasicEntity (a gameobject reference) or Prefab. Values are
 /// stored as JSON per attachment (<see cref="Engine.Components.ScriptBehaviourComponent.Fields"/>); fields
 /// without a stored value keep their C# initializer.
 ///
 /// GameObject fields store the target's scene ID; decoded values and defaults are that ID (0 = none), and
 /// <see cref="Apply"/> gives the script the gameobject with that ID in the active scene (null when it is gone).
+/// Prefab fields store the prefab's Content-relative path (null for none); the script gets the loaded prefab.
 /// </summary>
 public static class ScriptFields
 {
@@ -150,6 +155,7 @@ public static class ScriptFields
         else if (type == typeof(Vector3)) kind = ScriptFieldKind.Vector3;
         else if (type == typeof(Color)) kind = ScriptFieldKind.Color;
         else if (type == typeof(BasicEntity)) kind = ScriptFieldKind.GameObject;
+        else if (type == typeof(Logic.Prefab)) kind = ScriptFieldKind.Prefab;
         else { kind = default; return false; }
         return true;
     }
@@ -209,6 +215,8 @@ public static class ScriptFields
             case ScriptFieldKind.GameObject:
                 int id = (int)v;
                 return id == 0 ? JsonSerializer.SerializeToElement<object>(null) : JsonSerializer.SerializeToElement(id);
+            case ScriptFieldKind.Prefab:
+                return JsonSerializer.SerializeToElement(v as string);
             default:
                 return JsonSerializer.SerializeToElement(v, field.FieldType);
         }
@@ -272,6 +280,11 @@ public static class ScriptFields
                     if (json.ValueKind != JsonValueKind.Number || !json.TryGetInt32(out int id) || id < 0) return false;
                     value = id;
                     return true;
+                case ScriptFieldKind.Prefab:
+                    if (json.ValueKind == JsonValueKind.Null) return true;
+                    if (json.ValueKind != JsonValueKind.String) return false;
+                    value = Logic.Prefab.Normalize(json.GetString());
+                    return true;
             }
         }
         catch (Exception) { /* malformed value: treat as missing */ }
@@ -297,6 +310,12 @@ public static class ScriptFields
                     if (value == null) return 0;
                     if (value is BasicEntity entity) return entity.Id;
                     if (value is int id && id >= 0) return id;
+                    break;
+                case ScriptFieldKind.Prefab:
+                    // A prefab, its path, or null for none.
+                    if (value == null) return null;
+                    if (value is Logic.Prefab prefab) return prefab.Path;
+                    if (value is string path) return Logic.Prefab.Normalize(path);
                     break;
                 default:
                     if (value != null && field.FieldType.IsInstanceOfType(value)) return value;
@@ -326,13 +345,16 @@ public static class ScriptFields
         TryGetStored(field, values, out var json) && TryDecode(field, json, out var value) ? value : field.DefaultValue;
 
     /// <summary>
-    /// What the script's C# field receives for a decoded value. Only GameObject fields differ: their ID
-    /// becomes the gameobject in the active scene, or null when nothing has that ID. Game thread only.
+    /// What the script's C# field receives for a decoded value. GameObject fields get the gameobject with that ID
+    /// in the active scene (null when nothing has it), Prefab fields the loaded prefab (null when the file is gone).
+    /// Game thread only.
     /// </summary>
-    public static object ToFieldValue(ScriptFieldInfo field, object value) =>
-        field.Kind == ScriptFieldKind.GameObject
-            ? value is int id && id > 0 ? Logic.GameFlow.SceneLogic?.FindGameObjectById(id) : null
-            : value;
+    public static object ToFieldValue(ScriptFieldInfo field, object value) => field.Kind switch
+    {
+        ScriptFieldKind.GameObject => value is int id && id > 0 ? Logic.GameFlow.SceneLogic?.FindGameObjectById(id) : null,
+        ScriptFieldKind.Prefab => value is string path ? Logic.Prefab.Load(path) : null,
+        _ => value,
+    };
 
     /// <summary>
     /// Writes stored values into a script instance (all fields, or only <paramref name="names"/>).

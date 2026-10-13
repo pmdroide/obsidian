@@ -195,6 +195,8 @@ namespace Engine.Logic
             EditorBridge.Log("PlayModeController.Stop");
 
             RestoreSnapshot();
+            // Render feature values scripts changed (RenderFeatures.Find) go back to the saved ones.
+            Renderer.Features.RenderFeatures.RestoreSaved();
             // DontDestroyOnLoad lasts one Play session (carried gameobjects already left a departing scene).
             if (_sceneLogic.ActiveScene is { } stopped)
                 foreach (var entity in stopped.BasicEntities) entity.RuntimePersistent = false;

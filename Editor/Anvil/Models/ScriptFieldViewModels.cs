@@ -47,6 +47,7 @@ public abstract partial class ScriptFieldViewModel : ObservableObject
         ScriptFieldKind.Vector2 or ScriptFieldKind.Vector3 => new ScriptVectorFieldViewModel(component, info),
         ScriptFieldKind.Color => new ScriptColorFieldViewModel(component, info),
         ScriptFieldKind.GameObject => new ScriptGameObjectFieldViewModel(component, info),
+        ScriptFieldKind.Prefab => new ScriptPrefabFieldViewModel(component, info),
         _ => throw new ArgumentOutOfRangeException(nameof(info)),
     };
 
@@ -232,5 +233,80 @@ public sealed partial class ScriptGameObjectFieldViewModel : ScriptFieldViewMode
     {
         // ComboBox clears its selection while the options are rebuilt.
         if (value != null) Push(value.Id);
+    }
+}
+
+/// <summary>One choice in a prefab field's picker: a Content-relative .prefab path (null = None) and its label.</summary>
+public sealed record PrefabOption(string? Path, string Label)
+{
+    public bool IsPrefab => Path != null;
+}
+
+/// <summary>
+/// A Prefab field: picks a .prefab file in Content (or one dropped from Assets). A stored path whose file is
+/// gone shows as Missing.
+/// </summary>
+public sealed partial class ScriptPrefabFieldViewModel : ScriptFieldViewModel
+{
+    public static PrefabOption None { get; } = new(null, "None");
+    public ObservableCollection<PrefabOption> Options { get; } = new() { None };
+    [ObservableProperty] private PrefabOption? _value = None;
+
+    public ScriptPrefabFieldViewModel(ScriptBehaviourComponentViewModel c, ScriptFieldInfo i) : base(c, i) { }
+
+    protected override void Show(object value)
+    {
+        string? path = value as string;
+        RefreshOptions(path);
+        Value = Options.First(o => Engine.Logic.Prefab.SamePath(o.Path, path) || (o.Path == null && path == null));
+    }
+
+    /// <summary>A prefab dropped from the Assets panel.</summary>
+    public void Assign(string path)
+    {
+        RefreshOptions(path);
+        Value = Options.First(o => Engine.Logic.Prefab.SamePath(o.Path, path));
+    }
+
+    // The Content folder is listed at most every two seconds: Show runs on every snapshot.
+    private static IReadOnlyList<string> _files = Array.Empty<string>();
+    private static DateTime _listedAt;
+
+    /// <summary>Lists the prefab files again on the next Show (Content changed, a prefab was created).</summary>
+    public static void InvalidateFiles() => _listedAt = default;
+
+    private static IReadOnlyList<string> Files()
+    {
+        if (DateTime.UtcNow - _listedAt > TimeSpan.FromSeconds(2))
+        {
+            _files = Engine.Logic.Prefab.List();
+            _listedAt = DateTime.UtcNow;
+        }
+        return _files;
+    }
+
+    private void RefreshOptions(string? selected)
+    {
+        var files = Files();
+        var duplicateNames = files.GroupBy(f => System.IO.Path.GetFileNameWithoutExtension(f), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var next = new List<PrefabOption> { None };
+        foreach (string f in files)
+        {
+            string name = System.IO.Path.GetFileNameWithoutExtension(f);
+            next.Add(new PrefabOption(f, duplicateNames.Contains(name) ? f : name));
+        }
+        if (selected != null && next.All(o => !Engine.Logic.Prefab.SamePath(o.Path, selected)))
+            next.Add(new PrefabOption(selected, $"Missing ({selected})"));
+        // Rebuilding an unchanged list would make the ComboBox drop and re-pick its selection every snapshot.
+        if (Options.SequenceEqual(next)) return;
+        Options.Clear();
+        foreach (var option in next) Options.Add(option);
+    }
+
+    partial void OnValueChanged(PrefabOption? value)
+    {
+        // ComboBox clears its selection while the options are rebuilt.
+        if (value != null) Push(value.Path!);
     }
 }

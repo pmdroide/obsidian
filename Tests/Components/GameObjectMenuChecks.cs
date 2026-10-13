@@ -15,6 +15,10 @@ internal static class GameObjectMenuChecks
         var bounds = new BoundingBox(-Vector3.One, Vector3.One);
         var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds),
             Tree = new ModelDefinition(null, bounds) };
+        // Decals need a texture registered on Assets to be saved; a texture without a GraphicsDevice is enough here.
+        assets.DefaultDecal = (Microsoft.Xna.Framework.Graphics.Texture2D)System.Runtime.CompilerServices.RuntimeHelpers
+            .GetUninitializedObject(typeof(Microsoft.Xna.Framework.Graphics.Texture2D));
+        GC.SuppressFinalize(assets.DefaultDecal);
         var logic = new MainSceneLogic();
         var bridge = new EditorBridge();
         typeof(EditorBridge).GetMethod("Bind", BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -54,15 +58,65 @@ internal static class GameObjectMenuChecks
               ReferenceEquals(tree.ModelDefinition, assets.Tree) && tree.Components.Single() is FoliageWindComponent { Enabled: true },
             "GameObject > Nature > Tree creates the built-in tree (its own materials) with Foliage Wind");
 
-        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Tree" }),
+        int decals = logic.Decals.Count;
+        Vector3 spawn = bridge.SpawnPoint;
+        vm.AddDecalCommand.Execute(null);
+        Drain();
+        Check(logic.Decals.Count == decals + 1 && logic.Decals[^1] is { IsEnabled: true, Scale: { X: 1f, Y: 1f, Z: 1f } } decal &&
+              ReferenceEquals(decal.Texture, assets.DefaultDecal) && decal.Position == spawn &&
+              decal.RotationMatrix == Matrix.Identity,
+            "GameObject > Effects > Decal creates an enabled 2 m decal box projecting the default texture down -Z");
+        DecalTextureChecks(logic.Decals[^1]);
+
+        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Decal", "Tree" }),
             "the Hierarchy + menu offers the same objects as the GameObject menu");
         foreach (var option in vm.AddableObjects) option.AddCommand.Execute(null);
         Drain();
-        Check(logic.BasicEntities.Count == entities + 8 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4,
+        Check(logic.BasicEntities.Count == entities + 8 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4 &&
+              logic.Decals.Count == decals + 2,
             "every Hierarchy + menu entry creates its object");
 
         void Drain() =>
             typeof(EditorBridge).GetMethod("DrainAndPublish", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(bridge, null);
+
+        // Inspector > Decal > Texture: Content-relative paths, saved with the scene.
+        void DecalTextureChecks(Decal decal)
+        {
+            bridge.EnqueueSetDecalTexture(decal.Id, "Missing/no_such_stain.png");
+            Drain();
+            Check(decal.TexturePath == null && ReferenceEquals(decal.Texture, assets.DefaultDecal),
+                "a decal texture that can't load leaves the decal on its current texture");
+
+            decal.TexturePath = "Textures/stain.png"; // as if Content had built it
+            var copy = (Decal)decal.Clone;
+            Check(copy.TexturePath == "Textures/stain.png" && copy.IsEnabled, "copying a decal keeps its texture path");
+
+            var snapshots = new List<EditorObjectSnapshot>();
+            bridge.SnapshotUpdated += list => snapshots = list.ToList();
+            for (int i = 0; i < 6 && snapshots.Count == 0; i++) Drain(); // published every 6th frame
+            Check(snapshots.Any(s => s.Id == decal.Id && s.Kind == EditorObjectKind.Decal && s.DecalTexture == "Textures/stain.png"),
+                "the editor snapshot carries the decal texture path to the Inspector");
+
+            var scene = new Scene();
+            scene.Decals.Add(decal);
+            scene.Decals.Add(new Decal(assets.DefaultDecal, Vector3.One, Matrix.Identity, Vector3.One) { IsEnabled = true });
+            string path = Path.Combine(Path.GetTempPath(), $"anvil-decal-{Guid.NewGuid():N}.obsc");
+            try
+            {
+                SceneSerialization.SaveToFile(scene, path, assets);
+                var loaded = SceneSerialization.LoadFromFile(path, assets).Decals;
+                // The test has no built Content, so the picked texture falls back to the default but keeps its path.
+                Check(loaded.Count == 2 && loaded[0].TexturePath == "Textures/stain.png" && ReferenceEquals(loaded[0].Texture, assets.DefaultDecal) &&
+                      loaded[1].TexturePath == null && ReferenceEquals(loaded[1].Texture, assets.DefaultDecal),
+                    "scene save/load keeps a decal's picked texture path and the default decal texture");
+            }
+            finally { File.Delete(path); }
+
+            bridge.EnqueueSetDecalTexture(decal.Id, null);
+            Drain();
+            Check(decal.TexturePath == null && ReferenceEquals(decal.Texture, assets.DefaultDecal),
+                "Reset puts the decal back on the default texture");
+        }
     }
 
     private static void Check(bool condition, string description)

@@ -32,6 +32,7 @@ public static class ScriptRegistry
         Register<CompanionOrbScript>(CompanionOrbScript.ScriptId, "Companion Orb");
         Register<PauseMenuScript>(PauseMenuScript.ScriptId, "Pause Menu");
         Register<RagdollTestScript>(RagdollTestScript.ScriptId, "Ragdoll Test");
+        Register<AnimatorActionsScript>(AnimatorActionsScript.ScriptId, "Animator Actions");
         Register<NpcTestPlayerScript>(NpcTestPlayerScript.ScriptId, "NPC Test Player");
         Register<NpcReporterScript>(NpcReporterScript.ScriptId, "NPC Reporter");
         Register<VoxelTestScript>(VoxelTestScript.ScriptId, "Voxel Test");

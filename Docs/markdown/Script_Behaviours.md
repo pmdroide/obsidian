@@ -223,8 +223,9 @@ public sealed class DoorScript : ScriptBehaviour
 - **Not serialized:** `[NonSerialized]`, `readonly`, `static` and `const` fields, and properties.
 
 **Supported types:** `bool`, `int`, `float`, `double`, `string`, any enum,
-`Vector2`, `Vector3`, `Color` and `BasicEntity` (a gameobject reference, see
-[Gameobject references](#gameobject-references)). Fields of other types are ignored.
+`Vector2`, `Vector3`, `Color`, `BasicEntity` (a gameobject reference, see
+[Gameobject references](#gameobject-references)) and `Prefab` (see
+[Prefab fields](#prefab-fields)). Fields of other types are ignored.
 
 **Attributes** (namespace `Engine.Scripting`):
 
@@ -272,7 +273,8 @@ float height = door.GetField<float>("OpenHeight");
 
 Values are stored in the component's `Fields` record in the `.obsc` file:
 numbers and bools as JSON values, enums by name, vectors as `[x, y, z]` arrays,
-colours as `"#RRGGBBAA"` and gameobjects as their scene ID (`null` for none). `SpinExampleScript` (Degrees Per Second) and
+colours as `"#RRGGBBAA"`, gameobjects as their scene ID (`null` for none) and prefabs as
+their Content path (`"Prefabs/Crate.prefab"`, `null` for none). `SpinExampleScript` (Degrees Per Second) and
 `LaunchPadScript` (Up Speed, Forward Speed) are working examples.
 
 ### Gameobject references
@@ -309,6 +311,30 @@ public sealed class DoorButtonScript : ScriptBehaviour
 
 Only gameobjects can be referenced. Lights, decals and the Main Camera cannot.
 
+### Prefab fields
+
+A `Prefab` field (`using Engine.Logic;`) holds a prefab to place copies of, like a
+prefab in a Unity `GameObject` field:
+
+```csharp
+public sealed class TurretScript : ScriptBehaviour
+{
+    public Prefab Bullet;                 // pick it in the Inspector, or drag it from Assets
+    public float Interval = 0.5f;
+
+    public override void Start() =>
+        Every(Interval, () => Instantiate(Bullet, Position + Forward, Rotation));
+}
+```
+
+- **Inspector:** a picker with **None** and every `.prefab` in Content. Prefabs with the
+  same name show their path. You can also drag a prefab from Assets onto it.
+- **Saving:** the prefab's Content path. A file that is gone gives `null` and shows
+  **Missing (path)**; one that moved is found again by its name.
+- **From code:** `SetField("Bullet", prefab)` (a `Prefab`, its path or `null`).
+
+See [Prefabs.md](Prefabs.md) for making prefabs.
+
 ## Built-in helpers
 
 Every `ScriptBehaviour` has helpers for the transform, physics and audio of the
@@ -332,7 +358,8 @@ the physics engine uses.
 | `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
 | `Voxels` | The scene's voxel world (`VoxelWorld`), or `null` when it has none: `GetBlock`, `SetBlock`, `FillSphere`, `FillBox`, `Raycast`, `TryGetSurface`. Edited chunks are remeshed before the next physics step; Stop regenerates the world. Fetch it each frame, because changing a voxel setting replaces it. See [Voxel_World.md](Voxel_World.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
-| `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned. Happens automatically when the script stops. |
+| `Instantiate(prefab, position, rotation)` | Places a copy of a prefab (a `Prefab` field, or a name/path such as `"Crate"` or `"Prefabs/Crate.prefab"`) with its components and settings. Without a rotation it uses the prefab's own. Never saved, removed when the script stops (like `Spawn`). Returns `null` when the prefab doesn't exist. `LoadPrefab(name)` gets the `Prefab` itself. See [Prefabs.md](Prefabs.md). |
+| `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned or instantiated. Happens automatically when the script stops. |
 | `DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` | Keeps this gameobject (or another, e.g. one it spawned) when a script loads another scene. It moves into the new scene with its scripts still running. Lasts for this Play session; the saved equivalent is **Inspector > Persistent**. See [Persistent_GameObjects.md](Persistent_GameObjects.md). |
 | `IsPersistent` | True when this gameobject survives scene loads. |
 | `OnSceneLoaded()` | Override it: runs on a persistent gameobject's scripts after a scene load carried it over, once the new scene's scripts have started. For example, move to the new scene's spawn point. |
@@ -464,6 +491,32 @@ public override void OnCollisionEnter(Collision collision)
 {
     if (collision.ImpactSpeed > 3f)
         PlaySoundAt("Audio/blip.wav", collision.Point, collision.ImpactSpeed / 10f);
+}
+```
+
+### Animation
+
+`Animator` is the gameobject's Animator component (or `null`). Name its clips in Inspector >
+Animator > **Actions**, then play them by name. See
+[Skeletal_Animation.md](Skeletal_Animation.md).
+
+| Member | What it does |
+| --- | --- |
+| `Play("Walk", fade = -1)` | Blends to the action over Fade (or `fade` seconds). Does nothing if that action is already playing, so call it every frame. `""` plays the default clip. Returns `false` for an unknown name. |
+| `CrossFade("Walk", seconds)` | Same as `Play` with an explicit fade. |
+| `PlayOnce("Jump", then = null)` | Plays the action once from its start, then blends to `then` (`null` means the action that was playing before). |
+| `Stop()` / `Play()` | Bind pose / play the current action again from its start. |
+| `Pause()` / `Resume()` / `Restart()` | Hold the pose / continue / jump back to the start. |
+| `CurrentAction`, `IsPlayingAction(name)`, `HasAction(name)` | Which action plays. |
+| `Time`, `NormalizedTime`, `Duration`, `IsFinished`, `IsFading`, `IsPaused`, `IsStopped` | Playback state. Setting `Time` seeks. |
+| `ActionFinished` | Event `(animator, actionName)` raised when an action that doesn't loop reaches its end. |
+
+```csharp
+public override void Update()
+{
+    bool moving = GameInput.IsDown(Keys.Up);
+    Animator?.Play(moving ? "Walk" : "Idle");
+    if (GameInput.WasPressed(Keys.Space)) Animator?.PlayOnce("Jump");
 }
 ```
 

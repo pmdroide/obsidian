@@ -222,6 +222,9 @@ public abstract partial class ScriptBehaviour
     /// <summary>The gameobject's Physics component, or null. Change BodyType/Mass/Buoyancy here.</summary>
     public PhysicsComponent Physics => GameObject?.Physics;
 
+    /// <summary>The gameobject's Animator component, or null: <c>Animator?.Play("Walk")</c>, <c>PlayOnce</c>, <c>Stop</c>, <c>Pause</c>.</summary>
+    public AnimatorComponent Animator => GameObject?.GetComponent<AnimatorComponent>();
+
     /// <summary>True while a Dynamic body exists, so velocity and forces take effect.</summary>
     public bool HasRigidbody => GameObject?.DynamicBody != null && GameObject.PhysicsScene != null;
 
@@ -443,6 +446,33 @@ public abstract partial class ScriptBehaviour
         if (entity != null) _spawned.Add(entity);
         return entity;
     }
+
+    /// <summary>
+    /// Places a copy of a prefab (<c>Content/Prefabs/*.prefab</c>, saved from Anvil) at <paramref name="position"/>,
+    /// with its components and their settings, turned by <paramref name="rotation"/> (the prefab's own rotation when
+    /// null). Like <see cref="Spawn"/> it is never saved and is removed when this script stops. Null when the prefab
+    /// doesn't exist. Take the prefab as an Inspector field (<c>public Prefab Bullet;</c>) or by name.
+    /// </summary>
+    public BasicEntity Instantiate(Logic.Prefab prefab, Vector3 position, Matrix? rotation = null)
+    {
+        BasicEntity entity = Logic.GameFlow.SceneLogic?.InstantiatePrefab(prefab, position, rotation, runtime: true);
+        if (entity != null) _spawned.Add(entity);
+        return entity;
+    }
+
+    /// <summary>
+    /// <see cref="Instantiate(Logic.Prefab, Vector3, Matrix?)"/> for a prefab named "Crate" (any prefab file with that
+    /// name) or "Prefabs/Crate.prefab". Null (and a log line) when there is none.
+    /// </summary>
+    public BasicEntity Instantiate(string prefab, Vector3 position, Matrix? rotation = null)
+    {
+        var loaded = LoadPrefab(prefab);
+        if (loaded == null) Editor.EditorBridge.Log($"Instantiate: no prefab '{prefab}'");
+        return Instantiate(loaded, position, rotation);
+    }
+
+    /// <summary>The prefab named "Crate" or "Prefabs/Crate.prefab", or null. Cached until the file changes.</summary>
+    public static Logic.Prefab LoadPrefab(string nameOrPath) => Logic.Prefab.Load(nameOrPath);
 
     /// <summary>
     /// Keeps this gameobject when a script loads another scene during Play: it moves into the new scene with

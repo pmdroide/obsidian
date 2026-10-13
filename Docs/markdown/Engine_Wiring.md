@@ -28,6 +28,7 @@ How each kind of file reaches the running game (`Engine/Engine.csproj`):
 - **MGCB content** (models, textures, `.fx` shaders, sprite fonts): `MonoGameContentReference Include="Content\Content.mgcb"` turns them into `.xnb` files under `bin/.../Content`. They are loaded with extensionless `content.Load<T>("path")`.
 - **Scripts** (`Content/Scripts/**/*.cs`): compiled **into `Engine.dll`** by normal SDK globbing, in `namespace Engine.Scripting`. They are also copied as loose files so the editor can open them. There is no runtime compiler (no Roslyn), so editing a script means rebuilding the engine.
 - **Loose runtime files** are copied with `CopyToOutputDirectory` and never pass through mgcb: scenes (`.obsc`, `.probes`), Vista UI (`.xml`/`.css`), audio (FMOD), intro videos (LibVLC), `Content/System/*.json`, skyboxes. A file a standalone build needs must also have `CopyToPublishDirectory`.
+- **Render feature shaders** (`Content/RenderFeatures/*.fx`) are the exception among `.fx` files: they are not in `Content.mgcb`. The editor compiles each one with mgcb into a loose `.xnb` next to it (`RenderFeatureCompiler`), and `Content\RenderFeatures\**\*.xnb` + `Content\System\RenderFeatures.json` are copied like other loose files. A shader with errors therefore never breaks the content build (section 9.6).
 - **Native libraries:** `steam_api64.dll` and `fmod.dll` are linked flat into the output root.
 
 NuGet dependencies that matter at runtime: `MonoGame.Framework.WindowsDX 3.8.4.1`, `BepuPhysics 2.4.0`, `FmodForFoxes 3.2.0`, `LibVLCSharp`, Steamworks.NET (from `thirdparty/steam`).
@@ -55,6 +56,8 @@ Thread pool (both cases):
   - Anvil GameBuilder runs `dotnet publish` (Task.Run)
   - VoxelSystem generates and meshes a voxel world (Task.Run + Parallel.For) while editing;
     during Play it runs the same build on the game thread and waits for it
+  - RenderFeatureCompiler runs mgcb for one render feature shader (Task.Run); the result is
+    queued and the effect is loaded on the game thread by RenderFeatures.Update
 ```
 
 Rules that follow from this:
@@ -125,7 +128,8 @@ LoadUIFonts(content)                   ← default, monospace, display, heading,
 7. `_bridge.Bind(_sceneLogic, _editorLogic, _assets)`. This sets `Input.HostBridge` and subscribes to scene swaps, play mode changes, lighting status and model or material registration.
 8. `SceneList.Load()` reads `Content/System/SceneList.json`.
 9. `GameUI.Bind(device, _uiFonts)`.
-10. When hosted, `GameStats.e_EnableSelection = true`, so ID and outline passes always run in Anvil.
+10. `RenderFeatures.Load(Globals.content)` reads `Content/System/RenderFeatures.json` and loads each feature's compiled `.xnb` (compiling first, in the background, when the `.fx` is newer). It keeps the content manager's services to load effects later.
+11. When hosted, `GameStats.e_EnableSelection = true`, so ID and outline passes always run in Anvil.
 
 ### 3.5 First scene
 
@@ -150,6 +154,7 @@ Engine.Update
 │   ├─ _audio.SystemUpdate()            ← FMOD pump, even during the intro
 │   ├─ [VideoIntro] update; on finish → StartFirstScene(); return
 │   ├─ #if DEBUG _shaderManager.CheckForChanges()
+│   ├─ RenderFeatures.Update()          ← load finished render feature compiles; every 30 frames recompile saved .fx files
 │   ├─ _editorLogic.Update(..., _editorReceivedDataBuffer, ...)   ← uses LAST frame's hovered ID
 │   ├─ _sceneLogic.Update
 │   │   ├─ GameFlow.UpdateLoad(...)     ← CurrentLoad: a blocking load runs whole, an async one takes a step (7.5); LoadingScreen fades/fills
@@ -214,6 +219,7 @@ Anvil's side is in `MonoGameHost`:
 - A 30 ms "settle" timer keeps re-applying the size for about 240 ms.
 - A boot watchdog does the same every 50 ms for 3 s.
 - `SyncPreferredBackBuffer` pre-sets `PreferredBackBuffer*` so MonoGame's own `OnResize` returns early. `ApplyPendingResize` is the only place the swap chain is actually resized.
+- Keys reach the engine through window-level `KeyDown`/`KeyUp` handlers (tunnel + bubble) that call `EditorBridge.SetHostKeyState`. In Play, `IsGameKeyInPlay` also marks Space/Enter handled on the tunnel pass, unless a `TextBox` or `MenuItem` has focus. Without that, the button that kept focus (usually Play itself) would click on them and stop Play.
 
 Anvil's window chrome: `MainWindow` extends its client area into the title bar (`ExtendClientAreaToDecorationsHint`, 36 px), and Avalonia 12 draws the caption buttons itself (`WindowDrawnDecorations`). `MainWindow.WindowDecorationsTheme` derives from the Fluent theme and hides its fullscreen button (`PART_FullScreenButton`) and title text (the `TextBlock` in `PART_TitleTextPanel`; the panel's own `IsVisible` is a template binding that beats style setters), so only minimize/maximize/close remain and the brand mark isn't overdrawn. The render-stats badges keep a 136 px right margin for those three buttons. Every editor colour is an `Anvil*Brush` resource in `Editor/Anvil/App.axaml`: neutral dark greys, with the muted brand purple only as the accent (`AnvilPrimaryBrush`, `AnvilSelectedBackgroundBrush`). The views reference these keys; the only raw colours are a few overlay tints and the Delete Project button in `ProjectSettingsWindow`.
 
@@ -240,6 +246,7 @@ Most cross-system wiring goes through statics. Knowing them saves a lot of searc
 | `SteamService.Current` | `Engine` ctor | Steam session for scripts |
 | `SaveData.Folder`, pending async writes | default `%LOCALAPPDATA%/<game name>/Saves`, scripts, tests | Save files (`Engine/Logic/SaveData.cs`); `Engine.UnloadContent` calls `SaveData.Flush()` |
 | `IdGenerator._currentId` | `GetNewId`, `Reseed` | Object IDs (section 6.3) |
+| `RenderFeatures` (feature list, compile queue, published `Describe()` rows, `Changed`) | `ScreenManager.Initialize` → `Load`, the bridge, scripts (`Find`), `PlayModeController.Stop` (`RestoreSaved`) | User render passes drawn by `RenderFeatureRenderModule` (section 9.4) |
 
 There is **no** global `GraphicsDevice`. It is passed into `Initialize` methods, and `Assets` keeps `GraphicsDevice` and `Content` as instance properties.
 
@@ -336,6 +343,12 @@ Renderer.Draw (end) → FrustumCullingFinalizeFrame → HasChanged = false
   - `Copy` is `Restore(Capture)` with a fresh Guid.
   - The same records are used for scene files, bridge snapshots and cloning.
 - Registration order (= Add Component menu order): `material`, `physics`, `audio`, `script-behaviour` (multiple), `animator`, `ragdoll`, `interactable`, `cloth`, `npc`, `lod`, `particles`, `fog-volume`, `foliage-wind`.
+- `AnimatorComponent` (`animator`) plays clips only in Play. Persisted: the default clip (`ClipSource`/`ClipName`/`Speed`/`Loop`/`InPlace`), `Actions` (a `List<AnimationAction>`: Name, ClipSource (empty = the Animator's), ClipName, Speed, Loop; copied and saved through the generic JSON record), `StartAction` and `FadeTime`.
+  - Scripts call `Play(name, fade)`, `CrossFade`, `PlayOnce(name, then)`, `Stop`/`Play()`, `Pause`/`Resume` and `Restart`. They read `CurrentAction`, `Time`, `IsFinished` and the other state properties, and subscribe to `ActionFinished`. `ScriptBehaviour.Animator` is the shortcut.
+  - Selection survives the Animator's own start: `PlayModeController.Play` calls `OnStop` then `OnStart` per component in list order, so a script listed above the Animator may call `Play` first. `OnStop` only forgets the selection (`_selected`, action, stopped, one-shot) once the Animator has started (`_started`). An inspector edit in Edit mode also forgets it.
+  - A switch while posing keeps the old `AnimationPlayer` as `_fadePlayer`. It is still advanced at its own speed/loop. `Pose` evaluates both and calls `AnimationPlayer.BlendFrom` with a smoothstep weight over the fade. `Player.BoneTransforms` is therefore the blended pose, which is what `RagdollComponent.AnimatedPose` follows.
+  - `Stop()` only detaches `TransformMatrix.Skin` (bind pose). `Play()` then re-resolves. Resolution failures are logged once per session or edit (`Report`), because scripts may retry every frame.
+  - Changes scripts make to persisted properties during Play are not undone by `PlayModeController.Stop` (it restores transforms only).
 - `FoliageWindComponent` (`foliage-wind`) also runs outside Play: `MainSceneLogic.Update` calls the static `UpdateAll` every frame (dt 0 while `GameFlow.Paused`) with `WeatherProfile.Wind(scene environment)`. For each enabled component it advances the tree's wind clock (faster in stronger wind, slower for taller trees), fills its `FoliageWind` state (height = Height or the model's bounds top × Scale.Z, strength = wind m/s / 6 after Wind Scale and Min Wind, a phase hashed from the position) and puts it on `TransformMatrix.Wind`. It also sets `WorldTransform.HasChanged` every frame so culling and the cached shadow maps redraw. A disabled or missing component sets `Wind` back to null (scene loads don't run `OnAdded`, so attaching happens there too). The motion itself is vertex-shader only (section 9.2).
 - `FogVolumeComponent` (`fog-volume`) is data for the renderer: `FroxelRenderModule.SetFogVolumes` collects the enabled ones each frame (Edit and Play) and the froxel injection adds their density inside the gameobject's box (unit cube × scale/rotation/position), skipping the scene fog's distance ramp. Scene loads don't run `OnAdded`, so the collection also keeps the box mesh hidden (`TransformMatrix.Hidden`); `OnChanged`/`OnRemoved` show it again when disabled or removed.
 - `ParticleSystemComponent` (`particles`) is the one component that also runs outside Play: `MainSceneLogic.Update` calls `UpdatePreviews` in Edit mode, and `PlayModeController.Stop` (`OnStop`) clears the preview so Play restarts from scratch. Its settings are nested module objects (`Main`, `Emission`, `Shape`, ...) with property-level JSON converters for `Vector3`/`Color` (components serialise with default options, which skip XNA fields). The simulation is `Engine/Particles/ParticleSimulation.cs` (CPU, GPU-free); it hides the gameobject's marker mesh during Play through `TransformMatrix.Hidden`. With the `Volumetric` module on, each step ends by updating a `ParticleVolume` (`Engine/Particles/ParticleVolume.cs`): a density grid splatted from the particles, or (Source Voxels) a Counter-Strike 2 style flood fill from the emitter that `ParticleStepContext.RaycastStatic` (`ScenePhysics.RaycastStatic`) keeps out of Static colliders, with one sun ray per voxel (`SunDirection`). Scripts carve bullet tunnels/blast holes (`CarveTunnel`/`CarveHole`, static `CarveTunnels`/`CarveHoles`) and query `Opacity`/`VolumeOpacity`; `NpcComponent.CanSee` refuses sight through smoke above `SmokeBlocksSight`. With the `Lights` module on, each step also refreshes the simulation's `ParticleLights` (`Engine/Particles/ParticleLights.cs`): engine-owned `PointLight`s (one System light at the glow-weighted centre, or Per Particle lights on the brightest carriers) that never enter `Scene.PointLights`; the renderer gathers them each frame with `ParticleSystemComponent.CollectLights`.
@@ -463,6 +476,12 @@ The physics *component* is just data. `ScenePhysics` reads it every frame throug
 - `Notify` sends `OnCollision*` or `OnTrigger*` to both owners' `ScriptBehaviourComponent`s.
 - Water buoyancy reads `WaterWaves`, which must match the swell in `Water.fx`.
 
+**Ragdolls** (`RagdollComponent` → `ScenePhysics.CreateRagdoll` → `Ragdoll`) are built from a `RagdollRig`, cached per model and per `RagdollSkeletonType` (`RagdollRig.For(model, type)`):
+- `Build` splits the skin into parts (convex hulls of each main bone's vertices) as before, then works out the facing: `Left` from mirrored `Left/Right`, `_l/_r`, `.L/.R` names (forward = Left × Up); without them, the level direction from the root part to a `head`/`skull` bone; else -Y.
+- **Auto** resolves to `Humanoid` when human limb names (`JointFor`: arm/forearm/thigh/leg...) sit on a body taller than 1.2× its length along the facing, to `Quadruped` with exactly four **legs**, else to `Generic`. A leg root is a part pointing within 60° of straight down whose parts below never branch and reach the bottom quarter of the body (so drooping tails don't count), hanging from the root, a branching part or a part that doesn't point down; parts named `tail` never are.
+- `AssignJoints` sets each `Part.Joint` and, for hinges, `Part.Flex` (the model-space direction the joint bends the part towards). Humanoid: `JointFor(name)`; elbows flex +Forward, knees -Forward. Quadruped: legs ahead of the middle of all leg tops are front legs; the segment depth below the leg root picks `ForeShoulder/ForeElbow/ForeWrist/Paw` or `HindHip/HindKnee/HindHock/Paw` (a front `scapula/clavicle/shoulder` root is a `Clavicle` cone and shifts the count); elbows and hocks flex +Forward, wrists and knees -Forward; tails (by name, or chains reaching backwards from behind the root) are `Tail` cones; the rest is `Spine`/`Neck`. Generic: no hinges; `Tail`/`Neck`/`Spine` by name, a part on a branching parent is a `Limb` cone, everything else a `Chain` link.
+- `Ragdoll.AddJoint` builds a hinge about `RestDirection × Flex`; a zero or parallel `Flex` falls back to an `Other` cone. Limits per kind are in `RagdollJointLimits.For`.
+
 **Water contacts** (`UpdateWaterContacts`, after the contact events) track every Dynamic body, with or without Buoyancy:
 - The body's collider box (the same one buoyancy samples) is rotated into world space. Its bottom is compared with the wave height (`WaterVolume.SurfaceHeight`) under the collider's centre, in the water volumes `ApplyBuoyancy` collected that step.
 - In: the bottom goes below the surface. Out: it rises more than `WaterExitMargin` (5 cm) above it, so bobbing never flickers.
@@ -478,7 +497,7 @@ A deferred renderer. It renders a G-buffer, accumulates lights, composes, then d
 
 ### 9.1 Modules (`Renderer.Load`, in creation order)
 
-`BloomFilter` → `LightAccumulationModule` (owns `PointLightRenderModule`) → `ShadowMapRenderModule` → `GBufferRenderModule` → `TemporalAntialiasingRenderModule` → `DeferredEnvironmentMapRenderModule` → `DecalRenderModule` → `SubsurfaceScatterRenderModule` (unused in Draw) → `ForwardRenderModule` → `WaterRenderModule` → `WeatherRenderModule` → `GridRenderModule` → `ParticleRenderModule` → `HelperGeometryRenderModule` → `DistanceFieldRenderModule` → `FroxelRenderModule` → `ColorGradingFilter` → `AutoExposureFilter`, plus the LUT texture.
+`BloomFilter` → `LightAccumulationModule` (owns `PointLightRenderModule`) → `ShadowMapRenderModule` → `GBufferRenderModule` → `TemporalAntialiasingRenderModule` → `DeferredEnvironmentMapRenderModule` → `DecalRenderModule` → `SubsurfaceScatterRenderModule` (unused in Draw) → `ForwardRenderModule` → `WaterRenderModule` → `WeatherRenderModule` → `GridRenderModule` → `ParticleRenderModule` → `RenderFeatureRenderModule` → `HelperGeometryRenderModule` → `DistanceFieldRenderModule` → `FroxelRenderModule` → `ColorGradingFilter` → `AutoExposureFilter`, plus the LUT texture.
 
 Modules that draw meshes implement `IRenderModule.Apply(world, view, viewProjection)`. `MeshMaterialLibrary` calls it for each instance.
 
@@ -545,19 +564,23 @@ Two things depend on the material:
 | 6 | `UpdateViewProjection` | `_view`, `_projection`, TAA-jittered `_viewProjection`, unjittered `_staticViewProjection`, `_currentViewToPreviousViewProjection`, frustum corners → SSR/SSAO/TAA/lights | camera |
 | 7 | `FrustumCulling` (camera) | `Rendered[]` | |
 | 8 | **G-buffer** (`GBufferRenderModule`) | MRT `[Albedo, Normal, Depth]` | `RenderType.Opaque` |
-| 9 | Decals | Albedo (copied through `DecalOffTarget`) | Depth |
+| 9 | Decals (premultiplied-alpha blend; skips disabled ones and `g_drawdecals` off) | Albedo (copied through `DecalOffTarget`) | Depth |
 | 10 | SSR | `ScreenSpaceEffectReflection` | **previous** TAA buffer (or Composed) |
 | 11 | SSAO + bilateral blur | `SSAOEffect` (half res) → `…BlurVertical/Horizontal` → `BlurFinal` | Normal, Depth |
 | 12 | Froxel fog: `SetFogVolumes(entities)` (up to 8 enabled `FogVolumeComponent` boxes as world-to-unit-cube matrices; keeps their meshes `Hidden`), then injection (density = scene density × lerp(Near Density, 1, distance ramp) + Fog Volume density) and accumulation | froxel injection + ping-pong accumulation atlas (160 × 90·128) | lights, shadow maps, entities |
 | 13 | `LightAccumulationModule.DrawLights` | rebuild hardware depth into `Diffuse`'s D24S8 from linear depth (`ReconstructDepth`), then additive MRT `[Diffuse, Specular, Volume]`. Point and spot lights draw sphere proxies (stencil-culled); directional lights draw full-screen | G-buffer, shadow maps |
 | 14 | `DrawEnvironmentMap` | adds into the still-bound Diffuse/Specular | env cubemap, sky, baked probe SH (`Texture3D`s), SSR |
+| 6b | `_renderFeatureContext` | camera matrices, `CameraPosition`, `FarClip`, G-buffer targets, `Time`/`DeltaTime` for render features | |
 | 15 | `Compose` | `Composed` (`HalfVector4`). Sky pixels get the froxel fog up to `g_FroxelSkyShaftDistance` at full strength and the rest scaled by `g_FroxelSkyFogStrength` (keeps shafts visible when facing the sun) | Albedo, Diffuse, Specular, `BlurFinal` (AO), froxels |
+| 15b | Render features **After Opaques** (`DrawRenderFeatures`, in place) | `Composed` (via two scratch targets of its format, then copied back; the forward pass rebuilds its depth afterwards) | `RenderFeatures.All` with `Event == AfterOpaques && IsActive` |
 | 16 | `DrawForward` | `Composed` (after `ReconstructDepth` into its depth buffer) | `RenderType.Forward`, up to 40 point lights as arrays |
 | 17 | Water (`WaterRenderModule`: also splash rings from `WaterSplashes.FillRipples` as `SplashPositions/SplashShapes` arrays, up to 16, and raindrop rings from `SurfaceWetness.Ripples` as `RainRipples`), then particle systems (`ParticleRenderModule`: one instanced quad per particle, systems far to near, no depth buffer; Lit systems take the 4 point lights of `_frameLights` that shine most on their emitter (`SetPointLights`); water splash droplets are passed as `extraSystems` since they have no gameobject; Volumetric systems upload their `ParticleVolume` to a `Texture3D` and raymarch it with the `Volume` technique on a scissored full-screen triangle, premultiplied), then weather (haze + particles) | `Composed` | Depth (occlusion + ray end), env cubemap, sun, volume + 32³ noise 3D textures |
+| 17b | Render features **After Transparents** (in place) | the current output | |
 | 18 | TAA | `TAA_1`/`TAA_2` ping-pong; with `g_taa_tonemapped`, inverse-tonemapped back into `Composed` | previous TAA buffer, Depth, reprojection matrix |
 | 19 | Bloom | Mip0..Mip5 chain → `_renderTargetBloom` | current output |
 | 20 | Auto exposure | 256² luminance chain → 1×1 ping-pong | current output |
-| 21 | `RenderMode` → `DrawPostProcessing` | `_renderTargetOutput` → color grading (LUT) → **backbuffer** | `g_rendermode` can show a single buffer instead (F1 cycles) |
+| 20b | Render features **After Bloom** (not in place: the output can be a TAA history target, which must not be changed) | a scratch target becomes `_currentOutput` | |
+| 21 | `RenderMode` → `DrawPostProcessing` | `_renderTargetOutput` → color grading (LUT) → render features **After Post Processing** (not in place) → `_finalImage` → **backbuffer**. `_finalImage` is built once per frame; the second `RenderMode` call only draws it again | `g_rendermode` can show a single buffer instead (F1 cycles) |
 | 22 | Editor: `DrawIds`, then the ground grid (`GridRenderModule`, edit mode with `GameSettings.e_showgrid`: one full-screen pass that cuts each view ray with the plane Z = `e_gridheight`, 1/10/100-cell levels faded by pixel density, red X / green Y axes, hidden where the linear depth is nearer), outlines, gizmos, billboards, helper lines, probe debug | ID RT, backbuffer | `RenderType.IdRender/IdOutline`, Depth (grid) |
 | 23 | `FrustumCullingFinalizeFrame` | clears `HasChanged` | |
 
@@ -589,6 +612,7 @@ Two things depend on the material:
 - `Shaders.cs` holds `static readonly` effects and parameters for shared shaders. Missing parameters come back as `null`, so several call sites use `?.`.
 - Modules load their own effects with `content.Load<Effect>`.
 - `ShaderManager` (DEBUG only, `d_hotreloadshaders`) watches `.fx` timestamps. Only the decal and distance-field modules poll it, and it calls a **hard-coded legacy `mgcb.exe` path**. In practice: rebuild the content to see shader changes.
+- **Render features** (user shaders, [Render_Features.md](Render_Features.md)) do hot reload: `RenderFeatures.Update` compares each `.fx` write time with the one it last compiled, and `RenderFeatureCompiler.Compile` runs `mgcb` (`AssetImporter.LocateMgcb`) for that one file into a temp folder, copying the `.xnb` next to the `.fx` only on success. The effect is loaded with a content manager rooted at that folder (`FileContentManager`; MonoGame refuses absolute asset names) and replaces the old one; a failed compile keeps the old one and sets `Status = Error` with the compiler's lines. `RenderFeatureRenderModule` sets the parameters a shader declares by name (cached per feature), and a parameter of the wrong kind (`InvalidCastException`) unloads the feature (`ReportDrawError`) instead of throwing every frame.
 
 ### 9.7 Settings and change detection
 
@@ -599,7 +623,7 @@ Two things depend on the material:
 
 ## 10. Assets and content (`Engine/Recources/`)
 
-- **`Assets`** is a hard-coded registry. Its public `ModelDefinition` and `Texture2D` fields *are* the built-in keys: `Cube`, `Capsule`, `Cloth`, `Tree`, `PlayerYBot`, …. `LoadTree` binds `TreeBarkMaterial` and `TreeLeavesMaterial` (Foliage) to the tree's Bark/Leaves mesh parts, so a Tree gameobject without a material draws both (a Material component would override both parts alike). `Assets.Load` fills them in a fixed order. It ends with `ReimportExistingModels`, which scans `<exe>/Content/GameObjects/Models/<key>/<key>.xnb` and registers what it finds in `_dynamicModels` through `RegisterModel` (raising `ModelRegistered`).
+- **`Assets`** is a hard-coded registry. Its public `ModelDefinition` and `Texture2D` fields *are* the built-in keys: `Cube`, `Capsule`, `Cloth`, `Tree`, `PlayerYBot`, `Wolf`, …. `Wolf` (`Content/GameObjects/Wolf/Wolf.fbx`, skinned, one `Idle` clip) is generated by `Source/generate_wolf.py` in headless Blender. `LoadTree` binds `TreeBarkMaterial` and `TreeLeavesMaterial` (Foliage) to the tree's Bark/Leaves mesh parts, so a Tree gameobject without a material draws both (a Material component would override both parts alike). `Assets.Load` fills them in a fixed order. It ends with `ReimportExistingModels`, which scans `<exe>/Content/GameObjects/Models/<key>/<key>.xnb` and registers what it finds in `_dynamicModels` through `RegisterModel` (raising `ModelRegistered`).
 - **`ModelDefinition`** wraps the `Model`, its bounds (read from a `<path>.bbox` sidecar or computed) and the signed distance field (`<path>.sdft`). `LoadSkinnedModel` also binds the embedded textures into `MaterialEffect`s and widens the bounding spheres.
 - **`FindModel(key)`** looks at the public fields first, then `_dynamicModels`. `Spawn` and the editor use it.
 - **`AssetImporter`** (editor import, game thread):
@@ -610,10 +634,14 @@ Two things depend on the material:
   5. Registers the model and builds a material from texture-name suffixes.
 - **Scene files** (`SceneSerialization`, `.obsc`, JSON, `CurrentVersion = 2`):
   - Entities are stored as `ModelKey`, transform (rotation as a quaternion), `Material` record and `Components` (`ComponentRecord[]`).
-  - Model and texture keys are resolved by **reflection over the public fields of `Assets`**.
+  - Model keys are the public `ModelDefinition` fields of `Assets` or a runtime-imported model's registry key (`Assets.FindModel` on load, `BuildReverseLookup` adds `DynamicModels` on save). Texture keys are resolved by **reflection over the public fields of `Assets`**. Decals save a built-in texture this way (`TextureKey`, e.g. `DefaultDecal`), so renaming an `Assets` texture field breaks saved decals; a texture picked in the Inspector is saved as `TexturePath` instead (a path that fails to load falls back to `DefaultDecal` and keeps the path).
   - A legacy entity-level `Physics` record becomes a `PhysicsComponent` on load.
+  - Gameobjects go through `SceneSerialization.CaptureEntity`/`RestoreEntity`, which prefab files share.
+  - A **prefab instance** also saves `Prefab` (its `.prefab` path) and `PrefabOverrides` (the values that differ from the prefab, worked out by `PrefabUtility.Overrides` at save time). On load, `SceneBuilder.AddEntity` runs `PrefabUtility.Sync`: the prefab file's current record, with the instance's name, transform and overrides on top. That is how prefab edits reach every scene. `"*"` (prefab missing at save) keeps everything the instance had.
   - Baked probes go into a sibling `.probes` file.
   - Loading is two halves: `ReadFile` (I/O + JSON + probes, thread-safe, returns a `SceneFile`) and `SceneBuilder` (game thread, one object per `Step`). `LoadFromFile` runs both at once; `SceneLoadOperation` spreads them out.
+- **Prefabs** (`Engine/Logic/Prefab.cs`, `PrefabUtility.cs`): `.prefab` files anywhere in Content (default `Content/Prefabs`) holding one `BasicEntityRecord` (`{ Version, GameObject }`, attachment IDs blanked, position at the origin). `Prefab.Load(nameOrPath)` resolves "Crate", "Prefabs/Crate" or a moved file by name (`Resolve`, on-disk casing, remembered per name), reads it through `GameInfo.ResolveContentFile` and caches the parsed record until the file's write time changes. It is written to the source Content (`Prefab.Write`, atomic `.tmp` + move); `Engine.csproj` copies `Content/**/*.prefab` into builds. See [Prefabs.md](Prefabs.md).
+  - **Overrides** are JSON paths from diffing the instance's record against the prefab's: `Scale`, `Material/Roughness`, `Components/<type>#<n>` (a component added or removed; matched by type id + index among that type) or `Components/<type>#<n>/<setting>` (only public settable properties; derived get-only ones like `ClampedMass` are skipped). Id, Name, Position and Rotation are always the instance's own. Script fields pointing at the gameobject itself are compared in the prefab's ID space (`WithId` → `RemapGameObjectReferences`).
 - **`GameInfo.ResolveContentFile`** prefers the *source* `Engine/Content` copy when it exists, which is the dev case, and falls back to `<exe>/Content`. That is why scenes, UI and audio edits show up without a rebuild during development.
 
 ---
@@ -647,12 +675,24 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 ```
 
 **Inspector panels**
-- The right-hand inspector shows one panel at a time, chosen by `MainWindowViewModel.InspectorView`: `Selection`, `PostProcessing`, `Lighting` (the inspector header tabs), `Environment` and `World` (the viewport toolbar buttons, side by side), `Input` and `Steam` (Window menu).
+- The right-hand inspector shows one panel at a time, chosen by `MainWindowViewModel.InspectorView`: `Selection`, `PostProcessing`, `Lighting` (the inspector header tabs), `Environment`, `World` and `RenderPipeline` (the viewport toolbar buttons, side by side), `Input` and `Steam` (Window menu).
+- `RenderPipeline` (`RenderPipelineViewModel`) lists `IEditorBridge.GetRenderPipeline()` (the published `RenderFeatures.Describe()`: built-in passes, injection points, feature copies) and rebuilds on `RenderPipelineChanged`, keeping its row objects while the shape is unchanged so the selection survives. Edits go through `EnqueueCreateRenderFeature/EnqueueMutateRenderFeature/EnqueueMoveRenderFeature/EnqueueRecompileRenderFeature/EnqueueDeleteRenderFeature`; the engine saves `RenderFeatures.json` itself. Opening the view calls `EnqueueRefreshRenderPipeline`, since render setting toggles don't notify.
 - `Environment` (sky, fog, weather, wind) and `World` (the voxel world) both bind to `MainWindowViewModel.Environment` (`EnvironmentViewModel`), because the voxel settings are part of `EnvironmentSettings` and go through the same `IEditorBridge.EnqueueMutateEnvironment` call.
+
+**Adding objects (GameObject menu / Hierarchy +)**
+- The title bar's GameObject menu and the Hierarchy "+" menu (`MainWindowViewModel.AddableObjects`) run the same `[RelayCommand]`s, which enqueue one bridge op at `IEditorBridge.SpawnPoint` (camera position + 5 m forward, refreshed while draining): `EnqueueAddBasicEntity` (Cube, Sphere, Particle System marker, Tree), `EnqueueAddPointLight/SpotLight/DirectionalLight` and `EnqueueAddDecal`.
+- `EnqueueAddDecal(position, scale)` → `MainSceneLogic.EditorAddDecal` adds an enabled `Decal` with `Assets.DefaultDecal` (falls back to `ErrorTexture`; a decal whose texture isn't an `Assets` field is skipped when saving). The box spans ±`Scale` around its position and projects down its local -Z; the snapshot shows it as kind `Decal` (Name, Enabled, transform; no components or role).
+- Inspector > Decal > Texture (`SceneObjectViewModel.DecalTexture`, Browse or a drop from Assets, Reset) → `IEditorBridge.EnqueueSetDecalTexture(id, path)` → `Decal.LoadTexture` (Content-relative source path through `Globals.content`, like Material textures; must already be built) sets `Decal.Texture` + `Decal.TexturePath` and dirties the scene. A texture that can't load leaves the decal unchanged; null/empty goes back to `Assets.DefaultDecal`. `EditorObjectSnapshot.DecalTexture` carries the path back.
+
+**Prefabs (Assets panel, Hierarchy, Inspector prefab bar)**
+- `EnqueueCreatePrefab(id, folder, done)` → `PrefabUtility.CreatePrefab` writes `<folder>/<name>.prefab` (`Prefab.UniquePath`: `_2`, `_3` …, never overwrites) and sets `BasicEntity.PrefabPath`. Anvil: Hierarchy drag onto Assets (`GameObjectFormat` → `AssetsPanel_Drop` → `MainWindowViewModel.CreatePrefabIn(obj, FolderFor(node))`), the Hierarchy context menu, the Inspector button, GameObject > Create Prefab from Selection.
+- `EnqueueInstantiatePrefab(nameOrPath, SpawnPoint, done)` → `MainSceneLogic.InstantiatePrefab` (fresh attachment IDs, self references remapped, named after the prefab, registered in the library, scene dirty) and selects it. Anvil: double-click, drag into the Hierarchy (`PrefabAssetFormat`), Assets context menu > Place in Scene. Scripts reach the same method with `runtime: true` through `ScriptBehaviour.Instantiate`.
+- `EnqueueApplyPrefab` / `EnqueueRevertPrefab` / `EnqueueUnpackPrefab` are Edit mode only. Apply measures every other instance's overrides against the *old* prefab, writes the file, then `Sync`s them. Instances whose record changed are rebuilt by `MainSceneLogic.ReplaceGameObject`: a new `BasicEntity` with the same ID, list slot and runtime flags, the old one stopped, disposed and detached like a delete. `KeepSelectionOnReplaced` reselects a rebuilt selection.
+- `BuildSnapshot` sends `PrefabPath` for every gameobject, but `PrefabOverrides` (or `PrefabMissing`) only for the **selected** instance, since working them out costs a capture and a JSON diff. `SceneObjectViewModel.PrefabStatus/PrefabOverridesTip` label them with `PrefabUtility.Describe`.
 
 **Delete Project (Edit > Project Settings)**
 - `ProjectSettingsWindow` only collects the confirmation (the project name typed). `MainWindowViewModel.ResetProject` then calls `IEditorBridge.EnqueueResetProject(MoveToRecycleBin, done)`, refused during Play because Stop would swap the old scene back in.
-- On the game thread: `SceneManager.NewScene("Main")` (so no gameobject still uses an imported model) → `Assets.UnregisterModel` for every `DynamicModels` key → `ProjectReset.Run` → `SceneList.Load()` → `AddDefaultSun()` → `SaveScene(Scenes/Main.obsc)`.
+- On the game thread: `SceneManager.NewScene("Main")` (so no gameobject still uses an imported model) → `Assets.UnregisterModel` for every `DynamicModels` key → `ProjectReset.Run` → `SceneList.Load()` → `RenderFeatures.Load(null)` (its JSON is in `DeletedSettings` and the `RenderFeatures` folder isn't kept) → `AddDefaultSun()` → `SaveScene(Scenes/Main.obsc)`.
 - `ProjectReset.Run` removes each top-most item outside `KeptPaths` through the callback (Recycle Bin), its Content.mgcb entries (`ContentManifest.Unregister(rel, manifestPath)`) and its built copies under `Content/bin/Windows`, `Content/bin/Windows/Content`, the running executable's `Content` and `Engine/bin/*/*/Content` (never a folder that holds one of those roots). Without the built copies, `Assets.ReimportExistingModels` would bring imported models back at the next boot.
 - Settings are **written** to defaults, not deleted: `GameInfo.ResolveContentFile` would otherwise fall back to the stale copy next to the executable.
 
@@ -693,13 +733,13 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 
 ## 13. Sharp edges (checked against the source)
 
-1. **Runtime-imported models don't round-trip through scene files.** `SceneSerialization` builds its key tables from the public fields of `Assets` only (`BuildAssetLookup` / `BuildReverseLookup`), never from `Assets.DynamicModels`. Saving an entity with an imported model logs "unregistered ModelDefinition, skipping", and loading an unknown key skips the entity. `FindModel` (used by `Spawn`) does check dynamic models.
+1. **Apply/Revert replace prefab instances.** A rebuilt instance is a new `BasicEntity` under the same ID, so a reference to the old object (outside the scene list, e.g. held by editor code) goes stale. Apply/Revert are Edit-mode only, so running scripts never see it. Look objects up by ID after a prefab operation.
 2. **Two keyboard APIs.** `Input.WasKeyPressed` ignores Anvil-forwarded keys, but `GameInput` includes them. In-engine editor hotkeys (Delete, Insert, Ctrl+C, R/T/Z, F1, Space) only work when the engine window itself has keyboard focus. Delete and Insert are also missing from `MonoGameHost.MapAvaloniaKey`.
 3. **`EditorLogic` has two delete paths.** The Delete key path removes the object from its list and disposes it from the mesh library. It does **not** call component `OnStop` or `ScenePhysics.Detach`. The bridge path (`MainSceneLogic.EditorDelete`) does both.
 4. **Debug-entity picking indexes the wrong list.** In `EditorLogic.Update`, the `debugEntities` loop reads `dirLights[index]`.
 5. **Play does not snapshot component state or spawned objects.** Stop restores only transforms, the environment and the camera pose. Spawned objects are removed by the scripts' `Shutdown`.
 6. **`World` updates depend on CPU culling** (section 7.1).
-7. **`RenderMode` runs twice per frame** (before and after `DrawIds`). Editor overlays then draw on top of the second pass.
+7. **`RenderMode` runs twice per frame** (before and after `DrawIds`). Editor overlays then draw on top of the second pass. The post-processed image is built only on the first call (`_finalImage`), so After Post Processing render features run once per frame.
 8. **`g_batchbymaterial` is false by default**, so there is no material batching. `MeshMaterialLibrary.Draw` also iterates `MaterialLib` in index order. The distance sort (`MaterialLibPointer`) only affects culling.
 9. **A shadowed directional light with `ScreenSpaceShadowBlur` throws** `NotImplementedException` in `DrawScreenSpaceDirectionalShadow`.
 10. **Shader hot reload is effectively off** (section 9.6).
@@ -715,6 +755,8 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 |---|---|
 | Change what happens each frame, or its order | `Engine.Update` → `ScreenManager.Update` → `MainSceneLogic.Update` |
 | Add a render pass | `Renderer.Load/Initialize/Draw`, `SetUpRenderTargets` + `UpdateRenderMapBindings`, a module in `RenderModules/`, `.fx` + `Content.mgcb`, settings in `GameSettings` |
+| Add a full-screen effect without touching the engine | a render feature: Anvil viewport toolbar > Pipeline > + New, then edit `Content/RenderFeatures/<Name>.fx`; see [Render_Features.md](Render_Features.md) |
+| Change render features (injection points, blend modes, shader inputs, compiling) | `RenderFeatureEvent` (saved by name; a new point also needs a `DrawRenderFeatures` call in `Renderer.Draw` and a `Point(...)` in `RenderFeatures.Publish`), `RenderFeatureRenderModule.Draw/DrawFeature`, `RenderFeatures` (`Prepare`, `StartCompile`, `Update`, `Move`), `RenderFeatureCompiler`, `RenderFeatureShaderTemplate`; Anvil `RenderPipelineViewModel` + the Render Pipeline panel in `MainWindow.axaml` |
 | Change how a material is drawn | `GBufferRenderModule.SetMaterialSettings`, `Gbuffer.fx`, `MeshMaterialLibrary.Draw` filters |
 | Make a new object visible to the renderer | `BasicEntity.RegisterInLibrary` / `Dispose(library)` |
 | Add per-object behaviour | a `GameComponent` (see CLAUDE.md "Adding a Gameobject Component") or a script + `ScriptRegistry` |
@@ -724,7 +766,10 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 | Change physics sync | `ScenePhysics.Update/Reconcile/PushPose/PullPose`, `PhysicsSystem` |
 | Expose engine state to Anvil | `IEditorBridge` + `EditorBridge.BuildSnapshot` + `BridgeReconciler` + view model + XAML |
 | Change scene file format | `SceneSerialization` DTOs (bump `CurrentVersion`, keep loading v1–v2) |
+| Change prefabs (what follows the prefab, override granularity, Apply/Revert, file lookup) | `PrefabUtility` (`InstanceKeys`, `Overrides`/`DiffComponents`, `Sync`, `ApplyToPrefab`), `Prefab` (`Resolve`, `Load`, `Write`), `MainSceneLogic.InstantiatePrefab/ReplaceGameObject`, bridge `Enqueue*Prefab`; Anvil prefab bar in `MainWindow.axaml`, drag formats in `MainWindow.axaml.cs`; see [Prefabs.md](Prefabs.md) |
 | Draw geometry that isn't a gameobject | `MeshMaterialLibrary.Register(material, part, transform, sphere)` / `Unregister`, as `VoxelSystem.Upload` / `Release` do |
+| Ragdoll joints for a body type (humanoid, quadruped, generic creature) | `RagdollRig.Detect/AssignJoints/AssignQuadrupedJoints/AssignGenericJoints/IsLegRoot`, limits in `RagdollJointLimits.For`, hinges in `Ragdoll.AddJoint`; inspector `RagdollComponentViewModel.Skeleton`; sample Wolves in `Content/Scenes/AnimationTest.obsc`; see [Ragdoll_Physics.md](Ragdoll_Physics.md) |
+| Change skeletal animation playback (actions, crossfades, one-shots) | `AnimatorComponent` (`Switch`, `Pose`, `Finish`, `Select`/`Forget`), `AnimationPlayer.Evaluate/BlendFrom`, inspector `AnimatorComponentViewModel` + `AnimationActionViewModel`; sample `Y Bot - Actions` in `Content/Scenes/AnimationTest.obsc` + `Content/Scripts/AnimatorActionsScript.cs`; see [Skeletal_Animation.md](Skeletal_Animation.md) |
 | Change the voxel world | `Engine/Voxels/` (`VoxelGenerator`, `VoxelMesher`, `VoxelTextures`, `VoxelSystem`), settings in `EnvironmentSettings`; see [Voxel_World.md](Voxel_World.md) |
 | Change particle systems | `Engine/Particles/` (`ParticleModules`, `ParticleSimulation`, `ParticleTextures` (Flame Sheet: `Flame` + `FireRamp`; Fireball Sheet: `Fireball`), `ParticleVolume`, `ParticleLights`), `ParticleSystemComponent`, `ParticleRenderModule` + `Shaders/Forward/Particles.fx` (techniques `Particles` and `Volume`); see [Particle_Systems.md](Particle_Systems.md) |
 | Change the sample explosion (fireball, smoke, dust, sparks, chunks with smoke trails) | the `Explosion ...` gameobjects of `Content/Scenes/ParticleTest.obsc` (restarted together by `ParticleTestScript.Explode`); the fireball look is `ParticleTextures.Fireball` (Fireball Sheet, Alpha blend, Brightness 3); systems sort by gameobject distance, so the smoke sits a little below the fireball; see "A realistic explosion" in [Particle_Systems.md](Particle_Systems.md) |

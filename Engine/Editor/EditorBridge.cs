@@ -464,6 +464,40 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueAddDecal(Vector3 position, Vector3 scale)
+        {
+            Log($"EnqueueAddDecal pos={position} scale={scale}");
+            _pendingOps.Enqueue(() =>
+            {
+                if (_scene == null) { Log("AddDecal: scene is null"); return; }
+                // Saving skips a decal whose texture isn't an Assets field, so fall back to another one.
+                Microsoft.Xna.Framework.Graphics.Texture2D texture = _assets?.DefaultDecal ?? _assets?.ErrorTexture;
+                if (texture == null) { Log("AddDecal: no decal texture loaded"); return; }
+                try
+                {
+                    Decal decal = _scene.EditorAddDecal(texture, position, scale);
+                    Log($"AddDecal ok: id={decal.Id}");
+                }
+                catch (Exception ex) { Log("AddDecal threw: " + ex); }
+            });
+        }
+
+        public void EnqueueSetDecalTexture(int decalId, string texturePath)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (LookupById(decalId) is not Decal decal) return;
+                string path = string.IsNullOrWhiteSpace(texturePath) ? null : texturePath.Replace('\\', '/');
+                if (path == decal.TexturePath) return;
+                var texture = path == null ? _assets?.DefaultDecal : Decal.LoadTexture(path);
+                // Not built yet, or not a texture: keep the current one (the loader logged why).
+                if (texture == null) return;
+                decal.Texture = texture;
+                decal.TexturePath = path;
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
         public void EnqueueAddBasicEntity(string modelKey, Vector3 position, string name = null, Vector3? scale = null,
             IReadOnlyList<string> componentTypes = null)
         {
@@ -521,6 +555,83 @@ namespace Engine.Editor
                 if (_scene == null) return;
                 _scene.EditorDelete(id);
             });
+        }
+
+        // ---------- prefabs ----------
+
+        public void EnqueueCreatePrefab(int entityId, string folder, Action<string, string> onCompleted = null)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = _scene == null ? null : LookupEntityById(entityId);
+                if (entity == null) { onCompleted?.Invoke(null, "The gameobject is gone."); return; }
+                Prefab prefab = PrefabUtility.CreatePrefab(_scene, entity, folder, out string error);
+                Log(prefab != null ? $"CreatePrefab: '{entity.Name}' saved as '{prefab.Path}'" : $"CreatePrefab '{entity.Name}' failed: {error}");
+                onCompleted?.Invoke(prefab?.Path, error);
+            });
+        }
+
+        public void EnqueueApplyPrefab(int entityId, Action<int, string> onCompleted = null)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (!CanEditPrefabs(out var entity, entityId, out string error)) { onCompleted?.Invoke(-1, error); return; }
+                int changed = PrefabUtility.ApplyToPrefab(_scene, entity, out error);
+                KeepSelectionOnReplaced();
+                Log(changed >= 0 ? $"ApplyPrefab: '{entity.PrefabPath}' saved, {changed} other instance(s) updated" : $"ApplyPrefab failed: {error}");
+                onCompleted?.Invoke(changed, error);
+            });
+        }
+
+        public void EnqueueRevertPrefab(int entityId, Action<string> onCompleted = null)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (!CanEditPrefabs(out var entity, entityId, out string error)) { onCompleted?.Invoke(error); return; }
+                PrefabUtility.RevertToPrefab(_scene, entity, out error);
+                KeepSelectionOnReplaced();
+                if (error != null) Log("RevertPrefab failed: " + error);
+                onCompleted?.Invoke(error);
+            });
+        }
+
+        public void EnqueueUnpackPrefab(int entityId)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                if (CanEditPrefabs(out var entity, entityId, out string error)) PrefabUtility.Unpack(_scene, entity);
+                else Log("UnpackPrefab: " + error);
+            });
+        }
+
+        public void EnqueueInstantiatePrefab(string prefab, Vector3 position, Action<int?> onCompleted = null)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                Prefab loaded = _scene == null ? null : Prefab.Load(prefab);
+                BasicEntity entity = loaded == null ? null : _scene.InstantiatePrefab(loaded, position);
+                if (entity == null) Log($"InstantiatePrefab: can't place '{prefab}'");
+                else if (_editor != null) _editor.SelectedObject = entity;
+                onCompleted?.Invoke(entity?.Id);
+            });
+        }
+
+        // Applying or reverting rewrites instances in place (a new model needs a new BasicEntity) under the same IDs.
+        private bool CanEditPrefabs(out BasicEntity entity, int entityId, out string error)
+        {
+            entity = _scene == null ? null : LookupEntityById(entityId);
+            error = entity == null ? "The gameobject is gone."
+                : Mode != Logic.GameMode.Edit ? "Stop Play before changing prefabs."
+                : !entity.IsPrefabInstance ? $"'{entity.Name}' is not a prefab instance."
+                : null;
+            return error == null;
+        }
+
+        // A selected gameobject that was rebuilt in place is selected again as its new self.
+        private void KeepSelectionOnReplaced()
+        {
+            if (_editor?.SelectedObject is BasicEntity selected && !_scene.BasicEntities.Contains(selected))
+                _editor.SelectedObject = LookupEntityById(selected.Id);
         }
 
         public void EnqueueImportModel(string sourceFilePath, Action<string> onCompleted)
@@ -668,6 +779,48 @@ namespace Engine.Editor
         public LightingSettings GetLightingSettings() =>
             _scene?.ActiveScene?.Lighting?.Clone() ?? new LightingSettings();
 
+        public IReadOnlyList<Renderer.Features.RenderPipelineLayer> GetRenderPipeline() =>
+            Renderer.Features.RenderFeatures.Describe();
+
+        public event Action RenderPipelineChanged
+        {
+            add => Renderer.Features.RenderFeatures.Changed += value;
+            remove => Renderer.Features.RenderFeatures.Changed -= value;
+        }
+
+        public void EnqueueRefreshRenderPipeline() =>
+            _pendingOps.Enqueue(Renderer.Features.RenderFeatures.Refresh);
+
+        public void EnqueueCreateRenderFeature(string name, Renderer.Features.RenderFeatureEvent at, Action<Guid> onCompleted)
+        {
+            Log($"EnqueueCreateRenderFeature name='{name}' at={at}");
+            _pendingOps.Enqueue(() =>
+            {
+                Guid id = Guid.Empty;
+                try { id = Renderer.Features.RenderFeatures.Create(name, at).Id; }
+                catch (Exception ex) { Log("CreateRenderFeature threw: " + ex); }
+                onCompleted?.Invoke(id);
+            });
+        }
+
+        public void EnqueueMutateRenderFeature(Guid id, Action<Renderer.Features.RenderFeature> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() => Renderer.Features.RenderFeatures.Mutate(id, mutate));
+        }
+
+        public void EnqueueMoveRenderFeature(Guid id, int direction) =>
+            _pendingOps.Enqueue(() => Renderer.Features.RenderFeatures.Move(id, direction));
+
+        public void EnqueueRecompileRenderFeature(Guid id) =>
+            _pendingOps.Enqueue(() => Renderer.Features.RenderFeatures.Recompile(id));
+
+        public void EnqueueDeleteRenderFeature(Guid id, bool deleteShader, Action<string> deleteFile)
+        {
+            Log($"EnqueueDeleteRenderFeature id={id} deleteShader={deleteShader}");
+            _pendingOps.Enqueue(() => Renderer.Features.RenderFeatures.Remove(id, deleteShader, deleteFile));
+        }
+
         public EnvironmentSettings GetEnvironmentSettings() =>
             _scene?.ActiveScene?.Environment?.Clone() ?? new EnvironmentSettings();
 
@@ -799,6 +952,8 @@ namespace Engine.Editor
                     options.DeleteSource = deleteSource;
                     result = ProjectReset.Run(options);
                     SceneList.Load();
+                    // RenderFeatures.json and the RenderFeatures folder are gone: no render features.
+                    Renderer.Features.RenderFeatures.Load(null);
 
                     _scene.AddDefaultSun();
                     string firstScene = Path.Combine(options.ContentRoot,
@@ -964,6 +1119,14 @@ namespace Engine.Editor
             for (int i = 0; i < _scene.BasicEntities.Count; i++)
             {
                 BasicEntity be = _scene.BasicEntities[i];
+                // Overrides are only worked out for the selected instance (the Inspector's prefab bar).
+                IReadOnlyList<string> overrides = null;
+                bool prefabMissing = false;
+                if (be.IsPrefabInstance && ReferenceEquals(be, _editor?.SelectedObject))
+                {
+                    overrides = PrefabUtility.GetOverrides(be, _scene.Assets ?? _assets);
+                    prefabMissing = overrides == null;
+                }
                 MaterialSnapshot? matSnap = null;
                 if (be.Material != null)
                 {
@@ -987,7 +1150,10 @@ namespace Engine.Editor
                     material: matSnap,
                     components: be.Components.Select(ComponentRegistry.Capture).ToArray(),
                     role: be.Role,
-                    isPersistent: be.Persistent));
+                    isPersistent: be.Persistent,
+                    prefabPath: be.PrefabPath,
+                    prefabOverrides: overrides,
+                    prefabMissing: prefabMissing));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)
@@ -1050,7 +1216,8 @@ namespace Engine.Editor
                     scale: dc.Scale,
                     isEnabled: dc.IsEnabled,
                     light: null,
-                    material: null));
+                    material: null,
+                    decalTexture: dc.TexturePath));
             }
 
             return list;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Anvil.Services;
@@ -306,7 +307,39 @@ public partial class SceneObjectViewModel : ObservableObject
     public bool CanAddComponents => EngineId.HasValue &&
         (Kind == EditorObjectKind.BasicEntity || Kind == EditorObjectKind.Camera);
     public bool HasRole => EngineId.HasValue && Kind == EditorObjectKind.BasicEntity;
+    public bool IsDecal => EngineId.HasValue && Kind == EditorObjectKind.Decal;
+
+    // Decal only: Content-relative texture path; null projects the built-in scorch mark (Assets.DefaultDecal).
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(DecalTextureLabel))]
+    private string? _decalTexture;
+    public string DecalTextureLabel => string.IsNullOrEmpty(DecalTexture) ? "Default (scorch mark)" : DecalTexture;
+
     public bool HasMaterialComponent => Components.Any(c => c.TypeId == MaterialComponent.TypeId);
+
+    // -------- Prefab instance (BasicEntity.PrefabPath, Engine.Logic.PrefabUtility) --------
+
+    // Content-relative .prefab this gameobject is an instance of; null for a plain gameobject.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPrefabInstance), nameof(IsNotPrefabInstance), nameof(PrefabName), nameof(PrefabStatus))]
+    private string? _prefabPath;
+    // What the instance overrides (engine override paths); only sent for the selected gameobject, null otherwise.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(PrefabStatus), nameof(HasPrefabOverrides), nameof(PrefabOverridesTip))]
+    private IReadOnlyList<string>? _prefabOverrides;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(PrefabStatus), nameof(PrefabOverridesTip))]
+    private bool _prefabMissing;
+
+    public bool IsPrefabInstance => HasRole && !string.IsNullOrEmpty(PrefabPath);
+    public bool IsNotPrefabInstance => HasRole && string.IsNullOrEmpty(PrefabPath);
+    public string PrefabName => string.IsNullOrEmpty(PrefabPath) ? "" : System.IO.Path.GetFileNameWithoutExtension(PrefabPath);
+    public bool HasPrefabOverrides => PrefabOverrides is { Count: > 0 };
+    public string PrefabStatus => PrefabMissing ? "Prefab file missing"
+        : PrefabOverrides == null ? ""
+        : PrefabOverrides.Count == 0 ? "No overrides"
+        : PrefabOverrides.Count == 1 ? "1 override" : $"{PrefabOverrides.Count} overrides";
+    public string PrefabOverridesTip => PrefabMissing
+        ? $"{PrefabPath} doesn't exist any more. The instance keeps its values; Unpack it or create a new prefab."
+        : PrefabOverrides is { Count: > 0 } list
+            ? "Differs from the prefab:\n" + string.Join("\n", list.Select(p => "• " + Engine.Logic.PrefabUtility.Describe(p)))
+            : "Matches the prefab.";
 
     public SceneObjectViewModel()
     {
@@ -343,6 +376,23 @@ public partial class SceneObjectViewModel : ObservableObject
                 AddableComponents.Add(new AddableComponentType(definition, this));
         OnPropertyChanged(nameof(CanAddComponents));
         OnPropertyChanged(nameof(HasRole));
+        OnPropertyChanged(nameof(IsDecal));
+        OnPropertyChanged(nameof(IsPrefabInstance));
+        OnPropertyChanged(nameof(IsNotPrefabInstance));
+    }
+
+    /// <summary>Use a Content texture (Inspector Browse or a drop from Assets) on this decal.</summary>
+    public void AssignDecalTexture(string path)
+    {
+        if (MaterialComponent.IsTextureAsset(path)) DecalTexture = path.Replace('\\', '/');
+    }
+
+    [RelayCommand] private void ResetDecalTexture() => DecalTexture = null;
+
+    partial void OnDecalTextureChanged(string? value)
+    {
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || Kind != EditorObjectKind.Decal) return;
+        bridge.EnqueueSetDecalTexture(id, value);
     }
 
     public void BeginSuppressPush() => SuppressPush = true;

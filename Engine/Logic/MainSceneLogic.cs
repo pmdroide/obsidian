@@ -39,6 +39,9 @@ namespace Engine.Logic
         public readonly SceneManager SceneManager = new SceneManager(new Scene());
         public Scene ActiveScene => SceneManager.ActiveScene;
 
+        /// <summary>The asset registry scenes and prefabs resolve model/texture keys with (set by <see cref="Initialize"/>).</summary>
+        internal Assets Assets => _assets;
+
         // Baked lighting (probe volume) bakes + GPU data for the active scene.
         public readonly LightingSystem Lighting = new LightingSystem();
 
@@ -632,6 +635,17 @@ namespace Engine.Logic
             return AddDirectionalLight(direction: direction, intensity: (int)intensity, color: color);
         }
 
+        /// <summary>
+        /// A decal box (2 x <paramref name="scale"/> m, centred on <paramref name="position"/>) projecting
+        /// <paramref name="texture"/> down its local -Z onto whatever lies inside it.
+        /// </summary>
+        internal Decal EditorAddDecal(Texture2D texture, Vector3 position, Vector3 scale)
+        {
+            Decal decal = new Decal(texture, position, Matrix.Identity, scale) { IsEnabled = true };
+            Decals.Add(decal);
+            return decal;
+        }
+
         internal BasicEntity EditorAddBasicEntity(ModelDefinition model, MaterialEffect material, Vector3 position)
         {
             if (model == null) return null;
@@ -658,6 +672,62 @@ namespace Engine.Logic
             entity.IsRuntimeSpawned = true;
             if (!string.IsNullOrEmpty(name)) entity.Name = name;
             return entity;
+        }
+
+        /// <summary>
+        /// Places a copy of <paramref name="prefab"/> at <paramref name="position"/>, linked to it (a prefab instance),
+        /// named after it and turned by <paramref name="rotation"/> (the prefab's own rotation when null).
+        /// <paramref name="runtime"/> copies (scripts during Play) are flagged <see cref="BasicEntity.IsRuntimeSpawned"/>
+        /// and never saved; others mark the scene dirty. Null when the prefab's model is unknown.
+        /// </summary>
+        public BasicEntity InstantiatePrefab(Prefab prefab, Vector3 position, Matrix? rotation = null, bool runtime = false)
+        {
+            if (prefab == null || _assets == null || ActiveScene == null) return null;
+            SceneSerialization.BasicEntityRecord record = prefab.Record;
+            BasicEntity entity = SceneSerialization.RestoreEntity(record, SceneSerialization.CurrentVersion, _assets);
+            if (entity == null)
+            {
+                EditorBridge.Log($"Instantiate: prefab '{prefab.Path}' uses an unknown model '{prefab.ModelKey}'");
+                return null;
+            }
+            // Each copy's attachments get their own IDs, and script fields that pointed at the prefab's gameobject
+            // point at the copy, like duplicating one.
+            foreach (var component in entity.Components) component.InstanceId = Guid.NewGuid();
+            foreach (var script in entity.GetComponents<ScriptBehaviourComponent>())
+                script.RemapGameObjectReferences(record.Id, entity.Id);
+            entity.Name = prefab.Name;
+            entity.PrefabPath = prefab.Path;
+            entity.Position = position;
+            if (rotation is { } turn) entity.RotationMatrix = turn;
+            entity.ApplyTransformation();
+            entity.IsRuntimeSpawned = runtime;
+            BasicEntities.Add(entity);
+            if (MeshMaterialLibrary != null) entity.RegisterInLibrary(MeshMaterialLibrary);
+            if (!runtime) ActiveScene.IsDirty = true;
+            return entity;
+        }
+
+        /// <summary>
+        /// Rebuilds a gameobject from <paramref name="record"/> in its place (same ID, list position and runtime flags),
+        /// e.g. after its prefab changed: a new model or material needs a new <see cref="BasicEntity"/>. The old one is
+        /// stopped and unregistered like a delete. Returns the new gameobject, or null when it isn't in the scene or the
+        /// record's model is unknown.
+        /// </summary>
+        internal BasicEntity ReplaceGameObject(BasicEntity old, SceneSerialization.BasicEntityRecord record)
+        {
+            int index = BasicEntities.IndexOf(old);
+            if (index < 0 || _assets == null) return null;
+            BasicEntity fresh = SceneSerialization.RestoreEntity(record, SceneSerialization.CurrentVersion, _assets);
+            if (fresh == null) return null;
+            fresh.Id = old.Id;
+            fresh.IsRuntimeSpawned = old.IsRuntimeSpawned;
+            fresh.RuntimePersistent = old.RuntimePersistent;
+            foreach (var component in old.Components) component.OnStop();
+            if (MeshMaterialLibrary != null) old.Dispose(MeshMaterialLibrary);
+            _scenePhysics?.Detach(old);
+            BasicEntities[index] = fresh;
+            if (MeshMaterialLibrary != null) fresh.RegisterInLibrary(MeshMaterialLibrary);
+            return fresh;
         }
 
         /// <summary>

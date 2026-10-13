@@ -85,6 +85,9 @@ public static class BridgeReconciler
     // smaller than this so the user can keep typing without losing focus.
     private const double FloatEpsilon = 1e-4;
 
+    private static bool SameOverrides(IReadOnlyList<string>? a, IReadOnlyList<string>? b) =>
+        a == null ? b == null : b != null && a.SequenceEqual(b);
+
     private static void SetIfChanged(Action<double> setter, double current, double next)
     {
         if (Math.Abs(current - next) > FloatEpsilon) setter(next);
@@ -109,6 +112,11 @@ public static class BridgeReconciler
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
             if (vm.Role != snap.Role) vm.Role = snap.Role;
             if (vm.Persistent != snap.IsPersistent) vm.Persistent = snap.IsPersistent;
+            if (vm.DecalTexture != snap.DecalTexture) vm.DecalTexture = snap.DecalTexture;
+            if (vm.PrefabPath != snap.PrefabPath) vm.PrefabPath = snap.PrefabPath;
+            if (vm.PrefabMissing != snap.PrefabMissing) vm.PrefabMissing = snap.PrefabMissing;
+            // Only the selected instance carries its overrides; keep the list while it is unchanged.
+            if (!SameOverrides(vm.PrefabOverrides, snap.PrefabOverrides)) vm.PrefabOverrides = snap.PrefabOverrides;
 
             // Structural changes must reconcile even while the Add Component menu has focus.
             var componentIds = snap.Components.Select(c => (c.Type, c.InstanceId)).ToHashSet();

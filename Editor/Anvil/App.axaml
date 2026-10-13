@@ -24,9 +24,9 @@
             <SolidColorBrush x:Key="AnvilInputBackgroundBrush"    Color="#161616" />
             <SolidColorBrush x:Key="AnvilSubtleBandBrush"         Color="#1E1E1E" />
             <SolidColorBrush x:Key="AnvilHoverBackgroundBrush"    Color="#2D2D2D" />
-            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#433D7A" />
-            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#5A4FCF" />
-            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#5045BD" />
+            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#0076FC" />
+            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#005EC9" />
+            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#003E85" />
             <SolidColorBrush x:Key="AnvilPlayBrush"               Color="#E06C5A" />
             <SolidColorBrush x:Key="AnvilTextPrimaryBrush"        Color="#E8E8E8" />
             <SolidColorBrush x:Key="AnvilTextSecondaryBrush"      Color="#C6C6C6" />
@@ -44,6 +44,7 @@
             <SolidColorBrush x:Key="AnvilScriptBrush"  Color="#7FB6FA" />
             <SolidColorBrush x:Key="AnvilTextureBrush" Color="#FA9E5A" />
             <SolidColorBrush x:Key="AnvilAudioBrush"   Color="#B98EFA" />
+            <SolidColorBrush x:Key="AnvilPrefabBrush"  Color="#6FB8FF" />
 
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://LucideAvalonia/Lucide/ResourcesIcons.axaml" />

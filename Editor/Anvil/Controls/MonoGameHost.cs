@@ -174,6 +174,7 @@ public class MonoGameHost : NativeControlHost
         if (_game?.Bridge is not EditorBridge b) return;
         XnaKeys xna = MapAvaloniaKey(e.Key);
         if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, true);
+        if (IsGameKeyInPlay(b, e)) e.Handled = true;
     }
 
     private void OnTopLevelKeyUp(object? sender, KeyEventArgs e)
@@ -181,6 +182,21 @@ public class MonoGameHost : NativeControlHost
         if (_game?.Bridge is not EditorBridge b) return;
         XnaKeys xna = MapAvaloniaKey(e.Key);
         if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, false);
+        if (IsGameKeyInPlay(b, e)) e.Handled = true;
+    }
+
+    /// <summary>
+    /// In Play, Space/Enter belong to the game (jump, menu confirm). The Avalonia control that kept
+    /// keyboard focus — usually the Play button just clicked — would otherwise activate on them and
+    /// stop Play. Handling them on the tunnel pass keeps them from reaching that control; text
+    /// fields and open menus still get them.
+    /// </summary>
+    private bool IsGameKeyInPlay(EditorBridge bridge, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Space or Key.Enter)) return false;
+        if (bridge.Mode != Engine.Logic.GameMode.Play) return false;
+        var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+        return focused is not (TextBox or MenuItem);
     }
 
     /// <summary>

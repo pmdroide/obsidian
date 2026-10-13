@@ -138,6 +138,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public InputDevicesViewModel InputDevices { get; } = new();
 
     /// <summary>
+    /// The render pipeline and the project's render features (user shader passes). Shown inside the
+    /// Inspector when <see cref="InspectorView"/> == "RenderPipeline" (viewport toolbar > Pipeline).
+    /// </summary>
+    public RenderPipelineViewModel RenderPipeline { get; } = new();
+
+    /// <summary>
     /// Inspector content switch: "Selection" (default) shows the selected
     /// object; "PostProcessing" shows <see cref="PostProcessing"/>. Driven by
     /// the segmented control in the inspector header and by
@@ -146,7 +152,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
         nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
-        nameof(IsInspectorWorldView), nameof(IsInspectorSteamView), nameof(IsInspectorInputView))]
+        nameof(IsInspectorWorldView), nameof(IsInspectorSteamView), nameof(IsInspectorInputView),
+        nameof(IsInspectorRenderPipelineView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
@@ -157,9 +164,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsInspectorWorldView => InspectorView == "World";
     public bool IsInspectorSteamView => InspectorView == "Steam";
     public bool IsInspectorInputView => InspectorView == "Input";
+    public bool IsInspectorRenderPipelineView => InspectorView == "RenderPipeline";
 
     [RelayCommand]
-    private void SetInspectorView(string view) => InspectorView = view;
+    private void SetInspectorView(string view)
+    {
+        InspectorView = view;
+        // The built-in passes' on/off state follows the render settings, which don't notify.
+        if (view == "RenderPipeline") RenderPipeline.Refresh();
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedObject), nameof(SelectedObjectName),
@@ -276,6 +289,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Decal", _ => AddDecal(), _bridge));
         AddableObjects.Add(new AddableObjectType("Tree", _ => AddTree(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
@@ -288,6 +302,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Environment.AttachBridge(bridge);
         Steam.AttachBridge(bridge);
         InputDevices.AttachBridge(bridge);
+        RenderPipeline.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:RenderPipeline");
+        RenderPipeline.AttachBridge(bridge, MoveToRecycleBin);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).
@@ -484,6 +500,17 @@ public partial class MainWindowViewModel : ViewModelBase
             new[] { ParticleSystemComponent.TypeId });
     }
 
+    /// <summary>
+    /// A 2 x 2 x 2 m decal box projecting the default scorch mark down -Z onto whatever it overlaps; move it onto
+    /// a surface and scale/rotate it with the gizmo (local Z is the projection depth).
+    /// </summary>
+    [RelayCommand]
+    private void AddDecal()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddDecal(_bridge.SpawnPoint, XnaVector3.One);
+    }
+
     /// <summary>The built-in Tree (own bark and leaf materials) swaying in the scene wind (Foliage Wind).</summary>
     [RelayCommand]
     private void AddTree()
@@ -523,6 +550,88 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_bridge == null || obj?.EngineId is not int id) return;
         _bridge.EnqueueDelete(id);
     }
+
+    // -------- Prefabs (Content/Prefabs/*.prefab, Engine.Logic.PrefabUtility) --------
+
+    /// <summary>
+    /// Saves a gameobject (the selection when null) as a new prefab in a Content folder ("Prefabs" when null) and
+    /// links it to the prefab. Hierarchy/Inspector/GameObject menu, or a Hierarchy drag onto the Assets panel.
+    /// </summary>
+    [RelayCommand]
+    private void CreatePrefab(SceneObjectViewModel? obj) => CreatePrefabIn(obj ?? SelectedObject, null);
+
+    public void CreatePrefabIn(SceneObjectViewModel? obj, string? folder)
+    {
+        if (_bridge == null) return;
+        if (obj?.EngineId is not int id || obj.Kind != EditorObjectKind.BasicEntity)
+        {
+            AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject to save it as a prefab (lights, decals and the camera can't be prefabs).", "Anvil:Prefabs");
+            return;
+        }
+        string name = obj.Name;
+        _bridge.EnqueueCreatePrefab(id, folder, (path, error) => Dispatcher.UIThread.Post(() =>
+        {
+            ScriptPrefabFieldViewModel.InvalidateFiles();
+            if (path != null)
+                AddConsoleEntry(ConsoleLevel.Log, $"Saved \"{name}\" as prefab {path}. Drag it from Assets into the Hierarchy (or double-click it) to place copies.", "Anvil:Prefabs");
+            else
+                AddConsoleEntry(ConsoleLevel.Error, $"Couldn't save \"{name}\" as a prefab: {error}", "Anvil:Prefabs");
+        }));
+    }
+
+    /// <summary>Writes a prefab instance's changes into its prefab; the other instances follow (their own overrides stay).</summary>
+    [RelayCommand]
+    private void ApplyPrefab(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || obj?.EngineId is not int id || !obj.IsPrefabInstance) return;
+        string prefab = obj.PrefabPath!;
+        _bridge.EnqueueApplyPrefab(id, (changed, error) => Dispatcher.UIThread.Post(() =>
+        {
+            if (changed >= 0)
+                AddConsoleEntry(ConsoleLevel.Log, $"Applied to {prefab}" + (changed > 0 ? $" ({changed} other instance{(changed == 1 ? "" : "s")} in this scene updated)." : "."), "Anvil:Prefabs");
+            else
+                AddConsoleEntry(ConsoleLevel.Error, $"Couldn't apply to {prefab}: {error}", "Anvil:Prefabs");
+        }));
+    }
+
+    /// <summary>Drops a prefab instance's overrides: it takes the prefab's values again.</summary>
+    [RelayCommand]
+    private void RevertPrefab(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || obj?.EngineId is not int id || !obj.IsPrefabInstance) return;
+        _bridge.EnqueueRevertPrefab(id, error =>
+        {
+            if (error != null) Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error, "Couldn't revert: " + error, "Anvil:Prefabs"));
+        });
+    }
+
+    /// <summary>Unlinks a prefab instance: it becomes a plain gameobject that no longer follows the prefab.</summary>
+    [RelayCommand]
+    private void UnpackPrefab(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || obj?.EngineId is not int id || !obj.IsPrefabInstance) return;
+        _bridge.EnqueueUnpackPrefab(id);
+    }
+
+    /// <summary>Places a prefab (Content-relative .prefab path) in front of the editor camera and selects it.</summary>
+    public void InstantiatePrefabAsset(string? prefabPath)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(prefabPath)) return;
+        _bridge.EnqueueInstantiatePrefab(prefabPath, _bridge.SpawnPoint, id =>
+        {
+            if (id == null) Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error,
+                $"Couldn't place {prefabPath}: the file is missing or uses an unknown model.", "Anvil:Prefabs"));
+        });
+    }
+
+    /// <summary>Content folder a drop on <paramref name="node"/> goes to: the folder itself, a file's folder, or null (Prefabs).</summary>
+    public static string? FolderFor(AssetNode? node) =>
+        node == null ? null
+        : node.Kind == AssetKind.Folder ? node.RelativePath
+        : System.IO.Path.GetDirectoryName(node.RelativePath)?.Replace('\\', '/') is { Length: > 0 } dir ? dir : null;
 
     // -------- Scene file commands --------
 
@@ -797,6 +906,7 @@ public partial class MainWindowViewModel : ViewModelBase
             [".mp4"] = AssetKind.Video, [".wmv"] = AssetKind.Video, [".avi"] = AssetKind.Video,
             [".cs"] = AssetKind.Script, [".xml"] = AssetKind.Script, [".css"] = AssetKind.Script,
             [".obsc"] = AssetKind.Scene,
+            [Engine.Logic.Prefab.Extension] = AssetKind.Prefab,
         };
 
     // Folders the user has expanded, by relative path, so rebuilds keep the tree open.
@@ -826,6 +936,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _assetRoots = BuildAssetNodes(root, root, modelKeysByPath);
         ApplyAssetFilter();
+        // Prefab fields in the Inspector offer the prefabs on disk.
+        ScriptPrefabFieldViewModel.InvalidateFiles();
     }
 
     private void ApplyAssetFilter()
