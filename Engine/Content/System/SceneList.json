@@ -9,6 +9,12 @@
     "Scenes/WeatherTest.obsc",
     "Scenes/PersistenceTest.obsc",
     "Scenes/PersistenceTest2.obsc",
-    "Scenes/NpcTest.obsc"
+    "Scenes/NpcTest.obsc",
+    "Scenes/VoxelTest.obsc",
+    "Scenes/ParticleTest.obsc",
+    "Scenes/SmokeTest.obsc",
+    "Scenes/WaterTest.obsc",
+    "Scenes/SceneLoadingTest.obsc",
+    "Scenes/SceneLoadingArena.obsc"
   ]
 }

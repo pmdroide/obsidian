@@ -79,7 +79,12 @@ namespace Engine.Logic
 
             // Build order of the game's scenes; entry 0 starts the standalone game (see Update).
             SceneList.Load();
+            // Named input actions scripts read (Anvil > Window > Input Actions).
+            InputActions.Load();
             GameUI.Bind(graphicsDevice, _uiFonts);
+
+            // User render passes (Anvil > Render Pipeline): loads or compiles their shaders.
+            Renderer.Features.RenderFeatures.Load(Globals.content);
 
             // Under Anvil, the in-engine "Editor Mode" toggle (formerly in
             // HelperSuite's right-side panel) no longer exists, so force the
@@ -110,6 +115,8 @@ namespace Engine.Logic
 #if DEBUG
             _shaderManager.CheckForChanges();
 #endif
+            // Finished render feature compiles, and recompiles of shaders saved since.
+            Renderer.Features.RenderFeatures.Update();
             _editorLogic.Update(gameTime, _sceneLogic.BasicEntities, _sceneLogic.Decals, _sceneLogic.PointLights, _sceneLogic.DirectionalLights, _sceneLogic.EnvironmentSample, _sceneLogic.DebugEntities, _editorReceivedDataBuffer, _sceneLogic.MeshMaterialLibrary);
             _sceneLogic.Update(gameTime, isActive);
             // Listener follows the active camera; 3D emitters reconcile after scene positions advance.

@@ -25,7 +25,7 @@ public abstract partial class ComponentViewModel : ObservableObject
         });
     }
 
-    protected void Push(Action<GameComponent> mutate)
+    protected virtual void Push(Action<GameComponent> mutate)
     {
         if (!Owner.SuppressPush && Owner.EngineId is int id)
             Owner.Bridge?.EnqueueMutateComponent(id, TypeId, mutate, InstanceId);
@@ -55,6 +55,9 @@ public static class ComponentEditorRegistry
         Register(ClothComponent.TypeId, owner => new ClothComponentViewModel(owner));
         Register(NpcComponent.TypeId, owner => new NpcComponentViewModel(owner));
         Register(LodComponent.TypeId, owner => new LodComponentViewModel(owner));
+        Register(ParticleSystemComponent.TypeId, owner => new ParticleSystemComponentViewModel(owner));
+        Register(FogVolumeComponent.TypeId, owner => new FogVolumeComponentViewModel(owner));
+        Register(FoliageWindComponent.TypeId, owner => new FoliageWindComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

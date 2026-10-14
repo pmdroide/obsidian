@@ -13,7 +13,8 @@ namespace Engine.Components;
 /// bones get rigid bodies (<see cref="RagdollRig"/> picks them from the mesh): while the gameobject animates
 /// they follow the pose kinematically, so balls bounce off the character and rays hit it. Once
 /// <see cref="Activate"/>d (or on start, or when hit hard enough) the parts go limp: they fall, joined by
-/// joints with human-like limits, the skin follows them and the gameobject moves with the hips.
+/// joints limited for the <see cref="Skeleton"/> (human, four-legged animal or any creature), the skin
+/// follows them and the gameobject moves with the hips.
 /// <see cref="Deactivate"/> stands it back up where the hips lie and hands the pose back to the Animator.
 /// </summary>
 public sealed class RagdollComponent : GameComponent
@@ -31,6 +32,9 @@ public sealed class RagdollComponent : GameComponent
     public float ImpactThreshold { get; set; }
     /// <summary>How strongly the joints resist bending: 0 is floppy, 1 nearly holds the pose.</summary>
     public float JointFriction { get; set; } = 0.2f;
+    /// <summary>The body the joint limits are shaped for; Auto tells humans, four-legged animals and other creatures apart.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public RagdollSkeletonType Skeleton { get; set; } = RagdollSkeletonType.Auto;
 
     /// <summary>True while limp.</summary>
     [JsonIgnore] public bool IsActive => _ragdoll is { IsActive: true, IsDisposed: false };
@@ -41,8 +45,8 @@ public sealed class RagdollComponent : GameComponent
     public float ClampedImpactThreshold => float.IsFinite(ImpactThreshold) ? Math.Max(ImpactThreshold, 0) : 0;
     public float ClampedJointFriction => float.IsFinite(JointFriction) ? Math.Clamp(JointFriction, 0, 1) : 0.2f;
 
-    /// <summary>Rig for gameobjects without a loaded model (GPU-free checks in Tests/Components).</summary>
-    internal static Func<BasicEntity, RagdollRig> FallbackRig;
+    /// <summary>Rig for gameobjects without a loaded model, per skeleton type (GPU-free checks in Tests/Components).</summary>
+    internal static Func<BasicEntity, RagdollSkeletonType, RagdollRig> FallbackRig;
 
     private BasicEntity _owner;
     private ScenePhysics _scene;
@@ -153,7 +157,7 @@ public sealed class RagdollComponent : GameComponent
     {
         _scene = _owner.PhysicsScene ?? ScenePhysics.Current;
         if (_scene == null) return false;
-        RagdollRig rig = _owner.Model != null ? RagdollRig.For(_owner.Model) : FallbackRig?.Invoke(_owner);
+        RagdollRig rig = _owner.Model != null ? RagdollRig.For(_owner.Model, Skeleton) : FallbackRig?.Invoke(_owner, Skeleton);
         if (rig == null)
         {
             EditorBridge.Log($"Ragdoll: '{_owner.Name}' has no skinned skeleton; build its model with the SkinnedModelProcessor.");

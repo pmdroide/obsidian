@@ -69,6 +69,8 @@ public sealed class NpcComponent : GameComponent
     public const string TypeId = "npc";
     /// <summary>Seconds between two looks for the target (line-of-sight rays).</summary>
     public const float PerceptionInterval = 0.1f;
+    /// <summary>Volumetric smoke hiding more than this share of the view blocks sight (<see cref="ParticleSystemComponent.VolumeOpacity"/>).</summary>
+    public const float SmokeBlocksSight = 0.9f;
 
     // ---- Movement ----
     /// <summary>Speed while idling, following, searching and returning (m/s).</summary>
@@ -323,7 +325,11 @@ public sealed class NpcComponent : GameComponent
         }
         // Its middle or its top: either one visible counts.
         float top = Math.Max(0.1f, (Bounds(target).Max.Z - center.Z) * 0.7f);
-        return InSight(eye, center, target, range) || InSight(eye, center + new Vector3(0f, 0f, top), target, range);
+        Vector3 head = center + new Vector3(0f, 0f, top);
+        // Thick volumetric smoke hides the target from the eyes (not from the ears).
+        if (!heard && ParticleSystemComponent.VolumeOpacity(eye, center) > SmokeBlocksSight &&
+            ParticleSystemComponent.VolumeOpacity(eye, head) > SmokeBlocksSight) return false;
+        return InSight(eye, center, target, range) || InSight(eye, head, target, range);
     }
 
     private bool InSight(Vector3 eye, Vector3 point, BasicEntity target, float range)

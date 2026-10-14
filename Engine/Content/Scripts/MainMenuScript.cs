@@ -23,7 +23,7 @@ public sealed class MainMenuScript : ScriptBehaviour
 
     private const string DocumentPath = "UI/MainMenu";
     private const int RowHeight = 64, SettingRowHeight = 58, CreditRowHeight = 46;
-    private const int VisibleSceneRows = 6;
+    private const int VisibleSceneRows = 6, VisibleSettingRows = 8;
     private const string TickSound = "Audio/blip.wav";
 
     private enum Page { Title, Main, Scenes, Settings, Credits }
@@ -38,7 +38,7 @@ public sealed class MainMenuScript : ScriptBehaviour
     private readonly Dictionary<Page, List<IElement>> _rows = new();
     private readonly Dictionary<Page, int> _selected = new();
     private List<MenuSetting> _settings;
-    private int _sceneScroll;
+    private int _sceneScroll, _settingScroll;
     private bool _quitOpen;
     private int _quitChoice;
 
@@ -148,7 +148,6 @@ public sealed class MainMenuScript : ScriptBehaviour
         }
 
         Stack(_rows[Page.Main], RowHeight);
-        Stack(_rows[Page.Settings], SettingRowHeight);
         Stack(_ui.QueryAll("#credits-list .credit").ToList(), CreditRowHeight);
 
         int next = NextSceneIndex();
@@ -216,19 +215,9 @@ public sealed class MainMenuScript : ScriptBehaviour
             for (int i = 0; i < rows.Count; i++)
                 _ui.SetClass(rows[i], "selected", i == Selected(page));
 
-        // Scene list: a window of VisibleSceneRows that follows the selection.
-        List<IElement> scenes = _rows[Page.Scenes];
-        int selected = Selected(Page.Scenes);
-        if (selected < _sceneScroll) _sceneScroll = selected;
-        if (selected >= _sceneScroll + VisibleSceneRows) _sceneScroll = selected - VisibleSceneRows + 1;
-        for (int i = 0; i < scenes.Count; i++)
-        {
-            bool visible = i >= _sceneScroll && i < _sceneScroll + VisibleSceneRows;
-            _ui.SetClass(scenes[i], "offscreen", !visible);
-            if (visible) SetTop(scenes[i], (i - _sceneScroll) * RowHeight);
-        }
-        _ui.SetClass("#scene-scroll-up", "visible", _sceneScroll > 0);
-        _ui.SetClass("#scene-scroll-down", "visible", _sceneScroll + VisibleSceneRows < scenes.Count);
+        // Scene and settings lists: a window of rows that follows the selection.
+        _sceneScroll = Scroll(Page.Scenes, _sceneScroll, VisibleSceneRows, RowHeight, "#scene-scroll");
+        _settingScroll = Scroll(Page.Settings, _settingScroll, VisibleSettingRows, SettingRowHeight, "#settings-scroll");
 
         _ui.SetClass("#quit-dialog", "open", _quitOpen);
         _ui.SetClass("#quit-cancel", "selected", _quitChoice == 0);
@@ -236,6 +225,25 @@ public sealed class MainMenuScript : ScriptBehaviour
 
         UpdateDescriptions();
         UpdateHints();
+    }
+
+    /// <summary>Shows <paramref name="visibleRows"/> rows of a page around its selection. Returns the new first row.</summary>
+    private int Scroll(Page page, int scroll, int visibleRows, int rowHeight, string hintPrefix)
+    {
+        List<IElement> rows = _rows[page];
+        int selected = Selected(page);
+        if (selected < scroll) scroll = selected;
+        if (selected >= scroll + visibleRows) scroll = selected - visibleRows + 1;
+        scroll = Math.Clamp(scroll, 0, Math.Max(0, rows.Count - visibleRows));
+        for (int i = 0; i < rows.Count; i++)
+        {
+            bool visible = i >= scroll && i < scroll + visibleRows;
+            _ui.SetClass(rows[i], "offscreen", !visible);
+            if (visible) SetTop(rows[i], (i - scroll) * rowHeight);
+        }
+        _ui.SetClass(hintPrefix + "-up", "visible", scroll > 0);
+        _ui.SetClass(hintPrefix + "-down", "visible", scroll + visibleRows < rows.Count);
+        return scroll;
     }
 
     private void SetTop(IElement row, int top)
@@ -254,7 +262,7 @@ public sealed class MainMenuScript : ScriptBehaviour
                 ? $"Load {GameFlow.SceneName(NextSceneIndex())}, the next scene in the build list."
                 : "Add another scene in Anvil > Game Settings > Scenes to play it from here.",
             "scenes" => "Every scene in the build list. Pick one to load it. Index 0 always loads first when the game starts.",
-            "settings" => "Rendering and display options for this session.",
+            "settings" => "Sound volume, display and rendering options for this session.",
             "credits" => "The libraries behind the engine, and what this screen tests.",
             "quit" => GameFlow.IsEditor ? "Leave the game. Inside Anvil this goes back to the title screen." : "Close the game.",
             _ => "",
@@ -486,7 +494,8 @@ public sealed class MainMenuScript : ScriptBehaviour
 
     private List<MenuSetting> CreateSettings()
     {
-        List<MenuSetting> settings = MenuSettings.Graphics();
+        List<MenuSetting> settings = MenuSettings.Audio();
+        settings.AddRange(MenuSettings.Graphics());
         settings.Add(new MenuSetting
         {
             Name = "Interface scale",

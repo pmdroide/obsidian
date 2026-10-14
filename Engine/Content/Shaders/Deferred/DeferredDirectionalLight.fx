@@ -70,6 +70,27 @@ SamplerState ShadowSampler
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  FOLIAGE TRANSLUCENCY
+
+// Foliage material type (MaterialEffect.MaterialTypes.Foliage): thin leaves let sunlight through.
+static const float FOLIAGE_MATERIAL_TYPE = 8;
+
+bool IsFoliage(float encodedMetallicMattype)
+{
+    return abs(decodeMattype(encodedMetallicMattype) - FOLIAGE_MATERIAL_TYPE) < 0.1f;
+}
+
+// Light that reaches a leaf through its back (the side away from the camera), brightest when looking
+// towards the sun through the crown. Tinted by the leaf's albedo in DeferredCompose like diffuse light.
+float3 FoliageTransmission(float3 normal, float3 cameraDirection)
+{
+    float back = saturate(dot(normal, LightVector));
+    float towardsSun = saturate(dot(cameraDirection, LightVector));
+    towardsSun *= towardsSun;
+    return lightColor * lightIntensity * back * (0.2f + 0.8f * towardsSun * towardsSun) * 0.45f;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCT DEFINITIONS
 
 struct VertexShaderInput
@@ -336,7 +357,9 @@ PixelShaderOutput PixelShaderUnshadowedFunction(VertexShaderOutput input)
     
         float3 specular = SpecularCookTorrance(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
 
-        output.Diffuse = float4(diffuse, 0) * (1 - f0) * 0.1f;
+        float3 transmission = IsFoliage(normalData.b) ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
+
+        output.Diffuse = float4(diffuse * (1 - f0) + transmission, 0) * 0.1f;
         output.Specular = float4(specular, 0) * 0.1f;
 
         return output;
@@ -361,6 +384,10 @@ float4 PixelShaderScreenSpaceShadowFunction(VertexShaderOutput input) : SV_Targe
     else
     {
 		float NdL = saturate(dot(normal, -LightVector));
+		// Foliage lets light through its back, so it needs the shadow there too
+		[flatten]
+		if (IsFoliage(normalData.b))
+			NdL = max(NdL, saturate(dot(normal, LightVector)));
 
 		//Get our current Position in viewspace
 		float linearDepth = DepthMap.Sample(pointSampler, texCoord).r;
@@ -430,6 +457,9 @@ PixelShaderOutput PixelShaderShadowedFunction(VertexShaderOutput input)
     else
     {
         float NdL = saturate(dot(normal, -LightVector));
+        bool foliage = IsFoliage(normalData.b);
+        // Foliage lets light through its back, so it needs the shadow there too
+        float shadowNdL = foliage ? max(NdL, saturate(dot(normal, LightVector))) : NdL;
 
 		//Get our current Position in viewspace
 		float linearDepth = DepthMap.Sample(pointSampler, texCoord).r;
@@ -446,24 +476,24 @@ PixelShaderOutput PixelShaderShadowedFunction(VertexShaderOutput input)
 
 
         [branch]
-        if (NdL > 0)
+        if (shadowNdL > 0)
         {
             [branch]
             if (ShadowFiltering == 0)
             {
-                shadowContribution = CalcShadowTermPCF(depthInLV, NdL, ShadowTexCoord);
+                shadowContribution = CalcShadowTermPCF(depthInLV, shadowNdL, ShadowTexCoord);
             }
             else if (ShadowFiltering == 1)
             {
-                shadowContribution = CalcShadowTermSoftPCF(depthInLV, NdL, ShadowTexCoord, 3);
+                shadowContribution = CalcShadowTermSoftPCF(depthInLV, shadowNdL, ShadowTexCoord, 3);
             }
             else if (ShadowFiltering == 2)
             {
-                shadowContribution = CalcShadowTermSoftPCF(depthInLV, NdL, ShadowTexCoord, 5);
+                shadowContribution = CalcShadowTermSoftPCF(depthInLV, shadowNdL, ShadowTexCoord, 5);
             }
             else if (ShadowFiltering == 3)
             {
-                shadowContribution = CalcShadowPoisson(depthInLV, NdL, ShadowTexCoord, texCoord);
+                shadowContribution = CalcShadowPoisson(depthInLV, shadowNdL, ShadowTexCoord, texCoord);
             }
             else
             {
@@ -499,7 +529,9 @@ PixelShaderOutput PixelShaderShadowedFunction(VertexShaderOutput input)
             specular = SpecularCookTorrance(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
         }
 
-        output.Diffuse = float4(diffuse, 0) * (1 - f0) * 0.1f * shadowContribution;
+        float3 transmission = foliage ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
+
+        output.Diffuse = float4(diffuse * (1 - f0) + transmission, 0) * 0.1f * shadowContribution;
         output.Specular = float4(specular, 0) * 0.1f * shadowContribution;
 
         return output;
@@ -552,7 +584,9 @@ PixelShaderOutput PixelShaderSSShadowedFunction(VertexShaderOutput input)
             specular = SpecularCookTorrance(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
         }
 
-        output.Diffuse = float4(diffuse, 0) * (1 - f0) * 0.1f * shadowContribution;
+        float3 transmission = IsFoliage(normalData.b) ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
+
+        output.Diffuse = float4(diffuse * (1 - f0) + transmission, 0) * 0.1f * shadowContribution;
         output.Specular = float4(specular, 0) * 0.1f * shadowContribution;
 
         return output;

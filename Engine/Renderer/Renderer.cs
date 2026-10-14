@@ -6,6 +6,7 @@ using Engine.Logic;
 using Engine.Physics;
 using Engine.Recources;
 using Engine.Recources.Helper;
+using Engine.Renderer.Features;
 using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
 using Engine.Renderer.Lighting;
@@ -20,6 +21,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using DirectionalLight = Engine.Entities.DirectionalLight;
+using ParticleSystemComponent = Engine.Components.ParticleSystemComponent;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    MAIN RENDER FUNCTIONS, TheKosmonaut 2016
@@ -61,6 +63,15 @@ namespace Engine.Renderer
         private ForwardRenderModule _forwardRenderModule;
         private WaterRenderModule _waterRenderModule;
         private WeatherRenderModule _weatherRenderModule;
+        private GridRenderModule _gridRenderModule;
+        private ParticleRenderModule _particleRenderModule;
+        // User render features (Anvil > Render Pipeline) at their injection points.
+        private RenderFeatureRenderModule _renderFeatureRenderModule;
+        private RenderFeatureRenderModule.Context _renderFeatureContext;
+        // The post-processed image of this frame (RenderMode draws it twice per frame).
+        private RenderTarget2D _finalImage;
+        // The scene's point lights plus the particle systems' (Lights module), rebuilt each frame.
+        private readonly List<PointLight> _frameLights = new List<PointLight>();
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
@@ -218,6 +229,9 @@ namespace Engine.Renderer
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
             _waterRenderModule = new WaterRenderModule(content);
             _weatherRenderModule = new WeatherRenderModule(content);
+            _gridRenderModule = new GridRenderModule(content);
+            _particleRenderModule = new ParticleRenderModule(content);
+            _renderFeatureRenderModule = new RenderFeatureRenderModule();
             _helperGeometryRenderModule = new HelperGeometryRenderModule(content, "Shaders/Editor/LineEffect");
             _distanceFieldRenderModule = new DistanceFieldRenderModule(shaderManager, "Shaders/SignedDistanceFields/volumeProjection");
             _froxelRenderModule = new FroxelRenderModule(shaderManager, "Shaders/Deferred/Froxel");
@@ -266,6 +280,8 @@ namespace Engine.Renderer
             _forwardRenderModule.Initialize();
 
             _helperGeometryRenderModule.Initialize();
+
+            _renderFeatureRenderModule.Initialize(graphicsDevice);
             
             _froxelRenderModule.Initialize(graphicsDevice, _fullScreenTriangle, GameSettings.g_screenwidth, GameSettings.g_screenheight);
             _froxelRenderModule.SetNoiseMap(assets.NoiseMap);
@@ -334,7 +350,11 @@ namespace Engine.Renderer
             // The day/night cycle swaps in its own sun/moon; editor gizmos keep showing the scene's lights.
             List<DirectionalLight> sceneDirectionalLights = directionalLights;
             if (scene != null)
+            {
                 directionalLights = _environmentSky.Apply(scene, gameTime, _graphicsDevice, _assets, _deferredEnvironmentMapRenderModule);
+                ApplySceneFog(scene.Environment);
+                _autoExposureFilter.SceneMaxExposure = scene.Environment?.MaxAutoExposure ?? float.MaxValue;
+            }
             // Set every frame: GameSettings.Exposure writes the base value whenever it is edited.
             Shaders.PostProcessingParameter_PowExposure.SetValue(
                 (float)Math.Pow(2, GameSettings.Exposure + (scene != null ? _environmentSky.ExposureOffset : 0)));
@@ -351,6 +371,7 @@ namespace Engine.Renderer
 
             //Reset the stat counter, so we can count stats/information for this frame only
             ResetStats();
+            _finalImage = null;
 
             if (GameSettings.d_drawnothing)
             {
@@ -362,6 +383,14 @@ namespace Engine.Renderer
                     ProjectionMatrix = _projection
                 };
             } 
+
+            //Particle System Lights modules: their lights join the scene's for every lighting pass (shadows,
+            //deferred, forward, fog), while the editor passes below keep using the scene's own list.
+            List<PointLight> sceneLights = pointLights;
+            _frameLights.Clear();
+            _frameLights.AddRange(sceneLights);
+            ParticleSystemComponent.CollectLights(entities, _frameLights);
+            pointLights = _frameLights;
 
             //Update the mesh data for changes in physics etc.
             meshMaterialLibrary.FlagMovedObjects(entities);
@@ -390,6 +419,22 @@ namespace Engine.Renderer
 
             //Update our view projection matrices if the camera moved
             UpdateViewProjection(camera, meshMaterialLibrary, entities);
+
+            //What render features read: camera, G-buffer, time
+            _renderFeatureContext = new RenderFeatureRenderModule.Context
+            {
+                View = _view,
+                Projection = _projection,
+                ViewProjection = _viewProjection,
+                InverseViewProjection = _inverseViewProjection,
+                CameraPosition = camera.Position,
+                FarClip = _g_FarClip,
+                DepthMap = _renderTargetDepth,
+                NormalMap = _renderTargetNormal,
+                AlbedoMap = _renderTargetAlbedo,
+                Time = (float)(gameTime.TotalGameTime.TotalSeconds % 3600),
+                DeltaTime = GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+            };
             
             GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "G-Buffer Pass");
             try
@@ -430,6 +475,7 @@ namespace Engine.Renderer
                         _inverseProjection,
                         FroxelRenderModule.CameraNearPlane,
                         _g_FarClip);
+                    _froxelRenderModule.SetFogVolumes(entities);
                     _froxelRenderModule.BuildFroxels(
                         pointLights,
                         directionalLights,
@@ -459,6 +505,9 @@ namespace Engine.Renderer
                 //Compose the scene by combining our lighting data with the gbuffer data
                 _currentOutput = Compose(); //-> output _renderTargetComposed
 
+                //Render features: After Opaques (the forward pass reconstructs the depth it needs afterwards)
+                _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterOpaques, _currentOutput, inPlace: true);
+
                 ///*_currentOutput =*/ DrawSubsurfaceScattering(_renderTargetSSS, meshMaterialLibrary);
 
                 //Forward
@@ -469,14 +518,26 @@ namespace Engine.Renderer
                     _graphicsDevice.SetRenderTarget(_currentOutput);
                     ReconstructDepth();
                 }
+                // Splash rings (MainSceneLogic.WaterSplashes) and raindrop rings on the water surface.
+                Particles.WaterSplashes splashes = GameFlow.SceneLogic?.WaterSplashes;
+                _waterRenderModule.Splashes = splashes;
+                _waterRenderModule.RainRipples = _surfaceWetness.Ripples;
                 _waterRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, _viewProjection,
                     camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
+
+                // Particle System components: fire, smoke, sparks... fading into the depth they read.
+                // Splash droplets have no gameobject and are passed alongside.
+                _particleRenderModule.Draw(_graphicsDevice, entities, camera, _view, _viewProjection,
+                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, splashes?.VisibleSystems(), pointLights);
 
                 // Rain, sandstorm or snow: haze and particles over the opaque and transparent scene.
                 // Paused (pause menu): the particles hang in the air.
                 _weatherRenderModule.Update(scene?.Environment, GameFlow.Paused ? 0 : gameTime.ElapsedGameTime.TotalSeconds);
                 _weatherRenderModule.Draw(_graphicsDevice, scene?.Environment, camera, _view, _viewProjection,
                     _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
+
+                //Render features: After Transparents
+                _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterTransparents, _currentOutput, inPlace: true);
                 
                 //Compose the image and add information from previous frames to apply temporal super sampling
                 _currentOutput = TonemapAndCombineTemporalAntialiasing(_currentOutput); // -> output: _temporalAAOffFrame ? _renderTargetTAA_2 : _renderTargetTAA_1
@@ -486,6 +547,9 @@ namespace Engine.Renderer
 
                 //Eye adaptation: meter the final HDR image here, once per frame (RenderMode runs twice)
                 UpdateAutoExposure(_currentOutput, gameTime);
+
+                //Render features: After Bloom. Not in place: the image can be the TAA history.
+                _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterBloom, _currentOutput, inPlace: false);
             }
             finally
             {
@@ -505,7 +569,7 @@ namespace Engine.Renderer
             
             //Draw the elements that we are hovering over with outlines
             if(GameSettings.e_enableeditor && GameStats.e_EnableSelection)
-                _editorRender.DrawIds(meshMaterialLibrary, decals, pointLights, sceneDirectionalLights, envSample, debugEntities, _staticViewProjection, _view, editorData);
+                _editorRender.DrawIds(meshMaterialLibrary, decals, sceneLights, sceneDirectionalLights, envSample, debugEntities, _staticViewProjection, _view, editorData);
 
             //Draw the final rendered image, change the output based on user input to show individual buffers/rendertargets
             RenderMode(_currentOutput);
@@ -513,9 +577,12 @@ namespace Engine.Renderer
             //Draw signed distance field functions
             DrawSignedDistanceFieldFunctions(camera);
             
+            //Editor ground grid (Anvil's viewport Grid button), under the outlines and gizmos
+            _gridRenderModule.Draw(_graphicsDevice, camera, _view, _staticViewProjection, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
+
             //Additional editor elements that overlay our screen
             
-            RenderEditorOverlays(editorData, meshMaterialLibrary, decals, pointLights, sceneDirectionalLights, envSample, debugEntities);
+            RenderEditorOverlays(editorData, meshMaterialLibrary, decals, sceneLights, sceneDirectionalLights, envSample, debugEntities);
             
 
             //Debug ray marching
@@ -561,6 +628,16 @@ namespace Engine.Renderer
             return false;
         }
 
+        private readonly List<(Vector3 From, Vector3 To, int Bone)> _armatureLines = new();
+
+        // True when `bone` is `root` or one of its descendants.
+        private static bool IsInBranch(Animation.SkinningData skeleton, int bone, int root)
+        {
+            for (int i = bone; i >= 0; i = skeleton.ParentIndices[i])
+                if (i == root) return true;
+            return false;
+        }
+
         private void RenderEditorOverlays(EditorLogic.EditorSendData editorData, MeshMaterialLibrary meshMaterialLibrary, List<Decal> decals, List<PointLight> pointLights, List<DirectionalLight> directionalLights, EnvironmentSample envSample, List<DebugEntity> debugEntities)
         {
 
@@ -588,6 +665,22 @@ namespace Engine.Renderer
                             HelperGeometryManager.GetInstance()
                                 .AddBoundingBox(editorData.SelectedObject as BasicEntity);
                         }
+
+                    // The armature of a selected skinned gameobject (or of the selected bone's), the selected bone's
+                    // branch highlighted, so the bones listed in Anvil's Hierarchy can be found in the viewport.
+                    var bone = editorData.SelectedObject as BoneObject;
+                    if ((editorData.SelectedObject as BasicEntity ?? bone?.Owner) is { } skinned)
+                    {
+                        _armatureLines.Clear();
+                        skinned.BonePose.CollectLines(skinned, _armatureLines);
+                        var skeleton = Animation.SkinningData.From(skinned.Model);
+                        foreach (var (from, to, index) in _armatureLines)
+                        {
+                            bool highlighted = bone != null && (bone.IsArmature || IsInBranch(skeleton, index, bone.BoneIndex));
+                            Color color = highlighted ? Color.Orange : Color.DeepSkyBlue;
+                            HelperGeometryManager.GetInstance().AddLineStartEnd(from, to, 1, color, color);
+                        }
+                    }
 
                     // Physics > Collider Size, so it can be fitted by eye.
                     if (editorData.SelectedObject is BasicEntity { Physics: { Enabled: true } physics } selected)
@@ -1384,6 +1477,7 @@ namespace Engine.Renderer
 
             Shaders.DeferredComposeEffectParameter_UseFroxelFog?.SetValue(fogActive);
             Shaders.DeferredComposeEffectParameter_SkyFogStrength?.SetValue(GameSettings.g_FroxelSkyFogStrength);
+            Shaders.DeferredComposeEffectParameter_SkyShaftDistance?.SetValue(GameSettings.g_FroxelSkyShaftDistance);
         }
 
         /// <summary>
@@ -1445,6 +1539,23 @@ namespace Engine.Renderer
             return _forwardRenderModule.Draw(_graphicsDevice, input, meshMaterialLibrary, _viewProjection, camera, pointLights, _boundingFrustum);
         }
 
+        /// <summary>
+        /// The user render features of one injection point (Anvil > Render Pipeline), see <see cref="RenderFeatures"/>.
+        /// </summary>
+        private RenderTarget2D DrawRenderFeatures(RenderFeatureEvent at, RenderTarget2D image, bool inPlace)
+        {
+            if (!RenderFeatureRenderModule.HasActive(at)) return image;
+            GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "Render Features: " + at);
+            try
+            {
+                return _renderFeatureRenderModule.Draw(_graphicsDevice, at, image, _renderFeatureContext, _fullScreenTriangle, inPlace);
+            }
+            finally
+            {
+                GraphicsDeviceDebugMarkers.EndEventGroup(_graphicsDevice);
+            }
+        }
+
         private RenderTarget2D DrawBloom(RenderTarget2D input)
         {
             if (GameSettings.g_BloomEnable)
@@ -1474,6 +1585,25 @@ namespace Engine.Renderer
                 //_spriteBatch.End();
                 return input;
             }
+        }
+
+        /// <summary>
+        /// The scene owns its volumetric fog (Anvil > Environment > Volumetric Fog); the froxel and compose passes
+        /// read the GameSettings copies, so scripts change fog through ScriptBehaviour.SceneEnvironment.
+        /// </summary>
+        public static void ApplySceneFog(EnvironmentSettings fog)
+        {
+            if (fog == null) return;
+            GameSettings.g_FroxelDensity = fog.FogDensity;
+            GameSettings.g_FroxelAbsorption = fog.FogAbsorption;
+            GameSettings.g_FroxelDirectionalScatter = fog.FogSunScatter;
+            GameSettings.g_FroxelPointScatter = fog.FogLightScatter;
+            GameSettings.g_FroxelAnisotropy = fog.FogAnisotropy;
+            GameSettings.g_FroxelFogDistanceStart = fog.FogStartDistance;
+            GameSettings.g_FroxelFogDistanceFull = fog.FogFullDistance;
+            GameSettings.g_FroxelNearDensity = fog.FogNearDensity;
+            GameSettings.g_FroxelSkyFogStrength = fog.FogSkyStrength;
+            GameSettings.g_FroxelSkyShaftDistance = fog.FogSkyShaftDistance;
         }
 
         /// <summary>
@@ -1609,24 +1739,31 @@ namespace Engine.Renderer
         private void DrawPostProcessing(RenderTarget2D currentInput)
         {
             if (!GameSettings.g_PostProcessing) return;
-            
-            RenderTarget2D destinationRenderTarget;
-            
-            destinationRenderTarget = _renderTargetOutput;
-            
-            Shaders.PostProcessingParameter_ScreenTexture.SetValue(currentInput);
-            _graphicsDevice.SetRenderTarget(destinationRenderTarget);
 
-            _graphicsDevice.DepthStencilState = DepthStencilState.Default;
-            _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
-            
-            Shaders.PostProcessing.CurrentTechnique.Passes[0].Apply();
-            _fullScreenTriangle.Draw(_graphicsDevice);
+            //Drawn once per frame; the second RenderMode call shows the same image again
+            if (_finalImage == null)
+            {
+                RenderTarget2D destinationRenderTarget;
 
-            if(GameSettings.g_ColorGrading)
-            destinationRenderTarget = _colorGradingFilter.Draw(_graphicsDevice, destinationRenderTarget, _lut);
+                destinationRenderTarget = _renderTargetOutput;
 
-            DrawMapToScreenToFullScreen(destinationRenderTarget);
+                Shaders.PostProcessingParameter_ScreenTexture.SetValue(currentInput);
+                _graphicsDevice.SetRenderTarget(destinationRenderTarget);
+
+                _graphicsDevice.DepthStencilState = DepthStencilState.Default;
+                _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+
+                Shaders.PostProcessing.CurrentTechnique.Passes[0].Apply();
+                _fullScreenTriangle.Draw(_graphicsDevice);
+
+                if(GameSettings.g_ColorGrading)
+                destinationRenderTarget = _colorGradingFilter.Draw(_graphicsDevice, destinationRenderTarget, _lut);
+
+                //Render features: After Post Processing (final LDR image)
+                _finalImage = DrawRenderFeatures(RenderFeatureEvent.AfterPostProcessing, destinationRenderTarget, inPlace: false);
+            }
+
+            DrawMapToScreenToFullScreen(_finalImage);
         }
         #endregion
 
@@ -1921,6 +2058,9 @@ namespace Engine.Renderer
             _decalRenderModule?.Dispose();
             _waterRenderModule?.Dispose();
             _weatherRenderModule?.Dispose();
+            _gridRenderModule?.Dispose();
+            _particleRenderModule?.Dispose();
+            _renderFeatureRenderModule?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();

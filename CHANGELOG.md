@@ -1,5 +1,699 @@
 # Changelog
 
+## Changed: Neutral documentation website theme (2026-10-14)
+
+- Replaced purple and blue palettes with gray, white, and black in both light and dark modes across the homepage and documentation reader, including navigation, links, buttons, cards, code blocks, and focus indicators.
+- Consolidated shared color tokens in `Docs/website/src/styles/theme.css` and neutralized the crystal artwork, glow, logo filter, mobile backdrop, and browser theme color.
+- Updated `Docs/markdown/Engine_Wiring.md` with the website theme wiring.
+- Validation: `npm run build` and `npm run lint` pass in `Docs/website`.
+
+- Codex
+
+## Added: Armature and posable bones in the Hierarchy (2026-10-13)
+
+**Why:** a skinned gameobject (Y Bot, the Wolf) showed as one row in the Hierarchy. Its skeleton was invisible to the editor and there was no way to pose a bone: in Edit mode the mesh always drew its bind pose.
+
+- **Hierarchy:** every gameobject with a skinned model now has an **Armature** child, with the bone tree under it (Hips > Spine > ... in skeleton order). Bone rows show a bone icon and a marker when posed. They have no lock, visible or Delete; their context menu has **Reset Bone** / **Reset Pose**. The flat snapshot list is unchanged: bones travel on their gameobject's entry (`EditorObjectSnapshot.Bones`, new `BoneSnapshot`, `EditorObjectKind.Bone`), and `BridgeReconciler.ApplyBones` nests them, keeping the rows while the skeleton is the same.
+- **Rotating bones:** selecting a bone row selects a `BoneObject` (`Engine/Entities/BoneObject.cs`), a `TransformableObject` proxy with a negative editor ID (`BoneObject.IdFor/TryDecode`, resolved by `EditorBridge.LookupById`). The rotation gizmo turns it about its joint, and its child bones and the skinned vertices follow. Inspector Rotation is the bone's turn away from its rest pose; Position is the joint in the world (read-only); Scale is hidden. The Armature turns the whole skeleton about the model origin. Rotating the gameobject carries its armature with it.
+- **Pose:** `BasicEntity.BonePose` (`Engine/Animation/BonePose.cs`) keeps one rotation per posed bone, applied in the bone's own space by `AnimationPlayer` (new `Overrides`). `BonePose.UpdateAll` (every frame in `MainSceneLogic.Update`, Edit and Play) skins posed gameobjects that no Animator or limp Ragdoll is skinning, and gives an unposed one back its shared buffers. The Animator applies the pose on top of its clips (re-posing when it changes). Saved per gameobject as `BasicEntityRecord.BonePose` (bone name -> rotation, `""` = Armature; only when posed). It is a prefab instance key, copied on duplicate, and Stop restores the pose from before Play.
+- **Viewport:** the selected skinned gameobject (or the selected bone's) draws its armature as lines; the selected bone's branch is orange.
+- **Checks:** new `Tests/Components/BoneChecks.cs`. 8 checks without a GPU: IDs, pose math, the Armature, saving. 15 with `--graphics` on Y Bot: the Hierarchy tree, selecting a bone, gizmo rotation about the joint with the children following, Edit-mode skinning, the gameobject's rotation carrying the armature, Inspector rotation, save/load, duplicate, Play/Stop, Reset Bone/Pose, deleting the owner. Every check up to the known `PauseChecks` failure passes (1410). Not checked by hand in Anvil: the driver's screenshot showed other windows covering it.
+- **Docs:** `Docs/markdown/Skeletal_Animation.md` (Posing bones in the editor), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Material assets (2026-10-13)
+
+**Why:** a surface (colour, shader settings, textures) lived only on one gameobject's Material component. Reusing it meant copying every value and texture slot by hand, and changing it meant editing every gameobject again.
+
+- **Material asset files** (`Engine/Recources/MaterialAsset.cs`): `.mat` JSON in any Content folder (default `Content/Materials`) holding a Material component's whole surface: colour, roughness, metallic, emission, opacity, transparency, shadows, tiling, the shader type with its water/wet settings, and the Base Color/Normal/Roughness/Metallic/Mask/Displacement textures. `Create`, `Load("Brick")`/`Resolve`, `List`, `Write` (atomic), `UniquePath`, `Exists`. `Engine.csproj` ships `Content/**/*.mat`.
+- **Linking:** `MaterialComponent.MaterialPath` links a component to an asset. It keeps a copy of the values, saved in the scene as a fallback. `MaterialAsset.SyncScene` (every frame, Edit and Play, in `MainSceneLogic.Update`) updates every linked gameobject when the file changes: at once after Anvil writes it, within 30 frames after an outside edit. An unchanged asset never overwrites runtime changes. `MaterialComponent.Link`, `MaterialAsset.Assign(entity, nameOrPath)` (adds a Material component when needed), and `OnAdded` takes the asset's values for components added already linked.
+- **Capturing what a gameobject shows:** `MaterialAsset.Capture`/`CreateFrom` fill slots that follow the model with the model's own texture files (`TexturePathOf`: `Texture2D.Name` → Content source file, including model textures built as `<name>_0`). Maps the model doesn't have become None. `MaterialComponent` now loads `<path>_0` when a texture has no xnb of its own.
+- **Anvil:**
+  - Assets > right-click > **Create Material**; `.mat` files show with a palette icon.
+  - Clicking a material opens it in the Inspector (new `MaterialAssetViewModel`). Edits save to the file and every gameobject using it updates.
+  - Assign a material by dragging it onto a Hierarchy row, double-clicking it, Assets context menu > Assign to Selected GameObject, or the asset Inspector button.
+  - The Material component has an **Asset** slot (pick from a menu or drop a `.mat`), plus **Edit Asset**, **Unlink** and **Save as Material Asset**. Edits to a linked component write the asset (virtual `ComponentViewModel.Push`, `MaterialAsset.SaveFrom`).
+  - **GameObject > Create Material from Selection**.
+  - The Material editor body is now the shared `MaterialSurfaceTemplate` resource in `MainWindow.axaml`.
+  - The texture picker takes the Content folder from the window, so it also works in the asset Inspector.
+- **Checks:** new `Tests/Components/MaterialAssetChecks.cs`, 28 checks: files, lookup, linking, following writes and outside edits, runtime changes kept, linked Inspector edits writing the asset, Unlink, scene round trip, missing files, capture, and Anvil's view models. There are also 3 GPU checks: content textures map back to their source files, captured textures load again. All 1273 component checks pass. The GPU material checks now run first in `MaterialGraphicsChecks`, before the known `PauseChecks` failure. Checked in Anvil: Create Material from Selection on a cube, the linked Material section, Edit Asset, a Metallic change in the asset Inspector reaching the file and the cube live, and Assets > Create Material.
+- **Docs:** `Docs/markdown/Material_Component.md` (Material assets), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Input actions (2026-10-13)
+
+**Why:** scripts read raw keys and buttons (`GameInput.IsDown(Keys.W)`, `WasPressed(Buttons.A)`). Every script repeated its own keyboard and gamepad pairs, nothing could be rebound, and changing a control meant editing code.
+
+- **Actions** (`Engine/Logic/InputActions.cs`, `InputActionList.cs`): the project has a list of named actions in `Content/System/InputActions.json` (shipped in builds; the defaults when it is missing). Each is a **Button**, **Axis** or **Vector2** with any number of bindings:
+  - a single control, or a **composite** of keys: Up/Down/Left/Right for a Vector2 (W/A/S/D), Negative/Positive for an Axis (Q/E);
+  - an optional **Modifier** that must be held (Right Mouse + Mouse Delta, Left Ctrl + S), plus **Scale**, **Per Second** (times the frame time, so sticks and mouse deltas add up alike) and **Invert X/Y**.
+  - Each frame the strongest binding wins. Analog values press at 0.5 and release below 0.375. Actions read released while the debug console is open or when `Enabled` is false.
+  - Default set (like Unity's): Move, Look (already in degrees), Jump, Sprint, Crouch, Interact, Attack, Previous, Next and Pause, each on keyboard/mouse and gamepad.
+- **Controls** (`Engine/Logic/InputControls.cs`): paths for the whole keyboard (`Keyboard/<Keys>`), the mouse (buttons, `Mouse/Delta` with +Y up, `Mouse/Scroll`, `ScrollUp/Down`) and gamepads (buttons, triggers 0..1, sticks and D-pad as 2D values, stick axes and directions). Gamepad controls read every connected controller. `DetectPressed`/`DetectGamePad` find the control that went down, for rebinding.
+- **Script API** (`Engine/Scripting/ScriptBehaviour.Input.cs`): `WasActionPressed("Jump")`, `IsActionDown`, `WasActionReleased`, `GetAxis`, `GetVector("Move")`, `BindingText("Interact")` (the key or button for the device in use, for prompts) and `GetAction`. The action has `HeldTime`, `ActiveDevice`, `WasPressedWithin` + `ConsumePress` (input buffering), `Rebind`, `SetBinding`/`SetBindingPart` and `ResetBindings`. The same shortcuts are static on `GameInput`. An unknown name logs once and never fires. For rebinding menus: `InputActions.ListenForControl()`, `SaveBindings()`/`LoadBindings()` (SaveData, changed actions only) and `ResetBindings()`.
+- **`GameInput`**: updates the actions at the end of `Update`. New: `MouseDelta` (zero in Anvil while the cursor is over a panel), `RightStick`, `LeftTrigger`, `RightTrigger` and `KeysPressedThisFrame`. `LastDevice` now also switches to the gamepad on the right stick, and to the mouse only when it moves over the viewport.
+- **Anvil:** **Window > Input Actions...** (also **Edit Input Actions...** in the Window > Input panel) opens the editor:
+  - the action list (Add, Remove, Duplicate, Up/Down), the name and type, and the line to use in a script;
+  - binding cards with device and control dropdowns and **Listen**: press a key, click or scroll on the overlay, or use a gamepad button, trigger or stick direction. Esc cancels.
+  - Reset to Defaults. Save is disabled while a name is empty or used twice. Save writes the file, and the running engine reloads it on the next frame, also during Play.
+  - Stop restores the project's actions (`InputActions.Load` in `PlayModeController.Stop`), so script rebinds last one Play session.
+- **Key forwarding:** `MonoGameHost` now forwards the whole keyboard through the new `Anvil.Services.KeyMap`: digits, F1–F24, the numpad, punctuation, Insert/Delete/Home/End/Page Up/Page Down, Caps Lock and so on. Before, every key outside letters, modifiers, arrows and a few others was dropped, so it never reached scripts in Anvil's Play.
+- **Delete Project** writes the default input actions (`ProjectReset.WriteDefaultSettings`).
+- **Sample:** `CollisionTestPlayerScript` reads Move, Look, Sprint, Jump (with a 0.15 s input buffer), Interact and Attack. The CollisionTest scene now plays fully on a gamepad (the right stick looks, RT carries), and its HUD prompts show "E"/"X" and "Left Mouse"/"RT" for the device in use. F, Q and R stay raw keys.
+- **Checks:** new `Tests/Components/InputActionChecks.cs` (55 checks). They cover the shipped file, the JSON format and normalization, control paths, buttons, triggers and their hysteresis, composites, sticks, mouse look with its modifier, axes, modifiers, invert, buffering, console/disabled blocking, unknown names, reloads keeping instances, rebinding with saved overrides, listening, and the Anvil window's view models and key map. `ProjectResetChecks` checks the default actions, and the CollisionTest player checks now move through the Move action. All 1245 component checks pass. Checked in Anvil: the window lists the defaults, switching actions keeps their bindings, Listen picks a key (K) and a mouse button (Left Mouse), and Cancel writes nothing.
+- **Docs:** new `Docs/markdown/Input_Actions.md`; `Script_Behaviours.md`, `Scenes_and_Game_Flow.md`, `Collisions_and_Interaction.md`, `Input Architecture.md`, `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Fixed: Space/Enter stopping Play in Anvil (2026-10-13)
+
+**Why:** after you clicked Play, the Play button kept keyboard focus. Avalonia clicks a focused button on Space or Enter, so jumping or confirming a menu toggled Play off.
+
+- `MonoGameHost` (`Editor/Anvil/Controls/MonoGameHost.cs`): during Play, the window-level key handlers still forward Space/Enter to the engine, then mark them handled on the tunnel pass (`IsGameKeyInPlay`) so the focused button never sees them. A focused `TextBox` or `MenuItem` still gets the keys. Edit mode is unchanged.
+- **Docs:** `Docs/markdown/Engine_Wiring.md`.
+
+- Claude
+
+## Added: Non-humanoid ragdoll skeletons (2026-10-13)
+
+**Why:** ragdolls only understood human bone names. A four-legged animal's legs bent like a person's (or not at all), tails and snakes got one generic cone per part, and the facing was guessed from Left/Right names alone.
+
+- **Skeleton setting:** the Ragdoll component has a new **Skeleton** setting (`RagdollComponent.Skeleton`, enum `RagdollSkeletonType`, saved by name). The options are **Auto** (the default, so existing scenes behave as before), **Humanoid**, **Quadruped** and **Generic**. Anvil's Inspector shows it as a dropdown. Changing it rebuilds the ragdoll the next time it stands.
+- **Rig** (`Engine/Physics/RagdollRig.cs`):
+  - Rigs are cached per model and skeleton type (`RagdollRig.For(model, type)`, `Build(..., type)`), and `Type` holds the resolved type.
+  - Joints are now assigned after the rest directions are known, and each part gets `Flex`: the direction its hinge bends it.
+  - **Auto** picks Humanoid when human limb names sit on a body taller than 1.2× its length, Quadruped with exactly four legs, and Generic otherwise.
+  - A **leg** is a downward chain that never branches and reaches the bottom quarter of the body, so drooping tails and arms don't count.
+  - Without mirrored Left/Right names, the facing comes from the root towards a `head`/`skull` bone.
+- **New joint kinds:** `ForeShoulder`, `ForeElbow`, `ForeWrist`, `HindHip`, `HindKnee`, `HindHock`, `Paw`, `Tail`, `Limb` and `Chain`, with limits in `RagdollJointLimits.For`.
+  - **Quadruped:** front and hind legs get shoulder/hip cones, then elbow (bends forward), wrist (back), knee (back) and hock (forward) hinges. A front scapula is a `Clavicle` cone, and tails are chains.
+  - **Generic:** cones only. A part on a branching parent is a `Limb`, every other part a `Chain` link.
+  - `Ragdoll.AddJoint` builds each hinge from `Part.Flex` instead of checking for knees.
+- **Sample:**
+  - New built-in skinned model `Assets.Wolf` (`Content/GameObjects/Wolf/Wolf.fbx`): 1037 vertices, 21 bones with Rigify-style leg names and an `Idle` clip (tail wag, breathing, a look around). `Content/GameObjects/Wolf/Source/generate_wolf.py` builds it in headless Blender: skin-modifier body, Smart UV Project, automatic weights and FBX export.
+  - Added to `Content.mgcb` with the `SkinnedModelProcessor` (RotationX 90, Scale 1) and kept by Project Settings > Delete Project.
+  - `AnimationTest.obsc` gains **Wolf - Ragdoll (limp on Play)** (Skeleton Quadruped) and **Wolf - Ragdoll (click to knock over)** (Skeleton Auto, Impact 3). Both weigh 35 kg.
+- **Checks:** `RagdollChecks` gains a box quadruped with human limb names, checks of the forced Humanoid/Generic types, a snake rig and a fall test. In the fall test the quadruped topples and rests with all 8 hinges in range, and the snake drapes over a bar. The checks also cover the Skeleton setting's editor round trip and save, and the sample Wolves. `--graphics` adds the real Wolf: Auto picks Quadruped with 20 parts; it stands 1.07 m tall and 1.78 m long, plays its idle, falls onto its side within its hinges and stands back up. All 1189 component checks pass. With `--graphics`, everything up to the known `PauseChecks` failure passes (1298 checks).
+- **Checked in Anvil:** in AnimationTest the Inspector shows Skeleton Auto on the Wolf. In Play the Quadruped Wolf collapses onto its side, and **G** drops the Auto Wolf in one piece.
+- **Docs:** `Docs/markdown/Ragdoll_Physics.md` (skeleton types, quadruped and generic joint tables, the Wolf), `Docs/markdown/Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Prefabs (2026-10-12)
+
+**Why:** there was no way to save a set-up gameobject (model, material, components and their settings) and place copies of it. Every copy had to be built by hand, and a change had to be repeated on each one.
+
+- **Prefab files** (`Engine/Logic/Prefab.cs`): `.prefab` JSON in Content, `Content/Prefabs` by default. Each holds one gameobject record in the scene format, positioned at the origin, without component attachment IDs. `Prefab.Load` takes a name ("Crate") or a path ("Prefabs/Crate.prefab"; the extension and folder are optional). It finds a moved file by its name and caches the prefab until the file changes. `List`, `Resolve` and `UniquePath` are the other helpers. `Engine.csproj` copies `Content/**/*.prefab` into builds.
+- **Instances** (`Engine/Logic/PrefabUtility.cs`): a gameobject with `BasicEntity.PrefabPath`. Name, position and rotation are always the instance's own. The model, scale, Enabled flag, role, Persistent flag, material and every component setting follow the prefab, unless the instance overrides them.
+  - An override is a value that differs from the prefab, for example `Components/physics#0/Mass`, or a component the instance added or removed.
+  - Scenes save each instance's prefab path and overrides (`BasicEntityRecord.Prefab`/`PrefabOverrides`). On every load the instance is rebuilt from the prefab file, with its overrides on top (`PrefabUtility.Sync`), so prefab edits reach every scene.
+  - Script fields that point at the prefab's own gameobject point at each copy. Duplicating an instance gives another instance.
+- **Operations:** `CreatePrefab` (unique file name, links the gameobject). `ApplyToPrefab` writes the file; other instances in the scene update and keep their own overrides, and changed ones are rebuilt in place under the same ID (`MainSceneLogic.ReplaceGameObject`). `RevertToPrefab`, `Unpack` and `MainSceneLogic.InstantiatePrefab`. Apply, Revert and Unpack work in Edit mode only.
+- **Scripts:** `Instantiate(prefab, position, rotation)` with a `Prefab` or a name. Copies are never saved and are removed when the script stops, like `Spawn`. `LoadPrefab(name)` returns the prefab. A new `Prefab` Inspector field type (`ScriptFieldKind.Prefab`, saved as the prefab's path) has a picker in the Inspector that also accepts a prefab dragged from Assets.
+- **Anvil:**
+  - **Creating prefabs:** drag a gameobject from the Hierarchy into an Assets folder (empty space saves to `Prefabs`), or use Hierarchy right-click > Create Prefab, Inspector > Create Prefab, or GameObject > Create Prefab from Selection.
+  - **Placing prefabs:** prefabs show in Assets with a blue package icon. Double-click one, drag it into the Hierarchy, or right-click it > Place in Scene.
+  - **Instances:** they show blue in the Hierarchy. The Inspector's prefab bar shows the prefab's name, an override count (hover for the list) and **Apply** / **Revert** / **Unpack**, which are also in the Hierarchy's right-click menu.
+  - Bridge: `IEditorBridge.EnqueueCreatePrefab/ApplyPrefab/RevertPrefab/UnpackPrefab/InstantiatePrefab`. Snapshot: `EditorObjectSnapshot.PrefabPath`, plus `PrefabOverrides`/`PrefabMissing` for the selected gameobject only.
+- **Scene files:** gameobjects go through `SceneSerialization.CaptureEntity`/`RestoreEntity`, which prefabs share. Runtime-imported models now save and load by their registry key. They used to be skipped with "unregistered ModelDefinition", so this removes the old sharp edge #1 in Engine_Wiring.
+- **Checks:** `Tests/Components/PrefabChecks.cs` (37 checks). They cover create, lookup, instantiating from the editor and scripts, overrides, Apply/Revert/Unpack, scene save/load picking up a changed prefab (model, scale, settings) while keeping overrides, missing prefabs, Prefab script fields, and Anvil's view models and drop targets. All 1173 component checks pass. Checked in Anvil: Inspector > Create Prefab, double-clicking the prefab in Assets to place two instances (blue in the Hierarchy), "1 override" after changing one's scale, and Apply updating the other instance.
+- **Docs:** new `Docs/markdown/Prefabs.md`; `Docs/markdown/Script_Behaviours.md` (Prefab fields, `Instantiate`), `Docs/markdown/Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Decal texture picker (2026-10-12)
+
+**Why:** every new decal projected the same built-in scorch mark, and only `Assets` fields could be saved as decal textures.
+
+- **Anvil Inspector:** a new **Decal** section for selected decals with **Texture** (click to browse Content, or drag a texture from Assets) and **Reset** (back to the built-in scorch mark). `SceneObjectViewModel.IsDecal`/`DecalTexture`/`AssignDecalTexture`/`ResetDecalTextureCommand`; the Material slots and the decal share `MainWindow.PickContentTextureAsync`.
+- **Engine:** `Decal.TexturePath` (Content-relative source path) and `Decal.LoadTexture` (through the content manager, like Material textures; the texture must already be built). Copies keep the path and the Enabled flag.
+- **Bridge:** `IEditorBridge.EnqueueSetDecalTexture(id, path)`; a texture that can't load leaves the decal unchanged, null/empty resets it. `EditorObjectSnapshot.DecalTexture` carries the path to the Inspector (`BridgeReconciler`).
+- **Scene files:** `DecalRecord.TexturePath`. A picked texture saves its path (no `TextureKey`); built-in ones still save `TextureKey`. On load, a path that fails to load falls back to `DefaultDecal` and keeps the path, so a later save doesn't lose it.
+- **Renderer:** the decal blend is now premultiplied alpha (`One, InverseSourceAlpha`), matching the content pipeline default used by imported textures; straight alpha darkened their edges. `default_decal.png` is built premultiplied too.
+- **Checks:** `Tests/Components/GameObjectMenuChecks.cs` (unloadable path, copy, snapshot, save/load round trip, Reset). Checked in Anvil: the Decal section shows, and a scaled decal projects onto a cube.
+- **Docs:** `CLAUDE.md`, `Docs/markdown/Engine_Wiring.md`.
+
+- Claude
+
+## Added: Decals in the GameObject menu (2026-10-12)
+
+**Why:** the engine already drew, selected, saved and loaded deferred decals, but Anvil had no way to create one.
+
+- **Anvil:** new **GameObject > Effects > Decal** and a **Decal** entry in the Hierarchy "+" menu (`MainWindowViewModel.AddDecal`). It adds a 2 x 2 x 2 m decal box at the spawn point (5 m in front of the camera) that projects down its local -Z onto whatever is inside it; move/scale/rotate it with the gizmo or the Inspector.
+- **Bridge:** `IEditorBridge.EnqueueAddDecal(position, scale)` → `MainSceneLogic.EditorAddDecal`.
+- **Default decal texture:** a scorch mark, `Content/System/Decals/default_decal.png` (straight alpha, mipmapped, in `Content.mgcb`), loaded as `Assets.DefaultDecal`. Decals save their texture by `Assets` field name, so this is also what makes a new decal survive a save. It lives under `System`, so Delete Project keeps it.
+- **Renderer:** `DecalRenderModule.Draw` skips disabled decals (the Inspector's Enabled checkbox now hides one) and decals without a texture.
+- **Checks:** `Tests/Components/GameObjectMenuChecks.cs` covers the menu command and the Hierarchy "+" entry.
+- **Docs:** `Docs/markdown/Engine_Wiring.md` (adding objects from Anvil, decal texture keys), `CLAUDE.md`.
+
+- Claude
+
+## Added: Render features (custom shader passes) and the Render Pipeline panel (2026-10-12)
+
+**Why:** every shader belonged to the engine. There was no way to add your own pass to the render pipeline without editing `Renderer.cs` and `Content.mgcb`, and no view of the pipeline's order.
+
+- **Render features** (`Engine/Renderer/Features/`): user full-screen shaders, like URP Renderer Features.
+  - Each one runs at an injection point between the built-in passes (`RenderFeatureEvent`, saved by name): **After Opaques** (after the deferred compose, before forward/water/particles/weather), **After Transparents** (before TAA and bloom), **After Bloom** (HDR, before tonemapping) and **After Post Processing** (final LDR image, under the editor gizmos and game UI).
+  - Settings per feature: Name, Enabled, Show in Edit Mode, Blend (Replace / Alpha Blend / Additive / Multiply; blends keep the image's alpha), Intensity, Color, Params (float4), Technique (every pass is drawn).
+  - Project-wide, saved in run order in `Content/System/RenderFeatures.json`. The shaders live in `Content/RenderFeatures/<Name>.fx`.
+- **Live compiling** (`RenderFeatureCompiler`): the editor runs mgcb on one shader and copies the `.xnb` next to the `.fx`. It recompiles a second or two after each save (the files are checked every 30 frames) and keeps the last good version running when a compile fails. Errors show with file, line and column.
+  - The shaders are not in `Content.mgcb`, so a shader with errors can't break the content build. `Engine.csproj` copies the `.xnb` files and the JSON into builds.
+  - `AssetImporter.LocateMgcb`/`EscapeArg` are now `internal` for this.
+- **`RenderFeatureRenderModule`** draws the features of each injection point. Each feature reads the previous result as `ScreenTexture` and writes one of two scratch targets per format, then the result is copied back.
+  - After Bloom isn't drawn in place, because the image there can be the TAA history.
+  - Inputs set when a shader declares them: `ScreenTexture`, `DepthMap`, `NormalMap`, `AlbedoMap`, `Resolution`, `InverseResolution`, `Time`, `DeltaTime`, `Intensity`, `Color`, `Params`, `CameraPosition`, `FarClip`, `View`, `Projection`, `ViewProjection`, `InverseViewProjection`.
+  - A parameter of the wrong kind stops that feature with "Draw failed" instead of throwing every frame.
+- **New shader template** (`RenderFeatureShaderTemplate`): documents every input and has `WorldPosition`/`DecodeNormal` helpers. Its example is a tint and vignette, so a new feature is visible right away.
+- **Renderer:** `Renderer.Draw` calls `DrawRenderFeatures` at the four points.
+  - `DrawPostProcessing` now builds the final image once per frame (`_finalImage`). The second `RenderMode` call only draws it again, so post processing and After Post Processing features no longer run twice.
+- **Anvil:**
+  - New **Pipeline** button in the viewport toolbar (next to Environment and World) and **Window > Render Pipeline**.
+  - The Inspector's Render Pipeline view lists the whole pipeline in draw order: built-in passes (greyed out when switched off), injection points, and features with an Enabled checkbox and a compile status dot.
+  - **+ New** adds a feature at the chosen injection point.
+  - The selected feature's settings, Up/Down (moving across built-in passes changes the injection point), **Edit Shader** (VS Code or Notepad), **Recompile**, compiler errors, and **Delete Feature** (the shader goes to the Recycle Bin). Compile results are logged to the console.
+  - Code: `RenderPipelineViewModel`, `RenderPipelineRowViewModel`, `MainWindow.axaml`, `MainWindowViewModel.IsInspectorRenderPipelineView`.
+- **Bridge:** `GetRenderPipeline`, `RenderPipelineChanged`, `EnqueueRefreshRenderPipeline`, `EnqueueCreateRenderFeature`, `EnqueueMutateRenderFeature`, `EnqueueMoveRenderFeature`, `EnqueueRecompileRenderFeature`, `EnqueueDeleteRenderFeature`.
+- **Scripts:** `RenderFeatures.Find("Name")` to change a feature during Play. Stop puts the saved values back (`RestoreSaved`, called by `PlayModeController.Stop`).
+- **Delete Project:** removes `RenderFeatures.json` (`ProjectReset.DeletedSettings`) and the `RenderFeatures` folder, then reloads the features.
+- **Checks:** new `Tests/Components/RenderFeatureChecks.cs`.
+  - `Run` covers the pipeline listing and order, save/load, Up/Down across injection points, Stop restoring script changes, the bridge and the Anvil panel.
+  - `RunGraphics` compiles the template with mgcb and draws it. It also covers Color/Intensity, Show in Edit Mode, all four blend modes against a known image, two chained features, a compile error (reported with its line, last good shader kept), hot reload after a save, a draw failure, and loading at startup.
+  - All component checks pass, and every render feature graphics check passes (run before the other graphics checks). The full `--graphics` run still stops at `PauseChecks` ("the document is filled in…"), as before these changes.
+- **Docs:** new `Docs/markdown/Render_Features.md`; `Engine_Wiring.md` (§1, §2, §3.4, §4.1, §5, §9.1, §9.4, §9.6, §11, §13, §14); `CLAUDE.md`.
+
+- Claude
+
+## Added: Animator actions (named clips played from scripts) with crossfades and playback control (2026-10-12)
+
+**Why:** the Animator played one clip, fixed in the Inspector. Scripts couldn't switch to a walk while moving, play a one-shot, or stop and pause the animation.
+
+- **`AnimatorComponent.Actions`** (new `AnimationAction`: Name, Source, Clip, Speed, Loop).
+  - An empty Source uses the Animator's Source.
+  - An action's Speed multiplies the Animator's Speed. Negative plays backwards, and 0 holds the first frame.
+  - The new **Start Action** setting picks the action that plays when Play starts (empty means the existing clip, so old scenes behave as before).
+  - The new **Fade** setting (default 0.2 s) is how long switches blend.
+- **Script API on the Animator** (`ScriptBehaviour.Animator` is the new shortcut):
+  - `Play(name, fade)`: does nothing while that action already plays, so it is safe every frame. `""` is the default clip. It returns `false` and logs once for an unknown name.
+  - `CrossFade(name, seconds)`.
+  - `PlayOnce(name, then)`: returns to the previous action, or `then`, when it ends.
+  - `Stop()` (bind pose) and `Play()`; `Pause()` and `Resume()`; `Restart()`.
+  - State: `CurrentAction`, `IsPlayingAction`, `HasAction`/`FindAction`, a seekable `Time`, `NormalizedTime`, `Duration`, `IsFinished`, `IsFading`, `IsPaused`, `IsStopped`.
+  - The `ActionFinished` event.
+  - Calls made before the Animator has started (a script listed above it) are kept.
+- **Crossfades:** `AnimationPlayer.BlendFrom` blends two evaluated poses bone by bone (lerp/slerp). The outgoing clip keeps playing underneath with a smoothstep weight. Ragdolls follow the blended pose.
+- **Other behaviour changes:**
+  - Animator problems (missing clip, source or skeleton) are logged once per Play session instead of on every retry.
+  - A paused clip is not re-skinned.
+  - The Animator's Speed and Loop, and the current action's, are read live.
+- **Anvil Inspector > Animator:** an Actions list (Name, Source, Clip, Speed, Loop, Remove), Add Action, Start Action and Fade (`AnimatorComponentViewModel`, new `AnimationActionViewModel`, `MainWindow.axaml`).
+- **Sample:** `Y Bot - Actions (arrow keys)` in `Content/Scenes/AnimationTest.obsc`, with Idle/Walk/Run/Walk Back/Dash actions on the walk clip. It is driven by the new **Animator Actions** script (`Content/Scripts/AnimatorActionsScript.cs`, id `animator-actions`):
+  - arrow keys walk and turn, Shift runs
+  - Space dashes (`PlayOnce`)
+  - P pauses, K stops or plays
+- **Checks:** `AnimationChecks` gained inspector/save/clone checks for actions, selection order (Start Action, Play/Stop before the Animator starts, reset on Stop), `BlendFrom` math and the sample.
+  - With `--graphics` they also cover real-asset playback: crossfade halfway pose, no-op replay, one-shot return plus `ActionFinished`, pause/resume, backwards start, and stop/play.
+  - All component checks pass. The `--graphics` run passes every animation and ragdoll check, then stops at `PauseChecks` ("the document is filled in…"), which fails the same way without these changes.
+- **Docs:** `Skeletal_Animation.md` (Actions section, sample), `Script_Behaviours.md` (Animation helpers), `Engine_Wiring.md` (§7.2 Animator, §14), `CLAUDE.md`.
+
+- Claude
+
+## Added: `build-editor.ps1`, a Release build of the Anvil editor (2026-10-12)
+
+**Why:** there was no single command to produce a release `Anvil.exe`. `bootstrap.bat` is broken and only builds Debug.
+
+- **`build-editor.ps1`** (repo root, same style as `clean.ps1`) runs these steps:
+  - checks for `dotnet`
+  - restores the local dotnet tools (`dotnet-mgcb`) and NuGet packages for `win-x64`
+  - publishes `Editor/Anvil/Anvil.csproj` as a self-contained Release app into `Builds/Anvil` (git-ignored)
+  - checks that `Anvil.exe` and `Content/` were produced
+- **Options:** `-Clean` deletes the output folder first, `-Run` starts the editor afterwards, `-Output <folder>` picks another folder.
+- **Output folder:** the script refuses folders under `Engine/` and warns for folders outside the repo. Anvil finds its source `Engine/Content` by walking up from its exe, so asset import, saving and File > Build only work from inside the checkout.
+- **Steam:** the script copies `steam_appid.txt` next to the exe, so Steam starts in Play mode. Published games still leave it out.
+- **Checked:** both runs succeeded (752.8 MB, 88 `.xnb` files, fmod/steam/libvlc present), and the release editor started.
+- **Docs:** `Docs/markdown/Engine_Wiring.md` §1 documents the release build.
+
+- Claude
+
+## Added: Background scene loading with a loading screen, and the SceneLoadingTest sample (2026-10-12)
+
+**Why:** `GameFlow.LoadScene` read the file, built every gameobject and swapped scenes in one frame. A big scene froze the game, and there was no way to show a loading screen or the real progress.
+
+- **`GameFlow.LoadSceneAsync(index or name, carryPersistent = true, loadingScreen = true)`** returns a `SceneLoadOperation` (new, `Engine/Logic/SceneLoadOperation.cs`). The running scene keeps playing while the load runs:
+  - **Reading:** a worker thread streams the `.obsc` and its `.probes` and parses the JSON.
+  - **Building:** the game thread creates the gameobjects, lights and decals, `GameFlow.LoadBudgetMs` per frame (default 4 ms).
+  - **Swap:** on a frame of its own, through the same steps as before (persistent gameobjects, Stop/Play).
+  - **Finishing:** the new scene runs 3 frames before the load is Done.
+  - `Progress` is the real work: bytes read (0-30%), objects built (30-90%), finishing frames (90-100%).
+  - `AllowSceneActivation = false` holds a built scene at 90% ("press any key"). `Cancel()` works until the swap.
+  - It reports `Status`, `Error`, `BytesRead/TotalBytes`, `ObjectsBuilt/ObjectCount`, `Frames`, `Seconds`, `ReadMs`, `BuildMs`, `ActivationMs`, `LongestFrameMs` and `WaitedSeconds`.
+  - Coroutines can `yield return` a load (waits until it is built or ended).
+- **More `GameFlow` members:** `CurrentLoad`, `IsLoading`, `LastLoad`, `SceneLoaded`, `CancelLoad()`, `LoadBudgetMs`, `LoadingScreenDocument`.
+- **One loader for both kinds of load:** `LoadScene`/`ReloadScene`/`LoadNextScene` are now blocking `SceneLoadOperation`s (same one-frame behaviour), so they report their cost through `LastLoad` too. One load runs at a time: a new request cancels one that hasn't swapped yet. Stop and opening a scene in the editor cancel a load in progress.
+- **Loading screen:** `Content/UI/LoadingScreen.xml` + `.css`, driven by `Engine/Logic/LoadingScreen.cs`.
+  - It fades in over the running scene, and the swap waits until it is opaque. It stays up through the new scene's first frames, then fades out.
+  - It shows the scene name, the stage, a progress bar with percentage, bytes or objects so far, and the elapsed time. A light slides along the bar in real time, so hitches show.
+  - Held loads show `ReadyMessage`; failures show the error for 2.5 s.
+  - Replace it with `GameFlow.LoadingScreenDocument`. Kept by Delete Project (`ProjectReset.KeptPaths`).
+- **`GameUI`:** engine overlay layers (`OpenOverlay`, internal) draw above every script layer and survive `CloseAll`.
+- **`SceneSerialization`:** loading is split into `ReadFile` (thread-safe, returns a `SceneFile`) and `SceneBuilder` (one object per `Step`). `LoadFromFile` runs both at once and gives the same scene as before.
+- **`MainSceneLogic`:** `ApplyPendingSceneLoad` became `ActivateLoadedScene` (just the swap), called by `GameFlow.UpdateLoad` at the start of each update.
+- **Sample:** `Content/Scenes/SceneLoadingTest.obsc` (hub with spinning cubes) and `SceneLoadingArena.obsc` (a city of 1,550 gameobjects with falling spheres, 636 KB), both at the end of the scene list.
+  - Both run the new **Scene Loading Test** script (`Content/Scripts/SceneLoadingTestScript.cs`, HUD `Content/UI/SceneLoadingTest.xml`/`.css`) on their Main Camera.
+  - Load the Arena, the Hub, Auto Exposure Test or Water Test in Loading screen, Background or Blocking mode. Options: hold at ready, build budget 1-16 ms, Esc cancels.
+  - A frame-time graph that carries across the swap, and a table of the last loads' times, frames, worst frame and swap cost.
+- **Tests:** `Tests/Components/GameFlowChecks.cs` has 21 new checks:
+  - the build spread over frames, rising progress, the old scene active until the swap, IDs kept, the same result as `LoadFromFile`;
+  - holding at ready, cancel while reading and once built, replacement by a newer or blocking load;
+  - a blocking load's report, a broken file failing cleanly, Stop canceling.
+  - The persistence and project reset checks were updated for the new loader and the kept loading screen.
+- **Measured in the engine** (arena): the read takes 4-6 ms on the worker and the build 3 ms spread over frames. The swap takes 19-42 ms. The worst frame is the one after the swap: the new scene's HUD first layout (`GameUI.Update`, 70-90 ms) and BEPU creating the bodies (190 ms the first time). The loading screen covers it; Background mode shows it.
+- Docs: `Docs/markdown/Scenes_and_Game_Flow.md` (new sections), `Docs/markdown/Engine_Wiring.md` (section 7.5 rewritten), `CLAUDE.md`.
+
+- Claude
+
+## Changed: Anvil uses a neutral dark theme (2026-10-12)
+
+**Why:** The editor's dark theme was tinted blue-purple everywhere (backgrounds, borders, text) with a very saturated purple accent.
+
+- `Editor/Anvil/App.axaml`: the `Anvil*Brush` resources are now hue-free greys. Same order of lightness as before: title bar `#151515`, window `#1B1B1B`, panels `#232323`, borders `#313131`/`#3B3B3B`. Text goes from `#E8E8E8` to `#4A4A4A`.
+- The brand purple stays as the accent only, muted: Primary `#5A4FCF` (was `#4300D4`), selection `#433D7A` (was `#4101CA`).
+- Unchanged: the play button, log/warn/error colours and the asset-type icon colours.
+
+- Claude
+
+## Fixed: Anvil title bar shows an extra fullscreen button and draws "Anvil" over the logo (2026-10-12)
+
+**Why:** Avalonia 12 draws its own window decorations over the extended title bar. They add a fullscreen caption button (the arrows icon beside minimize) and paint the window title in the top-left corner, on top of Anvil's brand mark.
+
+- `Editor/Anvil/Views/MainWindow.axaml`: new `Window.WindowDecorationsTheme`, based on the Fluent `WindowDrawnDecorations` theme, that hides `PART_FullScreenButton`, `PART_PopoverFullScreenButton` and the title `TextBlock` inside `PART_TitleTextPanel`. The panel itself can't be hidden by a style: its `IsVisible` is a template binding to `HasTitleBar`, which outranks style setters. The window keeps `Title="Anvil"` for the taskbar.
+- The title bar's render-stats badges (DX11 / fps) moved closer to the caption buttons (right margin 160 → 136) now that one button is gone.
+- `Docs/markdown/Engine_Wiring.md`: notes on Anvil's window chrome.
+
+- Claude
+
+## Added: A tree, and a foliage wind shader with fluttering, backlit leaves (2026-10-12)
+
+**Why:** The engine had no vegetation. Nothing could sway in the scene wind, and masked materials (leaves) cast solid square shadows from the sun.
+
+- **Tree model:** New built-in `Assets.Tree` (model key `Tree`) in `Engine/Content/GameObjects/Tree/`.
+  - About 8 m tall, Z up, trunk base at the origin.
+  - **Bark** part: trunk with root flare, 12 limbs, ~100 twigs.
+  - **Leaves** part: ~1500 double-sided, cupped leaf cards. Each card's U is offset by a whole number that the shader reads as a per-card id.
+  - Painted textures: tileable bark albedo/normal, and a leaf sprig albedo/mask/normal with its stem at the bottom of the card.
+  - Everything comes from `Source/generate_tree.py` (Python + numpy + Pillow, fixed seed).
+  - `Assets.LoadTree` binds the new `TreeBarkMaterial` and `TreeLeavesMaterial` to the two parts and widens the bounds for the sway.
+  - The folder is in `ProjectReset.KeptPaths`, and the files are listed in `Content.mgcb`.
+- **Wind shader:** New include `Content/Shaders/Common/FoliageWind.fx` (`ApplyFoliageWind`), used by the G-buffer (`Gbuffer.fx`), the shadow maps (`ShadowMap.fx`) and editor picking/outlines (`IdRender.fx`). Shadows and the selection outline follow the tree. Three layers, computed from the vertex position alone, so it works on any tree model:
+  - **Trunk bend:** a lean plus gusts that roll downwind across the scene, growing with height². Each vertex keeps its distance to the trunk base, so the crown arcs over instead of stretching.
+  - **Branch sway:** grows with distance from the trunk axis.
+  - **Leaf flutter:** each card flaps along its normal and shimmers, fading to nothing at its stem. Both faces of a card move together.
+- **New material type `Foliage` (8)**, Inspector > Material > Shader > Foliage:
+  - Leaves are alpha-cut through the Mask.
+  - They flutter with the wind component.
+  - The sun shines through them: `IsFoliage`/`FoliageTransmission` in `DeferredDirectionalLight.fx`, shadow-tested on the leaf's back too.
+- **Cut-out sun shadows:** New `DrawLinearDepthAlpha` technique, used by `ShadowMapRenderModule` for every masked material under a directional light. Before, only point lights alpha-tested; Sponza's plants benefit too.
+- **Foliage Wind component** (`foliage-wind`, `Engine/Components/FoliageWindComponent.cs`):
+  - Settings: Trunk Bend, Branch Sway, Leaf Flutter, Wind Scale, Min Wind, Speed, Height (0 = the model's height).
+  - It follows Environment > Wind Speed/Direction in Edit and Play and holds while paused.
+  - `UpdateAll` (called from `MainSceneLogic.Update`) advances each tree's wind clock (faster in stronger wind, slower for taller trees) and puts a `FoliageWind` on the new `TransformMatrix.Wind`. It flags the transform as moved every frame so the shadow maps redraw.
+- **Renderer plumbing:**
+  - New `Engine/Renderer/Helper/FoliageWind.cs` (`FoliageWind`, `FoliageWindParameters`, `IFoliageWindModule`).
+  - `MeshMaterialLibrary.Draw` sets the wind per material and per instance.
+  - The G-buffer and shadow modules gained `ViewProjection`/`View`.
+  - `Shaders.cs` gained `IdRenderEffectParameterViewProjection` and `IdRenderEffectWind`.
+- **Anvil:**
+  - Foliage Wind inspector (`FoliageWindComponentViewModel` + template).
+  - Foliage in the Shader list.
+  - New **GameObject > Nature > Tree** (also in the Hierarchy "+" menu): the tree with Foliage Wind attached.
+- **Sample:** New `Content/Scenes/FoliageTest.obsc`: six trees of different sizes and rotations on rocky dirt, a 5 m/s breeze, an afternoon sun, and one tree sheltered from the wind (Wind Scale 0.4). It is not in the scene list.
+- **Docs:** New `Docs/markdown/Foliage_Wind.md`. Updated `Material_Component.md` (Foliage shader), `Engine_Wiring.md` (frame loop, components, material library, materials, shadows, picking, "where to start") and `CLAUDE.md` (repo map + recipe).
+- **Checks:** New `Tests/Components/FoliageChecks.cs`, and the GameObject menu check now covers Tree.
+  - Without a GPU: wind state, inspector edits, save round-trip, cloning, and the sample scene.
+  - With `--graphics`: the shaders compile; the tree's two parts and materials; the cut-out crown; motion over time with a planted trunk base; a rest pose when every layer is 0; flutter on the leaves only; wind in the shadow map; mask cut-outs in the sun's shadow map.
+
+  All component checks pass. `--graphics` still stops at the existing pause-menu check (`PauseChecks`, whose UI files had uncommitted edits before this session). With that one check skipped, every graphics check passes, including all the foliage ones. I also looked at FoliageTest in the standalone engine (temporary boot into the scene, scene list restored afterwards), but not in Anvil.
+
+- Claude
+
+## Changed: A more realistic explosion in the particle sample (2026-10-12)
+
+**Why:** The ParticleTest explosion was about 30 Additive Smoke Sheet particles at Brightness 4. They added up to flat, speckled orange blobs, with no soot, no smoke growing out of the fire and nothing thrown out but sparks.
+
+- **Engine, Fireball Sheet texture:** New built-in `ParticleTexture.FireballSheet`, a 4 x 4 flipbook painted in `ParticleTextures.Fireball`. Each frame is a lumpy cloud of rolling billows. The temperature is hottest in the middle of each billow and drops in the crevices, at the rim and with age. Over the frames it goes white-hot, then orange and soot red, then dark grey soot that tears into wisps. Fire colours come from `FireRamp`. It is meant for Alpha blending, so the soot hides what is behind it while Brightness makes the fire glow. Anvil lists it automatically in the Texture box.
+- **Sample (`ParticleTest.obsc`), the explosion is now seven systems:**
+  - **Explosion Fireball:** Fireball Sheet with Alpha blend, Distance sort and Brightness 3. About 20 large particles burst out in two waves, stop on Drag 4.5, and rise on an upward Force with some Noise. Color over Lifetime darkens to grey once the fire has burned (the soot frames). Its light is stronger (Intensity 60, Range 20) and fades as the colour darkens.
+  - **Explosion Smoke:** darker, delayed 0.25 s, rising faster (Force 2), in two bursts. Its gameobject sits 15 cm lower so it sorts behind the fireball when seen from above.
+  - **Explosion Dust** (was Explosion Shockwave, which drew an Additive ring): a Circle shape on the ground throws Lit dust puffs outwards with strong Drag.
+  - **Explosion Debris:** fewer, finer sparks with a little Drag.
+  - **New Explosion Chunks:** 7-10 burning Glow fragments that fall with gravity, bounce off colliders and leave a smoke Trail through the **new Explosion Chunk Smoke** system (Play On Awake off, World).
+  - **Explosion Flash:** shorter and smaller.
+- **Docs:** New "A realistic explosion" section in `Docs/markdown/Particle_Systems.md` (also covers the station table, the texture list and implementation notes). Updated `Engine_Wiring.md` (change table) and `CLAUDE.md` (particle notes plus a recipe).
+- **Checks:** The sample-scene check now expects seven one-shot explosion systems. It also checks for the Alpha-blended Fireball Sheet fireball, the Lit smoke and dust, and the chunks' Trail into a waiting World-space system. The existing "every texture draws" GPU check covers the new texture.
+
+  All component checks pass. `--graphics` still stops at the existing pause-menu check (`PauseChecks`). Run on their own, every particle GPU check passes, including "the FireballSheet texture draws". I looked at the new explosion in a temporary offscreen render of its systems at 0.08-3.5 s (since removed), not in Anvil.
+
+- Claude
+
+## Added: Particle systems that emit light, and a more realistic campfire (2026-10-12)
+
+**Why:** Particle effects couldn't light the scene. The campfire needed a separate static point light that didn't flicker, follow the flames or go out with them. Its flames were a single white teardrop texture tinted orange.
+
+- **Engine, Lights module:** New `ParticleLightsModule` (`ParticleSystemComponent.Lights`, saved in the scene) with two modes, `ParticleLightMode`:
+  - **System:** one light at the glow-weighted centre of the particles, eased so it glides, plus an Offset. With Alpha Affects Intensity it follows the particles' glow relative to their recent peak, so it fades when a fire stops or an explosion cools. Optional Cast Shadows.
+  - **Per Particle:** lights on a share of the particles (Ratio), at most Max Lights (16), the brightest carriers first. Alpha Affects Intensity and Size Affects Range apply per light.
+  - Shared: Color or Use Particle Color, Intensity, Range (a scene Point Light's scale), and Flicker + Flicker Speed (two octaves of noise; a System light also sways a few centimetres).
+- **Engine, light pool:** New `Engine/Particles/ParticleLights.cs` holds engine-owned `PointLight`s, refreshed at the end of each simulation step (`ParticleSimulation.Lights`) and cleared with the particles. They are never added to `Scene.PointLights`, so they are not saved, picked or listed. New `ParticleSystemComponent.CollectLights` and `LightCount`.
+- **Renderer:** `Renderer.Draw` copies the scene's point lights into a per-frame list (`_frameLights`) and appends the particle lights. That list feeds shadow maps, deferred lights, froxel fog, the forward pass and particles. The editor ID pass and light icons keep the scene's own list. `ForwardRenderModule.SetupLighting` now reallocates its light arrays only when the clamped light count changes, instead of whenever the list length changes.
+- **Lit particles take point lights:** `ParticleRenderModule.SetPointLights` picks the 4 point lights that shine most on each Lit system. `Particles.fx` adds them with the deferred point light falloff and a wrap/back-light term, so smoke over a fire glows orange.
+- **Flame Sheet texture:** New built-in `ParticleTexture.FlameSheet`, a 4 x 4 flipbook painted in `ParticleTextures.Flame`. A flame tongue is born as a low bulb (blue at its root), licks upwards, tears into wisps, lifts off and burns away. It is coloured by temperature through `FireRamp` (soot red, orange, yellow, pale yellow-white).
+- **Anvil:** New **Lights** expander in the Particle System inspector (`ParticleSystemComponentViewModel` + `MainWindow.axaml`). Offset and Cast Shadows show for System; Ratio, Max Lights and Size Affects Range show for Per Particle.
+- **Sample (`ParticleTest.obsc`):**
+  - The Campfire is now Flame Sheet tongues: fewer, larger particles leaning with the wind, with a flickering System light (Intensity 6, Range 10, Flicker 0.35).
+  - New **Campfire Core** system: a hot Glow bed at the base of the flames.
+  - Removed the static "Campfire Light" point light.
+  - The Spark Fountain has Per Particle lights. The Explosion Fireball has a System light that fades as it cools.
+- **Docs:** New "Lights" and "A realistic fire" sections in `Docs/markdown/Particle_Systems.md`. Updated `Engine_Wiring.md` (component notes, renderer phase 1b, particle pass, change table) and `CLAUDE.md`.
+- **Checks:** New `ParticleChecks.CheckLights` covers:
+  - System position, offset, intensity, fading with the particles and going out;
+  - Use Particle Color, Flicker and Cast Shadows;
+  - Per Particle carriers, Ratio 0 and turning the module off;
+  - Stop(clear) and `CollectLights`, including skipping disabled systems.
+
+  Saving, inspector and sample-scene checks cover the module and the new campfire. A new GPU check confirms that point lights shade Lit particles, and the FlameSheet texture draws.
+
+  All component checks pass. `--graphics` stops at an existing pause-menu check (`PauseChecks`: it expects 9 settings rows, and the uncommitted audio-volume menu work changed that). With that one check skipped, every particle GPU check passes. The new campfire was looked at in an offscreen render of its particle systems, not in Anvil.
+
+- Claude
+
+## Added: Script timers, coroutines, tweens, easing and maths/random helpers (2026-10-12)
+
+**Why:** Scripts had only `DeltaTime`. Every delay, cooldown, repeat or smooth movement was a hand-written float countdown in `Update`.
+
+- **Engine, scripting:** `ScriptBehaviour` is now `partial`. The new `Engine/Scripting/ScriptBehaviour.Timing.cs` adds:
+  - Timers: `After(seconds, action)`, `Every(seconds, action, times)` (catches up on missed runs after a long frame) and `StartTimer(seconds)` (a countdown or cooldown with no action). `CancelAllTimers()` cancels them all.
+  - Tweens: `Tween` for `float`, `Vector3` and `Color`, a 0-1 progress overload, and `MoveTo`/`MoveBy`/`ScaleTo`/`RotateTo` (quaternion slerp).
+  - Coroutines: `StartCoroutine(IEnumerator)`, `StopCoroutine` and `StopAllCoroutines`.
+  - `Time` (game-time seconds since the script started) and `FrameCount`.
+- **Timer handle:** Timers and tweens return a `ScriptTimer` (`Engine/Scripting/ScriptTimer.cs`):
+  - `Pause/Resume/Cancel/Complete/Restart`, `OnComplete`, and `Loop(cycles, pingPong)`.
+  - State: `Elapsed/Remaining/Progress/Completed/IsDone/IsCancelled`.
+- **Coroutine yields:** `Engine/Scripting/ScriptCoroutine.cs` adds `ScriptCoroutine`. A coroutine can yield:
+  - `null` or a number of seconds;
+  - `WaitForSeconds`, `WaitForSecondsRealtime`, `WaitForFrames`, `WaitUntil` or `WaitWhile`;
+  - a `ScriptTimer`, another coroutine, or a nested `IEnumerator`.
+- **Easing:** `Engine/Scripting/Ease.cs` adds the `Ease` enum: Linear, SmoothStep, and In/Out/InOut variants of Quad, Cubic, Quart, Sine, Expo, Circ, Back, Elastic and Bounce. `Ease` also works as a serialized script field. `Easing.Evaluate` gives a curve's value.
+- **Maths and random:** `Engine/Scripting/ScriptMath.cs` adds two static classes.
+  - `ScriptMath`: `Damp`/`DampAngle` (the same result at any frame rate), `SmoothDamp`, `MoveTowards`, `InverseLerp`, `Remap`, `Repeat`, `PingPong`, `DeltaAngle`, `Approximately`.
+  - `ScriptRandom`: `Seed`, `Value`, `Range` (the `int` max is exclusive), `Chance`, `Sign`, `OnUnitSphere`, `InsideUnitSphere`, `InsideUnitCircle`, `Color`, `Pick`, `Shuffle`.
+- **Timing rules:** Timers, tweens and coroutines advance after the script's `Update` in game time and end when the script stops (`Shutdown`).
+  - While `GameFlow.Paused`, game-time timers hold even in scripts that update while paused. Pass `realtime: true` to keep one counting.
+  - A callback that throws stops the script, like a throwing `Update`.
+- **Sample:** New `Content/Scripts/TimerExampleScript.cs`, registered as **Timer Example**. Attach it to any gameobject: it breathes (a ping-pong scale tween), counts down with `After`/`Every`, then hops (a coroutine yielding `MoveTo`).
+- **Docs:** New "Timers, coroutines and tweens" section in `Docs/markdown/Script_Behaviours.md`. Updated `Engine_Wiring.md` (7.4 Scripts) and `CLAUDE.md`.
+- **Checks:** New `Tests/Components/ScriptTimingChecks.cs` covers:
+  - timer runs, catch-up, pause/cancel/restart and cooldowns;
+  - tween values, easing endpoints, ping-pong and `Complete`;
+  - every coroutine yield kind;
+  - game time against realtime while paused, and that timers run after `Update`;
+  - cleanup on stop, and that an exception in a callback faults the script;
+  - the transform tweens, the Timer Example, and `ScriptMath`/`ScriptRandom`.
+
+  All component checks pass. The Timer Example was not run in Anvil.
+
+- Claude
+
+## Added: Music and sound effects volumes, and audio settings in the game menus (2026-10-11)
+
+**Why:** The engine had only a master volume. Everything played on FMOD's master group, so music and sound effects could not be set apart, and scripts had no way to play music.
+
+- **Engine, buses:** New `AudioBus` enum (`Effects`, `Music`, `Master`; saved by name) in `Engine/Recources/AudioManager.cs`.
+  - `AudioManager.Initialize` creates FMOD channel groups `Music` and `Effects` under the master group; `Dispose` releases them.
+  - New `MusicVolume`, `EffectsVolume`, `GetVolume(bus)`, `SetVolume(bus, volume)` and `IsMusicPlaying`, also on the `Audio` facade. Volumes clamp to 0-1 (an invalid number sets 1).
+  - `PlayMusic` plays on Music (and takes `contentRelativePath`). `PlaySound`/`PlaySound3D` take an optional `bus`, Effects by default.
+  - `Audio.Instance` is now set before FMOD starts, so the volume settings keep their values even without FMOD. `Audio.MasterVolume` reads 1 (was 0) before audio exists.
+- **Scripts:** `ScriptBehaviour.PlayMusic(clip, volume, loop)` and `StopMusic()`. `PlaySound`/`PlaySound3D`/`PlaySoundAt` take an optional `bus`.
+- **Audio component:** New `Output` (Effects or Music), saved by name, with an Output dropdown in Anvil's Inspector. Changing it while playing restarts the clip on the new bus.
+- **Menus:** `MenuSettings.Audio()` (Master volume, Music volume, Sound effects volume, 10% steps) plus `MusicVolume()`, `EffectsVolume()` and `Volume(name, description, bus)`.
+  - The main menu and the pause menu Settings pages start with the three rows. The main menu's Settings description now mentions sound.
+  - Both settings lists now show 8 rows at a time and scroll with the selection, with "‹ more" / "more ›" hints (`#settings-scroll-up/down` in `MainMenu`/`PauseMenu` `.xml`/`.css`). The pause menu list was already full.
+- **Docs:** New `Docs/markdown/Audio_Volume.md` (buses, API, menu rows, saving the volume, adding a bus). Updated `Audio_Architecture.md`, `Script_Behaviours.md`, `Engine_Wiring.md` and `CLAUDE.md`.
+- **Checks:** `Tests/Components/Program.cs` checks bus volumes and clamping, the menu rows and the Output save format. With `--audio` it checks on FMOD that Audio components play on the Effects group, `PlayMusic` on the Music group, and that changing Output moves a playing clip. All component checks pass with `--audio`. The menus were not run and checked on screen.
+
+- Claude
+
+## Added: Water splashes, raindrop rings on water and the WaterTest sample scene (2026-10-11)
+
+**Why:** Objects dropped into water floated or sank without any visible impact, rain didn't touch water surfaces, and no scene was set up for testing water physics and the water shader.
+
+- **Engine, water contacts:** `ScenePhysics.UpdateWaterContacts` runs after each physics step. It checks every Dynamic body (with or without Buoyancy) against the water volumes of that step.
+  - A body is in when its collider's bottom drops below the wave height under its centre. It is out when the bottom rises more than `WaterExitMargin` (5 cm) above it, so floaters don't flicker in and out.
+  - Each crossing is a new `WaterContact` (`Engine/Physics/WaterContact.cs`): point, velocity, speed, radius, mass.
+  - Crossings go to the new events `ScenePhysics.WaterEntered`/`WaterExited`, then to the new script hooks `ScriptBehaviour.OnWaterEnter`/`OnWaterExit`.
+  - Also new: `ScenePhysics.IsInWater` and `RaycastWater` (ordinary raycasts ignore water).
+- **Engine, splashes:** New `Engine/Particles/WaterSplashes.cs`, owned by `MainSceneLogic.WaterSplashes`. It is connected to the water events, updated each frame (frozen while paused) and cleared on scene swap and Stop.
+  - Entries at 1.2 m/s or faster throw a crown of droplets, a central jet for hard hits and a spray puff, scaled by speed and body size. The droplets come from a pool of 12 engine-owned particle systems that have no gameobject. They die when they land back on the water.
+  - Slower entries, exits and every splash leave a ring.
+  - Script API: `ScriptBehaviour.Splash(point, speed, radius)`, `WaterSplashes` (`AddRipple`, `Enabled`, `Splashed` event, counts).
+- **Rendering:**
+  - `ParticleRenderModule.Draw` takes `extraSystems` (the splash droplets).
+  - `WaterRenderModule` passes up to 16 rings (`SplashCount/SplashPositions/SplashShapes`) and `RainRipples` (the weather's puddle-ripple strength) to `Water.fx`.
+  - `Water.fx` has two new functions. `SplashRings` draws expanding wave packets with bubbly foam where bodies went in; this foam shows even when the material's Foam is 0. `RainRings` draws raindrop rings that fade with distance and pixel size.
+- **Sample:** New `Content/Scenes/WaterTest.obsc`, added to the end of the scene list.
+  - A rainy deck with a pool (gentle waves, underwater lights, raft, buoys, a barrel, a sunken crate) and a wave tank (0.9 m swell, boat, crates, ball).
+  - A diving tower and lamp posts.
+  - New `Content/Scripts/WaterTestScript.cs` ("Water Test", registered) with HUD `Content/UI/WaterTest.xml/.css`. Click drops a beach ball, crate, plank or boulder (1-4) from an adjustable height. It also has volleys, splash-only, pool wave presets, rain toggle and intensity, automatic drops, time of day and clear. Waves and dropped objects are restored on Stop.
+- **Checks:** New `Tests/Components/WaterSplashChecks.cs`:
+  - entry speed, point and radius; hooks fire once; non-buoyant and outside bodies;
+  - no flicker while floating; exits; water raycasts;
+  - splash droplets rise and die at the surface; ring ageing, pause and limits; slow entries; slot reuse; invalid input; Clear; Disabled;
+  - the sample scene's setup, plus an 8 s physics run: every floater stays on its water, the sunken crate stays on the floor, and nothing splashes at Play start.
+  - `MaterialGraphicsChecks` (`--graphics`) checks on the GPU that splash rings and rain rings change the rendered water.
+  - All component checks pass, with and without `--graphics`. The scene was also run in the standalone engine and checked from screenshots (splashes, rings, floaters, HUD).
+- **Docs:** New `Docs/markdown/Water.md`. Updated `Script_Behaviours.md` (Water Test, Water helpers), `Engine_Wiring.md` (frame order, water contacts, pass 17, ownership, where to start), `Weather.md`, `Material_Component.md`, `Particle_Systems.md` and `CLAUDE.md`.
+
+- Claude
+
+## Added: SaveData, save and load files from scripts (2026-10-11)
+
+**Why:** Games had no way to keep progress, settings or high scores between runs. The sample menus even note that their settings "are not saved".
+
+- **Engine:** New static `SaveData` (`Engine/Logic/SaveData.cs`, namespace `Engine.Logic`), callable from scripts, components and engine code.
+  - **Objects:** `Save<T>`, `SaveAsync<T>`, `Load<T>(name, fallback)` and `TryLoad<T>`. Saved as indented JSON: public fields and properties, enums by name, and `Vector2/3/4`, `Quaternion`, `Color`, `Point` and `Matrix` as number arrays. Loading accepts any case, comments, trailing commas and a byte order mark. `SaveData.JsonOptions` exposes these settings.
+  - **Text and bytes:** `SaveText/LoadText` and `SaveBytes/LoadBytes`.
+  - **Managing saves:** `Exists`, `Delete` (with the backup), `List(subfolder)` (names you can load directly), `GetLastWriteTime`, `GetPath` and `Flush`.
+  - **Folder:** `%LOCALAPPDATA%/<game name>/Saves`, where the game name is the Game Settings window name. Play inside Anvil and the built game share it. `SaveData.Folder` overrides it.
+  - **Names:** relative paths. A name without an extension gets `.json`. Names that are rooted, use `..`, contain invalid characters or end in `.bak`/`.tmp` throw `ArgumentException`.
+  - **Safety:** every write goes to `<file>.tmp`, is flushed, then replaces the file, keeping the previous one as `<file>.bak`. A damaged save loads from its backup. Writes to one file stay in order, including async ones. Reads wait for pending writes. Disk and format errors are logged and returned as false or the fallback, never thrown.
+  - `Engine.UnloadContent` calls `SaveData.Flush()`, so async saves finish before exit.
+- **Checks:** New `Tests/Components/SaveDataChecks.cs` covers:
+  - the default folder and round trips of every supported type;
+  - subfolders and hand-edited JSON;
+  - backups and fallbacks;
+  - text and bytes;
+  - `List`, `GetLastWriteTime` and `Delete`;
+  - refused names;
+  - async ordering, snapshots and `Flush`.
+  All component checks pass. The examples in the new doc were compiled against the engine.
+- **Docs:** New `Docs/markdown/Save_Data.md`. Also updated `Script_Behaviours.md` (Game flow table), `Engine_Wiring.md` (static state, where to start) and `CLAUDE.md`.
+
+- Claude
+
+## Added: Editor ground grid, toggled from Anvil's viewport toolbar (2026-10-11)
+
+**Why:** The viewport had no reference for where the ground is (Z = 0), so it was hard to judge heights and place objects on the floor.
+
+- **Engine:**
+  - New `GridRenderModule` + `Content/Shaders/Editor/Grid.fx` (added to `Content.mgcb`): an infinite grid on the ground plane, drawn as one full-screen pass over the final image, after `DrawIds` and before outlines and gizmos.
+  - Each pixel's view ray is cut with the plane. Lines are anti-aliased with screen-space derivatives. Three levels (1, 10 and 100 cells) fade in and out with how many pixels a cell covers, so the grid stays readable from any height. The grid fades with distance and at grazing angles.
+  - The X axis is drawn red and the Y axis green.
+  - Geometry in front of the plane hides the grid (linear G-buffer depth). A floor lying on the plane keeps the grid visible.
+  - Only drawn in edit mode: never in Play or in the standalone game.
+  - New settings in `GameSettings`: `e_showgrid` (default on), `e_gridheight` (ground Z, 0), `e_gridcellsize` (1 m) and `e_gridfadedistance` (250 m).
+- **Anvil:** New **Grid** button (grid icon) in the viewport toolbar, before Stats. `MainWindowViewModel.IsGridVisible` / `ToggleGridCommand` set `e_showgrid` on the game thread. The toggle isn't saved: every session starts with the grid on.
+- **Checks:** New `Tests/Components/GridChecks.cs`:
+  - Run: the toggle reaches the engine through the bridge.
+  - `--graphics`: the grid draws below the horizon, leaves the sky clear, is hidden behind nearer depth, draws coloured axes, and draws nothing when off or in Play. Set `OBSIDIAN_GRID_PNG` to save the frame.
+  - All component checks pass, with and without `--graphics`. The look was checked on that offscreen frame, not in the Anvil viewport.
+- **Docs:** `Engine_Wiring.md` (module order, Draw step 22, where to start) and `CLAUDE.md`.
+
+- Claude
+
+## Added: Indoor god rays (Fog Volumes, per-scene fog), fixed shafts facing the sun and objects vanishing in view (2026-10-11)
+
+**Why:** GodRayTest's shafts looked right from the side but not when facing the light, nothing like a dark attic with beams through a hole in the roof, and stretched objects (the roof slats) disappeared while still on screen. Four causes, found by rendering GodRayTest in a hidden engine instance:
+1. Culling sized every bounding sphere by `Scale.X` only, so a 3 × 60 slat got a sphere 20× too small. It was culled from the view as soon as its centre left the screen, and from the sun's shadow map too, which also removed the gaps between shafts.
+2. Facing the sun, a shaft sits in front of the sky (the gap it shines through), and `DeferredCompose.fx` multiplied all fog on sky pixels by Sky Fog Strength (0.1).
+3. Fog density is 0 within 30 m of the camera and ramps to full only at 400 m, so shafts inside a room had no fog to light. Fog dense enough for indoor shafts whites out the open air, and the fog settings were global and never saved.
+4. Eye adaptation lifted a dark room to near-white (+3 EV).
+
+- **Engine:**
+  - `MeshLibrary.UpdatePositionAndCheckRender` (view and shadow-map culling) sizes the sphere by the largest axis scale of the world matrix.
+  - Sky pixels keep the froxel fog in front of them up to **Sky Shaft Distance** (default 200 m) at full strength; only the haze beyond it is scaled by Sky Fog Strength.
+  - Volumetric fog is per scene: `EnvironmentSettings` gains `FogDensity`, `FogAbsorption`, `FogSunScatter`, `FogLightScatter`, `FogAnisotropy`, `FogStartDistance`, `FogFullDistance`, `FogNearDensity` (new: fraction of the density kept before Start), `FogSkyStrength`, `FogSkyShaftDistance` and `MaxAutoExposure`. Defaults equal the old global values, so older scenes look the same. `Renderer.ApplySceneFog` copies them into `GameSettings.g_Froxel*` every frame (new `g_FroxelNearDensity`, `g_FroxelSkyShaftDistance`), and `AutoExposureFilter.SceneMaxExposure` caps eye adaptation (it can only lower the global Max EV).
+  - New **Fog Volume** component (`FogVolumeComponent`, type id `fog-volume`): Density and Edge Fade inside a box (the gameobject's transform, like a Cube), without the distance ramp. Its mesh is hidden while enabled. `FroxelRenderModule.SetFogVolumes` sends up to 8 boxes to `Froxel.fx` (`FogVolumeDensity`); `DensityAt` matches the shader.
+- **Anvil:**
+  - Inspector > Environment gains a **Volumetric Fog** section with the fields above and **Reset fog**.
+  - Post Processing > Volumetric Fog keeps only Enable Fog and History.
+  - Add Component > **Fog Volume** (Density, Edge Fade).
+- **Sample:** `GodRayTest.obsc` gains a closed attic at (-105, 0): an east window, a slatted roof skylight, rafters, a couch and a crate, and an **Attic Dust** Fog Volume. The day/night cycle is off (the saved sun at (-0.6, 0.1, -0.8) is used), and Max Auto Exposure is 0 EV. The hall outdoors keeps the default fog.
+- **Checks:** new `Tests/Components/FogChecks.cs` covers scene fog (inspector, renderer copy, save/load, old scenes, normalizing, reset), Fog Volume (Add Component, inspector, box and edge fade, collection, mesh hiding, save, clone, removal) and culling a stretched mesh. `SampleSceneChecks.RunGodRays` is updated for the attic. All component checks pass, with and without `--graphics`. The look was checked on offscreen frames of the real engine (attic from below the skylight and towards the window, hall from the side), not in the Anvil viewport.
+- **Docs:** `Scene_Lighting_and_Fog.md` (Volumetric fog, Fog Volume, GodRayTest, current issues), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Volumetric particle systems and Counter-Strike 2 style voxel smoke (2026-10-11)
+
+**Why:** Smoke made of billboards looks flat up close, can't be walked into and can't be shot through. A Volumetric option draws a particle system as a lit volume, and a Voxels source recreates the CS2 smoke grenade: it floods the space around it, stays out of walls, and bullets and HE grenades open holes in it.
+
+- **Engine:**
+  - New **Volumetric** module on the Particle System (`ParticleVolumetricModule`, saved as `Volumetric`). Settings: Enabled, Source (`ParticleVolumeSource.Particles` / `Voxels`), Draw Particles, Density, Noise Erosion/Scale/Speed, Steps, Refill Time. Particles source: Resolution. Voxels source: Voxel Size, Volume, Max Radius, Expand Time, Fade Time, Flatten.
+  - New `Engine/Particles/ParticleVolume.cs` (GPU-free) holds the density grid and is updated at the end of each simulation step.
+    - Particles source: each particle adds a soft ball of density to a grid fitted around the particles.
+    - Voxels source: a flood fill from the emitter over 26 neighbours. A step only happens when `ScenePhysics.RaycastStatic` finds no Static collider between two voxel centres. Fill order is ellipsoidal distance, or path length around walls, plus a slow noise for billows. Each voxel casts one ray to the sun, so smoke under a roof gets only sky light.
+    - The smoke blooms over Expand Time, holds while the system emits (Duration), then dissipates from the outside in over Fade Time.
+    - Holes are capsules (at most 16) that shrink as they refill.
+  - `ParticleSystemComponent` gains `CarveTunnel`, `CarveHole`, `Opacity`, `Volume`, `HasVolume`, and the scene-wide statics `CarveTunnels`, `CarveHoles`, `VolumeOpacity`.
+  - `ParticleStepContext` gains `RaycastStatic` and `SunDirection`.
+  - A voxel smoke keeps its system playing (`IsAlive`) until it has faded.
+  - `Play()` now restarts emission on a finished cycle whose particles are still fading out. Before, it did nothing.
+  - `ParticleRenderModule` uploads each volume into a `Texture3D` (only when it changes) and draws it with the new `Volume` technique in `Shaders/Forward/Particles.fx`. Volumes are interleaved far to near with the billboard systems.
+    - The `Volume` technique is a scissored full-screen raymarch up to the scene depth, jittered per pixel and frame (TAA smooths it).
+    - It uses a tiling 32³ detail noise (Worley + value noise, domain-warped) and analytic carves.
+    - Lighting: the sky, plus the sun marched through the volume with a multiple-scattering term and a Henyey-Greenstein phase. Output is premultiplied.
+  - `NpcComponent.CanSee`: smoke hiding more than `SmokeBlocksSight` (90%) of the view blocks sight. Hearing still works.
+  - `PhysicsSystem.RayCast` returns no hit on a disposed system instead of throwing.
+- **Anvil:** a **Volumetric** expander in the Particle System inspector. The voxel settings show only for the Voxels source, and Resolution only for the Particles source.
+- **Sample:** `Content/Scenes/SmokeTest.obsc`, added to the scene list. It has smokes in the open, in a corridor and in a roofed room, a thrown smoke, a Particles-source smoke stack and an HE flash. It comes with `Content/Scripts/SmokeTestScript.cs` (`smoke-test`; G throw, Click shoot, H HE blast, R restart, V volumetric on/off) and `UI/SmokeTest.xml/.css` (crosshair and HUD).
+- **Checks:** in `Tests/Components/ParticleChecks.cs`.
+  - Headless: particles splatting, voxel bloom count, walls/floor/corridor/roof, sunlight, tunnels and holes refilling, dissipation lifecycle, component and scene-wide API, save/load, inspector, sample scene.
+  - `--graphics`: the Volume technique, depth occlusion, lit, and the Particles source.
+  - All component checks pass, with and without `--graphics`. The look was checked on offscreen renders through the real shader. The full SmokeTest scene was not run in Anvil.
+- **Docs:** `Docs/markdown/Particle_Systems.md` (Volumetric section, script API, how it works, limits), `Engine_Wiring.md`, `CLAUDE.md`.
+
+- Claude
+
+## Added: Edit > Project Settings with Delete Project (2026-10-11)
+
+**Why:** There was no way to start over from an empty project in Anvil. Edit > Preferences was an empty placeholder, so it became Project Settings, with a red Delete Project button.
+
+- **Anvil:**
+  - **Edit > Project Settings...** (replaces the unused Preferences...). The new `ProjectSettingsWindow` + `ProjectSettingsViewModel` show the project name, Content folder and scene count.
+  - A red **Danger Zone** in that window has **Delete Project...**. It lists every item that would be removed, needs the project name typed to confirm, and is disabled during Play.
+  - Deleted source files go to the Recycle Bin. `MainWindowViewModel.MoveToRecycleBin` is now shared with Delete in the Assets panel.
+- **New `Engine/Recources/ProjectReset.cs`:**
+  - `Plan` (read-only) lists what a reset removes. `Run` removes each item with its Content.mgcb entries and its built copies (mgcb output, the executable's `Content`, `Engine/bin/*/*/Content`).
+  - `Run` writes default settings: GameInfo, no intro videos, Steam off, no icon or build folder, and a scene list with only `Scenes/Main.obsc`.
+  - `KeptPaths` keeps what the engine loads at boot: shaders, fonts, `System`, the built-in models in `GameObjects` and the scripts. Scripts are compiled into Engine.dll, so deleting them would break the build.
+- **Engine:**
+  - `IEditorBridge.EnqueueResetProject` swaps in an empty "Main" scene, unregisters every imported model, runs the reset, adds the default sun and saves `Scenes/Main.obsc`.
+  - `MainSceneLogic.AddDefaultSun()` is split out of the boot scene setup.
+  - `ContentManifest.Unregister(relPath, manifestPath)` is a new overload.
+- **Checks:**
+  - `Tests/Components/ProjectResetChecks.cs`: the plan on the real Content (read-only), a full reset of a fake project in a temp folder (files, manifest, built copies, the guard on a user `Content` folder, default settings), and the dialog's confirmation and Play lock.
+  - Delete Project was never run on the real project.
+- **Docs:** `CLAUDE.md` (recipe), `Engine_Wiring.md` section 11.
+
+- Claude
+
+## Changed: Anvil World panel for the voxel world (2026-10-11)
+
+**Why:** World generation is a separate job from the sky, fog and weather settings, so it gets its own place next to Environment.
+
+- **Anvil:** a **World** button in the viewport toolbar, next to **Environment**. It opens a new **World** inspector panel (`MainWindowViewModel.IsInspectorWorldView`, `InspectorView == "World"`).
+- The **Voxel World** section moved out of the Environment panel into the World panel. It still binds to `EnvironmentViewModel` and saves in `EnvironmentSettings`, so scenes and scripts are unchanged.
+- **Docs:** `Voxel_World.md`, `CLAUDE.md`, the doc comments that pointed to "Environment > Voxel World", and the inspector panels in `Engine_Wiring.md` (section 11).
+
+- Claude
+
+## Added: Unity-style particle systems (Particle System component) and the ParticleTest sample (2026-10-11)
+
+**Why:** The engine had no general particle effects (only the weather's rain/sand/snow). A gameobject can now carry a Particle System modelled on Unity's: modules for emission, shape, motion, colour/size over lifetime, collisions, flipbooks and sub-emitters, editable in Anvil's inspector, previewed while editing and drivable from scripts.
+
+- **New `Engine/Particles/`:**
+  - `ParticleModules`: the module settings (Main, Emission + Bursts, Shape, Velocity/Limit Velocity/Force over Lifetime, External Forces, Noise, Color/Size/Rotation over Lifetime, Collision, Texture Sheet Animation, Sub Emitters, Renderer), `ParticleRange` (constant or random between two), `ParticleCurve`, `ParticleGradient`, and compact `[x,y,z]`/`[r,g,b,a]` JSON converters. Enums are saved by name.
+  - `ParticleSimulation`: the CPU simulation of one system (GPU-free). Looping cycles with rate over time, rate over distance and bursts; particles born mid-frame are pre-aged; Local space follows the gameobject; Plane and World (physics raycast) collisions with a `Collided` event; Birth/Trail/Collision/Death sub-emitters; Play/Stop/Pause/Clear/Emit/EmitAt/Prewarm.
+  - `ParticleTextures`: built-in textures painted at startup (Soft Circle, Glow, Spark, Smoke, a 4 x 4 Smoke Sheet flipbook, Flame, Star, Ring, Square) with mipmaps; Custom loads a content texture and falls back to Soft Circle.
+- **New `Engine/Components/ParticleSystemComponent.cs`** (type id `particles`, Add Component > Particle System): the script API (`Play`, `Stop`, `Pause`, `Restart`, `Emit`, `EmitAt`, `Simulate`, `ParticleCollided`, `ParticleCount`, `IsAlive`...), Play lifecycle, and an edit-mode preview of Play On Awake systems. **Hide Mesh** hides the gameobject's marker mesh during Play.
+- **Rendering:** new `ParticleRenderModule` + `Content/Shaders/Forward/Particles.fx` (in `Content.mgcb`), drawn after water and before the weather: one instance buffer per frame, instanced quads (Billboard, Stretched, Horizontal, Vertical), Alpha or Additive, per-system sort modes, HDR brightness for bloom, optional sun + sky lighting, soft particles and occlusion from the linear G-buffer depth.
+- **Engine:**
+  - `TransformMatrix.Hidden` (skipped by `MeshMaterialLibrary.Draw`, shadows and picking included).
+  - `MainSceneLogic.Update` runs `ParticleSystemComponent.UpdatePreviews` outside Play.
+  - `IEditorBridge.EnqueueAddBasicEntity` takes an optional name, scale and component ids (generic, used by the new menu entry).
+- **Anvil:** a Particle System inspector (`ParticleSystemComponentViewModel` + template in `MainWindow.axaml`) with one expander per module, colour pickers, and rows for bursts, gradient/curve keys and sub-emitters; **GameObject > Effects > Particle System** and the Hierarchy **+** menu add a small marker sphere with a Particle System.
+- **Sample:** `Content/Scenes/ParticleTest.obsc` (appended to the scene list): campfire (flames, lit flipbook smoke in the scene wind, embers), a spark fountain bouncing off the ground and a deflector, fireworks built from Trail/Death sub-emitters, a magic vortex with ground rings and a comet trailing by distance, and a five-system explosion. `Content/Scripts/ParticleTestScript.cs` (Space explosion, Click sparks, F fireworks, P pause, R restart) with the HUD `Content/UI/ParticleTest.xml/.css`.
+- **Docs:** `Docs/markdown/Particle_Systems.md`; `Engine_Wiring.md` (frame order, component order, render modules and pass table).
+- **Checks:** `Tests/Components/ParticleChecks.cs` (simulation, every module, sub-emitters, saving, bridge + inspector, Play lifecycle and preview, sample scene) and a `--graphics` check that every texture and render mode draws through the real shader and particles behind geometry are hidden. `GameObjectMenuChecks` covers the new menu entry.
+
+- Claude
+
+## Added: Voxel world (Environment > Voxel World) and the VoxelTest sample (2026-10-11)
+
+**Why:** The engine had no way to make block terrain. A scene can now generate a voxel world from a few Environment settings. It is drawn by the deferred renderer, solid for physics, and editable from scripts. A sample scene shows digging and building in first person.
+
+- **New `Engine/Voxels/`:**
+  - `VoxelBlock`: 11 blocks stored as bytes (Air, Grass, Dirt, Stone, Sand, Snow, Wood, Leaves, Planks, Brick, Lamp), the surfaces each face shows, and `VoxelTerrain` (Flat, Hills, Mountains, Islands, saved by name).
+  - `VoxelWorld`: the block grid in 32³ chunks, centred on X/Y = 0 with its floor at a set Z.
+    - `GetBlock`, `SetBlock`, `FillBox`, `FillSphere`.
+    - A grid `Raycast` that returns the hit block, the adjacent empty cell, the face normal and the point.
+    - `TryGetSurface`.
+    - Dirty-chunk tracking: edits on a chunk border mark the neighbour too.
+    - The bottom layer can't be edited.
+  - `VoxelGenerator` and `VoxelNoise`: deterministic seeded terrain.
+    - A height field per terrain type, then grass over dirt over stone.
+    - Sand at the waterline, bare stone on cliffs, snow above 70% height on mountains.
+    - Spaghetti caves and trees. The column passes run in parallel.
+  - `VoxelMesher`: greedy meshing per surface, plus a coarser collision mesh that merges across surfaces.
+    - The world's underside isn't meshed, and faces between chunks are hidden in both.
+    - Triangles wind clockwise seen from outside, which both the culling and BEPU's one-sided triangles expect. A GPU check proves it.
+  - `VoxelTextures`: each surface is painted in code (16 x 16 pixel art scaled to 64², with mipmaps) together with a normal map.
+    - `VoxelSurfaceStyle` sets roughness, emboss strength and rain response.
+    - Every surface except the Lamp uses the Wet Surface type, so rain soaks the terrain. The Lamp is Emissive.
+  - `VoxelSystem` (`MainSceneLogic.Voxels`): keeps the active scene's world in step with its settings, before each physics step.
+    - It builds on a worker thread while editing, and synchronously during Play.
+    - Each chunk's surfaces register as `ModelMeshPart`s in the `MeshMaterialLibrary`, so the G-buffer, shadows, reflections and picking draw them. Chunks have ID 0.
+    - Each chunk gets a static BEPU mesh.
+    - Script edits remesh only the touched chunks.
+    - The sea is a unit quad drawn by the water pass.
+    - The world is reset on a scene swap and regenerated on Stop when Play changed it.
+- **Engine:**
+  - `EnvironmentSettings` gets `Voxels`, `VoxelTerrain`, `VoxelSeed`, `VoxelWorldSize`, `VoxelWorldHeight`, `VoxelBlockSize`, `VoxelBaseHeight`, `VoxelCaves`, `VoxelTrees`, `VoxelSeaLevel` and `VoxelCollision`. They are clamped in `Normalize`, saved in the scene's Environment, and old scenes load with the world off.
+  - New `MeshMaterialLibrary.Unregister(part, transform)` for geometry that isn't a gameobject.
+  - `MainSceneLogic`: `Voxels` and `VoxelWorld`, the voxel sync at the top of `UpdatePhysics`, `Reset` in `OnSceneChanged`, and `OnPlayStopped` on Stop.
+  - New `ScriptBehaviour.Voxels`. During Play it builds a missing world on demand, so scripts can use it in `Start`.
+- **Anvil:** a **Voxel World** section in the Environment panel:
+  - "Generate a voxel world", then Terrain, Seed with **New seed**, Size, Height, Block size, Floor Z, Trees, Sea level, Caves and Collision.
+  - A size summary in blocks and metres, and a short help text.
+- **Sample:** `Content/Scenes/VoxelTest.obsc` is appended to the scene list.
+  - A 128 x 128 x 64 world of hills (seed 1337) with caves, trees and lakes, under the day/night sky.
+  - The Player capsule runs the new **Voxel Test** script (`Content/Scripts/VoxelTestScript.cs`) with its HUD (`Content/UI/VoxelTest.xml/.css`): a first-person builder with a 10-block hotbar.
+  - Left mouse digs. A right click or F builds. B blasts a crater, G throws a physics ball, V flies, N makes a new world, T advances the time and R reloads.
+  - Four glowing bars frame the face under the crosshair.
+- **Docs:** new `Docs/markdown/Voxel_World.md`. `Engine_Wiring.md`, `Script_Behaviours.md` and `CLAUDE.md` are updated.
+- **Checks:** new `Tests/Components/VoxelChecks.cs`:
+  - settings, clamping and save/load
+  - deterministic generation for each terrain
+  - grid edits and raycasts
+  - meshing: face counts, merging, chunk borders, winding, UVs
+  - painted textures
+  - chunk colliders in BEPU, including one-sidedness and a dropped box coming to rest on the blocks
+  - async and sync builds, Stop, switching off and scene swaps
+  - the Inspector
+  - the VoxelTest sample played with real physics: land, dig, build, walk, blast, throw, new seed, Stop
+  - with `--graphics`: the library registration and a culling check on the GPU.
+  All checks pass, with and without `--graphics`.
+- Measured: the sample world builds in about 100 ms (about 55 000 triangles, about 110 draw parts). A 96-high Mountains world takes about 300 ms.
+- Known limits (see the doc):
+  - Edits aren't saved, and there is no editor sculpting.
+  - Lamps don't light their surroundings.
+  - Only opaque cubes.
+  - The sea has no buoyancy.
+  - NPC navigation grids ignore voxels.
+- Found while building it, not changed: `DeferredEnvironmentMap.fx` builds the view vector differently for non-Wet-Surface pixels, which washes out rough Basic materials. It is listed under sharp edges in `Engine_Wiring.md`.
+
+- Claude
+
 ## Added: LOD (level of detail) component and the LodTest sample (2026-10-10)
 
 **Why:** Every gameobject always drew its full model, however far away it was. The LOD component lets a gameobject draw simpler models in the distance, or nothing at all past a cull distance.

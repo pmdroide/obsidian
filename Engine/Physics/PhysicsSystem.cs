@@ -359,7 +359,8 @@ namespace Engine.Physics
             normal = XnaVector3.Zero;
             hitBody = null;
             hitStatic = null;
-            if (direction == XnaVector3.Zero || !(maxDistance > 0)) return false;
+            // A disposed system (a scene that was torn down) hits nothing.
+            if (Simulation == null || direction == XnaVector3.Zero || !(maxDistance > 0)) return false;
 
             var handler = new ClosestHitHandler
             {

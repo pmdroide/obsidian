@@ -1,0 +1,100 @@
+{
+  "Version": 2,
+  "Name": "VoxelTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Player",
+      "ModelKey": "Capsule",
+      "Position": [0, 0, 20],
+      "Scale": [1, 1, 1],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "5b0c6a1e-7f3d-4c2a-9e51-0d2f6a8b9c11",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 80,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "8d4e2f90-1a3b-4c5d-8e6f-7a9b0c1d2e33",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.31,
+            "Green": 0.64,
+            "Blue": 1.0,
+            "Roughness": 0.45,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "c3a7e1d2-5b6f-4a80-9c1d-2e3f4a5b6c77",
+          "Data": {
+            "ScriptId": "voxel-test",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 100,
+      "Name": "Sun",
+      "Direction": [-0.45, 0.35, -0.82],
+      "Position": [0, 0, 10],
+      "Color": [255, 248, 236, 255],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 150,
+      "ShadowDepth": 220,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [0, 0, 12],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 10,
+    "CycleDurationMinutes": 20,
+    "CloudCoverage": 0.35,
+    "CloudSpeed": 1.5,
+    "Voxels": true,
+    "VoxelTerrain": "Hills",
+    "VoxelSeed": 1337,
+    "VoxelWorldSize": 128,
+    "VoxelWorldHeight": 64,
+    "VoxelBlockSize": 1,
+    "VoxelBaseHeight": -24,
+    "VoxelCaves": true,
+    "VoxelTrees": 0.5,
+    "VoxelSeaLevel": 0.3,
+    "VoxelCollision": true
+  },
+  "MainCamera": {
+    "Position": [0, -12, 14],
+    "Forward": [0, 0.94, -0.34],
+    "FieldOfView": 1.2,
+    "Components": []
+  }
+}

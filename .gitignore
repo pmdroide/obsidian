@@ -68,9 +68,6 @@ monodroid*.msi
 
 artifacts/
 
-# AI Related files
-.claude
-
 # Generated files
 /scripts/
 Art/

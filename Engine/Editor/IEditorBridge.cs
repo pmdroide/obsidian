@@ -17,6 +17,39 @@ namespace Engine.Editor
         Camera,
         Decal,
         SpotLight,
+        // A bone (or the Armature) of a skinned gameobject: Entities.BoneObject, listed in EditorObjectSnapshot.Bones.
+        Bone,
+    }
+
+    /// <summary>
+    /// A bone of a skinned gameobject for Anvil's Hierarchy (Entities.BoneObject). The first entry of a gameobject's
+    /// list is its Armature (<see cref="Index"/> -1); the bones follow in skeleton order, parents first.
+    /// </summary>
+    public readonly struct BoneSnapshot
+    {
+        /// <summary>Editor ID (Entities.BoneObject.IdFor): select / mutate it like any object.</summary>
+        public readonly int Id;
+        public readonly string Name;
+        /// <summary>Bone index; -1 = the Armature.</summary>
+        public readonly int Index;
+        /// <summary>Parent bone index; -1 = under the Armature, -2 (the Armature) = under the gameobject.</summary>
+        public readonly int ParentIndex;
+        /// <summary>World position of the joint.</summary>
+        public readonly Vector3 Position;
+        /// <summary>Rotation away from the rest pose, in the bone's own space (BoneObject.LocalRotation).</summary>
+        public readonly Matrix Rotation;
+        public readonly bool IsPosed;
+
+        public BoneSnapshot(int id, string name, int index, int parentIndex, Vector3 position, Matrix rotation, bool isPosed)
+        {
+            Id = id;
+            Name = name;
+            Index = index;
+            ParentIndex = parentIndex;
+            Position = position;
+            Rotation = rotation;
+            IsPosed = isPosed;
+        }
     }
 
     public readonly struct LightSnapshot
@@ -83,9 +116,25 @@ namespace Engine.Editor
         public readonly GameObjectRole Role;
         // BasicEntity only: the saved Persistent flag (not a script's DontDestroyOnLoad).
         public readonly bool IsPersistent;
+        // Decal only: Content-relative texture path (Decal.TexturePath); null = the built-in Assets.DefaultDecal.
+        public readonly string DecalTexture;
+        // BasicEntity only: the prefab this gameobject is an instance of ("Prefabs/Crate.prefab"), or null.
+        public readonly string PrefabPath;
+        // Prefab instances, selected gameobject only: what it overrides (Logic.PrefabUtility override paths). Null for
+        // other gameobjects and when the prefab file is missing (PrefabMissing).
+        public readonly IReadOnlyList<string> PrefabOverrides;
+        public readonly bool PrefabMissing;
+        // BasicEntity with a skinned model only: its Armature and bones (Anvil shows them as its children); else null.
+        public readonly IReadOnlyList<BoneSnapshot> Bones;
 
-        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false)
+        public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false, string decalTexture = null,
+            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null)
         {
+            Bones = bones;
+            PrefabPath = prefabPath;
+            PrefabOverrides = prefabOverrides;
+            PrefabMissing = prefabMissing;
+            DecalTexture = decalTexture;
             Components = components ?? Array.Empty<ComponentRecord>();
             Role = role;
             IsPersistent = isPersistent;
@@ -174,8 +223,38 @@ namespace Engine.Editor
         void EnqueueAddPointLight(Vector3 position, float radius, Color color, float intensity);
         void EnqueueAddSpotLight(Vector3 position, Vector3 direction, float radius, Color color, float intensity, float spotAngle);
         void EnqueueAddDirectionalLight(Vector3 direction, Color color, float intensity);
-        void EnqueueAddBasicEntity(string modelKey, Vector3 position);
+        /// <summary>Add a deferred decal projecting <c>Assets.DefaultDecal</c> down its local -Z; the box is 2 x <paramref name="scale"/> m.</summary>
+        void EnqueueAddDecal(Vector3 position, Vector3 scale);
+        /// <summary>Project a Content texture ("Textures/stain.png") with a decal; null or empty goes back to <c>Assets.DefaultDecal</c>.</summary>
+        void EnqueueSetDecalTexture(int decalId, string texturePath);
+        /// <param name="name">Gameobject name; null keeps the default.</param>
+        /// <param name="scale">Null keeps 1.</param>
+        /// <param name="componentTypes">Registered component ids (<see cref="ComponentRegistry"/>) to attach, e.g. a Particle System.</param>
+        void EnqueueAddBasicEntity(string modelKey, Vector3 position, string name = null, Vector3? scale = null,
+            IReadOnlyList<string> componentTypes = null);
         void EnqueueDelete(int id);
+
+        // ---- Prefabs (Content/Prefabs/*.prefab, see Logic.PrefabUtility). Callbacks run on the game thread. ----
+
+        /// <summary>
+        /// Save a gameobject as a new prefab in a Content folder (<paramref name="folder"/>, "Prefabs" when null), named
+        /// after it, and link it to that prefab. The callback gets the prefab's Content-relative path, or null and an error.
+        /// </summary>
+        void EnqueueCreatePrefab(int entityId, string folder, Action<string, string> onCompleted = null);
+        /// <summary>
+        /// Write a prefab instance's values into its prefab (Apply All) and update the other instances in the scene
+        /// (their own overrides stay). Edit mode only. The callback gets how many other instances changed, or -1 and an error.
+        /// </summary>
+        void EnqueueApplyPrefab(int entityId, Action<int, string> onCompleted = null);
+        /// <summary>Drop every override of a prefab instance (Revert All). Edit mode only. The callback gets an error or null.</summary>
+        void EnqueueRevertPrefab(int entityId, Action<string> onCompleted = null);
+        /// <summary>Unlink a prefab instance from its prefab, keeping its current values. Edit mode only.</summary>
+        void EnqueueUnpackPrefab(int entityId);
+        /// <summary>
+        /// Place a prefab instance (prefab named or pathed as <see cref="Logic.Prefab.Load"/> accepts) at
+        /// <paramref name="position"/> and select it. The callback gets its ID, or null when the prefab can't be placed.
+        /// </summary>
+        void EnqueueInstantiatePrefab(string prefab, Vector3 position, Action<int?> onCompleted = null);
 
         // Gizmo mode (Translate/Rotate/Scale). Set to null to suppress all gizmo
         // interaction (e.g. "Select" tool — selection still works, drag does not).
@@ -193,6 +272,13 @@ namespace Engine.Editor
         void EnqueueNewScene();
         void EnqueueLoadScene(string path);
         void EnqueueSaveScene(string path);
+        /// <summary>
+        /// Edit > Project Settings > Delete Project: swaps in an empty scene, forgets imported models,
+        /// runs <see cref="Recources.ProjectReset"/> on this checkout (source files go through
+        /// <paramref name="deleteSource"/>, e.g. the Recycle Bin) and saves the new project's
+        /// first scene. Edit mode only. The callback runs on the game thread.
+        /// </summary>
+        void EnqueueResetProject(Action<string> deleteSource, Action<Recources.ProjectReset.Result> onCompleted);
         string CurrentScenePath { get; }
         string CurrentSceneName { get; }
         bool IsSceneDirty { get; }
@@ -207,6 +293,41 @@ namespace Engine.Editor
         void EnqueueMutateEnvironment(Action<Logic.EnvironmentSettings> mutate);
         /// <summary>Import a PNG/JPEG panorama. Callback returns an error, or null on success.</summary>
         void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted);
+
+        // ---- Render pipeline (Anvil > Render Pipeline): user render features, Renderer.Features.RenderFeatures ----
+
+        /// <summary>
+        /// The render pipeline in draw order: built-in passes, injection points and the render features (copies,
+        /// with their compile status). Safe to call from the UI thread.
+        /// </summary>
+        IReadOnlyList<Renderer.Features.RenderPipelineLayer> GetRenderPipeline();
+
+        /// <summary>Fires on the game thread when a render feature, its compile status or the list changed; UI consumers must marshal.</summary>
+        event Action RenderPipelineChanged;
+
+        /// <summary>Queue a rebuild of <see cref="GetRenderPipeline"/> (render setting toggles don't notify).</summary>
+        void EnqueueRefreshRenderPipeline();
+
+        /// <summary>
+        /// Queue a new render feature at <paramref name="at"/>: writes <c>Content/RenderFeatures/&lt;Name&gt;.fx</c>
+        /// from the template, saves RenderFeatures.json and compiles it. The callback gets the feature's id on the game thread.
+        /// </summary>
+        void EnqueueCreateRenderFeature(string name, Renderer.Features.RenderFeatureEvent at, Action<Guid> onCompleted);
+
+        /// <summary>Queue an edit of a render feature's settings (saved).</summary>
+        void EnqueueMutateRenderFeature(Guid id, Action<Renderer.Features.RenderFeature> mutate);
+
+        /// <summary>Queue moving a render feature one row up (-1) or down (+1), across built-in passes into the neighbouring injection point.</summary>
+        void EnqueueMoveRenderFeature(Guid id, int direction);
+
+        /// <summary>Queue compiling a render feature's shader again.</summary>
+        void EnqueueRecompileRenderFeature(Guid id);
+
+        /// <summary>
+        /// Queue removing a render feature. With <paramref name="deleteShader"/> its .fx and compiled .xnb go through
+        /// <paramref name="deleteFile"/> (Anvil: the Recycle Bin).
+        /// </summary>
+        void EnqueueDeleteRenderFeature(Guid id, bool deleteShader, Action<string> deleteFile);
 
         /// <summary>Queue an edit of the active scene's lighting settings (marks the scene dirty).</summary>
         void EnqueueMutateLighting(Action<LightingSettings> mutate);

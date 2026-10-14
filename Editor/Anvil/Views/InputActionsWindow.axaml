@@ -1,0 +1,252 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Anvil.ViewModels"
+        xmlns:logic="using:Engine.Logic"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="Anvil.Views.InputActionsWindow"
+        x:DataType="vm:InputActionsViewModel"
+        Icon="/Assets/Icon.ico"
+        Title="Input Actions"
+        Width="920" Height="640"
+        MinWidth="760" MinHeight="460"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource AnvilPanelBackgroundBrush}"
+        FontFamily="{StaticResource AnvilFontFamily}"
+        Foreground="{StaticResource AnvilTextPrimaryBrush}">
+
+    <Design.DataContext>
+        <vm:InputActionsViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="26" />
+        </Style>
+        <Style Selector="CheckBox">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.small">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource AnvilPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="ListBox.actions ListBoxItem">
+            <Setter Property="Padding" Value="10,6" />
+        </Style>
+    </Window.Styles>
+
+    <Window.DataTemplates>
+        <!-- One control picker: label | device | control | Listen. Used for each part and the modifier. -->
+        <DataTemplate DataType="vm:InputControlSlotViewModel" x:DataType="vm:InputControlSlotViewModel">
+            <Grid ColumnDefinitions="72,112,*,Auto" Margin="0,0,0,6">
+                <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="label" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Devices}" SelectedItem="{Binding DeviceName}" />
+                <ComboBox Grid.Column="2" Margin="6,0,0,0"
+                          ItemsSource="{Binding Controls}" SelectedItem="{Binding Control}"
+                          IsEnabled="{Binding HasDevice}" PlaceholderText="Pick a control"
+                          MaxDropDownHeight="360">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="logic:InputControl">
+                            <TextBlock Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="3" Classes="small" Content="Listen" Margin="6,0,0,0"
+                        Command="{Binding ListenCommand}"
+                        ToolTip.Tip="Press a key, mouse button or gamepad control to pick it" />
+            </Grid>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <Grid>
+        <Grid RowDefinitions="*,Auto" ColumnDefinitions="240,*">
+
+            <!-- Action list -->
+            <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,*,Auto" Margin="12,14,12,10">
+                    <TextBlock Grid.Row="0" Text="Actions" Classes="section" Margin="2,0,0,8" />
+                    <Border Grid.Row="1" CornerRadius="3" BorderThickness="1"
+                            Background="{StaticResource AnvilInputBackgroundBrush}"
+                            BorderBrush="{StaticResource AnvilBorderBrush}">
+                        <ListBox Classes="actions" Background="Transparent"
+                                 ItemsSource="{Binding Actions}" SelectedItem="{Binding SelectedAction}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:InputActionItemViewModel">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding BindingCountLabel}" FontSize="10"
+                                                       Foreground="{StaticResource AnvilTextSubtleBrush}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding TypeLabel}" FontSize="10"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   Foreground="{StaticResource AnvilTextMutedBrush}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <StackPanel Grid.Row="2" Spacing="6" Margin="0,8,0,0">
+                        <Grid ColumnDefinitions="*,6,*">
+                            <Button Grid.Column="0" Content="+ Add" HorizontalAlignment="Stretch" Command="{Binding AddActionCommand}" />
+                            <Button Grid.Column="2" Content="Remove" HorizontalAlignment="Stretch" Command="{Binding RemoveActionCommand}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,6,*,6,*">
+                            <Button Grid.Column="0" Classes="small" Content="Duplicate" HorizontalAlignment="Stretch" Command="{Binding DuplicateActionCommand}" />
+                            <Button Grid.Column="2" Classes="small" Content="Up" HorizontalAlignment="Stretch" Command="{Binding MoveActionUpCommand}" />
+                            <Button Grid.Column="4" Classes="small" Content="Down" HorizontalAlignment="Stretch" Command="{Binding MoveActionDownCommand}" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Selected action -->
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="Add an action to bind it to keys, mouse and gamepad controls."
+                       Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding HasNoSelectedAction}" />
+            <ScrollViewer Grid.Row="0" Grid.Column="1" HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="{Binding HasSelectedAction}">
+                <StackPanel DataContext="{Binding SelectedAction}" x:DataType="vm:InputActionItemViewModel"
+                            Margin="18,14,18,14" Spacing="14">
+
+                    <Grid ColumnDefinitions="*,12,160" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="Name" Classes="label" Margin="0,0,0,5" />
+                        <TextBlock Grid.Column="2" Text="Type" Classes="label" Margin="0,0,0,5" />
+                        <TextBox Grid.Row="1" Grid.Column="0" Classes="field" Text="{Binding Name}" />
+                        <ComboBox Grid.Row="1" Grid.Column="2"
+                                  ItemsSource="{x:Static vm:InputActionItemViewModel.Types}"
+                                  SelectedItem="{Binding Type}" />
+                    </Grid>
+                    <TextBlock Text="{Binding TypeHint}" Classes="hint" Margin="0,-8,0,0" />
+
+                    <Border CornerRadius="3" Padding="10,7" Background="{StaticResource AnvilSubtleBandBrush}">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="In a script" Classes="label" />
+                            <SelectableTextBlock Text="{Binding Usage}" FontFamily="Consolas,monospace" FontSize="11.5"
+                                                 TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Text="Bindings" Classes="section" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="small" Content="+ Binding" Margin="0,0,6,0"
+                                Command="{Binding AddBindingCommand}" />
+                        <Button Grid.Column="2" Classes="small" Content="{Binding CompositeLabel}"
+                                Command="{Binding AddCompositeCommand}" IsVisible="{Binding CanAddComposite}" />
+                    </Grid>
+                    <TextBlock Text="No bindings: this action never fires. Add a control, or a composite of keys."
+                               Classes="hint" IsVisible="{Binding HasNoBindings}" />
+
+                    <ItemsControl ItemsSource="{Binding Bindings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InputBindingItemViewModel">
+                                <Border Background="{StaticResource AnvilInputBackgroundBrush}"
+                                        BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1"
+                                        CornerRadius="4" Padding="12,10" Margin="0,0,0,10">
+                                    <StackPanel Spacing="8">
+                                        <Grid ColumnDefinitions="*,Auto,Auto">
+                                            <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" FontSize="12.5"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Kind}" Classes="label"
+                                                       VerticalAlignment="Center" Margin="8,0" />
+                                            <Button Grid.Column="2" Classes="small" Content="Remove"
+                                                    Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding Slots}" />
+                                        <ContentControl Content="{Binding Modifier}" />
+                                        <WrapPanel Orientation="Horizontal">
+                                            <TextBlock Text="Scale" Classes="label" VerticalAlignment="Center" Width="72" />
+                                            <NumericUpDown Value="{Binding Scale, Mode=TwoWay}" Width="112"
+                                                           Minimum="-10000" Maximum="10000" Increment="0.05" FormatString="0.###"
+                                                           ToolTip.Tip="Multiplies the value: mouse sensitivity, or degrees per second for a stick turning a camera" />
+                                            <CheckBox Content="Per second" IsChecked="{Binding PerSecond}" Margin="14,0,0,0"
+                                                      ToolTip.Tip="Multiply by the frame time: held keys and sticks then add up like mouse deltas" />
+                                            <CheckBox Content="{Binding InvertXLabel}" IsChecked="{Binding InvertX}" Margin="14,0,0,0" />
+                                            <CheckBox Content="Invert Y" IsChecked="{Binding InvertY}" Margin="14,0,0,0"
+                                                      IsVisible="{Binding ShowInvertY}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Classes="hint"
+                               Text="The strongest binding wins each frame. A Modifier must be held for its binding to count (Right Mouse + Mouse Delta drags to look). Gamepad controls read every connected controller." />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <Border Grid.Row="1" Grid.ColumnSpan="2" BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,10,16,12">
+                    <Button Grid.Column="0" Content="Reset to Defaults" Command="{Binding ResetToDefaultsCommand}"
+                            ToolTip.Tip="Replace the list with Move, Look, Jump, Sprint, Crouch, Interact, Attack, Previous, Next and Pause" />
+                    <TextBlock Grid.Column="1" Margin="14,0" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="11"
+                               Text="{Binding ValidationMessage}" Foreground="{StaticResource AnvilErrorBrush}"
+                               IsVisible="{Binding HasValidationMessage}" />
+                    <TextBlock Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Classes="hint"
+                               IsVisible="{Binding IsValid}"
+                               Text="Saved to System/InputActions.json. Scripts find actions by name; the running game reloads them on Save." />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Content="Cancel" MinWidth="80" IsCancel="True" Click="Cancel_Click" />
+                        <Button Content="Save" MinWidth="80" Classes="primary" Click="Save_Click" IsEnabled="{Binding IsValid}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Listening overlay: the next key, mouse button, wheel notch or gamepad control is picked. -->
+        <Border x:Name="ListenOverlay" Background="#B0101014" IsVisible="{Binding IsListening}" Focusable="True"
+                PointerPressed="ListenOverlay_PointerPressed" PointerWheelChanged="ListenOverlay_PointerWheelChanged">
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Padding="24,18" CornerRadius="6"
+                    Background="{StaticResource AnvilPanelBackgroundBrush}"
+                    BorderBrush="{StaticResource AnvilBorderStrongBrush}" BorderThickness="1" MaxWidth="460">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding ListeningPrompt}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                               TextAlignment="Center" />
+                    <TextBlock Text="Click anywhere here for a mouse button, scroll for the wheel. Esc cancels (pick Escape from the list)."
+                               Classes="hint" TextAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

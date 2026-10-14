@@ -1,0 +1,6 @@
+# Colours only; the engine binds the textures (Assets.LoadTree).
+newmtl Bark
+Kd 0.36 0.29 0.23
+
+newmtl Leaves
+Kd 0.25 0.42 0.14

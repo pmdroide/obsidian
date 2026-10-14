@@ -6,6 +6,9 @@
 matrix WorldViewProj;
 matrix WorldView;
 matrix World;
+// Only used by gameobjects with the Foliage Wind component, which move their vertices in world space
+matrix ViewProjection;
+matrix View;
 
 float3 LightPositionWS = float3(0,0,0);
 
@@ -13,6 +16,8 @@ float FarClip = 1000;
 float SizeBias = 0.005f; //0.005f * 2048 / ShadowMapSize
 
 Texture2D MaskTexture;
+
+#include "../Common/FoliageWind.fx"
 
 SamplerState texSampler
 {
@@ -61,6 +66,14 @@ struct DrawLinear3_VSOut
 	float2 TexCoord : TEXCOORD1;
 };
 
+struct DrawLinearAlpha_VSOut
+{
+	float4 Position : SV_POSITION;
+	float Depth : TEXCOORD0;
+	float3 Normal : NORMAL;
+	float2 TexCoord : TEXCOORD1;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  FUNCTION DEFINITIONS
@@ -75,15 +88,39 @@ DrawLinear_VSOut DrawLinear_VertexShader(DrawBasic_VSIn input)
     Output.Position = mul(input.Position, WorldViewProj);
 	Output.Depth = mul(input.Position, WorldView).z / -FarClip;
 	Output.Normal = mul(float4(input.Normal, 0), WorldView).xyz;
+
+	[branch]
+	if (WindEnabled)
+	{
+		// No texture coordinates in this pass: trunk bend and branch sway only
+		float3 tilt;
+		float3 worldPos = FoliageWorldPosition(input.Position, input.Normal, float2(0, 1), tilt);
+		Output.Position = mul(float4(worldPos, 1), ViewProjection);
+		Output.Depth = mul(float4(worldPos, 1), View).z / -FarClip;
+	}
     return Output;
+}
+
+// Directional lights, materials with a mask (leaves): cut-out shadows
+DrawLinearAlpha_VSOut DrawLinear_VertexShaderAlpha(DrawBasic2_VSIn input)
+{
+	DrawLinearAlpha_VSOut Output;
+	float3 tilt;
+	float3 worldPos = FoliageWorldPosition(input.Position, input.Normal, input.TexCoord, tilt);
+	Output.Position = mul(float4(worldPos, 1), ViewProjection);
+	Output.Depth = mul(float4(worldPos, 1), View).z / -FarClip;
+	Output.Normal = mul(float4(input.Normal, 0), WorldView).xyz;
+	Output.TexCoord = input.TexCoord;
+	return Output;
 }
 
 DrawLinear2_VSOut DrawDistance_VertexShader(DrawBasic_VSIn input)
 {
 	DrawLinear2_VSOut Output;
-	float4 position = mul(input.Position, WorldViewProj);
-	Output.Position = position;
-	Output.WorldPosition = mul(input.Position, World).xyz;
+	float3 tilt;
+	float3 worldPos = FoliageWorldPosition(input.Position, input.Normal, float2(0, 1), tilt);
+	Output.Position = WindEnabled ? mul(float4(worldPos, 1), ViewProjection) : mul(input.Position, WorldViewProj);
+	Output.WorldPosition = worldPos;
 	Output.Normal = mul(float4(input.Normal, 0), World).xyz;
 	return Output;
 }
@@ -91,9 +128,10 @@ DrawLinear2_VSOut DrawDistance_VertexShader(DrawBasic_VSIn input)
 DrawLinear3_VSOut DrawDistance_VertexShaderAlpha(DrawBasic2_VSIn input)
 {
 	DrawLinear3_VSOut Output;
-	float4 position = mul(input.Position, WorldViewProj);
-	Output.Position = position;
-	Output.WorldPosition = mul(input.Position, World).xyz;
+	float3 tilt;
+	float3 worldPos = FoliageWorldPosition(input.Position, input.Normal, input.TexCoord, tilt);
+	Output.Position = WindEnabled ? mul(float4(worldPos, 1), ViewProjection) : mul(input.Position, WorldViewProj);
+	Output.WorldPosition = worldPos;
 	Output.TexCoord = input.TexCoord;
 	return Output;
 }
@@ -135,6 +173,15 @@ float4 DrawLinear_PixelShader(DrawLinear_VSOut input) : SV_TARGET
 	return float4(depth,0,0,0);
 }
 
+float4 DrawLinear_PixelShaderAlpha(DrawLinearAlpha_VSOut input) : SV_TARGET
+{
+	if (MaskTexture.Sample(texSampler, input.TexCoord).r < 0.49f) discard;
+
+	float3 normal = normalize(input.Normal);
+	float bias = (1 - abs(normal.z)) * SizeBias;
+	return float4(input.Depth + bias, 0, 0, 0);
+}
+
 float4 DrawDistance_PixelShader(DrawLinear2_VSOut input) : SV_TARGET
 {
 	float dist = length(input.WorldPosition - LightPositionWS) / FarClip;
@@ -159,6 +206,15 @@ technique DrawLinearDepth
     {
         VertexShader = compile vs_5_0 DrawLinear_VertexShader();
         PixelShader = compile ps_5_0 DrawLinear_PixelShader();
+    }
+}
+
+technique DrawLinearDepthAlpha
+{
+    pass Pass1
+    {
+        VertexShader = compile vs_5_0 DrawLinear_VertexShaderAlpha();
+        PixelShader = compile ps_5_0 DrawLinear_PixelShaderAlpha();
     }
 }
 

@@ -1,0 +1,78 @@
+<!--
+  SceneLoadingTest / SceneLoadingArena HUD (Vista). Driven by Engine/Content/Scripts/SceneLoadingTestScript.cs,
+  which adds the destination rows (#dest-list), the frame-time bars (#graph) and the report rows (#report-rows),
+  and fills the option values, #live and the texts. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <!-- ============================================================ load panel, top left -->
+    <div id="panel">
+        <div class="accent"></div>
+        <div class="eyebrow">Scene Loading</div>
+        <div id="title"></div>
+
+        <div class="section" id="dest-head">Load</div>
+        <div id="dest-list"></div>
+
+        <div class="rule" id="rule-opts"></div>
+        <div class="opt" id="row-mode">
+            <div class="opt-name">Mode</div>
+            <div class="opt-value" id="opt-mode"></div>
+            <div class="opt-key">M</div>
+        </div>
+        <div class="opt" id="row-hold">
+            <div class="opt-name">Hold at ready</div>
+            <div class="opt-value" id="opt-hold"></div>
+            <div class="opt-key">H</div>
+        </div>
+        <div class="opt" id="row-budget">
+            <div class="opt-name">Build budget</div>
+            <div class="opt-value" id="opt-budget"></div>
+            <div class="opt-key">B</div>
+        </div>
+
+        <div id="keys">↑ ↓ choose  ·  Enter load  ·  Esc cancel a load</div>
+        <div id="message"></div>
+    </div>
+
+    <!-- ============================================================ frame time, top right -->
+    <div id="frames">
+        <div class="accent"></div>
+        <div class="eyebrow">Frame Time</div>
+        <div id="frame-now"></div>
+        <div id="frame-worst"></div>
+        <div id="graph">
+            <div class="gline" id="line-60"></div>
+            <div class="gline" id="line-20"></div>
+            <div class="glabel" id="label-60">60 ms</div>
+            <div class="glabel" id="label-20">20 ms</div>
+        </div>
+    </div>
+
+    <!-- ============================================================ reports, right -->
+    <div id="reports">
+        <div class="accent"></div>
+        <div class="eyebrow">Last Loads</div>
+        <div id="report-head">
+            <div class="cell c-scene">Scene</div>
+            <div class="cell c-mode">Mode</div>
+            <div class="cell c-time">Time</div>
+            <div class="cell c-frames">Frames</div>
+            <div class="cell c-worst">Worst frame</div>
+            <div class="cell c-swap">Swap</div>
+        </div>
+        <div id="report-rows"></div>
+        <div id="reports-empty"></div>
+    </div>
+
+    <!-- ============================================================ live load (no loading screen), bottom centre -->
+    <div id="live">
+        <div id="live-scene"></div>
+        <div id="live-percent"></div>
+        <div id="live-track"><div id="live-fill"></div></div>
+        <div id="live-status"></div>
+        <div id="live-time"></div>
+    </div>
+
+</div>

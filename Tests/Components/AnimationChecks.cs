@@ -46,7 +46,7 @@ internal static class AnimationChecks
         Publish();
         var animator = entity.GetComponent<AnimatorComponent>();
         var editor = owner.Components.OfType<AnimatorComponentViewModel>().Single();
-        Check(animator is { Speed: 1, Loop: true, InPlace: false, ClipSource: "", ClipName: "" } && !animator.IsPlaying &&
+        Check(animator is { Speed: 1, Loop: true, InPlace: false, ClipSource: "", ClipName: "", StartAction: "", FadeTime: 0.2f, Actions.Count: 0 } && !animator.IsPlaying &&
               !owner.AddableComponents.Single(c => c.DisplayName == "Animator").AddCommand.CanExecute(null),
             "Animator defaults to the model's own looping clip, idles in Edit mode and is unique per gameobject");
 
@@ -61,15 +61,53 @@ internal static class AnimationChecks
         Publish();
         Check(animator.Speed == 0.5f, "a transient invalid speed from the editor is ignored");
 
+        editor.AddActionCommand.Execute(null);
+        editor.AddActionCommand.Execute(null);
+        Publish();
+        Check(animator.Actions.Select(a => a.Name).SequenceEqual(new[] { "Action", "Action 2" }) &&
+              animator.Actions.All(a => a is { Speed: 1, Loop: true, ClipSource: "", ClipName: "" }),
+            "Add Action appends uniquely named actions to the engine component");
+        var row = editor.Actions[1];
+        row.Name = " Run ";
+        row.ClipSource = WalkingPath;
+        row.ClipName = "mixamo.com";
+        row.Speed = -1.5;
+        row.Loop = false;
+        editor.StartAction = "Run";
+        editor.FadeTime = 0.4;
+        Publish();
+        Check(animator.Actions[1] is { Name: "Run", ClipSource: WalkingPath, ClipName: "mixamo.com", Speed: -1.5f, Loop: false } &&
+              animator is { StartAction: "Run", FadeTime: 0.4f } && editor.Actions.Count == 2 && ReferenceEquals(editor.Actions[1], row),
+            "action edits, Start Action and Fade reach the engine (names trimmed) and the rows stay in place");
+        row.Speed = double.NaN;
+        editor.FadeTime = double.NaN;
+        Publish();
+        Check(animator.Actions[1].Speed == -1.5f && animator.FadeTime == 0.4f, "transient invalid action speed and fade are ignored");
+        Check(animator.FindAction("run") == animator.Actions[1] && animator.HasAction("RUN ") && !animator.HasAction("Jump") &&
+              animator.FindAction("") == null,
+            "actions are found by name, ignoring case and spaces");
+        editor.Actions[0].RemoveCommand.Execute(null);
+        Publish();
+        Check(animator.Actions.Single().Name == "Run" && editor.Actions.Single() == row, "Remove deletes one action");
+
         var record = ComponentRegistry.Capture(animator);
         Check(!record.Data.TryGetProperty(nameof(AnimatorComponent.Time), out _) &&
-              !record.Data.TryGetProperty(nameof(AnimatorComponent.IsPlaying), out _),
-            "saved Animator records exclude runtime playback state");
+              !record.Data.TryGetProperty(nameof(AnimatorComponent.IsPlaying), out _) &&
+              !record.Data.TryGetProperty(nameof(AnimatorComponent.CurrentAction), out _) &&
+              record.Data.GetProperty(nameof(AnimatorComponent.Actions)).GetArrayLength() == 1,
+            "saved Animator records keep the actions and exclude runtime playback state");
+        var restored = (AnimatorComponent)ComponentRegistry.Restore(record);
+        Check(restored.Actions.Single() is { Name: "Run", Speed: -1.5f, Loop: false } && restored.StartAction == "Run",
+            "actions round-trip through the scene record");
         var clone = (BasicEntity)entity.Clone;
         var copied = clone.GetComponent<AnimatorComponent>();
         copied.ClipName = "Other";
-        Check(!ReferenceEquals(copied, animator) && copied.ClipSource == WalkingPath && animator.ClipName == "",
-            "cloning copies Animator settings independently");
+        copied.Actions[0].Name = "Sprint";
+        Check(!ReferenceEquals(copied, animator) && copied.ClipSource == WalkingPath && animator.ClipName == "" &&
+              animator.Actions[0].Name == "Run",
+            "cloning copies Animator settings and actions independently");
+
+        CheckActionSelection();
 
         // A model without skinning data logs and stays in the bind pose instead of throwing.
         var play = new PlayModeController(logic);
@@ -84,6 +122,57 @@ internal static class AnimationChecks
                 typeof(EditorBridge).GetMethod("DrainAndPublish", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(bridge, null);
             BridgeReconciler.Apply(bridge.Snapshot, objects, bridge);
         }
+    }
+
+    /// <summary>Which action plays, without a skeleton: Start Action, scripts calling Play before the Animator starts, Stop.</summary>
+    private static void CheckActionSelection()
+    {
+        var assets = new Assets { Cube = new ModelDefinition(null, new BoundingBox(-Vector3.One, Vector3.One)) };
+        var logic = new MainSceneLogic();
+        var entity = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One) { IsEnabled = true };
+        logic.BasicEntities.Add(entity);
+        var animator = new AnimatorComponent
+        {
+            StartAction = "Idle",
+            Actions = { new AnimationAction { Name = "Idle" }, new AnimationAction { Name = "Walk" } },
+        };
+        entity.AddComponent(animator);
+        var play = new PlayModeController(logic);
+        var frame = new GameTime(TimeSpan.FromSeconds(0.1), TimeSpan.FromSeconds(0.1));
+
+        Check(animator.CurrentAction == "Idle" && animator.IsPlayingAction("idle"), "before Play the current action is the Start Action");
+        play.Play();
+        play.UpdateScripts(frame);
+        Check(animator.CurrentAction == "Idle" && !animator.IsPlaying, "Play starts the Start Action (bind pose without a skeleton)");
+        Check(animator.Play("Walk") && animator.CurrentAction == "Walk" && !animator.Play("Jump") && animator.CurrentAction == "Walk",
+            "Play switches to a named action and refuses unknown names");
+        Check(animator.PlayOnce("Idle") && animator.CurrentAction == "Idle" && animator.Play("") && animator.CurrentAction == "",
+            "PlayOnce plays an action and Play(\"\") goes back to the default clip");
+        animator.Stop();
+        Check(animator.IsStopped && !animator.IsPlayingAction("") && !animator.IsPlaying, "Stop stops playback");
+        animator.Play();
+        Check(!animator.IsStopped && animator.CurrentAction == "", "Play() resumes the current action");
+        animator.Pause();
+        Check(animator.IsPaused, "Pause holds playback");
+        animator.Resume();
+        Check(!animator.IsPaused, "Resume continues");
+        play.Stop();
+        Check(animator.CurrentAction == "Idle" && !animator.IsStopped, "stopping Play forgets what played; the Start Action is next");
+
+        // A script listed above the Animator starts first: what it asks for survives the Animator's own start.
+        animator.Play("Walk");
+        play.Play();
+        Check(animator.CurrentAction == "Walk", "Play called before the Animator starts is kept through its start");
+        play.Stop();
+        animator.Stop();
+        play.Play();
+        Check(animator.IsStopped && animator.CurrentAction == "Idle", "Stop called before the Animator starts keeps it in the bind pose");
+        play.Stop();
+
+        animator.Play("Walk");
+        animator.StartAction = "Idle";
+        animator.OnChanged(entity);
+        Check(animator.CurrentAction == "Idle", "an inspector edit in Edit mode drops a stale early Play");
     }
 
     /// <summary>
@@ -124,6 +213,23 @@ internal static class AnimationChecks
         player.InPlace = true;
         player.Evaluate(1);
         Check(Near(player.BoneTransforms[0].Translation, new Vector3(0, 0, 1.1f)), "In Place drops horizontal root travel but keeps the bob");
+
+        // Crossfade: halfway between the bind pose and the bent pose is a 45 degree bend.
+        var bind = new AnimationPlayer(target);
+        bind.Evaluate(0);
+        var bent = new AnimationPlayer(target);
+        bent.SetClip(clip, target);
+        bent.Evaluate(1);
+        bent.BlendFrom(bind, 0.5f);
+        Vector3 blendedUp = Vector3.TransformNormal(Vector3.UnitZ, bent.BoneTransforms[1]);
+        Check(Near(blendedUp, Vector3.Normalize(new Vector3(0, -1, 1))) && Near(bent.BoneTransforms[0].Translation, new Vector3(0, -1, 1.05f)),
+            "blending two poses slerps rotations and lerps translations bone by bone");
+        bent.Evaluate(1);
+        bent.BlendFrom(bind, 1f);
+        Vector3 fullUp = Vector3.TransformNormal(Vector3.UnitZ, bent.BoneTransforms[1]);
+        bent.BlendFrom(bind, 0f);
+        Check(Near(fullUp, -Vector3.UnitY) && bent.SkinTransforms.All(m => Near(m, Matrix.Identity)),
+            "blend weight 1 keeps this pose and 0 takes the other one's");
 
         // Same clip from a taller rig with a longer child bone, driving the target by bone name.
         var source = Skeleton(2, 1.5f);
@@ -166,8 +272,8 @@ internal static class AnimationChecks
         var entities = scene.BasicEntities;
         BasicEntity Named(string name) => entities.Single(e => e.Name == name);
 
-        // 8 animation gameobjects plus the ragdoll row (RagdollChecks covers those).
-        Check(entities.Count == 12 && entities.All(e => e.IsEnabled) && scene.DirectionalLights.Single().CastShadows &&
+        // 9 animation gameobjects plus the ragdoll row (RagdollChecks covers those).
+        Check(entities.Count == 13 && entities.All(e => e.IsEnabled) && scene.DirectionalLights.Single().CastShadows &&
               scene.MainCamera?.GetComponent<ScriptBehaviourComponent>() is { ScriptId: Engine.Scripting.FreecamScript.ScriptId },
             "the animation sample scene loads its ground, characters and checker cube with a shadowed sun and a Freecam camera");
 
@@ -179,6 +285,14 @@ internal static class AnimationChecks
               Named("Y Bot - Walking (retargeted)").ModelDefinition == assets.PlayerYBot && retargeted is { ClipSource: WalkingPath, InPlace: true } &&
               rootMotion is { InPlace: false, Loop: true } && slow is { Speed: 0.25f, ClipSource: WalkingPath },
             "the sample covers a model's own clip, a clip shared across rigs, root motion and slow motion");
+        var actor = Named("Y Bot - Actions (arrow keys)");
+        var actions = actor.GetComponent<AnimatorComponent>();
+        Check(actor.ModelDefinition == assets.PlayerYBot && actions is { ClipSource: WalkingPath, InPlace: true, StartAction: "Idle" } &&
+              actions.Actions.Select(a => a.Name).SequenceEqual(new[] { "Idle", "Walk", "Run", "Walk Back", "Dash" }) &&
+              actions.Actions.All(a => a.ClipSource == "") && actions.FindAction("Idle").Speed == 0 &&
+              actions.FindAction("Walk Back").Speed < 0 && actions.FindAction("Dash") is { Loop: false } &&
+              actor.GetComponent<ScriptBehaviourComponent>() is { ScriptId: Engine.Scripting.AnimatorActionsScript.ScriptId },
+            "the sample has an arrow-key character whose script plays Idle/Walk/Run/Walk Back actions and a one-shot Dash");
         Check(Named("Y Bot - Bind Pose (no Animator)").GetComponent<AnimatorComponent>() == null,
             "the sample keeps an unanimated character as a bind-pose reference");
 
@@ -310,8 +424,81 @@ internal static class AnimationChecks
         Check(animator.IsPlaying && Outer(Render()) < bindOuter / 4,
             "starting Play uploads the first pose before any update, so the first frame is never stale");
         animator.OnStop();
+
+        // Actions on the real character: Idle is Y Bot's own T-pose clip, the rest share the walk.
+        animator.Actions = new List<AnimationAction>
+        {
+            new() { Name = "Idle", ClipSource = "GameObjects/Player/Y Bot" },
+            new() { Name = "Walk" },
+            new() { Name = "Back", Speed = -1 },
+            new() { Name = "Dash", Speed = 2, Loop = false },
+        };
+        animator.StartAction = "Idle";
+        animator.FadeTime = 0.2f;
+        var finished = new List<string>();
+        animator.ActionFinished += (_, name) => finished.Add(name);
+        animator.OnStart(entity);
+        void Step(int frames)
+        {
+            for (int i = 0; i < frames; i++) animator.OnUpdate(entity, new GameTime(TimeSpan.Zero, TimeSpan.FromSeconds(0.05)));
+        }
+        Step(2);
+        Check(animator is { CurrentAction: "Idle", IsPlaying: true, IsFading: false } && entity.WorldTransform.Skin != null &&
+              Outer(Render()) > bindOuter * 3 / 4,
+            "the Start Action plays on start (Idle: the T-pose clip from another source)");
+
+        Matrix[] idle = (Matrix[])animator.Player.BoneTransforms.Clone();
+        var pure = new AnimationPlayer(SkinningData.From(yBot.Model)) { InPlace = true };
+        pure.SetClip(walk, SkinningData.From(Globals.content.Load<Model>(WalkingPath)));
+        Check(animator.Play("Walk") && animator is { CurrentAction: "Walk", IsFading: true, Time: 0 },
+            "Play switches to another action from its start and starts a crossfade");
+        Step(1);
+        pure.Evaluate(animator.Time);
+        Matrix[] blended = animator.Player.BoneTransforms;
+        Check(animator.IsFading && Diff(blended, idle) > 0.01f && Diff(blended, idle) < Diff(blended, pure.BoneTransforms),
+            "early in the crossfade the pose is between the two clips, still nearer the previous one");
+        Step(4);
+        pure.Evaluate(animator.Time);
+        Check(!animator.IsFading && Diff(animator.Player.BoneTransforms, pure.BoneTransforms) < 1e-3f && Outer(Render()) < bindOuter / 4,
+            "after Fade the new clip plays alone");
+        float walkTime = animator.Time;
+        Check(animator.Play("walk") && animator.Time == walkTime && !animator.IsFading,
+            "Play for the action already playing changes nothing (safe to call every frame)");
+
+        Check(animator.PlayOnce("Dash") && animator.CurrentAction == "Dash", "PlayOnce starts a one-shot action");
+        Step((int)MathF.Ceiling(walk.Duration / 2 / 0.05f) + 1);
+        Check(finished.SequenceEqual(new[] { "Dash" }) && animator is { CurrentAction: "Walk", IsFinished: false, IsFading: true },
+            "a one-shot raises ActionFinished at its end and fades back to the action before it");
+
+        Step(5);
+        float held = animator.Time;
+        animator.Pause();
+        Step(3);
+        Check(animator is { IsPaused: true, IsPlaying: true } && animator.Time == held, "Pause holds the time and the pose");
+        animator.Resume();
+        Step(1);
+        Check(!animator.IsPaused && Math.Abs(animator.Time - (held + 0.05f) % walk.Duration) < 1e-3f, "Resume continues from there");
+
+        animator.Play("Back", 0);
+        Step(1);
+        Check(animator is { CurrentAction: "Back", IsFading: false } && Math.Abs(animator.Time - (walk.Duration - 0.05f)) < 1e-3f,
+            "a negative-speed action starts at the clip's end and plays backwards; fade 0 switches at once");
+
+        animator.Stop();
+        Step(2);
+        Check(animator is { IsStopped: true, IsPlaying: false } && entity.WorldTransform.Skin == null && Outer(Render()) == bindOuter,
+            "Stop shows the bind pose and stays there");
+        animator.Play();
+        Step(1);
+        Check(animator is { IsStopped: false, IsPlaying: true, CurrentAction: "Back" } && entity.WorldTransform.Skin != null,
+            "Play() plays the current action again");
+        Check(!animator.Play("Nope") && animator.CurrentAction == "Back", "an unknown action is refused and the current one keeps playing");
+        animator.OnStop();
         entity.Dispose(meshes);
     }
+
+    // Largest distance between the same bone's position in two poses.
+    private static float Diff(Matrix[] a, Matrix[] b) => a.Zip(b).Max(p => Vector3.Distance(p.First.Translation, p.Second.Translation));
 
     private static BoundingBox Bounds(Model model, AnimationPlayer player, float time)
     {

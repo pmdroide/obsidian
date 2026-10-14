@@ -14,6 +14,7 @@ public static class ScriptRegistry
     static ScriptRegistry()
     {
         Register<SpinExampleScript>(SpinExampleScript.ScriptId, "Spin Example");
+        Register<TimerExampleScript>(TimerExampleScript.ScriptId, "Timer Example");
         Register<FreecamScript>(FreecamScript.ScriptId, "Freecam");
         Register<MainMenuScript>(MainMenuScript.ScriptId, "Main Menu");
         Register<MultiplayerTestScript>(MultiplayerTestScript.ScriptId, "Multiplayer Test");
@@ -31,8 +32,14 @@ public static class ScriptRegistry
         Register<CompanionOrbScript>(CompanionOrbScript.ScriptId, "Companion Orb");
         Register<PauseMenuScript>(PauseMenuScript.ScriptId, "Pause Menu");
         Register<RagdollTestScript>(RagdollTestScript.ScriptId, "Ragdoll Test");
+        Register<AnimatorActionsScript>(AnimatorActionsScript.ScriptId, "Animator Actions");
         Register<NpcTestPlayerScript>(NpcTestPlayerScript.ScriptId, "NPC Test Player");
         Register<NpcReporterScript>(NpcReporterScript.ScriptId, "NPC Reporter");
+        Register<VoxelTestScript>(VoxelTestScript.ScriptId, "Voxel Test");
+        Register<ParticleTestScript>(ParticleTestScript.ScriptId, "Particle Test");
+        Register<SmokeTestScript>(SmokeTestScript.ScriptId, "Smoke Test");
+        Register<WaterTestScript>(WaterTestScript.ScriptId, "Water Test");
+        Register<SceneLoadingTestScript>(SceneLoadingTestScript.ScriptId, "Scene Loading Test");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

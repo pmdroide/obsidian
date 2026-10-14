@@ -341,9 +341,8 @@ namespace Engine.Physics
             Vector3 hinge = Vector3.Zero;
             if (limits.IsHinge)
             {
-                // Elbows bend the forearm forward, knees the shin backward.
-                Vector3 flex = part.Joint == RagdollJointKind.Knee ? -Rig.Forward : Rig.Forward;
-                hinge = Vector3.Cross(direction, flex);
+                // The rig says which way the joint bends (an elbow the forearm forward, a knee the shin backward).
+                hinge = Vector3.Cross(direction, part.Flex);
                 if (hinge.LengthSquared() < 0.04f) limits = RagdollJointLimits.For(RagdollJointKind.Other);
                 else hinge.Normalize();
             }
@@ -469,7 +468,7 @@ namespace Engine.Physics
     /// <summary>How far a joint of each <see cref="RagdollJointKind"/> may bend, in degrees.</summary>
     public readonly struct RagdollJointLimits
     {
-        /// <summary>Elbows and knees: they only bend about one axis, between <see cref="MinAngle"/> and <see cref="MaxAngle"/>.</summary>
+        /// <summary>Elbows, knees, wrists and hocks: they only bend about one axis, between <see cref="MinAngle"/> and <see cref="MaxAngle"/>.</summary>
         public readonly bool IsHinge;
         /// <summary>Hinge: bend range. Cone: <see cref="MaxAngle"/> is the widest swing away from the bind direction.</summary>
         public readonly float MinAngle, MaxAngle;
@@ -498,6 +497,18 @@ namespace Engine.Physics
             RagdollJointKind.Knee => Hinge(-5, 135),
             RagdollJointKind.Hand => Cone(60, 30),
             RagdollJointKind.Foot => Cone(35, 15),
+            // Four-legged animals; their bind pose usually has the legs straight, so hinges may open a little past it.
+            RagdollJointKind.ForeShoulder => Cone(50, 15),
+            RagdollJointKind.ForeElbow => Hinge(-15, 120),
+            RagdollJointKind.ForeWrist => Hinge(-15, 110),
+            RagdollJointKind.HindHip => Cone(55, 15),
+            RagdollJointKind.HindKnee => Hinge(-15, 110),
+            RagdollJointKind.HindHock => Hinge(-15, 120),
+            RagdollJointKind.Paw => Cone(40, 10),
+            // Per link, so a tail or a snake of several parts curls much further.
+            RagdollJointKind.Tail => Cone(35, 20),
+            RagdollJointKind.Limb => Cone(60, 25),
+            RagdollJointKind.Chain => Cone(35, 20),
             _ => Cone(45, 30),
         };
     }

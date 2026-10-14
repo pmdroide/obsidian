@@ -47,6 +47,8 @@
         <div class="title-rule settings-rule"></div>
         <div class="screen-sub">Applies immediately. Not saved.</div>
         <div id="settings-list" class="options"></div>
+        <div id="settings-scroll-up" class="scroll-hint">&#8249; more</div>
+        <div id="settings-scroll-down" class="scroll-hint">more &#8250;</div>
         <div id="settings-desc" class="desc"></div>
     </div>
 

@@ -1,0 +1,29 @@
+<!--
+  SmokeTest scene HUD (Vista). Driven by Engine/Content/Scripts/SmokeTestScript.cs, which fills
+  #smokes, #state, #sight, #shots and #thrown. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="crosshair-h"></div>
+    <div id="crosshair-v"></div>
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Volumetric Particles</div>
+        <div id="title">Smoke Test</div>
+        <div id="smokes"></div>
+        <div id="state"></div>
+        <div id="rule"></div>
+        <div id="sight"></div>
+        <div id="shots"></div>
+        <div id="thrown"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-smoke" class="keys-line">G throw a smoke where you point  ·  Click shoot through the smoke  ·  H HE grenade blast</div>
+        <div id="keys-control" class="keys-line">R restart every smoke  ·  V volumetric on / off (billboards only)</div>
+        <div id="keys-move" class="keys-line">Hold right mouse to look  ·  WASD move  ·  E / Q up / down  ·  Shift faster</div>
+    </div>
+
+</div>

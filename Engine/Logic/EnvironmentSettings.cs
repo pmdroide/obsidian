@@ -1,10 +1,11 @@
 using System;
 using System.Text.Json.Serialization;
+using Engine.Voxels;
 using Microsoft.Xna.Framework;
 
 namespace Engine.Logic
 {
-    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, and weather.</summary>
+    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather, volumetric fog and the voxel world.</summary>
     public sealed class EnvironmentSettings
     {
         public bool DayNightCycle { get; set; }
@@ -45,6 +46,55 @@ namespace Engine.Logic
         /// <summary>Compass angle in degrees the wind blows towards: 0 = +X, 90 = +Y.</summary>
         public float WindDirection { get; set; } = 45;
 
+        // Volumetric fog (froxels): the haze and light shafts (god rays) of this scene. The renderer copies these into
+        // GameSettings.g_Froxel* every frame. Defaults are an outdoor haze that stays thin near the camera; denser
+        // pockets (a dusty room) are Fog Volume components.
+        /// <summary>Fog density everywhere (per metre, scaled by the distance ramp below).</summary>
+        public float FogDensity { get; set; } = 0.03f;
+        /// <summary>How much of the light behind the fog it swallows (extinction = density * absorption).</summary>
+        public float FogAbsorption { get; set; } = 0.1f;
+        /// <summary>Brightness of the sun's light in the fog (light shafts).</summary>
+        public float FogSunScatter { get; set; } = 0.1f;
+        /// <summary>Brightness of point and spot lights in the fog.</summary>
+        public float FogLightScatter { get; set; } = 1.5f;
+        /// <summary>Henyey-Greenstein g: 0 scatters evenly, towards 1 the fog glows mostly when looking at the light.</summary>
+        public float FogAnisotropy { get; set; } = 0.45f;
+        /// <summary>Distance (m) where the density starts ramping up from Near Density.</summary>
+        public float FogStartDistance { get; set; } = 30;
+        /// <summary>Distance (m) where the density is full.</summary>
+        public float FogFullDistance { get; set; } = 400;
+        /// <summary>Fraction of the density kept before Start Distance: 0 = clear near the camera, 1 = no ramp.</summary>
+        public float FogNearDensity { get; set; }
+        /// <summary>How much of the fog beyond Sky Shaft Distance covers the sky: 0 = none, 1 = all.</summary>
+        public float FogSkyStrength { get; set; } = 0.1f;
+        /// <summary>Fog in front of the sky up to this distance (m) is kept whole, so shafts show against it.</summary>
+        public float FogSkyShaftDistance { get; set; } = 200;
+        /// <summary>Caps how far auto exposure brightens dark views, in EV (Post Processing's maximum still applies).
+        /// Lower it to keep dark interiors dark around bright openings.</summary>
+        public float MaxAutoExposure { get; set; } = 3;
+
+        // Voxel world: block terrain generated from these settings, drawn and collidable in both Edit and Play
+        // (Engine/Voxels, VoxelSystem). Changing any of them regenerates the world.
+        public bool Voxels { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public VoxelTerrain VoxelTerrain { get; set; } = VoxelTerrain.Hills;
+        public int VoxelSeed { get; set; } = 1337;
+        /// <summary>Blocks along X and Y: 32-256, a multiple of the 32-block chunk.</summary>
+        public int VoxelWorldSize { get; set; } = 128;
+        /// <summary>Blocks along Z: 16-128, a multiple of 16.</summary>
+        public int VoxelWorldHeight { get; set; } = 64;
+        /// <summary>Edge length of one block in metres.</summary>
+        public float VoxelBlockSize { get; set; } = 1;
+        /// <summary>World Z of the voxel world's floor; the world is centred on the origin in X/Y.</summary>
+        public float VoxelBaseHeight { get; set; } = -24;
+        public bool VoxelCaves { get; set; } = true;
+        /// <summary>0 = no trees, 1 = a dense forest on grass.</summary>
+        public float VoxelTrees { get; set; } = 0.5f;
+        /// <summary>Water surface as a fraction of the world height; 0 = no sea.</summary>
+        public float VoxelSeaLevel { get; set; } = 0.3f;
+        /// <summary>Static colliders for the chunks (bodies, characters and raycasts hit the blocks).</summary>
+        public bool VoxelCollision { get; set; } = true;
+
         public EnvironmentSettings Clone() => (EnvironmentSettings)MemberwiseClone();
 
         public void Normalize()
@@ -66,6 +116,24 @@ namespace Engine.Logic
             WeatherHaze = Limit(WeatherHaze, 0, 1, 0.6f);
             WindSpeed = Limit(WindSpeed, 0, 40, 4);
             WindDirection = float.IsFinite(WindDirection) ? ((WindDirection % 360) + 360) % 360 : 45;
+            FogDensity = Limit(FogDensity, 0.001f, 5, 0.03f);
+            FogAbsorption = Limit(FogAbsorption, 0, 1, 0.1f);
+            FogSunScatter = Limit(FogSunScatter, 0, 4, 0.1f);
+            FogLightScatter = Limit(FogLightScatter, 0, 16, 1.5f);
+            FogAnisotropy = Limit(FogAnisotropy, -0.95f, 0.95f, 0.45f);
+            FogStartDistance = Limit(FogStartDistance, 0, 5000, 30);
+            FogFullDistance = Limit(FogFullDistance, FogStartDistance + 1, 10000, Math.Max(400, FogStartDistance + 1));
+            FogNearDensity = Limit(FogNearDensity, 0, 1, 0);
+            FogSkyStrength = Limit(FogSkyStrength, 0, 1, 0.1f);
+            FogSkyShaftDistance = Limit(FogSkyShaftDistance, 0, 10000, 200);
+            MaxAutoExposure = Limit(MaxAutoExposure, -3, 3, 3);
+            if (!Enum.IsDefined(VoxelTerrain)) VoxelTerrain = VoxelTerrain.Hills;
+            VoxelWorldSize = VoxelWorldSettings.ClampSize(VoxelWorldSize);
+            VoxelWorldHeight = VoxelWorldSettings.ClampHeight(VoxelWorldHeight);
+            VoxelBlockSize = VoxelWorldSettings.ClampBlockSize(VoxelBlockSize);
+            VoxelBaseHeight = Limit(VoxelBaseHeight, -1000, 1000, -24);
+            VoxelTrees = Limit(VoxelTrees, 0, 1, 0.5f);
+            VoxelSeaLevel = Limit(VoxelSeaLevel, 0, 0.9f, 0.3f);
         }
 
         private static float Limit(float value, float min, float max, float fallback) =>

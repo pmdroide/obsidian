@@ -91,6 +91,9 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
         /// Meters <paramref name="hdrInput"/> and adapts the exposure by <paramref name="deltaSeconds"/>.
         /// Returns the 1x1 exposure texture (EV in the red channel).
         /// </summary>
+        /// <summary>Upper EV limit of the active scene (<see cref="Logic.EnvironmentSettings.MaxAutoExposure"/>).</summary>
+        public float SceneMaxExposure = float.MaxValue;
+
         public Texture2D Draw(GraphicsDevice graphics, Texture2D hdrInput, float deltaSeconds)
         {
             graphics.BlendState = BlendState.Opaque;
@@ -99,8 +102,10 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
 
             _centerWeightParam.SetValue(MathHelper.Clamp(GameSettings.g_AutoExposureCenterWeight, 0, 1));
             _keyValueParam.SetValue(Math.Max(GameSettings.g_AutoExposureKey, 0.001f));
-            _minExposureParam.SetValue(Math.Min(GameSettings.g_AutoExposureMin, GameSettings.g_AutoExposureMax));
-            _maxExposureParam.SetValue(Math.Max(GameSettings.g_AutoExposureMin, GameSettings.g_AutoExposureMax));
+            // The scene (Environment > Max Auto Exposure) can only lower the global maximum.
+            float max = Math.Min(GameSettings.g_AutoExposureMax, SceneMaxExposure);
+            _minExposureParam.SetValue(Math.Min(GameSettings.g_AutoExposureMin, max));
+            _maxExposureParam.SetValue(Math.Max(GameSettings.g_AutoExposureMin, max));
             _speedDarkToLightParam.SetValue(Math.Max(GameSettings.g_AutoExposureSpeedDarkToLight, 0));
             _speedLightToDarkParam.SetValue(Math.Max(GameSettings.g_AutoExposureSpeedLightToDark, 0));
             // A long hitch (loading, breakpoint) should not count as seconds of adaptation.

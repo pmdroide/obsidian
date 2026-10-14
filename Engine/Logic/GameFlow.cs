@@ -8,9 +8,11 @@ namespace Engine.Logic
     /// Runtime game flow for scripts: the build scene list (<see cref="SceneList"/>), switching
     /// scenes during Play, and quitting.
     ///
-    /// Scene loads are queued and happen at the start of the next frame, so a script can call
-    /// <see cref="LoadScene(int, bool)"/> from its own Update. In Play the new scene starts playing straight
-    /// away. Inside Anvil, pressing Stop returns to the scene you were editing.
+    /// Scene loads are queued and start at the beginning of the next frame, so a script can call
+    /// <see cref="LoadScene(int, bool)"/> from its own Update. <see cref="LoadScene(int, bool)"/> does the whole
+    /// load in that frame; <see cref="LoadSceneAsync(int, bool, bool)"/> spreads it over frames behind a loading
+    /// screen while the running scene keeps playing. In Play the new scene starts playing straight away. Inside
+    /// Anvil, pressing Stop returns to the scene you were editing.
     /// </summary>
     public static class GameFlow
     {
@@ -18,9 +20,27 @@ namespace Engine.Logic
         internal static MainSceneLogic SceneLogic;
         internal static Action QuitHandler;
 
-        internal static string PendingScenePath { get; private set; }
-        /// <summary>False when the queued load leaves persistent gameobjects behind.</summary>
-        internal static bool PendingCarriesPersistent { get; private set; } = true;
+        /// <summary>The load in progress (queued, reading, building, waiting or finishing), or null.</summary>
+        public static SceneLoadOperation CurrentLoad { get; private set; }
+        /// <summary>The last load that finished (Done), blocking or not: its timings say what it cost.</summary>
+        public static SceneLoadOperation LastLoad { get; private set; }
+        /// <summary>True while a scene load runs (<see cref="CurrentLoad"/>).</summary>
+        public static bool IsLoading => CurrentLoad != null;
+
+        /// <summary>Raised when a load is Done, a few frames after the new scene started (game thread).</summary>
+        public static event Action<SceneLoadOperation> SceneLoaded;
+
+        /// <summary>
+        /// Milliseconds per frame <see cref="LoadSceneAsync(string, bool, bool)"/> spends creating gameobjects. Higher
+        /// loads faster with longer frames; the swap itself always takes a frame of its own.
+        /// </summary>
+        public static float LoadBudgetMs { get; set; } = 4f;
+
+        /// <summary>
+        /// Vista document of the loading screen (Content/&lt;path&gt;.xml + .css). A replacement keeps the element ids
+        /// that <see cref="LoadingScreen"/> fills.
+        /// </summary>
+        public static string LoadingScreenDocument { get; set; } = "UI/LoadingScreen";
 
         /// <summary>True when the engine runs inside the Anvil editor (Play mode), false in the standalone game.</summary>
         public static bool IsEditor => Input.HostBridge?.IsHostedByEditor == true;
@@ -66,30 +86,35 @@ namespace Engine.Logic
         /// With <paramref name="carryPersistent"/> false, persistent gameobjects stay behind and unload with
         /// the departing scene (for example when going back to the main menu); inside Anvil, Stop still puts
         /// the edited scene's ones back.
+        /// The whole load happens at the start of the next frame, a hitch on big scenes;
+        /// <see cref="LoadSceneAsync(int, bool, bool)"/> spreads it out.
         /// </summary>
-        public static bool LoadScene(int index, bool carryPersistent = true)
-        {
-            if (index < 0 || index >= SceneList.Scenes.Count)
-            {
-                EditorBridge.Log($"GameFlow.LoadScene: index {index} is outside the scene list (0..{SceneList.Scenes.Count - 1})");
-                return false;
-            }
-            return QueuePath(SceneList.ResolvePath(SceneList.Scenes[index]), carryPersistent);
-        }
+        public static bool LoadScene(int index, bool carryPersistent = true) =>
+            Begin(ResolveIndex(index, "LoadScene"), carryPersistent, blocking: true, loadingScreen: false) != null;
 
         /// <summary>
         /// Queues a scene by list name ("GodRayTest") or Content-relative path ("Scenes/GodRayTest.obsc").
         /// <paramref name="carryPersistent"/> works as in <see cref="LoadScene(int, bool)"/>.
         /// </summary>
-        public static bool LoadScene(string nameOrPath, bool carryPersistent = true)
-        {
-            int index = SceneList.Find(nameOrPath);
-            if (index >= 0) return LoadScene(index, carryPersistent);
-            if (string.IsNullOrWhiteSpace(nameOrPath)) return false;
-            string entry = nameOrPath.EndsWith(SceneSerialization.Extension, StringComparison.OrdinalIgnoreCase)
-                ? nameOrPath : nameOrPath + SceneSerialization.Extension;
-            return QueuePath(SceneList.ResolvePath(entry), carryPersistent);
-        }
+        public static bool LoadScene(string nameOrPath, bool carryPersistent = true) =>
+            Begin(ResolveName(nameOrPath, "LoadScene"), carryPersistent, blocking: true, loadingScreen: false) != null;
+
+        /// <summary>
+        /// Loads the scene at <paramref name="index"/> in the build list in the background while the running scene
+        /// keeps playing: the file is read on a worker thread, its gameobjects are created <see cref="LoadBudgetMs"/>
+        /// per frame, then the scenes swap (Play carries on in the new one). With <paramref name="loadingScreen"/> the
+        /// engine's loading screen (<see cref="LoadingScreenDocument"/>) covers the view and shows the real progress;
+        /// without it, show <see cref="SceneLoadOperation.Progress"/> yourself.
+        /// Returns the operation, or null when the scene doesn't exist. A new load cancels one that hasn't swapped yet.
+        /// </summary>
+        public static SceneLoadOperation LoadSceneAsync(int index, bool carryPersistent = true, bool loadingScreen = true) =>
+            Begin(ResolveIndex(index, "LoadSceneAsync"), carryPersistent, blocking: false, loadingScreen);
+
+        /// <summary>
+        /// <see cref="LoadSceneAsync(int, bool, bool)"/> by list name ("GodRayTest") or Content-relative path ("Scenes/GodRayTest.obsc").
+        /// </summary>
+        public static SceneLoadOperation LoadSceneAsync(string nameOrPath, bool carryPersistent = true, bool loadingScreen = true) =>
+            Begin(ResolveName(nameOrPath, "LoadSceneAsync"), carryPersistent, blocking: false, loadingScreen);
 
         /// <summary>Queues the next scene in the build list (wrapping to 0 after the last).</summary>
         public static bool LoadNextScene()
@@ -100,9 +125,13 @@ namespace Engine.Logic
         }
 
         /// <summary>Queues the running scene again, from its file.</summary>
-        public static bool ReloadScene() => QueuePath(SceneLogic?.ActiveScene?.FilePath);
+        public static bool ReloadScene() =>
+            Begin(SceneLogic?.ActiveScene?.FilePath, carryPersistent: true, blocking: true, loadingScreen: false) != null;
 
-        /// <summary>Closes the standalone game. Inside Anvil this only logs (use Stop to leave Play).</summary>
+        /// <summary>Stops the load in progress if it hasn't swapped scenes yet. False when there is none or it's too late.</summary>
+        public static bool CancelLoad() => CurrentLoad?.Cancel() == true;
+
+        /// <summary>Closes the standalone game. Inside Anvil this only logs (use Stop to leave Play mode).</summary>
         public static void Quit()
         {
             if (IsEditor || QuitHandler == null)
@@ -113,31 +142,75 @@ namespace Engine.Logic
             QuitHandler();
         }
 
-        private static bool QueuePath(string path, bool carryPersistent = true)
+        private static string ResolveIndex(int index, string caller)
+        {
+            if (index >= 0 && index < SceneList.Scenes.Count) return SceneList.ResolvePath(SceneList.Scenes[index]);
+            EditorBridge.Log($"GameFlow.{caller}: index {index} is outside the scene list (0..{SceneList.Scenes.Count - 1})");
+            return null;
+        }
+
+        private static string ResolveName(string nameOrPath, string caller)
+        {
+            int index = SceneList.Find(nameOrPath);
+            if (index >= 0) return ResolveIndex(index, caller);
+            if (string.IsNullOrWhiteSpace(nameOrPath)) return null;
+            string entry = nameOrPath.EndsWith(SceneSerialization.Extension, StringComparison.OrdinalIgnoreCase)
+                ? nameOrPath : nameOrPath + SceneSerialization.Extension;
+            return SceneList.ResolvePath(entry);
+        }
+
+        private static SceneLoadOperation Begin(string path, bool carryPersistent, bool blocking, bool loadingScreen)
         {
             if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
             {
                 EditorBridge.Log($"GameFlow.LoadScene: scene file '{path}' not found");
-                return false;
+                return null;
             }
-            PendingScenePath = path;
-            PendingCarriesPersistent = carryPersistent;
-            return true;
+            // One load at a time: a newer request replaces one that hasn't swapped yet.
+            SceneLoadOperation previous = CurrentLoad;
+            if (previous != null && !previous.Cancel())
+            {
+                previous.FinishNow();
+                Report(previous);
+            }
+            CurrentLoad = new SceneLoadOperation(path, carryPersistent, blocking, loadingScreen);
+            return CurrentLoad;
         }
 
-        internal static string TakePendingScene()
+        /// <summary>
+        /// Advances <see cref="CurrentLoad"/> (start of each scene update, before input and scripts).
+        /// <paramref name="activate"/> swaps the built scene in.
+        /// </summary>
+        internal static void UpdateLoad(Assets assets, Func<SceneLoadOperation, Scene, bool> activate)
         {
-            string path = PendingScenePath;
-            PendingScenePath = null;
-            return path;
+            SceneLoadOperation load = CurrentLoad;
+            if (load != null)
+            {
+                if (load.ShowLoadingScreen) LoadingScreen.Show(load);
+                load.Update(assets, activate, covered: !load.ShowLoadingScreen || LoadingScreen.IsCovering);
+                if (load.IsDone)
+                {
+                    if (ReferenceEquals(CurrentLoad, load)) CurrentLoad = null;
+                    Report(load);
+                }
+            }
+            LoadingScreen.Update();
         }
 
-        /// <summary>Whether the load just taken carries persistent gameobjects (resets to true).</summary>
-        internal static bool TakePendingCarriesPersistent()
+        private static void Report(SceneLoadOperation load)
         {
-            bool carry = PendingCarriesPersistent;
-            PendingCarriesPersistent = true;
-            return carry;
+            if (load.Status != SceneLoadStatus.Done) return;
+            LastLoad = load;
+            try { SceneLoaded?.Invoke(load); }
+            catch (Exception ex) { EditorBridge.Log("GameFlow.SceneLoaded handler threw: " + ex); }
+        }
+
+        /// <summary>Play stopped or the editor opened another scene: drop the load and its loading screen.</summary>
+        internal static void AbortLoad()
+        {
+            CurrentLoad?.Cancel();
+            CurrentLoad = null;
+            LoadingScreen.Hide();
         }
     }
 }

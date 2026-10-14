@@ -1,0 +1,657 @@
+{
+  "Version": 2,
+  "Name": "SceneLoadingTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.5
+      ],
+      "Scale": [
+        60,
+        60,
+        0.5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.09,
+          0.09,
+          0.1
+        ],
+        "Roughness": 0.92
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e7bd283d-ea96-57ba-845b-a8a62ceb28c3",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 2,
+      "Name": "Plinth 1",
+      "ModelKey": "Cube",
+      "Position": [
+        6.428,
+        -7.66,
+        0.6
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.16,
+          0.16,
+          0.18
+        ],
+        "Roughness": 0.7
+      }
+    },
+    {
+      "Id": 3,
+      "Name": "Spinner 1",
+      "ModelKey": "Cube",
+      "Position": [
+        6.428,
+        -7.66,
+        2.4
+      ],
+      "Scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.91,
+          0.71,
+          0.44
+        ],
+        "Roughness": 0.35,
+        "EmissiveStrength": 0.6
+      },
+      "Components": [
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "29762bb3-84f0-50f2-96c7-01aa0c318e9f",
+          "Data": {
+            "ScriptId": "spin-example",
+            "Enabled": true,
+            "Fields": {
+              "_degreesPerSecond": 40
+            }
+          }
+        }
+      ]
+    },
+    {
+      "Id": 4,
+      "Name": "Plinth 2",
+      "ModelKey": "Cube",
+      "Position": [
+        9.063,
+        -4.226,
+        0.6
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.16,
+          0.16,
+          0.18
+        ],
+        "Roughness": 0.7
+      }
+    },
+    {
+      "Id": 5,
+      "Name": "Spinner 2",
+      "ModelKey": "Cube",
+      "Position": [
+        9.063,
+        -4.226,
+        2.4
+      ],
+      "Scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.56,
+          0.78,
+          0.91
+        ],
+        "Roughness": 0.35,
+        "EmissiveStrength": 0.6
+      },
+      "Components": [
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "5a391c03-2619-5c64-8ec3-af0b46c64e6a",
+          "Data": {
+            "ScriptId": "spin-example",
+            "Enabled": true,
+            "Fields": {
+              "_degreesPerSecond": 65
+            }
+          }
+        }
+      ]
+    },
+    {
+      "Id": 6,
+      "Name": "Plinth 3",
+      "ModelKey": "Cube",
+      "Position": [
+        10.0,
+        0.0,
+        0.6
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.16,
+          0.16,
+          0.18
+        ],
+        "Roughness": 0.7
+      }
+    },
+    {
+      "Id": 7,
+      "Name": "Spinner 3",
+      "ModelKey": "Cube",
+      "Position": [
+        10.0,
+        0.0,
+        2.4
+      ],
+      "Scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.88,
+          0.45,
+          0.43
+        ],
+        "Roughness": 0.35,
+        "EmissiveStrength": 0.6
+      },
+      "Components": [
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "381379dd-2485-5fca-86e6-a1a5fc5147e8",
+          "Data": {
+            "ScriptId": "spin-example",
+            "Enabled": true,
+            "Fields": {
+              "_degreesPerSecond": 90
+            }
+          }
+        }
+      ]
+    },
+    {
+      "Id": 8,
+      "Name": "Plinth 4",
+      "ModelKey": "Cube",
+      "Position": [
+        9.063,
+        4.226,
+        0.6
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.16,
+          0.16,
+          0.18
+        ],
+        "Roughness": 0.7
+      }
+    },
+    {
+      "Id": 9,
+      "Name": "Spinner 4",
+      "ModelKey": "Cube",
+      "Position": [
+        9.063,
+        4.226,
+        2.4
+      ],
+      "Scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.85,
+          0.6
+        ],
+        "Roughness": 0.35,
+        "EmissiveStrength": 0.6
+      },
+      "Components": [
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "21d724af-0a0d-59b0-8916-a36b85ce6975",
+          "Data": {
+            "ScriptId": "spin-example",
+            "Enabled": true,
+            "Fields": {
+              "_degreesPerSecond": 115
+            }
+          }
+        }
+      ]
+    },
+    {
+      "Id": 10,
+      "Name": "Plinth 5",
+      "ModelKey": "Cube",
+      "Position": [
+        6.428,
+        7.66,
+        0.6
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.16,
+          0.16,
+          0.18
+        ],
+        "Roughness": 0.7
+      }
+    },
+    {
+      "Id": 11,
+      "Name": "Spinner 5",
+      "ModelKey": "Cube",
+      "Position": [
+        6.428,
+        7.66,
+        2.4
+      ],
+      "Scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.8,
+          0.62,
+          0.9
+        ],
+        "Roughness": 0.35,
+        "EmissiveStrength": 0.6
+      },
+      "Components": [
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "cf857fd0-5d34-56c5-96f2-2fd8936b6903",
+          "Data": {
+            "ScriptId": "spin-example",
+            "Enabled": true,
+            "Fields": {
+              "_degreesPerSecond": 140
+            }
+          }
+        }
+      ]
+    },
+    {
+      "Id": 12,
+      "Name": "Slab 1",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        -16,
+        3
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 13,
+      "Name": "Slab 2",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        -12,
+        4
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 14,
+      "Name": "Slab 3",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        -8,
+        5
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 15,
+      "Name": "Slab 4",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        -4,
+        3
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 16,
+      "Name": "Slab 5",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        0,
+        4
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 17,
+      "Name": "Slab 6",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        4,
+        5
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 18,
+      "Name": "Slab 7",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        8,
+        3
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 19,
+      "Name": "Slab 8",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        12,
+        4
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 20,
+      "Name": "Slab 9",
+      "ModelKey": "Cube",
+      "Position": [
+        22,
+        16,
+        5
+      ],
+      "Scale": [
+        0.6,
+        1.6,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.13,
+          0.13,
+          0.15
+        ],
+        "Roughness": 0.85
+      }
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 100,
+      "Name": "Warm Light",
+      "Position": [
+        8,
+        -6,
+        5
+      ],
+      "Radius": 22,
+      "Color": [
+        255,
+        176,
+        96,
+        255
+      ],
+      "Intensity": 3
+    },
+    {
+      "Id": 101,
+      "Name": "Cool Light",
+      "Position": [
+        8,
+        6,
+        5
+      ],
+      "Radius": 22,
+      "Color": [
+        120,
+        180,
+        255,
+        255
+      ],
+      "Intensity": 3
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 102,
+      "Name": "Sun",
+      "Direction": [
+        0.62,
+        0.38,
+        -0.69
+      ],
+      "Position": [
+        0,
+        0,
+        40
+      ],
+      "Color": [
+        255,
+        238,
+        218,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 90,
+      "ShadowDepth": 160,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      6,
+      0,
+      4
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 16.2,
+    "CycleDurationMinutes": 1440,
+    "CloudCoverage": 0.3,
+    "CloudSpeed": 0.5
+  },
+  "MainCamera": {
+    "Position": [
+      -9.5,
+      0.0,
+      5.2
+    ],
+    "Forward": [
+      0.9834,
+      0.0,
+      -0.1815
+    ],
+    "FieldOfView": 0.85,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "ab20c5bd-a583-5247-9cb9-ff0f392f3650",
+        "Data": {
+          "ScriptId": "scene-loading-test",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

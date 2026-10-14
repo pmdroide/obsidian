@@ -11,12 +11,13 @@ namespace Engine.Scripting;
 /// <summary>
 /// First-person player of the CollisionTest sample scene. Runs on the "Player" capsule, a Dynamic
 /// body with Freeze Rotation, and drives the main camera from the capsule's head.
-///   W A S D / left stick   move          Shift   run          Space / A   jump
-///   Hold right mouse       look (or the arrow keys)
-///   E                      use the Interactable under the crosshair (a ray from the camera)
-///   Hold left mouse        carry a light object      F   throw it
-///   Q                      shove what the crosshair is on (impulse at the hit point)
-///   R                      reset the scene
+/// Reads the project's input actions (Anvil > Window > Input Actions), so it plays on keyboard/mouse or a gamepad:
+///   Move      W A S D / left stick          Sprint   Shift / left stick press     Jump   Space / A
+///   Look      hold right mouse and drag, the arrow keys, or the right stick
+///   Interact  E / X: use the Interactable under the crosshair (a ray from the camera)
+///   Attack    hold left mouse / RT: carry a light object      F   throw it
+///   Q         shove what the crosshair is on (impulse at the hit point)
+///   R         reset the scene
 /// Movement sets the body's velocity with a limited acceleration, so the solver does the pushing:
 /// crates resist by their mass and friction, and the 2-tonne anchor doesn't budge.
 /// </summary>
@@ -31,7 +32,8 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
     private const float GroundAcceleration = 40f, AirAcceleration = 8f;
     // The capsule is 2 units tall and centred on its origin.
     private const float HalfHeight = 1f, EyeHeight = 0.7f, FootProbe = 0.3f;
-    private const float LookDegreesPerPixel = 0.15f, KeyLookDegreesPerSecond = 120f;
+    // A jump pressed this long before landing still happens (input buffering).
+    private const float JumpBuffer = 0.15f;
     private const float ReachDistance = 6f;   // longest ray; each Interactable also has its own Range
     private const float CarryReach = 3.5f, CarryDistance = 2.4f, CarryMaxMass = 40f;
     private const float CarryGain = 12f, CarryMaxSpeed = 14f, CarryBreakDistance = 4f;
@@ -113,19 +115,11 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
 
     private void Look()
     {
-        MouseState mouse = Input.mouseState, last = Input.mouseLastState;
-        // Both frames held, so pressing the button doesn't jump the view.
-        if (mouse.RightButton == ButtonState.Pressed && last.RightButton == ButtonState.Pressed)
-        {
-            _yaw -= (mouse.X - last.X) * LookDegreesPerPixel;
-            _pitch -= (mouse.Y - last.Y) * LookDegreesPerPixel;
-        }
-        float turn = KeyLookDegreesPerSecond * DeltaTime;
-        if (GameInput.IsDown(Keys.Left)) _yaw += turn;
-        if (GameInput.IsDown(Keys.Right)) _yaw -= turn;
-        if (GameInput.IsDown(Keys.Up)) _pitch += turn;
-        if (GameInput.IsDown(Keys.Down)) _pitch -= turn;
-        _pitch = Math.Clamp(_pitch, -85f, 85f);
+        // Already in degrees: each Look binding has its own Scale (0.15 per pixel while the right mouse
+        // button is held, 120/s on the arrows, 150/s on the right stick). +X turns right, +Y looks up.
+        Vector2 look = GetVector("Look");
+        _yaw -= look.X;
+        _pitch = Math.Clamp(_pitch + look.Y, -85f, 85f);
     }
 
     private void Move()
@@ -134,14 +128,10 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
         var forward = new Vector3(MathF.Cos(yaw), MathF.Sin(yaw), 0f);
         var right = new Vector3(MathF.Sin(yaw), -MathF.Cos(yaw), 0f);
 
-        Vector2 stick = GameInput.LeftStick;
-        Vector3 wish = forward * stick.Y + right * stick.X;
-        if (GameInput.IsDown(Keys.W)) wish += forward;
-        if (GameInput.IsDown(Keys.S)) wish -= forward;
-        if (GameInput.IsDown(Keys.D)) wish += right;
-        if (GameInput.IsDown(Keys.A)) wish -= right;
-        if (wish.LengthSquared() > 1f) wish.Normalize();
-        bool run = GameInput.IsDown(Keys.LeftShift) || GameInput.IsDown(Keys.RightShift);
+        // W A S D or the left stick, at most length 1 (+Y forward).
+        Vector2 move = GetVector("Move");
+        Vector3 wish = forward * move.Y + right * move.X;
+        bool run = IsActionDown("Sprint");
 
         UpdateGround();
         Vector3 velocity = Velocity;
@@ -154,7 +144,12 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
             if (change.LengthSquared() > limit * limit) change = Vector3.Normalize(change) * limit;
             velocity += change;
         }
-        if (_grounded && (GameInput.WasPressed(Keys.Space) || GameInput.WasPressed(Buttons.A))) velocity.Z = JumpSpeed;
+        InputAction jump = GetAction("Jump");
+        if (_grounded && jump.WasPressedWithin(JumpBuffer))
+        {
+            velocity.Z = JumpSpeed;
+            jump.ConsumePress();
+        }
         Velocity = velocity;
     }
 
@@ -211,17 +206,18 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
 
         SetHovered(interactable != null ? useHit.GameObject : canCarry ? movable : null);
 
-        if (_carried != null) _prompt = "Release left mouse  drop     F  throw";
-        else if (interactable != null) _prompt = $"E  {interactable.Prompt}";
-        else if (canCarry && movable.Mass <= CarryMaxMass) _prompt = $"Hold left mouse  carry {movable.Name}";
+        // BindingText shows the key or button of the device the player is using ("E" or "X").
+        if (_carried != null) _prompt = $"Release {BindingText("Attack")}  drop     F  throw";
+        else if (interactable != null) _prompt = $"{BindingText("Interact")}  {interactable.Prompt}";
+        else if (canCarry && movable.Mass <= CarryMaxMass) _prompt = $"Hold {BindingText("Attack")}  carry {movable.Name}";
         else if (movable != null) _prompt = $"Q  shove {movable.Name} ({movable.Mass:0} kg)";
         else _prompt = "";
         _crosshairActive = interactable != null || movable != null;
 
-        if (interactable != null && (GameInput.WasPressed(Keys.E) || GameInput.WasPressed(Buttons.X)))
+        if (interactable != null && WasActionPressed("Interact"))
             Interact(useHit);
 
-        if (GameInput.MouseClicked && canCarry)
+        if (WasActionPressed("Attack") && canCarry)
         {
             if (movable.Mass > CarryMaxMass)
                 CollisionTestFeed.Post($"{movable.Name} is too heavy to carry ({movable.Mass:0} kg): push it or shove it with Q");
@@ -232,7 +228,7 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
                 CollisionTestFeed.Post($"Picked up {movable.Name}");
             }
         }
-        if (_carried != null && Input.mouseState.LeftButton == ButtonState.Released) Drop();
+        if (_carried != null && !IsActionDown("Attack")) Drop();
         if (_carried != null && GameInput.WasPressed(Keys.F)) Throw();
 
         if (movable != null && GameInput.WasPressed(Keys.Q))

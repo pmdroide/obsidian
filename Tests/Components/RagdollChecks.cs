@@ -33,6 +33,9 @@ internal static class RagdollChecks
             CheckKinematicFollow();
             CheckImpactAndRecovery();
             CheckJointLimits();
+            CheckQuadrupedRig();
+            CheckGenericRig();
+            CheckQuadrupedFall();
             CheckSampleScene();
         }
         finally { RagdollComponent.FallbackRig = null; }
@@ -58,7 +61,7 @@ internal static class RagdollChecks
         Publish();
         var ragdoll = entity.GetComponent<RagdollComponent>();
         var editor = owner.Components.OfType<RagdollComponentViewModel>().Single();
-        Check(ragdoll is { Mass: 70, ActiveOnStart: false, ImpactThreshold: 0, JointFriction: 0.2f } && !ragdoll.IsActive &&
+        Check(ragdoll is { Mass: 70, ActiveOnStart: false, ImpactThreshold: 0, JointFriction: 0.2f, Skeleton: RagdollSkeletonType.Auto } && !ragdoll.IsActive &&
               !owner.AddableComponents.Single(c => c.DisplayName == "Ragdoll").AddCommand.CanExecute(null),
             "Ragdoll defaults to a 70 kg body that stays animated, and is unique per gameobject");
 
@@ -66,8 +69,9 @@ internal static class RagdollChecks
         editor.ActiveOnStart = true;
         editor.ImpactThreshold = 3;
         editor.JointFriction = 0.5;
+        editor.Skeleton = RagdollSkeletonType.Quadruped;
         Publish();
-        Check(ragdoll is { Mass: 85, ActiveOnStart: true, ImpactThreshold: 3, JointFriction: 0.5f },
+        Check(ragdoll is { Mass: 85, ActiveOnStart: true, ImpactThreshold: 3, JointFriction: 0.5f, Skeleton: RagdollSkeletonType.Quadruped },
             "inspector edits reach the engine component");
         editor.Mass = double.NaN;
         editor.JointFriction = 4;
@@ -77,7 +81,8 @@ internal static class RagdollChecks
         var record = ComponentRegistry.Capture(ragdoll);
         Check(!record.Data.TryGetProperty(nameof(RagdollComponent.IsActive), out _) &&
               !record.Data.TryGetProperty(nameof(RagdollComponent.Ragdoll), out _) &&
-              ComponentRegistry.Restore(record) is RagdollComponent { Mass: 85, ActiveOnStart: true, ImpactThreshold: 3 },
+              record.Data.GetProperty(nameof(RagdollComponent.Skeleton)).GetString() == "Quadruped" &&
+              ComponentRegistry.Restore(record) is RagdollComponent { Mass: 85, ActiveOnStart: true, ImpactThreshold: 3, Skeleton: RagdollSkeletonType.Quadruped },
             "saved Ragdoll records round-trip their settings and exclude runtime state");
         var clone = (BasicEntity)entity.Clone;
         var copied = clone.GetComponent<RagdollComponent>();
@@ -128,6 +133,7 @@ internal static class RagdollChecks
         RagdollRig rig = Humanoid.Rig;
         string[] names = rig.Parts.Select(p => p.Name).ToArray();
         int Part(string name) => Array.IndexOf(names, name);
+        Check(rig.Type == RagdollSkeletonType.Humanoid, "Auto takes an upright figure with leg bone names for a humanoid");
         Check(names.SequenceEqual(new[] { "Hips", "Spine", "Head", "LeftUpLeg", "LeftLeg", "RightUpLeg", "RightLeg" }) &&
               rig.Parts[0].Parent == -1 && rig.Parts[Part("Spine")].Parent == 0 && rig.Parts[Part("Head")].Parent == Part("Spine") &&
               rig.Parts[Part("LeftLeg")].Parent == Part("LeftUpLeg") && rig.Parts[Part("RightUpLeg")].Parent == 0,
@@ -280,6 +286,92 @@ internal static class RagdollChecks
         }
     }
 
+    private static void CheckQuadrupedRig()
+    {
+        RagdollRig rig = Quadruped.Build();
+        RagdollRig.Part Part(RagdollRig r, string name) => r.Parts.Single(p => p.Name == name);
+        RagdollJointKind Joint(RagdollRig r, string name) => Part(r, name).Joint;
+        Check(rig.Type == RagdollSkeletonType.Quadruped && rig.Parts.Length == 19 && rig.Parts[0].Name == "Pelvis",
+            "Auto takes a long body on four legs for a quadruped, even with human limb names");
+        Check(Near(rig.Forward, -Vector3.UnitY) && Near(rig.Left, Vector3.UnitX), "it faces away from its tail; left comes from the .L/.R names");
+        Check(Joint(rig, "upper_arm.L") == RagdollJointKind.ForeShoulder && Joint(rig, "forearm.R") == RagdollJointKind.ForeElbow &&
+              Joint(rig, "hand.L") == RagdollJointKind.ForeWrist && Joint(rig, "thigh.R") == RagdollJointKind.HindHip &&
+              Joint(rig, "shin.L") == RagdollJointKind.HindKnee && Joint(rig, "foot.R") == RagdollJointKind.HindHock,
+            "front legs get shoulder, elbow and wrist joints; hind legs hip, knee and hock");
+        Check(Joint(rig, "Tail1") == RagdollJointKind.Tail && Joint(rig, "Tail2") == RagdollJointKind.Tail &&
+              Joint(rig, "Neck") == RagdollJointKind.Neck && Joint(rig, "Head") == RagdollJointKind.Neck && Joint(rig, "Chest") == RagdollJointKind.Spine,
+            "the tail is a chain of cones, the neck and head keep their names, the chest is spine");
+        Check(Near(Part(rig, "forearm.L").Flex, rig.Forward) && Near(Part(rig, "hand.L").Flex, -rig.Forward) &&
+              Near(Part(rig, "shin.L").Flex, -rig.Forward) && Near(Part(rig, "foot.L").Flex, rig.Forward) &&
+              Part(rig, "Tail1").Flex == Vector3.Zero && Part(rig, "upper_arm.L").Flex == Vector3.Zero,
+            "elbows and hocks bend forward, wrists and knees backward; cones have no bend direction");
+        Check(new[] { RagdollJointKind.ForeElbow, RagdollJointKind.ForeWrist, RagdollJointKind.HindKnee, RagdollJointKind.HindHock }
+                  .All(k => RagdollJointLimits.For(k).IsHinge) &&
+              !RagdollJointLimits.For(RagdollJointKind.Tail).IsHinge && !RagdollJointLimits.For(RagdollJointKind.HindHip).IsHinge,
+            "a quadruped's elbows, wrists, knees and hocks are hinges; hips, shoulders and tail links are cones");
+
+        RagdollRig human = Quadruped.Build(RagdollSkeletonType.Humanoid);
+        Check(human.Type == RagdollSkeletonType.Humanoid && Joint(human, "shin.L") == RagdollJointKind.Knee &&
+              Joint(human, "forearm.L") == RagdollJointKind.Elbow && Joint(human, "Tail1") == RagdollJointKind.Other,
+            "Skeleton Humanoid forces the human bone-name joints");
+        RagdollRig generic = Quadruped.Build(RagdollSkeletonType.Generic);
+        Check(generic.Type == RagdollSkeletonType.Generic && generic.Parts.All(p => p.Flex == Vector3.Zero) &&
+              Joint(generic, "thigh.L") == RagdollJointKind.Limb && Joint(generic, "shin.L") == RagdollJointKind.Chain &&
+              Joint(generic, "Tail2") == RagdollJointKind.Tail,
+            "Skeleton Generic has no hinges: parts off a branch are limbs, the rest chain links");
+    }
+
+    private static void CheckGenericRig()
+    {
+        RagdollRig snake = Snake.Build();
+        Check(snake.Type == RagdollSkeletonType.Generic && snake.Parts.Length == 6 &&
+              snake.Parts.Skip(1).Take(4).All(p => p.Joint == RagdollJointKind.Chain) && snake.Parts[5].Joint == RagdollJointKind.Neck &&
+              snake.Parts.All(p => p.Flex == Vector3.Zero),
+            "Auto takes a legless chain (a snake) for a generic skeleton of chain links");
+        Check(Near(snake.Forward, Vector3.UnitX) && Near(snake.Left, Vector3.UnitY),
+            "without left/right bone names the facing points from the root to the head");
+    }
+
+    /// <summary>The box quadruped falls over and rests within its hinges; the snake drapes over a bar.</summary>
+    private static void CheckQuadrupedFall()
+    {
+        using var world = NewWorld();
+        world.Add("Bar", new Vector3(4, 0, 0.15f), new Vector3(0.1f, 1, 0.15f), PhysicsBodyType.Static, recorder: false);
+        RagdollRig quadruped = Quadruped.Build(), snake = Snake.Build();
+        RagdollComponent.FallbackRig = (e, type) => e.Name == "Snake" ? snake
+            : type is RagdollSkeletonType.Auto or RagdollSkeletonType.Quadruped ? quadruped : Quadruped.Build(type);
+
+        var (_, dog) = AddCharacter(world, new Vector3(0, 0, 0.3f), new RagdollComponent { ActiveOnStart = true, Mass = 35 });
+        var (_, forced) = AddCharacter(world, new Vector3(-4, 0, 0.3f), new RagdollComponent { Skeleton = RagdollSkeletonType.Generic });
+        var (snakeEntity, slither) = AddCharacter(world, new Vector3(4, 0, 0.4f), new RagdollComponent { ActiveOnStart = true, Mass = 8 });
+        snakeEntity.Name = "Snake";
+        Step(world, 1, dog, forced, slither);
+        Check(dog.Ragdoll is { IsActive: true, PartCount: 19 } && dog.Ragdoll.Rig.Type == RagdollSkeletonType.Quadruped &&
+              forced.Ragdoll?.Rig.Type == RagdollSkeletonType.Generic,
+            "the component builds the rig for its Skeleton setting");
+
+        Ragdoll parts = dog.Ragdoll;
+        int chest = Array.FindIndex(parts.Rig.Parts, p => p.Name == "Chest");
+        dog.AddImpulse(new Vector3(40, 0, 0), parts.PartPosition(chest));
+        Step(world, 360, dog, slither);
+        float lowest = Enumerable.Range(0, parts.PartCount).Min(p => parts.PartPosition(p).Z);
+        float fastest = Enumerable.Range(0, parts.PartCount)
+            .Max(p => world.Physics.Simulation.Bodies[parts.BodyOf(p)].Velocity.Linear.Length());
+        Check(lowest > -0.03f && fastest < 0.3f, $"the quadruped topples and comes to rest on the ground (lowest part at {lowest:0.00} m)");
+        float[] hinges = parts.Rig.Parts.Select((p, i) => (p, i)).Where(x => RagdollJointLimits.For(x.p.Joint).IsHinge)
+            .Select(x => HingeAngle(world, parts, x.i)).ToArray();
+        Check(hinges.Length == 8 && hinges.All(a => a is > -25 and < 135),
+            $"its elbows, wrists, knees and hocks stay within their hinges ({string.Join(", ", hinges.Select(a => a.ToString("0")))}°)");
+
+        Ragdoll body = slither.Ragdoll;
+        float[] z = Enumerable.Range(0, body.PartCount).Select(p => body.PartPosition(p).Z).ToArray();
+        Check(Math.Max(z[2], z[3]) > 0.3f && z[0] < 0.15f && z[5] < 0.15f,
+            $"the snake's chain drapes over a bar, both ends on the ground ({string.Join(", ", z.Select(h => h.ToString("0.00")))} m)");
+        dog.OnStop();
+        forced.OnStop();
+        slither.OnStop();
+    }
+
     private static void CheckSampleScene()
     {
         string contentRoot = new EditorBridge().ContentSourceRoot;
@@ -290,6 +382,7 @@ internal static class RagdollChecks
             IsoSphere = new ModelDefinition(null, bounds),
             PlayerYBot = new ModelDefinition(null, bounds),
             PlayerWalking = new ModelDefinition(null, bounds),
+            Wolf = new ModelDefinition(null, bounds),
         };
         var scene = SceneSerialization.LoadFromFile(Path.Combine(contentRoot, "Scenes", "AnimationTest.obsc"), assets);
         BasicEntity Named(string name) => scene.BasicEntities.Single(e => e.Name == name);
@@ -302,6 +395,13 @@ internal static class RagdollChecks
               ball.GetComponent<PhysicsComponent>() is { BodyType: PhysicsBodyType.Dynamic } &&
               Math.Abs(ball.Position.X - hit.Position.X) < 0.2f && Math.Abs(ball.Position.Y - hit.Position.Y) < 0.2f && ball.Position.Z > 2.5f,
             "the animation sample has a ragdoll that goes limp on Play and one a falling ball knocks over");
+        var limpWolf = Named("Wolf - Ragdoll (limp on Play)");
+        var standingWolf = Named("Wolf - Ragdoll (click to knock over)");
+        Check(limpWolf.ModelDefinition == assets.Wolf && standingWolf.ModelDefinition == assets.Wolf &&
+              limpWolf.GetComponent<RagdollComponent>() is { ActiveOnStart: true, Skeleton: RagdollSkeletonType.Quadruped, Mass: 35 } &&
+              standingWolf.GetComponent<RagdollComponent>() is { ActiveOnStart: false, Skeleton: RagdollSkeletonType.Auto, ImpactThreshold: > 0 } &&
+              standingWolf.GetComponent<AnimatorComponent>() != null,
+            "the sample has two Wolf ragdolls: one limp on Play (Quadruped) and one idling until knocked over (Auto)");
         Check(Named("Ground").GetComponent<PhysicsComponent>() is { BodyType: PhysicsBodyType.Static },
             "the sample's ground is a static collider for the ragdolls to land on");
         Check(scene.MainCamera?.GetComponents<ScriptBehaviourComponent>().Any(s => s.ScriptId == Engine.Scripting.RagdollTestScript.ScriptId) == true,
@@ -382,6 +482,7 @@ internal static class RagdollChecks
             Check(entity.WorldTransform.Skin == null && entity.Ragdoll == null, "Stop removes the ragdoll and the skins");
 
             CheckSampleBall(graphics, content);
+            CheckWolf(graphics, content);
         }
         finally
         {
@@ -430,6 +531,70 @@ internal static class RagdollChecks
         animator.OnStop();
     }
 
+    /// <summary>The built-in Wolf: a quadruped rig on Auto, the idle playing, then a fall onto its side.</summary>
+    private static void CheckWolf(GraphicsDevice graphics, ContentManager content)
+    {
+        var model = new ModelDefinition(content, "GameObjects/Wolf/Wolf", graphics);
+        RagdollRig rig = RagdollRig.For(model.Model);
+        Console.WriteLine("INFO: Wolf ragdoll parts: " + string.Join(", ", rig.Parts.Select(p => $"{p.Name} ({p.Joint})")));
+        RagdollJointKind Joint(string name) => rig.Parts.Single(p => p.Name == name).Joint;
+        Check(rig.Type == RagdollSkeletonType.Quadruped && rig.Parts[0].Name == "Pelvis" &&
+              Near(rig.Forward, -Vector3.UnitY, 0.01f) && Near(rig.Left, Vector3.UnitX, 0.01f),
+            "Auto makes the Wolf (human limb names on four legs) a quadruped facing -Y");
+        Check(Joint("forearm.L") == RagdollJointKind.ForeElbow && Joint("hand.R") == RagdollJointKind.ForeWrist &&
+              Joint("shin.R") == RagdollJointKind.HindKnee && Joint("foot.L") == RagdollJointKind.HindHock &&
+              rig.Parts.Count(p => p.Joint == RagdollJointKind.Tail) >= 3 && Joint("Head") == RagdollJointKind.Neck,
+            "the Wolf's legs get elbow/wrist and knee/hock hinges and its tail is a chain");
+        Check(ReferenceEquals(RagdollRig.For(model.Model), rig) && RagdollRig.For(model.Model, RagdollSkeletonType.Generic).Type == RagdollSkeletonType.Generic,
+            "rigs are cached per model and skeleton type");
+
+        using var world = NewWorld();
+        var entity = new BasicEntity(model, null, Vector3.Zero, Matrix.Identity, Vector3.One) { Name = "Wolf", IsEnabled = true };
+        var animator = new AnimatorComponent { ClipSource = "GameObjects/Wolf/Wolf" };
+        var ragdoll = new RagdollComponent { Mass = 35 };
+        entity.AddComponent(animator);
+        entity.AddComponent(ragdoll);
+        world.Entities.Add(entity);
+        animator.OnStart(entity);
+        ragdoll.OnStart(entity);
+        void Frames(int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                animator.OnUpdate(entity, Frame);
+                ragdoll.OnUpdate(entity, Frame);
+                world.Scene.Update(world.Entities, Dt, simulate: true);
+            }
+        }
+
+        Frames(20);
+        BoundingBox standing = SkinBounds(entity);
+        Check(animator.IsPlaying && ragdoll.Ragdoll is { IsActive: false } && standing.Max.Z is > 0.9f and < 1.25f &&
+              standing.Min.Z is > -0.03f and < 0.05f && standing.Max.Y - standing.Min.Y is > 1.5f and < 2.1f,
+            $"the Wolf stands {standing.Max.Z:0.00} m tall and {standing.Max.Y - standing.Min.Y:0.00} m long, playing its idle");
+
+        ragdoll.Activate();
+        Ragdoll parts = ragdoll.Ragdoll;
+        int chest = Array.FindIndex(rig.Parts, p => p.Name == "Chest");
+        ragdoll.AddImpulse(new Vector3(60, 0, 0), parts.PartPosition(chest));
+        Frames(300);
+        BoundingBox lying = SkinBounds(entity);
+        float fastest = Enumerable.Range(0, parts.PartCount)
+            .Max(p => world.Physics.Simulation.Bodies[parts.BodyOf(p)].Velocity.Linear.Length());
+        Check(lying.Max.Z < 0.6f && lying.Min.Z > -0.06f && fastest < 0.3f,
+            $"the Wolf falls onto its side and rests (skin from {lying.Min.Z:0.00} to {lying.Max.Z:0.00} m high)");
+        float[] hinges = rig.Parts.Select((p, i) => (p, i)).Where(x => RagdollJointLimits.For(x.p.Joint).IsHinge)
+            .Select(x => HingeAngle(world, parts, x.i)).ToArray();
+        Check(hinges.Length == 8 && hinges.All(a => a is > -25 and < 135),
+            $"its leg hinges stay within range ({string.Join(", ", hinges.Select(a => a.ToString("0")))}°)");
+
+        ragdoll.Deactivate();
+        Frames(2);
+        Check(SkinBounds(entity).Max.Z > 0.9f && Math.Abs(entity.Position.Z) < 0.05f, "recovering stands the Wolf back on its paws");
+        ragdoll.OnStop();
+        animator.OnStop();
+    }
+
     private static BoundingBox SkinBounds(BasicEntity entity)
     {
         var min = new Vector3(float.MaxValue);
@@ -457,8 +622,7 @@ internal static class RagdollChecks
     {
         RagdollRig rig = ragdoll.Rig;
         RagdollRig.Part part = rig.Parts[child];
-        Vector3 flex = part.Joint == RagdollJointKind.Knee ? -rig.Forward : rig.Forward;
-        Vector3 hinge = Vector3.Normalize(Vector3.Cross(part.RestDirection, flex));
+        Vector3 hinge = Vector3.Normalize(Vector3.Cross(part.RestDirection, part.Flex));
         Vector3 straight = InWorld(world, ragdoll, part.Parent, part.RestDirection);
         Vector3 actual = InWorld(world, ragdoll, child, part.RestDirection);
         Vector3 axis = InWorld(world, ragdoll, part.Parent, hinge);
@@ -486,7 +650,7 @@ internal static class RagdollChecks
     {
         var world = new World();
         world.Add("Ground", new Vector3(0, 0, -0.5f), new Vector3(20, 20, 0.5f), PhysicsBodyType.Static, recorder: false);
-        RagdollComponent.FallbackRig = _ => Humanoid.Rig;
+        RagdollComponent.FallbackRig = (_, _) => Humanoid.Rig;
         return world;
     }
 
@@ -568,6 +732,77 @@ internal static class RagdollChecks
                         positions.Add(min + (max - min) * new Vector3(x, y, z) / 3f);
                         bones.Add(bone);
                     }
+        }
+    }
+
+    /// <summary>
+    /// A 1.8 m long four-legged animal facing -Y (left is +X) with a two-part tail, built from boxes. Its legs
+    /// carry Rigify's human names (upper_arm/forearm/hand, thigh/shin/foot), as many animal rigs do.
+    /// </summary>
+    private static class Quadruped
+    {
+        public static RagdollRig Build(RagdollSkeletonType type = RagdollSkeletonType.Auto)
+        {
+            var bones = new List<(string Name, int Parent, Vector3 Position)>
+            {
+                ("Pelvis", -1, new Vector3(0, 0.35f, 0.7f)),
+                ("Spine", 0, new Vector3(0, 0.05f, 0.72f)),
+                ("Chest", 1, new Vector3(0, -0.25f, 0.74f)),
+                ("Neck", 2, new Vector3(0, -0.45f, 0.8f)),
+                ("Head", 3, new Vector3(0, -0.6f, 0.95f)),
+                ("Tail1", 0, new Vector3(0, 0.5f, 0.72f)),
+                ("Tail2", 5, new Vector3(0, 0.75f, 0.68f)),
+            };
+            var boxes = new List<(int Bone, Vector3 Min, Vector3 Max)>
+            {
+                (0, new Vector3(-0.15f, 0.2f, 0.6f), new Vector3(0.15f, 0.5f, 0.85f)),
+                (1, new Vector3(-0.15f, -0.1f, 0.6f), new Vector3(0.15f, 0.2f, 0.85f)),
+                (2, new Vector3(-0.15f, -0.4f, 0.58f), new Vector3(0.15f, -0.1f, 0.88f)),
+                (3, new Vector3(-0.07f, -0.55f, 0.75f), new Vector3(0.07f, -0.4f, 0.92f)),
+                (4, new Vector3(-0.08f, -0.8f, 0.88f), new Vector3(0.08f, -0.55f, 1.05f)),
+                (5, new Vector3(-0.03f, 0.5f, 0.66f), new Vector3(0.03f, 0.75f, 0.74f)),
+                (6, new Vector3(-0.03f, 0.75f, 0.6f), new Vector3(0.03f, 1f, 0.7f)),
+            };
+            foreach (float side in new[] { 1f, -1f })
+            {
+                string suffix = side > 0 ? ".L" : ".R";
+                Leg(new[] { "thigh", "shin", "foot" }, 0, 0.38f, 0.42f, 0.36f);
+                Leg(new[] { "upper_arm", "forearm", "hand" }, 2, -0.3f, -0.3f, -0.3f);
+
+                // Upper, lower and foot segments down to the ground at y = upper/lower/foot.
+                void Leg(string[] names, int parent, float upper, float lower, float foot)
+                {
+                    int first = bones.Count;
+                    bones.Add((names[0] + suffix, parent, new Vector3(0.12f * side, upper, 0.62f)));
+                    bones.Add((names[1] + suffix, first, new Vector3(0.12f * side, lower, 0.38f)));
+                    bones.Add((names[2] + suffix, first + 1, new Vector3(0.12f * side, foot, 0.15f)));
+                    boxes.Add((first, new Vector3(0.12f * side - 0.05f, upper - 0.08f, 0.4f), new Vector3(0.12f * side + 0.05f, upper + 0.08f, 0.62f)));
+                    boxes.Add((first + 1, new Vector3(0.12f * side - 0.04f, lower - 0.06f, 0.17f), new Vector3(0.12f * side + 0.04f, lower + 0.04f, 0.38f)));
+                    boxes.Add((first + 2, new Vector3(0.12f * side - 0.04f, foot - 0.08f, 0f), new Vector3(0.12f * side + 0.04f, foot + 0.04f, 0.15f)));
+                }
+            }
+            var positions = new List<Vector3>();
+            var owners = new List<int>();
+            foreach (var box in boxes) Humanoid.Box(positions, owners, box.Bone, box.Min, box.Max);
+            return RagdollRig.Build(Humanoid.Skeleton(bones.ToArray()), positions, owners, type);
+        }
+    }
+
+    /// <summary>A 1.8 m snake of six boxes along +X from its tail (the root) to its head, no left/right names.</summary>
+    private static class Snake
+    {
+        public static RagdollRig Build()
+        {
+            var bones = new (string, int, Vector3)[6];
+            var positions = new List<Vector3>();
+            var owners = new List<int>();
+            for (int i = 0; i < 6; i++)
+            {
+                float x = -0.9f + 0.3f * i;
+                bones[i] = (i == 5 ? "Head" : i == 0 ? "Body" : $"Body.00{i}", i - 1, new Vector3(x, 0, 0.1f));
+                Humanoid.Box(positions, owners, i, new Vector3(x, -0.06f, 0.04f), new Vector3(x + 0.3f, 0.06f, 0.16f));
+            }
+            return RagdollRig.Build(Humanoid.Skeleton(bones), positions, owners);
         }
     }
 

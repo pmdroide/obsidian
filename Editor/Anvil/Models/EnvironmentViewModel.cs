@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Engine.Editor;
 using Engine.Logic;
+using Engine.Voxels;
 
 namespace Anvil.Models;
 
@@ -18,6 +19,10 @@ public partial class EnvironmentViewModel : ObservableObject
     public string[] WeatherTypes { get; } = { "None", "Rain", "Sandstorm", "Snow" };
     private static readonly WeatherType[] WeatherTypeValues =
         { WeatherType.None, WeatherType.Rain, WeatherType.Sandstorm, WeatherType.Snow };
+    // Same order as VoxelTerrainValues.
+    public string[] VoxelTerrains { get; } = { "Flat", "Hills", "Mountains", "Islands" };
+    private static readonly VoxelTerrain[] VoxelTerrainValues =
+        { VoxelTerrain.Flat, VoxelTerrain.Hills, VoxelTerrain.Mountains, VoxelTerrain.Islands };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCustomSkybox), nameof(IsDayNightCycle))]
@@ -45,6 +50,34 @@ public partial class EnvironmentViewModel : ObservableObject
     [ObservableProperty] private double _weatherHaze = 0.6;
     [ObservableProperty] private double _windSpeed = 4;
     [ObservableProperty] private double _windDirection = 45;
+    [ObservableProperty] private double _fogDensity = 0.03;
+    [ObservableProperty] private double _fogAbsorption = 0.1;
+    [ObservableProperty] private double _fogSunScatter = 0.1;
+    [ObservableProperty] private double _fogLightScatter = 1.5;
+    [ObservableProperty] private double _fogAnisotropy = 0.45;
+    [ObservableProperty] private double _fogStartDistance = 30;
+    [ObservableProperty] private double _fogFullDistance = 400;
+    [ObservableProperty] private double _fogNearDensity = 0;
+    [ObservableProperty] private double _fogSkyStrength = 0.1;
+    [ObservableProperty] private double _fogSkyShaftDistance = 200;
+    [ObservableProperty] private double _maxAutoExposure = 3;
+    [ObservableProperty] private bool _voxelsEnabled;
+    [ObservableProperty] private int _selectedVoxelTerrain = 1;
+    [ObservableProperty] private decimal _voxelSeed = 1337;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VoxelSummary))]
+    private double _voxelWorldSize = 128;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VoxelSummary))]
+    private double _voxelWorldHeight = 64;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VoxelSummary))]
+    private double _voxelBlockSize = 1;
+    [ObservableProperty] private decimal _voxelBaseHeight = -24;
+    [ObservableProperty] private bool _voxelCaves = true;
+    [ObservableProperty] private double _voxelTrees = 0.5;
+    [ObservableProperty] private double _voxelSeaLevel = 0.3;
+    [ObservableProperty] private bool _voxelCollision = true;
     [ObservableProperty] private string _skyboxName = "Default skybox";
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty]
@@ -60,6 +93,19 @@ public partial class EnvironmentViewModel : ObservableObject
     public bool IsDayNightCycle => SelectedSkyMode == 1;
     public bool CanChooseSkybox => IsReady && !IsBusy;
     public bool HasWeather => SelectedWeather > 0;
+
+    /// <summary>The voxel world's size in blocks and metres.</summary>
+    public string VoxelSummary
+    {
+        get
+        {
+            int size = VoxelWorldSettings.ClampSize((int)Math.Round(VoxelWorldSize));
+            int height = VoxelWorldSettings.ClampHeight((int)Math.Round(VoxelWorldHeight));
+            float block = VoxelWorldSettings.ClampBlockSize((float)VoxelBlockSize);
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "{0} × {0} × {1} blocks  ·  {2:0.#} × {2:0.#} × {3:0.#} m", size, height, size * block, height * block);
+        }
+    }
 
     public void AttachBridge(IEditorBridge bridge)
     {
@@ -90,6 +136,28 @@ public partial class EnvironmentViewModel : ObservableObject
             WeatherHaze = settings.WeatherHaze;
             WindSpeed = settings.WindSpeed;
             WindDirection = settings.WindDirection;
+            FogDensity = settings.FogDensity;
+            FogAbsorption = settings.FogAbsorption;
+            FogSunScatter = settings.FogSunScatter;
+            FogLightScatter = settings.FogLightScatter;
+            FogAnisotropy = settings.FogAnisotropy;
+            FogStartDistance = settings.FogStartDistance;
+            FogFullDistance = settings.FogFullDistance;
+            FogNearDensity = settings.FogNearDensity;
+            FogSkyStrength = settings.FogSkyStrength;
+            FogSkyShaftDistance = settings.FogSkyShaftDistance;
+            MaxAutoExposure = settings.MaxAutoExposure;
+            VoxelsEnabled = settings.Voxels;
+            SelectedVoxelTerrain = Math.Max(0, Array.IndexOf(VoxelTerrainValues, settings.VoxelTerrain));
+            VoxelSeed = settings.VoxelSeed;
+            VoxelWorldSize = settings.VoxelWorldSize;
+            VoxelWorldHeight = settings.VoxelWorldHeight;
+            VoxelBlockSize = settings.VoxelBlockSize;
+            VoxelBaseHeight = (decimal)settings.VoxelBaseHeight;
+            VoxelCaves = settings.VoxelCaves;
+            VoxelTrees = settings.VoxelTrees;
+            VoxelSeaLevel = settings.VoxelSeaLevel;
+            VoxelCollision = settings.VoxelCollision;
             SkyboxName = string.IsNullOrEmpty(settings.SkyboxPath) ? "Default skybox" : Path.GetFileName(settings.SkyboxPath);
             StatusMessage = string.Empty;
         }
@@ -127,6 +195,48 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnWeatherHazeChanged(double value) => Push(s => s.WeatherHaze = (float)value);
     partial void OnWindSpeedChanged(double value) => Push(s => s.WindSpeed = (float)value);
     partial void OnWindDirectionChanged(double value) => Push(s => s.WindDirection = (float)value);
+    partial void OnFogDensityChanged(double value) => Push(s => s.FogDensity = (float)value);
+    partial void OnFogAbsorptionChanged(double value) => Push(s => s.FogAbsorption = (float)value);
+    partial void OnFogSunScatterChanged(double value) => Push(s => s.FogSunScatter = (float)value);
+    partial void OnFogLightScatterChanged(double value) => Push(s => s.FogLightScatter = (float)value);
+    partial void OnFogAnisotropyChanged(double value) => Push(s => s.FogAnisotropy = (float)value);
+    partial void OnFogStartDistanceChanged(double value) => Push(s => s.FogStartDistance = (float)value);
+    partial void OnFogFullDistanceChanged(double value) => Push(s => s.FogFullDistance = (float)value);
+    partial void OnFogNearDensityChanged(double value) => Push(s => s.FogNearDensity = (float)value);
+    partial void OnFogSkyStrengthChanged(double value) => Push(s => s.FogSkyStrength = (float)value);
+    partial void OnFogSkyShaftDistanceChanged(double value) => Push(s => s.FogSkyShaftDistance = (float)value);
+    partial void OnMaxAutoExposureChanged(double value) => Push(s => s.MaxAutoExposure = (float)value);
+    partial void OnVoxelsEnabledChanged(bool value) => Push(s => s.Voxels = value);
+    partial void OnSelectedVoxelTerrainChanged(int value)
+    {
+        // The ComboBox reports -1 while its items are being replaced.
+        if (value >= 0 && value < VoxelTerrainValues.Length) Push(s => s.VoxelTerrain = VoxelTerrainValues[value]);
+    }
+    partial void OnVoxelSeedChanged(decimal value) =>
+        Push(s => s.VoxelSeed = (int)Math.Clamp(Math.Round(value), int.MinValue, int.MaxValue));
+    partial void OnVoxelWorldSizeChanged(double value) => Push(s => s.VoxelWorldSize = (int)Math.Round(value));
+    partial void OnVoxelWorldHeightChanged(double value) => Push(s => s.VoxelWorldHeight = (int)Math.Round(value));
+    partial void OnVoxelBlockSizeChanged(double value) => Push(s => s.VoxelBlockSize = (float)value);
+    partial void OnVoxelBaseHeightChanged(decimal value) => Push(s => s.VoxelBaseHeight = (float)value);
+    partial void OnVoxelCavesChanged(bool value) => Push(s => s.VoxelCaves = value);
+    partial void OnVoxelTreesChanged(double value) => Push(s => s.VoxelTrees = (float)value);
+    partial void OnVoxelSeaLevelChanged(double value) => Push(s => s.VoxelSeaLevel = (float)value);
+    partial void OnVoxelCollisionChanged(bool value) => Push(s => s.VoxelCollision = value);
+
+    /// <summary>Restores the default (outdoor) volumetric fog and auto exposure cap of a new scene.</summary>
+    [RelayCommand]
+    private void ResetFog()
+    {
+        var d = new EnvironmentSettings();
+        FogDensity = d.FogDensity; FogAbsorption = d.FogAbsorption; FogSunScatter = d.FogSunScatter;
+        FogLightScatter = d.FogLightScatter; FogAnisotropy = d.FogAnisotropy; FogStartDistance = d.FogStartDistance;
+        FogFullDistance = d.FogFullDistance; FogNearDensity = d.FogNearDensity; FogSkyStrength = d.FogSkyStrength;
+        FogSkyShaftDistance = d.FogSkyShaftDistance; MaxAutoExposure = d.MaxAutoExposure;
+    }
+
+    /// <summary>A random seed: a different world of the same kind.</summary>
+    [RelayCommand]
+    private void NewVoxelSeed() => VoxelSeed = Random.Shared.Next(1, 100000);
 
     private void ApplySkyLook(EnvironmentSettings settings)
     {

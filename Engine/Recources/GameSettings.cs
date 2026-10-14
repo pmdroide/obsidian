@@ -18,6 +18,11 @@ namespace Engine.Recources
         public static bool e_enableeditor = true;
         public static bool e_drawoutlines = true;
         public static bool e_drawboundingbox = true;
+        //Ground grid (GridRenderModule): edit mode only. Anvil's viewport Grid button toggles e_showgrid.
+        public static bool e_showgrid = true;
+        public static float e_gridheight = 0; //world Z of the ground plane
+        public static float e_gridcellsize = 1; //metres; major lines every 10 cells
+        public static float e_gridfadedistance = 250; //metres
 
         //UI
         public static bool ui_enabled = true;
@@ -332,6 +337,15 @@ namespace Engine.Recources
             set { _g_froxelSkyFogStrength = Math.Clamp(value, 0.0f, 1.0f); }
         }
 
+        // Fog in front of sky pixels up to this distance is kept at full strength (only the haze past
+        // it uses SkyFogStrength), so shafts seen against the sky - looking towards the sun - stay visible.
+        private static float _g_froxelSkyShaftDistance = 200f;
+        public static float g_FroxelSkyShaftDistance
+        {
+            get { return _g_froxelSkyShaftDistance; }
+            set { _g_froxelSkyShaftDistance = Math.Max(0f, value); }
+        }
+
         // Distance ramp: fog density scales from 0 at FogDistanceStart to full at FogDistanceFull.
         // Lets near geometry stay crisp while distant objects fade into the haze.
         private static float _g_froxelFogDistanceStart = 30f;
@@ -339,6 +353,14 @@ namespace Engine.Recources
         {
             get { return _g_froxelFogDistanceStart; }
             set { _g_froxelFogDistanceStart = Math.Max(0f, value); }
+        }
+
+        // Fraction of the density kept before FogDistanceStart (0 = clear near the camera, 1 = no ramp).
+        private static float _g_froxelNearDensity = 0f;
+        public static float g_FroxelNearDensity
+        {
+            get { return _g_froxelNearDensity; }
+            set { _g_froxelNearDensity = Math.Clamp(value, 0f, 1f); }
         }
 
         private static float _g_froxelFogDistanceFull = 400f;

@@ -64,6 +64,10 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramPointScatter;
         private EffectParameter _paramFogDistanceStart;
         private EffectParameter _paramFogDistanceFull;
+        private EffectParameter _paramFogNearDensity;
+        private EffectParameter _paramFogVolumeCount;
+        private EffectParameter _paramFogVolumeWorldToBox;
+        private EffectParameter _paramFogVolumeSettings;
         private EffectParameter _paramHistoryAlpha;
         private EffectParameter _paramAnisotropy;
         private EffectParameter _paramPointLightCount;
@@ -85,6 +89,10 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private readonly float[] _pointLightShadowMapSizes = new float[MAX_FROXEL_POINT_LIGHTS];
         private readonly Vector3[] _pointLightSpotDirectionsVS = new Vector3[MAX_FROXEL_POINT_LIGHTS];
         private readonly Vector2[] _pointLightSpotCos = new Vector2[MAX_FROXEL_POINT_LIGHTS];
+
+        private readonly Matrix[] _fogVolumeWorldToBox = new Matrix[Components.FogVolumeComponent.MaxVolumes];
+        private readonly Vector4[] _fogVolumeSettings = new Vector4[Components.FogVolumeComponent.MaxVolumes];
+        private int _fogVolumeCount;
 
         private EffectTechnique _techniqueBuildFroxels;
         private EffectTechnique _techniqueAccumulateFroxels;
@@ -174,6 +182,10 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramPointScatter = GetEffectParameter("PointScatter");
             _paramFogDistanceStart = GetEffectParameter("FogDistanceStart");
             _paramFogDistanceFull = GetEffectParameter("FogDistanceFull");
+            _paramFogNearDensity = GetEffectParameter("FogNearDensity");
+            _paramFogVolumeCount = GetEffectParameter("FogVolumeCount");
+            _paramFogVolumeWorldToBox = GetEffectParameter("FogVolumeWorldToBox");
+            _paramFogVolumeSettings = GetEffectParameter("FogVolumeSettings");
             _paramHistoryAlpha = GetEffectParameter("HistoryAlpha");
             _paramAnisotropy = GetEffectParameter("G");
             _paramPointLightCount = GetEffectParameter("PointLightCount");
@@ -265,6 +277,12 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _farClip = farClip;
         }
 
+        /// <summary>Local fog boxes (Fog Volume components) of <paramref name="entities"/> for the next build.</summary>
+        public void SetFogVolumes(IReadOnlyList<BasicEntity> entities)
+        {
+            _fogVolumeCount = Components.FogVolumeComponent.Collect(entities, _fogVolumeWorldToBox, _fogVolumeSettings);
+        }
+
         public void SetNoiseMap(Texture2D noiseMap)
         {
             _noiseMap = noiseMap;
@@ -292,6 +310,10 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             if (_paramPointScatter != null) _paramPointScatter.SetValue(GameSettings.g_FroxelPointScatter);
             if (_paramFogDistanceStart != null) _paramFogDistanceStart.SetValue(GameSettings.g_FroxelFogDistanceStart);
             if (_paramFogDistanceFull != null) _paramFogDistanceFull.SetValue(GameSettings.g_FroxelFogDistanceFull);
+            _paramFogNearDensity?.SetValue(GameSettings.g_FroxelNearDensity);
+            _paramFogVolumeCount?.SetValue(_fogVolumeCount);
+            _paramFogVolumeWorldToBox?.SetValue(_fogVolumeWorldToBox);
+            _paramFogVolumeSettings?.SetValue(_fogVolumeSettings);
             if (_paramHistoryAlpha != null) _paramHistoryAlpha.SetValue(GameSettings.g_FroxelHistoryBlend);
             if (_paramAnisotropy != null) _paramAnisotropy.SetValue(GameSettings.g_FroxelAnisotropy);
         }

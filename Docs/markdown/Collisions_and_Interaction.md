@@ -104,12 +104,16 @@ To act on another gameobject's body (a launch pad, a shove, a carried crate), us
 which drives the Main Camera from its eyes. Movement sets the body's velocity with a limited
 acceleration (about 3200 N), so the physics solver does the pushing and heavy things resist.
 
-| Input | Action |
+The player reads the project's input actions ([Input_Actions.md](Input_Actions.md)), so rebinding them in
+Anvil > Window > Input Actions changes these controls, and the HUD prompts show the key or button of the
+device in use (`BindingText`).
+
+| Input (action) | Action |
 | --- | --- |
-| W A S D / left stick, Shift, Space / A | Move, run, jump (ground check: five short rays down) |
-| Hold right mouse, or the arrow keys | Look |
-| E / gamepad X | Use the Interactable under the crosshair |
-| Hold left mouse, F | Carry an object up to 40 kg in front of you, throw it |
+| W A S D / left stick (Move), Shift / LS press (Sprint), Space / A (Jump) | Move, run, jump (ground check: five short rays down; a jump pressed up to 0.15 s before landing still happens) |
+| Hold right mouse and drag, the arrow keys, or the right stick (Look) | Look |
+| E / gamepad X (Interact) | Use the Interactable under the crosshair |
+| Hold left mouse / RT (Attack), F | Carry an object up to 40 kg in front of you, throw it |
 | Q | Shove the object under the crosshair: an impulse at the hit point, so off-centre shoves spin it |
 | R | Reload the scene |
 

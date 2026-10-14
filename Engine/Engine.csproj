@@ -62,6 +62,16 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
+    <!-- Prefabs (Logic.Prefab): saved from Anvil, placed by scenes and scripts' Instantiate. Any Content folder. -->
+    <None Update="Content\**\*.prefab">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <!-- Material assets (Recources.MaterialAsset): saved from Anvil, linked by Material components. Any Content folder. -->
+    <None Update="Content\**\*.mat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 
   <!-- FMOD audio: native libraries (supplied locally by the dev from fmod.com,
@@ -97,6 +107,24 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Content\System\SceneList.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <!-- Input actions (Anvil > Window > Input Actions): the named actions scripts read. -->
+    <None Update="Content\System\InputActions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Render features (Anvil > Render Pipeline): the list, and each shader compiled by the editor into a loose
+       .xnb next to its .fx (not through Content.mgcb, so a shader with errors can't break the content build). -->
+  <ItemGroup>
+    <None Update="Content\System\RenderFeatures.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Update="Content\RenderFeatures\**\*.xnb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>

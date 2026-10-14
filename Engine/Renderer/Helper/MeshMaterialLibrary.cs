@@ -201,6 +201,12 @@ namespace Engine.Renderer.Helper
                 entities[i].SelectLevelOfDetail(cameraPosition);
         }
 
+        /// <summary>
+        /// Removes one mesh part registered with <see cref="Register(MaterialEffect, ModelMeshPart, TransformMatrix, BoundingSphere, int)"/>
+        /// for geometry that has no <see cref="BasicEntity"/> (voxel chunks).
+        /// </summary>
+        public void Unregister(ModelMeshPart mesh, TransformMatrix worldMatrix) => DeleteFromRegistry(null, mesh, worldMatrix);
+
         private void DeleteFromRegistry(MaterialEffect mat, ModelMeshPart mesh, TransformMatrix worldMatrix)
         {
             for (var i = 0; i < Index; i++)
@@ -454,6 +460,12 @@ namespace Engine.Renderer.Helper
 
                 PerMaterialSettings(renderType, material, renderModule);
 
+                // Foliage Wind component: the vertex shaders of these passes sway the gameobject's meshes.
+                FoliageWindParameters wind = renderType == RenderType.IdRender || renderType == RenderType.IdOutline
+                    ? Shaders.IdRenderEffectWind
+                    : (renderModule as IFoliageWindModule)?.Wind;
+                wind?.SetMaterial(material);
+
                 for (int i = 0; i < matLib.Index; i++)
                 {
                     MeshLibrary meshLib = matLib.GetMeshLibrary()[i];
@@ -489,8 +501,9 @@ namespace Engine.Renderer.Helper
 
                         TransformMatrix transform = meshLib.GetWorldMatrices()[index];
                         // LOD component: only the gameobject's current level draws (-1 = culled by distance).
-                        if (meshLib.LodLevels[index] != transform.LodLevel) continue;
+                        if (meshLib.LodLevels[index] != transform.LodLevel || transform.Hidden) continue;
                         Matrix localWorldMatrix = transform.World;
+                        wind?.SetInstance(transform.Wind);
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,
                                 outlineId, outlined)) continue;
@@ -624,6 +637,9 @@ namespace Engine.Renderer.Helper
             else if (renderType == RenderType.IdRender || renderType == RenderType.IdOutline)
             {
                 Shaders.IdRenderEffectParameterWorldViewProj.SetValue(localWorldMatrix * viewProjection);
+                // Swaying (Foliage Wind) meshes are moved in world space, then projected.
+                Shaders.IdRenderEffectParameterWorld.SetValue(localWorldMatrix);
+                Shaders.IdRenderEffectParameterViewProjection.SetValue(viewProjection);
 
                 int id = meshLib.GetWorldMatrices()[index].Id;
 
@@ -672,7 +688,7 @@ namespace Engine.Renderer.Helper
             {
                 graphicsDevice.RasterizerState = RasterizerState.CullClockwise;
             }
-            if (renderType == RenderType.ShadowOmnidirectional)
+            if (renderType == RenderType.ShadowOmnidirectional || renderType == RenderType.ShadowLinear)
             {
                 ((ShadowMapRenderModule)renderModule).SetMaterialSettings(material, renderType);
             }
@@ -1030,7 +1046,12 @@ namespace Engine.Renderer.Helper
                 if (trafoMatrix.HasChanged || cameraHasChanged)
                 {
                     sphere.Center = _worldBoundingCenters[i];
-                    sphere.Radius = MeshBoundingSphere.Radius * trafoMatrix.Scale.X;
+                    // Largest axis scale of the world matrix: Scale.X alone shrank stretched meshes (a 3 x 60 slat)
+                    // so they were culled from the view and the shadow maps while still on screen.
+                    Matrix w = trafoMatrix.World;
+                    float maxScaleSq = Math.Max(new Vector3(w.M11, w.M12, w.M13).LengthSquared(),
+                        Math.Max(new Vector3(w.M21, w.M22, w.M23).LengthSquared(), new Vector3(w.M31, w.M32, w.M33).LengthSquared()));
+                    sphere.Radius = MeshBoundingSphere.Radius * (float)Math.Sqrt(maxScaleSq);
                     if (viewFrustumEx.Contains(sphere) == ContainmentType.Disjoint)
                     {
                         Rendered[i] = false;

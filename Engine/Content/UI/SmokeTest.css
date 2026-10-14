@@ -1,0 +1,150 @@
+/*
+  SmokeTest HUD. Design canvas: 1080 units high (GameUI scales it to the window).
+  Layout is absolute; fonts are heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Palette
+    panel    rgba(8, 10, 12, 0.74)
+    text     #EEF1F4
+    muted    rgba(238, 241, 244, 0.62)
+    accent   #8FC6E8               smoke blue
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #EEF1F4;
+    font-family: body;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- crosshair */
+
+#crosshair-h {
+    left: 50%;
+    top: 50%;
+    width: 18px;
+    height: 2px;
+    margin-left: -9px;
+    margin-top: -1px;
+    background-color: rgba(238, 241, 244, 0.8);
+}
+
+#crosshair-v {
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 18px;
+    margin-left: -1px;
+    margin-top: -9px;
+    background-color: rgba(238, 241, 244, 0.8);
+}
+
+/* ---------------------------------------------------------------- panel */
+
+/* Top right, clear of the engine's performance overlay in the top-left corner. */
+#panel {
+    right: 40px;
+    top: 40px;
+    width: 600px;
+    height: 300px;
+    background-color: rgba(8, 10, 12, 0.74);
+}
+
+#accent {
+    width: 3px;
+    height: 100%;
+    background-color: #8FC6E8;
+}
+
+.eyebrow {
+    left: 30px;
+    top: 24px;
+    width: 500px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    color: rgba(238, 241, 244, 0.62);
+}
+
+#title {
+    left: 30px;
+    top: 48px;
+    width: 540px;
+    height: 40px;
+    font-family: heading;
+}
+
+#smokes {
+    left: 30px;
+    top: 104px;
+    width: 540px;
+    height: 30px;
+    white-space: nowrap;
+    font-family: caption;
+    color: #8FC6E8;
+}
+
+#state {
+    left: 30px;
+    top: 140px;
+    width: 540px;
+    height: 28px;
+    white-space: nowrap;
+}
+
+#rule {
+    left: 30px;
+    top: 180px;
+    width: 540px;
+    height: 1px;
+    background-color: rgba(238, 241, 244, 0.14);
+}
+
+#sight {
+    left: 30px;
+    top: 194px;
+    width: 540px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(238, 241, 244, 0.78);
+}
+
+#shots {
+    left: 30px;
+    top: 226px;
+    width: 540px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(238, 241, 244, 0.78);
+}
+
+#thrown {
+    left: 30px;
+    top: 258px;
+    width: 540px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(238, 241, 244, 0.62);
+}
+
+/* ---------------------------------------------------------------- key hints */
+
+#keys {
+    left: 40px;
+    bottom: 36px;
+    width: 1300px;
+    height: 104px;
+}
+
+.keys-line {
+    left: 0;
+    width: 1300px;
+    height: 28px;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+#keys-smoke { top: 0; }
+#keys-control { top: 34px; }
+#keys-move { top: 68px; color: rgba(238, 241, 244, 0.62); }

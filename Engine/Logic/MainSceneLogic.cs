@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Engine.Animation;
 using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
@@ -10,6 +11,7 @@ using Engine.Renderer.Helper;
 using Engine.Renderer.Helper.HelperGeometry;
 using Engine.Renderer.Lighting;
 using Engine.Renderer.RenderModules.Signed_Distance_Fields.SDF_Generator;
+using Engine.Voxels;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -37,6 +39,9 @@ namespace Engine.Logic
         // mesh library, SDF, editor camera, debug entities).
         public readonly SceneManager SceneManager = new SceneManager(new Scene());
         public Scene ActiveScene => SceneManager.ActiveScene;
+
+        /// <summary>The asset registry scenes and prefabs resolve model/texture keys with (set by <see cref="Initialize"/>).</summary>
+        internal Assets Assets => _assets;
 
         // Baked lighting (probe volume) bakes + GPU data for the active scene.
         public readonly LightingSystem Lighting = new LightingSystem();
@@ -88,6 +93,21 @@ namespace Engine.Logic
         // Builds/syncs BEPU bodies from each entity's physics component (Inspector > Physics).
         private ScenePhysics _scenePhysics;
 
+        /// <summary>
+        /// The scene's voxel world (Inspector > World > Voxel World): generated, drawn and collidable.
+        /// Null until <see cref="Initialize"/>; checks may set a GPU-free one.
+        /// </summary>
+        public VoxelSystem Voxels { get; set; }
+
+        /// <summary>The active scene's voxel world, built now if Play needs it and it isn't ready; null when off.</summary>
+        public VoxelWorld VoxelWorld => Voxels?.Ensure(ActiveScene, PlayMode?.Mode == GameMode.Play);
+
+        /// <summary>
+        /// Splashes and rings where dynamic bodies hit Water-role gameobjects (fed by the physics step), drawn by the
+        /// water shader and the particle pass. Scripts splash with <see cref="Scripting.ScriptBehaviour.Splash"/>.
+        /// </summary>
+        public Particles.WaterSplashes WaterSplashes { get; } = new Particles.WaterSplashes();
+
         //SDF
         public SdfGenerator _sdfGenerator;
 
@@ -106,8 +126,11 @@ namespace Engine.Logic
         {
             _assets = assets;
             _scenePhysics = new ScenePhysics(physics);
+            _scenePhysics.WaterEntered += WaterSplashes.OnWaterEntered;
+            _scenePhysics.WaterExited += WaterSplashes.OnWaterExited;
 
             MeshMaterialLibrary = new MeshMaterialLibrary(graphicsDevice);
+            Voxels = new VoxelSystem(graphicsDevice, MeshMaterialLibrary, physics);
 
             SceneManager.Assets = assets;
             LodComponent.FindModel = assets.FindModel;
@@ -146,22 +169,15 @@ namespace Engine.Logic
             return true;
         }
 
-        /// <summary>Applies a scene load queued with <see cref="GameFlow.LoadScene(int, bool)"/>, keeping Play running.</summary>
-        private void ApplyPendingSceneLoad()
+        /// <summary>
+        /// Swaps in a scene built by a <see cref="SceneLoadOperation"/> (<see cref="GameFlow.LoadScene(int, bool)"/> or
+        /// <see cref="GameFlow.LoadSceneAsync(int, bool, bool)"/>), keeping Play running.
+        /// </summary>
+        private bool ActivateLoadedScene(SceneLoadOperation load, Scene loaded)
         {
-            string path = GameFlow.TakePendingScene();
-            bool carry = GameFlow.TakePendingCarriesPersistent();
-            if (path == null) return;
+            bool carry = load.CarryPersistent;
             // A paused game resumes in the new scene.
             GameFlow.Paused = false;
-
-            Scene loaded;
-            try { loaded = SceneSerialization.LoadFromFile(path, _assets); }
-            catch (Exception ex)
-            {
-                EditorBridge.Log($"GameFlow: couldn't load '{path}': {ex.Message}");
-                return;
-            }
 
             bool playing = PlayMode.Mode == GameMode.Play;
             _switchingScene = true;
@@ -193,6 +209,7 @@ namespace Engine.Logic
                 }
             }
             finally { _switchingScene = false; }
+            return ReferenceEquals(ActiveScene, loaded);
         }
 
         /// <summary>
@@ -213,10 +230,13 @@ namespace Engine.Logic
         {
             if (mode != GameMode.Edit || _switchingScene) return;
 
+            // Blocks dug or placed during Play go back to the generated world.
+            Voxels?.OnPlayStopped();
+            WaterSplashes.Clear();
             GameUI.CloseAll();
             GameFlow.EscapeQuits = true;
             GameFlow.Paused = false;
-            GameFlow.TakePendingScene();
+            GameFlow.AbortLoad();
             GameFlow.RaisePlayStopped();
 
             Scene editScene = _editScene;
@@ -247,6 +267,7 @@ namespace Engine.Logic
             {
                 _editScene = null;
                 _persistent.Clear();
+                GameFlow.AbortLoad();
             }
             IReadOnlyCollection<BasicEntity> carried = _switchingScene ? _persistent.Entities : null;
 
@@ -262,6 +283,10 @@ namespace Engine.Logic
             // theirs from their physics component on the next physics update.
             // Carried persistent gameobjects keep theirs (and their velocity).
             _scenePhysics?.DetachAll(carried);
+
+            // The old scene's voxel world goes with it (the new one is built on the next update).
+            Voxels?.Reset();
+            WaterSplashes.Clear();
 
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
@@ -323,7 +348,15 @@ namespace Engine.Logic
 
             _sdfGenerator = new SdfGenerator();
 
-            // One sun so an imported model is visible in the empty viewport.
+            AddDefaultSun();
+        }
+
+        /// <summary>
+        /// One sun so an imported model is visible in an empty viewport (the boot scene and the
+        /// first scene of a new project, see EditorBridge.EnqueueResetProject).
+        /// </summary>
+        public void AddDefaultSun()
+        {
             AddDirectionalLight(direction: new Vector3(0.2f, 0.2f, -1),
                 intensity: 100,
                 color: Color.White,
@@ -347,8 +380,9 @@ namespace Engine.Logic
         {
             if (!isActive) return;
 
-            // Scene switches requested by scripts last frame (GameFlow.LoadScene).
-            ApplyPendingSceneLoad();
+            // Scene loads requested by scripts (GameFlow.LoadScene / LoadSceneAsync): a blocking one runs
+            // whole here, an async one advances a step (worker read, a time slice of building, the swap).
+            GameFlow.UpdateLoad(_assets, ActivateLoadedScene);
 
             //Upd
             Input.Update(gameTime, Camera);
@@ -356,6 +390,18 @@ namespace Engine.Logic
 
             // Scripts tick only in Play mode.
             PlayMode?.UpdateScripts(gameTime);
+            // Particle systems also play while editing, so effects show in Anvil's viewport (Play runs them as components).
+            if (PlayMode?.Mode != GameMode.Play) ParticleSystemComponent.UpdatePreviews(ActiveScene?.BasicEntities, gameTime);
+            // Trees with a Foliage Wind component sway in the scene wind while editing too; the pause menu holds them.
+            FoliageWindComponent.UpdateAll(ActiveScene?.BasicEntities,
+                GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds, WeatherProfile.Wind(ActiveScene?.Environment));
+            // Posed bones (Anvil Hierarchy > Armature) skin their mesh unless an Animator or Ragdoll already does.
+            BonePose.UpdateAll(ActiveScene?.BasicEntities);
+            // Material components linked to a material asset (.mat) follow edits of the file, in Edit and Play.
+            MaterialAsset.SyncScene(ActiveScene?.BasicEntities);
+            // Splash droplets and water rings; paused (pause menu) they hang where they are.
+            WaterSplashes.Update(GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+                _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f), WeatherProfile.Wind(ActiveScene?.Environment));
 
             //VolumeTexture.RotationMatrix = testEntity.WorldTransform.InverseWorld;
             //VolumeTexture.Scale = testEntity.WorldTransform.Scale;
@@ -427,6 +473,10 @@ namespace Engine.Logic
         /// <param name="time">Total game time in seconds, so buoyancy follows the waves the water shader draws.</param>
         public void UpdatePhysics(float dt, float time = 0)
         {
+            // Voxel world first: settings changes, a new scene's world and script edits become meshes and
+            // colliders before the step (also while paused, so the Environment panel still applies).
+            Voxels?.Update(ActiveScene, PlayMode?.Mode == GameMode.Play);
+
             // Paused: bodies hold their pose and velocity until the game resumes.
             if (GameFlow.Paused && PlayMode?.Mode == GameMode.Play) return;
             bool simulate = !GameSettings.e_enableeditor && GameSettings.p_physics;
@@ -590,6 +640,17 @@ namespace Engine.Logic
             return AddDirectionalLight(direction: direction, intensity: (int)intensity, color: color);
         }
 
+        /// <summary>
+        /// A decal box (2 x <paramref name="scale"/> m, centred on <paramref name="position"/>) projecting
+        /// <paramref name="texture"/> down its local -Z onto whatever lies inside it.
+        /// </summary>
+        internal Decal EditorAddDecal(Texture2D texture, Vector3 position, Vector3 scale)
+        {
+            Decal decal = new Decal(texture, position, Matrix.Identity, scale) { IsEnabled = true };
+            Decals.Add(decal);
+            return decal;
+        }
+
         internal BasicEntity EditorAddBasicEntity(ModelDefinition model, MaterialEffect material, Vector3 position)
         {
             if (model == null) return null;
@@ -616,6 +677,62 @@ namespace Engine.Logic
             entity.IsRuntimeSpawned = true;
             if (!string.IsNullOrEmpty(name)) entity.Name = name;
             return entity;
+        }
+
+        /// <summary>
+        /// Places a copy of <paramref name="prefab"/> at <paramref name="position"/>, linked to it (a prefab instance),
+        /// named after it and turned by <paramref name="rotation"/> (the prefab's own rotation when null).
+        /// <paramref name="runtime"/> copies (scripts during Play) are flagged <see cref="BasicEntity.IsRuntimeSpawned"/>
+        /// and never saved; others mark the scene dirty. Null when the prefab's model is unknown.
+        /// </summary>
+        public BasicEntity InstantiatePrefab(Prefab prefab, Vector3 position, Matrix? rotation = null, bool runtime = false)
+        {
+            if (prefab == null || _assets == null || ActiveScene == null) return null;
+            SceneSerialization.BasicEntityRecord record = prefab.Record;
+            BasicEntity entity = SceneSerialization.RestoreEntity(record, SceneSerialization.CurrentVersion, _assets);
+            if (entity == null)
+            {
+                EditorBridge.Log($"Instantiate: prefab '{prefab.Path}' uses an unknown model '{prefab.ModelKey}'");
+                return null;
+            }
+            // Each copy's attachments get their own IDs, and script fields that pointed at the prefab's gameobject
+            // point at the copy, like duplicating one.
+            foreach (var component in entity.Components) component.InstanceId = Guid.NewGuid();
+            foreach (var script in entity.GetComponents<ScriptBehaviourComponent>())
+                script.RemapGameObjectReferences(record.Id, entity.Id);
+            entity.Name = prefab.Name;
+            entity.PrefabPath = prefab.Path;
+            entity.Position = position;
+            if (rotation is { } turn) entity.RotationMatrix = turn;
+            entity.ApplyTransformation();
+            entity.IsRuntimeSpawned = runtime;
+            BasicEntities.Add(entity);
+            if (MeshMaterialLibrary != null) entity.RegisterInLibrary(MeshMaterialLibrary);
+            if (!runtime) ActiveScene.IsDirty = true;
+            return entity;
+        }
+
+        /// <summary>
+        /// Rebuilds a gameobject from <paramref name="record"/> in its place (same ID, list position and runtime flags),
+        /// e.g. after its prefab changed: a new model or material needs a new <see cref="BasicEntity"/>. The old one is
+        /// stopped and unregistered like a delete. Returns the new gameobject, or null when it isn't in the scene or the
+        /// record's model is unknown.
+        /// </summary>
+        internal BasicEntity ReplaceGameObject(BasicEntity old, SceneSerialization.BasicEntityRecord record)
+        {
+            int index = BasicEntities.IndexOf(old);
+            if (index < 0 || _assets == null) return null;
+            BasicEntity fresh = SceneSerialization.RestoreEntity(record, SceneSerialization.CurrentVersion, _assets);
+            if (fresh == null) return null;
+            fresh.Id = old.Id;
+            fresh.IsRuntimeSpawned = old.IsRuntimeSpawned;
+            fresh.RuntimePersistent = old.RuntimePersistent;
+            foreach (var component in old.Components) component.OnStop();
+            if (MeshMaterialLibrary != null) old.Dispose(MeshMaterialLibrary);
+            _scenePhysics?.Detach(old);
+            BasicEntities[index] = fresh;
+            if (MeshMaterialLibrary != null) fresh.RegisterInLibrary(MeshMaterialLibrary);
+            return fresh;
         }
 
         /// <summary>

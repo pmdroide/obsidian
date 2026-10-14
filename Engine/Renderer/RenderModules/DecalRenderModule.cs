@@ -68,12 +68,13 @@ namespace Engine.Renderer.RenderModules
 
         public void Initialize(GraphicsDevice graphicsDevice)
         {
+            // Premultiplied alpha, like the content pipeline's default (Assets imports, the default decal).
             _decalBlend = new BlendState()
             {
                 AlphaDestinationBlend = Blend.One,
                 AlphaSourceBlend = Blend.Zero,
                 ColorDestinationBlend = Blend.InverseSourceAlpha,
-                ColorSourceBlend = Blend.SourceAlpha,
+                ColorSourceBlend = Blend.One,
             };
 
             VertexPositionColor[] verts = new VertexPositionColor[8];
@@ -155,6 +156,7 @@ namespace Engine.Renderer.RenderModules
             for (int index = 0; index < decals.Count; index++)
             {
                 Decal decal = decals[index];
+                if (!decal.IsEnabled || decal.Texture == null) continue;
 
                 Matrix localMatrix = decal.World;
 

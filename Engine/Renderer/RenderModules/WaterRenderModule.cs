@@ -18,6 +18,13 @@ public sealed class WaterRenderModule : IRenderModule, IDisposable
     private readonly Dictionary<ModelMeshPart, TessellatedMesh> _meshes = new(ReferenceEqualityComparer.Instance);
     // Model-space vertex spacing of the mesh bound by the last BindMesh call.
     private float _meshSpacing = 1;
+    private readonly Vector4[] _splashPositions = new Vector4[Particles.WaterSplashes.MaxRipples];
+    private readonly Vector4[] _splashShapes = new Vector4[Particles.WaterSplashes.MaxRipples];
+
+    /// <summary>Rings where bodies hit the water (null: none). Set before each <see cref="Draw"/>.</summary>
+    public Particles.WaterSplashes Splashes { get; set; }
+    /// <summary>0 still .. 1 heavy raindrop rings all over the surface (the weather's puddle ripples).</summary>
+    public float RainRipples { get; set; }
 
     /// <summary>
     /// A subdivided copy of a mesh part, so the vertex shader has vertices to move with the waves.
@@ -55,6 +62,14 @@ public sealed class WaterRenderModule : IRenderModule, IDisposable
         _shader.Parameters["DepthMap"].SetValue(hasDepth ? depthMap : null);
         _shader.Parameters["View"].SetValue(view ?? Matrix.Identity);
         _shader.Parameters["FarClip"].SetValue(farClip);
+        int splashCount = Splashes?.FillRipples(_splashPositions, _splashShapes) ?? 0;
+        _shader.Parameters["SplashCount"]?.SetValue((float)splashCount);
+        if (splashCount > 0)
+        {
+            _shader.Parameters["SplashPositions"]?.SetValue(_splashPositions);
+            _shader.Parameters["SplashShapes"]?.SetValue(_splashShapes);
+        }
+        _shader.Parameters["RainRipples"]?.SetValue(float.IsFinite(RainRipples) ? Math.Clamp(RainRipples, 0, 1) : 0);
         var light = lights.FirstOrDefault(l => l.IsEnabled && l.Intensity > 0);
         _shader.Parameters["LightDirection"].SetValue(light == null ? Vector3.UnitZ : -light.Direction);
         // Same 0.1 scale the deferred light shaders apply, so water matches the lit scene.

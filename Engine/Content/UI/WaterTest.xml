@@ -1,0 +1,27 @@
+<!--
+  WaterTest scene HUD (Vista). Driven by Engine/Content/Scripts/WaterTestScript.cs, which fills
+  #counts, #splashes, #last, #drop, #waves and #auto. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Physics</div>
+        <div id="title">Water Test</div>
+        <div id="counts"></div>
+        <div id="splashes"></div>
+        <div id="last"></div>
+        <div id="rule"></div>
+        <div id="drop"></div>
+        <div id="waves"></div>
+        <div id="auto"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-drop" class="keys-line">Click drop onto the water  ·  1-4 ball / crate / plank / boulder  ·  Up / Down drop height  ·  Space volley  ·  X splash only</div>
+        <div id="keys-water" class="keys-line">V pool waves  ·  R rain on / off  ·  [ ] rain intensity  ·  G auto drop  ·  T time +3 h  ·  C clear</div>
+        <div id="keys-move" class="keys-line">Hold right mouse to look  ·  WASD move  ·  E / Q up / down  ·  Shift faster</div>
+    </div>
+
+</div>

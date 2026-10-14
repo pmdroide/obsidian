@@ -190,6 +190,8 @@ namespace Engine
             // TODO: Unload any non ContentManager content here
             _screenManager.Unload(Content);
             _physics?.Dispose();
+            // Let SaveData.SaveAsync writes finish before the process ends.
+            Logic.SaveData.Flush();
         }
 
         /// <summary>

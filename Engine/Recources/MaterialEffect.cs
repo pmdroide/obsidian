@@ -131,6 +131,8 @@ namespace Engine.Recources
             ForwardShaded = 5,
             Water = 6,
             WetSurface = 7,
+            // Leaves: flutter with the Foliage Wind component, sunlight shines through (DeferredDirectionalLight.fx)
+            Foliage = 8,
         }
 
         public MaterialTypes Type

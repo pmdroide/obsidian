@@ -10,6 +10,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Engine.Components;
 using Engine.Editor;
 using XnaColor = Microsoft.Xna.Framework.Color;
 using XnaVector3 = Microsoft.Xna.Framework.Vector3;
@@ -80,6 +81,23 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge?.EnqueueGameThreadAction(() => Engine.Recources.GameSettings.u_showdisplayinfo = visible ? 3 : 0);
     }
 
+    // Engine ground grid (GridRenderModule) at Z = 0, drawn in edit mode only.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GridToggleTip))]
+    private bool _isGridVisible = true;
+
+    public string GridToggleTip => IsGridVisible ? "Hide ground grid" : "Show ground grid";
+    partial void OnIsGridVisibleChanged(bool value) => PushGridVisible();
+
+    [RelayCommand]
+    private void ToggleGrid() => IsGridVisible = !IsGridVisible;
+
+    private void PushGridVisible()
+    {
+        bool visible = IsGridVisible;
+        _bridge?.EnqueueGameThreadAction(() => Engine.Recources.GameSettings.e_showgrid = visible);
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilteredConsole))]
     private string _consoleFilter = "All";
@@ -120,6 +138,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public InputDevicesViewModel InputDevices { get; } = new();
 
     /// <summary>
+    /// The render pipeline and the project's render features (user shader passes). Shown inside the
+    /// Inspector when <see cref="InspectorView"/> == "RenderPipeline" (viewport toolbar > Pipeline).
+    /// </summary>
+    public RenderPipelineViewModel RenderPipeline { get; } = new();
+
+    /// <summary>
     /// Inspector content switch: "Selection" (default) shows the selected
     /// object; "PostProcessing" shows <see cref="PostProcessing"/>. Driven by
     /// the segmented control in the inspector header and by
@@ -128,18 +152,30 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
         nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
-        nameof(IsInspectorSteamView), nameof(IsInspectorInputView))]
+        nameof(IsInspectorWorldView), nameof(IsInspectorSteamView), nameof(IsInspectorInputView),
+        nameof(IsInspectorRenderPipelineView), nameof(IsInspectorMaterialAssetView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
     public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
     public bool IsInspectorLightingView => InspectorView == "Lighting";
     public bool IsInspectorEnvironmentView => InspectorView == "Environment";
+    /// <summary>World generation (voxel world); its settings live on <see cref="Environment"/>.</summary>
+    public bool IsInspectorWorldView => InspectorView == "World";
     public bool IsInspectorSteamView => InspectorView == "Steam";
     public bool IsInspectorInputView => InspectorView == "Input";
+    public bool IsInspectorRenderPipelineView => InspectorView == "RenderPipeline";
+    /// <summary>A material asset (.mat) clicked in Assets; see <see cref="MaterialAsset"/>.</summary>
+    public bool IsInspectorMaterialAssetView => InspectorView == "MaterialAsset" && MaterialAsset != null;
 
     [RelayCommand]
-    private void SetInspectorView(string view) => InspectorView = view;
+    private void SetInspectorView(string view)
+    {
+        if (view != "MaterialAsset") MaterialAsset?.Flush();
+        InspectorView = view;
+        // The built-in passes' on/off state follows the render settings, which don't notify.
+        if (view == "RenderPipeline") RenderPipeline.Refresh();
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedObject), nameof(SelectedObjectName),
@@ -236,6 +272,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge = bridge;
         bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
         PushStatsVisible();
+        PushGridVisible();
         bridge.SnapshotUpdated += OnBridgeSnapshot;
         bridge.SelectionChanged += OnBridgeSelectionChanged;
         bridge.SceneChanged += OnBridgeSceneChanged;
@@ -254,6 +291,9 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Directional Light", _ => AddDirectionalLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Point Light", _ => AddPointLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Decal", _ => AddDecal(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Tree", _ => AddTree(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
         // marshal shader-parameter writes onto the game thread.
@@ -265,6 +305,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Environment.AttachBridge(bridge);
         Steam.AttachBridge(bridge);
         InputDevices.AttachBridge(bridge);
+        RenderPipeline.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:RenderPipeline");
+        RenderPipeline.AttachBridge(bridge, MoveToRecycleBin);
 
         // Push the current tool selection into the engine so the gizmo matches the UI
         // from the first frame (otherwise the engine boots in Translation mode regardless).
@@ -345,6 +387,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // Picking a gameobject (viewport or Hierarchy) leaves a material asset's Inspector.
+            if (id != null && InspectorView == "MaterialAsset") SetInspectorView("Selection");
             _selectionRoundTripGuard = true;
             try { SelectedObjectId = id == null ? null : ("engine-" + id.Value); }
             finally { _selectionRoundTripGuard = false; }
@@ -449,6 +493,37 @@ public partial class MainWindowViewModel : ViewModelBase
         _bridge.EnqueueAddSpotLight(_bridge.SpawnPoint, new XnaVector3(0, 0, -1), radius: 25f, color: XnaColor.White, intensity: 40f, spotAngle: 60f);
     }
 
+    /// <summary>
+    /// A small sphere carrying a Particle System: the sphere marks and selects the emitter while editing and is
+    /// hidden in Play (Particle System > Hide Mesh).
+    /// </summary>
+    [RelayCommand]
+    private void AddParticleSystem()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("IsoSphere", _bridge.SpawnPoint, "Particle System", new XnaVector3(0.15f),
+            new[] { ParticleSystemComponent.TypeId });
+    }
+
+    /// <summary>
+    /// A 2 x 2 x 2 m decal box projecting the default scorch mark down -Z onto whatever it overlaps; move it onto
+    /// a surface and scale/rotate it with the gizmo (local Z is the projection depth).
+    /// </summary>
+    [RelayCommand]
+    private void AddDecal()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddDecal(_bridge.SpawnPoint, XnaVector3.One);
+    }
+
+    /// <summary>The built-in Tree (own bark and leaf materials) swaying in the scene wind (Foliage Wind).</summary>
+    [RelayCommand]
+    private void AddTree()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("Tree", _bridge.SpawnPoint, "Tree", componentTypes: new[] { FoliageWindComponent.TypeId });
+    }
+
     [RelayCommand]
     private void AddDirectionalLight()
     {
@@ -470,7 +545,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteSelected()
     {
-        if (_bridge == null || SelectedObject is null || SelectedObject.EngineId is not int id) return;
+        // Bones belong to their gameobject's model.
+        if (_bridge == null || SelectedObject is null || SelectedObject.EngineId is not int id || SelectedObject.IsBone) return;
         _bridge.EnqueueDelete(id);
     }
 
@@ -480,6 +556,201 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_bridge == null || obj?.EngineId is not int id) return;
         _bridge.EnqueueDelete(id);
     }
+
+    // -------- Prefabs (Content/Prefabs/*.prefab, Engine.Logic.PrefabUtility) --------
+
+    /// <summary>
+    /// Saves a gameobject (the selection when null) as a new prefab in a Content folder ("Prefabs" when null) and
+    /// links it to the prefab. Hierarchy/Inspector/GameObject menu, or a Hierarchy drag onto the Assets panel.
+    /// </summary>
+    [RelayCommand]
+    private void CreatePrefab(SceneObjectViewModel? obj) => CreatePrefabIn(obj ?? SelectedObject, null);
+
+    public void CreatePrefabIn(SceneObjectViewModel? obj, string? folder)
+    {
+        if (_bridge == null) return;
+        if (obj?.EngineId is not int id || obj.Kind != EditorObjectKind.BasicEntity)
+        {
+            AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject to save it as a prefab (lights, decals and the camera can't be prefabs).", "Anvil:Prefabs");
+            return;
+        }
+        string name = obj.Name;
+        _bridge.EnqueueCreatePrefab(id, folder, (path, error) => Dispatcher.UIThread.Post(() =>
+        {
+            ScriptPrefabFieldViewModel.InvalidateFiles();
+            if (path != null)
+                AddConsoleEntry(ConsoleLevel.Log, $"Saved \"{name}\" as prefab {path}. Drag it from Assets into the Hierarchy (or double-click it) to place copies.", "Anvil:Prefabs");
+            else
+                AddConsoleEntry(ConsoleLevel.Error, $"Couldn't save \"{name}\" as a prefab: {error}", "Anvil:Prefabs");
+        }));
+    }
+
+    /// <summary>Writes a prefab instance's changes into its prefab; the other instances follow (their own overrides stay).</summary>
+    [RelayCommand]
+    private void ApplyPrefab(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || obj?.EngineId is not int id || !obj.IsPrefabInstance) return;
+        string prefab = obj.PrefabPath!;
+        _bridge.EnqueueApplyPrefab(id, (changed, error) => Dispatcher.UIThread.Post(() =>
+        {
+            if (changed >= 0)
+                AddConsoleEntry(ConsoleLevel.Log, $"Applied to {prefab}" + (changed > 0 ? $" ({changed} other instance{(changed == 1 ? "" : "s")} in this scene updated)." : "."), "Anvil:Prefabs");
+            else
+                AddConsoleEntry(ConsoleLevel.Error, $"Couldn't apply to {prefab}: {error}", "Anvil:Prefabs");
+        }));
+    }
+
+    /// <summary>Drops a prefab instance's overrides: it takes the prefab's values again.</summary>
+    [RelayCommand]
+    private void RevertPrefab(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || obj?.EngineId is not int id || !obj.IsPrefabInstance) return;
+        _bridge.EnqueueRevertPrefab(id, error =>
+        {
+            if (error != null) Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error, "Couldn't revert: " + error, "Anvil:Prefabs"));
+        });
+    }
+
+    /// <summary>Unlinks a prefab instance: it becomes a plain gameobject that no longer follows the prefab.</summary>
+    [RelayCommand]
+    private void UnpackPrefab(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || obj?.EngineId is not int id || !obj.IsPrefabInstance) return;
+        _bridge.EnqueueUnpackPrefab(id);
+    }
+
+    /// <summary>Places a prefab (Content-relative .prefab path) in front of the editor camera and selects it.</summary>
+    public void InstantiatePrefabAsset(string? prefabPath)
+    {
+        if (_bridge == null || string.IsNullOrEmpty(prefabPath)) return;
+        _bridge.EnqueueInstantiatePrefab(prefabPath, _bridge.SpawnPoint, id =>
+        {
+            if (id == null) Dispatcher.UIThread.Post(() => AddConsoleEntry(ConsoleLevel.Error,
+                $"Couldn't place {prefabPath}: the file is missing or uses an unknown model.", "Anvil:Prefabs"));
+        });
+    }
+
+    // -------- Material assets (Content/Materials/*.mat, Engine.Recources.MaterialAsset) --------
+
+    /// <summary>The material asset the Inspector shows (Assets click), or null.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsInspectorMaterialAssetView))]
+    private MaterialAssetViewModel? _materialAsset;
+
+    /// <summary>The engine's source Content folder ("" before the engine is up).</summary>
+    public string ContentSourceRoot => _bridge?.ContentSourceRoot ?? string.Empty;
+
+    /// <summary>Shows a material asset (Content-relative .mat path) in the Inspector, where its settings can be edited.</summary>
+    public void OpenMaterialAsset(string? path)
+    {
+        if (_bridge == null || !Engine.Recources.MaterialAsset.IsMaterialAsset(path)) return;
+        if (MaterialAsset != null && Engine.Recources.MaterialAsset.SamePath(MaterialAsset.Path, path))
+        {
+            InspectorView = "MaterialAsset";
+            return;
+        }
+        MaterialAsset?.Flush();
+        var asset = new MaterialAssetViewModel(path!);
+        asset.SaveFailed += message => AddConsoleEntry(ConsoleLevel.Error, message, "Anvil:Materials");
+        MaterialAsset = asset;
+        InspectorView = "MaterialAsset";
+    }
+
+    /// <summary>Material asset Inspector > Assign to Selected GameObject.</summary>
+    [RelayCommand]
+    private void AssignOpenMaterialAsset()
+    {
+        if (MaterialAsset == null) return;
+        MaterialAsset.Flush();
+        AssignMaterialAsset(null, MaterialAsset.Path);
+    }
+
+    private void CloseMaterialAsset()
+    {
+        MaterialAsset = null;
+        if (InspectorView == "MaterialAsset") InspectorView = "Selection";
+    }
+
+    /// <summary>Assets context menu > Create Material: a new material in the folder under the cursor (Materials when null).</summary>
+    public void CreateMaterialAsset(AssetNode? node)
+    {
+        if (_bridge == null) return;
+        try
+        {
+            var asset = Engine.Recources.MaterialAsset.Create(FolderFor(node), "New Material");
+            AddConsoleEntry(ConsoleLevel.Log, $"Created material {asset.Path}. Edit it in the Inspector, then drag it onto a gameobject in the Hierarchy (or double-click it with the gameobject selected).", "Anvil:Materials");
+            RefreshAssetTree();
+            OpenMaterialAsset(asset.Path);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't create a material: " + ex.Message, "Anvil:Materials");
+        }
+    }
+
+    /// <summary>
+    /// Makes a gameobject (the selection when null) use a material asset; adds a Material component when it has none.
+    /// Its Material component then follows the asset's edits.
+    /// </summary>
+    public void AssignMaterialAsset(SceneObjectViewModel? obj, string? path)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null || !Engine.Recources.MaterialAsset.IsMaterialAsset(path)) return;
+        if (obj?.EngineId is not int id || obj.Kind != EditorObjectKind.BasicEntity)
+        {
+            AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject (or drop the material on one in the Hierarchy) to assign it.", "Anvil:Materials");
+            return;
+        }
+        // Add then link: both are queued in order and mark the scene changed.
+        if (!obj.HasMaterialComponent) _bridge.EnqueueAddComponent(id, Engine.Components.MaterialComponent.TypeId);
+        _bridge.EnqueueMutateComponent(id, Engine.Components.MaterialComponent.TypeId,
+            c => ((Engine.Components.MaterialComponent)c).Link(path));
+        AddConsoleEntry(ConsoleLevel.Log, $"\"{obj.Name}\" uses material {path}.", "Anvil:Materials");
+    }
+
+    /// <summary>
+    /// Saves the surface a gameobject (the selection when null) shows, with the textures it draws, as a new material
+    /// asset in Content/Materials and links the gameobject to it.
+    /// </summary>
+    [RelayCommand]
+    private void CreateMaterialFromObject(SceneObjectViewModel? obj)
+    {
+        obj ??= SelectedObject;
+        if (_bridge == null) return;
+        if (obj?.EngineId is not int id || obj.Kind != EditorObjectKind.BasicEntity)
+        {
+            AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject to save its material as an asset.", "Anvil:Materials");
+            return;
+        }
+        string name = obj.Name;
+        // Captured on the game thread (the textures its model draws), then linked like any assignment.
+        _bridge.EnqueueMutate(id, o =>
+        {
+            if (o is not Engine.Entities.BasicEntity entity) return;
+            string? path = null, error = null;
+            try { path = Engine.Recources.MaterialAsset.Create(null, entity.Name, Engine.Recources.MaterialAsset.Capture(entity))?.Path; }
+            catch (Exception ex) { error = ex.Message; }
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (path == null)
+                {
+                    AddConsoleEntry(ConsoleLevel.Error, $"Couldn't save \"{name}\"'s material: {error ?? "unknown error"}", "Anvil:Materials");
+                    return;
+                }
+                AssignMaterialAsset(obj, path);
+                RefreshAssetTree();
+                AddConsoleEntry(ConsoleLevel.Log, $"Saved \"{name}\"'s material as {path}. Drag it onto other gameobjects to share it.", "Anvil:Materials");
+            });
+        });
+    }
+
+    /// <summary>Content folder a drop on <paramref name="node"/> goes to: the folder itself, a file's folder, or null (Prefabs).</summary>
+    public static string? FolderFor(AssetNode? node) =>
+        node == null ? null
+        : node.Kind == AssetKind.Folder ? node.RelativePath
+        : System.IO.Path.GetDirectoryName(node.RelativePath)?.Replace('\\', '/') is { Length: > 0 } dir ? dir : null;
 
     // -------- Scene file commands --------
 
@@ -573,6 +844,80 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             AddConsoleEntry(ConsoleLevel.Error, "Couldn't save game settings: " + ex.Message, "Anvil:GameSettings");
         }
+    }
+
+    // -------- Input actions (Window > Input Actions, Content/System/InputActions.json) --------
+
+    [RelayCommand]
+    private async Task OpenInputActionsAsync(Window? owner)
+    {
+        if (owner == null) return;
+        var vm = new InputActionsViewModel();
+        var dialog = new Views.InputActionsWindow { DataContext = vm };
+        if (!await dialog.ShowDialog<bool>(owner)) return;
+
+        try
+        {
+            vm.Apply();
+            AddConsoleEntry(ConsoleLevel.Log,
+                $"Input actions saved to {Engine.Logic.InputActionList.FileName} ({vm.Actions.Count} actions)", "Anvil:Input");
+        }
+        catch (Exception ex)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Couldn't save input actions: " + ex.Message, "Anvil:Input");
+        }
+    }
+
+    // -------- Project settings (Edit > Project Settings, Delete Project) --------
+
+    [RelayCommand]
+    private async Task OpenProjectSettingsAsync(Window? owner)
+    {
+        if (owner == null) return;
+        var vm = new ProjectSettingsViewModel(IsPlaying);
+        var dialog = new Views.ProjectSettingsWindow { DataContext = vm };
+        if (await dialog.ShowDialog<bool>(owner)) ResetProject();
+    }
+
+    /// <summary>
+    /// Turns the project into a new, empty one (<see cref="Engine.Recources.ProjectReset"/>): the
+    /// bridge swaps in an empty scene, the project's content goes to the Recycle Bin and the
+    /// settings go back to their defaults.
+    /// </summary>
+    private void ResetProject()
+    {
+        if (_bridge == null) return;
+        if (IsPlaying)
+        {
+            AddConsoleEntry(ConsoleLevel.Error, "Stop Play before deleting the project.", "Anvil:Project");
+            return;
+        }
+        AddConsoleEntry(ConsoleLevel.Log, "Deleting the project...", "Anvil:Project");
+        _bridge.EnqueueResetProject(MoveToRecycleBin, result => Dispatcher.UIThread.Post(() =>
+        {
+            ProjectName = Engine.Recources.GameInfo.Read().WindowTitle;
+            RefreshAssetTree();
+            foreach (string error in result.Errors)
+                AddConsoleEntry(ConsoleLevel.Error, "Delete Project: " + error, "Anvil:Project");
+            AddConsoleEntry(result.Succeeded ? ConsoleLevel.Log : ConsoleLevel.Warn,
+                $"Project deleted: {result.Removed.Count} item(s) moved to the Recycle Bin, " +
+                $"{result.ManifestEntriesRemoved.Count} Content.mgcb entr(ies) removed, settings reset. " +
+                $"New project scene: {Engine.Recources.ProjectReset.FirstScene}.",
+                "Anvil:Project");
+        }));
+    }
+
+    /// <summary>Moves a file or folder to the Recycle Bin (Delete in the Assets panel, Delete Project).</summary>
+    private static void MoveToRecycleBin(string full)
+    {
+        if (System.IO.Directory.Exists(full))
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(full,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        else if (System.IO.File.Exists(full))
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(full,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
     }
 
     // -------- Build (File > Build / Build and Run) --------
@@ -702,6 +1047,8 @@ public partial class MainWindowViewModel : ViewModelBase
             [".mp4"] = AssetKind.Video, [".wmv"] = AssetKind.Video, [".avi"] = AssetKind.Video,
             [".cs"] = AssetKind.Script, [".xml"] = AssetKind.Script, [".css"] = AssetKind.Script,
             [".obsc"] = AssetKind.Scene,
+            [Engine.Logic.Prefab.Extension] = AssetKind.Prefab,
+            [Engine.Recources.MaterialAsset.Extension] = AssetKind.Material,
         };
 
     // Folders the user has expanded, by relative path, so rebuilds keep the tree open.
@@ -731,6 +1078,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _assetRoots = BuildAssetNodes(root, root, modelKeysByPath);
         ApplyAssetFilter();
+        // Prefab fields in the Inspector offer the prefabs on disk.
+        ScriptPrefabFieldViewModel.InvalidateFiles();
+        // The open material asset follows outside edits (a linked gameobject's Inspector writes the file too).
+        if (MaterialAsset != null && !MaterialAsset.ReloadIfChanged()) CloseMaterialAsset();
     }
 
     private void ApplyAssetFilter()
@@ -1058,14 +1409,7 @@ public partial class MainWindowViewModel : ViewModelBase
             node.RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
         try
         {
-            if (System.IO.Directory.Exists(full))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(full,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-            else if (System.IO.File.Exists(full))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(full,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            MoveToRecycleBin(full);
 
             var removed = Engine.Recources.ContentManifest.Unregister(node.RelativePath);
             if (removed.Count > 0)

@@ -98,6 +98,70 @@ namespace Engine.Physics
         private readonly List<(Touch Touch, ContactPhase Phase)> _contactEvents = new List<(Touch, ContactPhase)>();
         private readonly List<Touch> _ended = new List<Touch>();
 
+        // Dynamic bodies whose collider reaches below a water surface, and this step's crossings.
+        private readonly HashSet<BasicEntity> _inWater = new HashSet<BasicEntity>();
+        private readonly List<(WaterContact Contact, bool Entered)> _waterEvents = new List<(WaterContact, bool)>();
+
+        /// <summary>How far above the surface a body's bottom must rise to count as out (waves don't flicker it in and out).</summary>
+        public const float WaterExitMargin = 0.05f;
+
+        /// <summary>A dynamic body's collider went below a water surface (raised after the step, before the scripts' hooks).</summary>
+        public event Action<WaterContact> WaterEntered;
+        /// <summary>A dynamic body's collider came back out of the water.</summary>
+        public event Action<WaterContact> WaterExited;
+
+        /// <summary>True while <paramref name="entity"/>'s collider reaches below a water surface (as of the last step).</summary>
+        public bool IsInWater(BasicEntity entity) => entity != null && _inWater.Contains(entity);
+
+        /// <summary>
+        /// Where a ray first meets the moving surface of a Water-role gameobject (as of the last Play step), which
+        /// <see cref="Raycast"/> never hits. Marches the ray in 0.25 m steps, then refines the crossing.
+        /// </summary>
+        public bool RaycastWater(Vector3 origin, Vector3 direction, float maxDistance, out Vector3 point)
+        {
+            point = default;
+            if (_water.Count == 0 || !(direction.LengthSquared() > 1e-12f) || !(maxDistance > 0)) return false;
+            direction.Normalize();
+            maxDistance = Math.Min(maxDistance, 10000);
+
+            float Above(float t)
+            {
+                Vector3 p = origin + direction * t;
+                float gap = float.PositiveInfinity;
+                for (int i = 0; i < _water.Count; i++)
+                    if (_water[i].Contains(p.X, p.Y)) gap = Math.Min(gap, p.Z - _water[i].SurfaceHeight(new Vector2(p.X, p.Y), _waterTime));
+                return gap;
+            }
+
+            const float step = 0.25f;
+            float previous = 0, previousGap = Above(0);
+            for (float t = step; t <= maxDistance + step; t += step)
+            {
+                float current = Math.Min(t, maxDistance);
+                float gap = Above(current);
+                if (gap <= 0 && previousGap > 0)
+                {
+                    // Bisect between the last point above the water and the first below it.
+                    float low = previous, high = current;
+                    for (int i = 0; i < 12; i++)
+                    {
+                        float mid = (low + high) * 0.5f;
+                        if (Above(mid) > 0) low = mid;
+                        else high = mid;
+                    }
+                    point = origin + direction * high;
+                    return true;
+                }
+                previous = current;
+                previousGap = gap;
+                if (current >= maxDistance) break;
+            }
+            return false;
+        }
+
+        // The wave clock of the last step's water volumes.
+        private float _waterTime;
+
         /// <summary>Collider geometry for gameobjects without a loaded model (GPU-free checks in Tests/Components).</summary>
         internal Func<BasicEntity, (Vector3[] Vertices, int[] Indices)> FallbackGeometry;
 
@@ -248,6 +312,7 @@ namespace Engine.Physics
             {
                 // Contacts only exist while simulating; scripts are stopped or never ran.
                 _touches.Clear();
+                _inWater.Clear();
                 return;
             }
             if (_attached.Count == 0 && _touches.Count == 0 && _ragdolls.Count == 0) return;
@@ -266,6 +331,8 @@ namespace Engine.Physics
 
             UpdateTouches();
             DispatchContactEvents();
+            UpdateWaterContacts(time);
+            DispatchWaterEvents();
         }
 
         /// <summary>True while the two gameobjects touch or overlap (as of the last physics step).</summary>
@@ -522,6 +589,76 @@ namespace Engine.Physics
                 Buoyancy.Apply(_physics, e.DynamicBody.Value, Vector3.Min(a, b), Vector3.Max(a, b), e.AttachedMass,
                     physics.ClampedBuoyancyStrength, physics.ClampedWaterDrag, _water, time, dt);
             }
+        }
+
+        /// <summary>
+        /// Finds dynamic bodies whose collider bottom crossed a water surface this step (any dynamic body, with or
+        /// without Buoyancy) and queues their Enter/Exit. Uses the water volumes <see cref="ApplyBuoyancy"/> collected.
+        /// </summary>
+        private void UpdateWaterContacts(float time)
+        {
+            _waterTime = time;
+            // Bodies that were removed, rebuilt as Static or left the scene drop out without an event.
+            if (_inWater.Count > 0) _inWater.RemoveWhere(e => e.DynamicBody == null || e.PhysicsFrame != _frame);
+
+            for (int i = 0; i < _attached.Count; i++)
+            {
+                BasicEntity e = _attached[i];
+                if (e.DynamicBody == null) continue;
+                bool wasWet = _inWater.Contains(e);
+                if (_water.Count == 0 && !wasWet) continue;
+
+                _physics.GetBodyState(e.DynamicBody.Value, out Vector3 center, out Quaternion orientation, out Vector3 velocity, out _);
+                // The collider's box in body space (as for buoyancy), then its world centre and half-extents.
+                ColliderBounds(e, e.AttachedColliderStretch, out Vector3 min, out Vector3 max);
+                Vector3 a = min * e.Scale - e.ColliderOffset, b = max * e.Scale - e.ColliderOffset;
+                Vector3 half = (Vector3.Max(a, b) - Vector3.Min(a, b)) * 0.5f;
+                Vector3 middle = center + Vector3.Transform((a + b) * 0.5f, orientation);
+                Matrix r = Matrix.CreateFromQuaternion(orientation);
+                float halfX = Math.Abs(r.M11) * half.X + Math.Abs(r.M21) * half.Y + Math.Abs(r.M31) * half.Z;
+                float halfY = Math.Abs(r.M12) * half.X + Math.Abs(r.M22) * half.Y + Math.Abs(r.M32) * half.Z;
+                float halfZ = Math.Abs(r.M13) * half.X + Math.Abs(r.M23) * half.Y + Math.Abs(r.M33) * half.Z;
+                float bottom = middle.Z - halfZ;
+
+                float surface = float.NegativeInfinity;
+                var xy = new Vector2(middle.X, middle.Y);
+                for (int w = 0; w < _water.Count; w++)
+                    if (_water[w].Contains(xy.X, xy.Y)) surface = Math.Max(surface, _water[w].SurfaceHeight(xy, time));
+                bool inside = float.IsFinite(surface);
+                bool wet = inside && bottom < surface + (wasWet ? WaterExitMargin : 0);
+                if (wet == wasWet) continue;
+
+                if (wet) _inWater.Add(e);
+                else _inWater.Remove(e);
+                _waterEvents.Add((new WaterContact
+                {
+                    GameObject = e,
+                    Point = new Vector3(xy, inside ? surface : bottom),
+                    Velocity = velocity,
+                    Speed = Math.Max(wet ? -velocity.Z : velocity.Z, 0),
+                    Radius = Math.Max((halfX + halfY) * 0.5f, 0.01f),
+                    Mass = e.AttachedMass,
+                }, wet));
+            }
+        }
+
+        private void DispatchWaterEvents()
+        {
+            // Hooks may spawn or destroy gameobjects; that only touches the body lists, not these events.
+            for (int i = 0; i < _waterEvents.Count; i++)
+            {
+                var (contact, entered) = _waterEvents[i];
+                if (entered) WaterEntered?.Invoke(contact);
+                else WaterExited?.Invoke(contact);
+
+                BasicEntity self = contact.GameObject;
+                foreach (var script in self.GetComponents<Components.ScriptBehaviourComponent>().ToArray())
+                {
+                    if (entered) script.Notify("OnWaterEnter", s => s.OnWaterEnter(contact));
+                    else script.Notify("OnWaterExit", s => s.OnWaterExit(contact));
+                }
+            }
+            _waterEvents.Clear();
         }
 
         /// <summary>

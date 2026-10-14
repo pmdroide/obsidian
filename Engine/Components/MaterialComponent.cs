@@ -68,9 +68,59 @@ public sealed class MaterialComponent : GameComponent
     public string MaskTexture { get; set; }
     public string DisplacementTexture { get; set; }
 
+    /// <summary>
+    /// Content-relative material asset (<see cref="MaterialAsset"/>, "Materials/Brick.mat") this component shows, or
+    /// null for its own settings. While linked, the settings above are a copy of the asset's (kept in sync with the
+    /// file, saved in the scene as a fallback); <see cref="MaterialAsset.SaveFrom"/> writes edits back to the asset.
+    /// </summary>
+    public string MaterialPath { get; set; }
+
+    // The asset version (and path) the settings were last copied from; runtime only.
+    [JsonIgnore] internal MaterialAsset SyncedAsset { get; private set; }
+    [JsonIgnore] internal string SyncedPath { get; set; }
+
+    internal bool IsSyncedWith(MaterialAsset asset) =>
+        ReferenceEquals(SyncedAsset, asset) && MaterialAsset.SamePath(SyncedPath, asset.Path);
+
+    /// <summary>
+    /// Links this component to a material asset ("Brick" or "Materials/Brick.mat") and takes its surface. Call
+    /// <see cref="GameComponent.OnChanged"/> (or use <see cref="MaterialAsset.Assign"/>) to redraw. False (logged)
+    /// when there is no such material.
+    /// </summary>
+    public bool Link(string nameOrPath)
+    {
+        var asset = MaterialAsset.Load(nameOrPath);
+        if (asset == null)
+        {
+            global::Engine.Editor.EditorBridge.Log($"Material: no material asset '{nameOrPath}'.");
+            return false;
+        }
+        MaterialPath = asset.Path;
+        Sync(asset);
+        return true;
+    }
+
+    internal void Sync(MaterialAsset asset, bool copy = true)
+    {
+        if (copy) asset.CopyTo(this);
+        SyncedAsset = asset;
+        SyncedPath = asset.Path;
+    }
+
     public static bool IsTextureAsset(string path) =>
         !string.IsNullOrWhiteSpace(path) && Path.GetExtension(path).ToLowerInvariant()
             is ".png" or ".jpg" or ".jpeg" or ".tga" or ".dds" or ".bmp";
+
+    public override void OnAdded(BasicEntity owner)
+    {
+        // Added already linked (MaterialAsset.Assign, scripts, scene loads): show the asset's current surface.
+        if (MaterialPath != null && MaterialAsset.Load(MaterialPath) is { } asset)
+        {
+            MaterialPath = asset.Path;
+            Sync(asset);
+        }
+        base.OnAdded(owner);
+    }
 
     public override void OnChanged(BasicEntity owner) => owner.RefreshMaterials();
     public override void OnRemoved(BasicEntity owner) => owner.RefreshMaterials();
@@ -142,14 +192,22 @@ public sealed class MaterialComponent : GameComponent
         if (path == null) return false;
         if (path.Length == 0) { assign(null); return false; }
         if (content == null || !IsTextureAsset(path)) return false;
+        string asset = Path.ChangeExtension(path.Replace('\\', '/'), null);
         try
         {
             // The content manager owns/caches maps; material instances never dispose them.
-            assign(content.Load<Texture2D>(Path.ChangeExtension(path.Replace('\\', '/'), null)));
+            assign(content.Load<Texture2D>(asset));
             return true;
         }
         catch (ContentLoadException ex)
         {
+            // A texture only a model references is built next to it as "<name>_0" (material assets captured from models).
+            try
+            {
+                assign(content.Load<Texture2D>(asset + "_0"));
+                return true;
+            }
+            catch (ContentLoadException) { }
             global::Engine.Editor.EditorBridge.Log($"Material texture '{path}' could not load: {ex.Message}");
             return false;
         }

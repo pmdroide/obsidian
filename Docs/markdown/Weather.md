@@ -113,8 +113,9 @@ It starts in rain at 15:00 under a slow day/night cycle (30 minutes). The Main C
 
 - **No occlusion.** Rain and snow fall through roofs. There is no shelter or height map test yet.
 - **Surface response is opt-in.** Only materials with the **WetSurface** shader get wet, fill puddles
-  and ripple in the rain (see [Material_Component.md](Material_Component.md#wet-surfaces)). There are
-  no splashes or snow cover.
+  and ripple in the rain (see [Material_Component.md](Material_Component.md#wet-surfaces)). Water
+  gets raindrop rings (see [Water.md](Water.md#rain-on-the-water)). Raindrops don't splash on
+  ground, and there is no snow cover.
 - **Particles are lit by the sun and sky only.** Street lamps and other point lights do not light the
   rain.
 - **No sound.** Add rain or wind loops with an Audio component or `PlaySound(..., loop: true)`.

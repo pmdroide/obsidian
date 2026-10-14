@@ -11,9 +11,10 @@ namespace Engine.Scripting;
 
 /// <summary>
 /// A C# behaviour with a fresh instance for each attached gameobject and Play session.
-/// The helpers below cover transform, physics and audio; see Docs/markdown/Script_Behaviours.md.
+/// The helpers below cover transform, physics and audio, ScriptBehaviour.Timing.cs timers, coroutines
+/// and tweens; see Docs/markdown/Script_Behaviours.md.
 /// </summary>
-public abstract class ScriptBehaviour
+public abstract partial class ScriptBehaviour
 {
     /// <summary>The gameobject this script runs on; null when it runs on the main camera.</summary>
     public BasicEntity GameObject { get; private set; }
@@ -50,6 +51,13 @@ public abstract class ScriptBehaviour
     /// <summary>Another script used this gameobject's Interactable component (<see cref="Interact(RaycastHit)"/>).</summary>
     public virtual void OnInteract(Interaction interaction) { }
     /// <summary>
+    /// This gameobject's dynamic body went into a Water-role gameobject (its collider's bottom crossed the surface).
+    /// <c>water.Speed</c> is how fast it fell in; fast entries also splash (<see cref="Particles.WaterSplashes"/>).
+    /// </summary>
+    public virtual void OnWaterEnter(WaterContact water) { }
+    /// <summary>This gameobject's dynamic body came back out of the water (<c>water.Speed</c>: upwards, m/s).</summary>
+    public virtual void OnWaterExit(WaterContact water) { }
+    /// <summary>
     /// A scene loaded and this persistent gameobject came along (<see cref="DontDestroyOnLoad()"/>), still running.
     /// Runs after the new scene's scripts started, e.g. to move to its spawn point.
     /// </summary>
@@ -77,15 +85,22 @@ public abstract class ScriptBehaviour
     internal void Tick(float deltaTime)
     {
         DeltaTime = deltaTime;
+        // Game time holds still while paused; only scripts that update while paused get here then.
+        float gameDelta = Logic.GameFlow.Paused ? 0f : deltaTime;
+        Time += gameDelta;
+        FrameCount++;
         Update();
+        AdvanceTiming(gameDelta, deltaTime);
     }
 
-    /// <summary>Runs <see cref="Stop"/>, then releases sounds and gameobjects this script started or spawned.</summary>
+    /// <summary>Runs <see cref="Stop"/>, then releases timers, coroutines, sounds and gameobjects this script started or spawned.</summary>
     internal void Shutdown()
     {
         try { Stop(); }
         finally
         {
+            CancelAllTimers();
+            StopAllCoroutines();
             StopAllSounds();
             DestroyAllSpawned();
         }
@@ -207,6 +222,9 @@ public abstract class ScriptBehaviour
     /// <summary>The gameobject's Physics component, or null. Change BodyType/Mass/Buoyancy here.</summary>
     public PhysicsComponent Physics => GameObject?.Physics;
 
+    /// <summary>The gameobject's Animator component, or null: <c>Animator?.Play("Walk")</c>, <c>PlayOnce</c>, <c>Stop</c>, <c>Pause</c>.</summary>
+    public AnimatorComponent Animator => GameObject?.GetComponent<AnimatorComponent>();
+
     /// <summary>True while a Dynamic body exists, so velocity and forces take effect.</summary>
     public bool HasRigidbody => GameObject?.DynamicBody != null && GameObject.PhysicsScene != null;
 
@@ -306,6 +324,44 @@ public abstract class ScriptBehaviour
     /// </summary>
     public Logic.EnvironmentSettings SceneEnvironment => Logic.GameFlow.SceneLogic?.ActiveScene?.Environment;
 
+    /// <summary>
+    /// The scene's voxel world (Inspector > World > Voxel World), or null when it has none. Read blocks,
+    /// raycast the grid and dig or build: <c>Voxels.SetBlock(hit.Adjacent, VoxelBlock.Brick)</c>. Edited chunks
+    /// are remeshed (and their colliders rebuilt) before the next physics step; Stop regenerates the world.
+    /// Fetch it each frame: changing the voxel settings (e.g. <c>SceneEnvironment.VoxelSeed</c>) replaces it.
+    /// </summary>
+    public Voxels.VoxelWorld Voxels => Logic.GameFlow.SceneLogic?.VoxelWorld;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  WATER (Water-role gameobjects)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>
+    /// The scene's water splashes: rings and droplets where bodies hit the water (<c>Enabled</c>, <c>SplashCount</c>,
+    /// the <c>Splashed</c> event). Dynamic bodies falling into Water-role gameobjects splash on their own.
+    /// </summary>
+    public Particles.WaterSplashes WaterSplashes => Logic.GameFlow.SceneLogic?.WaterSplashes;
+
+    /// <summary>
+    /// Throws a splash at <paramref name="point"/> on a water surface, as if something <paramref name="radius"/>
+    /// metres wide hit it at <paramref name="speed"/> m/s (slower than 1.2 m/s only leaves a ring).
+    /// </summary>
+    public void Splash(Vector3 point, float speed = 6f, float radius = 0.3f) => WaterSplashes?.Splash(point, speed, radius);
+
+    /// <summary>True while <paramref name="target"/> (default: this gameobject) is partly under water (Play only).</summary>
+    public bool IsInWater(BasicEntity target = null)
+    {
+        target ??= GameObject;
+        return target != null && (target.PhysicsScene ?? ScenePhysics.Current)?.IsInWater(target) == true;
+    }
+
+    /// <summary>Where <paramref name="ray"/> first meets a water surface (ordinary raycasts pass through water).</summary>
+    public bool RaycastWater(Ray ray, float maxDistance, out Vector3 point)
+    {
+        point = default;
+        return PhysicsScene?.RaycastWater(ray.Position, ray.Direction, maxDistance, out point) == true;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     //  CAMERA RAYS & INTERACTION (Interactable component)
     ////////////////////////////////////////////////////////////////////////////////
@@ -392,6 +448,33 @@ public abstract class ScriptBehaviour
     }
 
     /// <summary>
+    /// Places a copy of a prefab (<c>Content/Prefabs/*.prefab</c>, saved from Anvil) at <paramref name="position"/>,
+    /// with its components and their settings, turned by <paramref name="rotation"/> (the prefab's own rotation when
+    /// null). Like <see cref="Spawn"/> it is never saved and is removed when this script stops. Null when the prefab
+    /// doesn't exist. Take the prefab as an Inspector field (<c>public Prefab Bullet;</c>) or by name.
+    /// </summary>
+    public BasicEntity Instantiate(Logic.Prefab prefab, Vector3 position, Matrix? rotation = null)
+    {
+        BasicEntity entity = Logic.GameFlow.SceneLogic?.InstantiatePrefab(prefab, position, rotation, runtime: true);
+        if (entity != null) _spawned.Add(entity);
+        return entity;
+    }
+
+    /// <summary>
+    /// <see cref="Instantiate(Logic.Prefab, Vector3, Matrix?)"/> for a prefab named "Crate" (any prefab file with that
+    /// name) or "Prefabs/Crate.prefab". Null (and a log line) when there is none.
+    /// </summary>
+    public BasicEntity Instantiate(string prefab, Vector3 position, Matrix? rotation = null)
+    {
+        var loaded = LoadPrefab(prefab);
+        if (loaded == null) Editor.EditorBridge.Log($"Instantiate: no prefab '{prefab}'");
+        return Instantiate(loaded, position, rotation);
+    }
+
+    /// <summary>The prefab named "Crate" or "Prefabs/Crate.prefab", or null. Cached until the file changes.</summary>
+    public static Logic.Prefab LoadPrefab(string nameOrPath) => Logic.Prefab.Load(nameOrPath);
+
+    /// <summary>
     /// Keeps this gameobject when a script loads another scene during Play: it moves into the new scene with
     /// its scripts still running (and HUD layers they opened still open). Like Inspector > Persistent, but
     /// for this Play session only. Does nothing on the main camera, which belongs to its scene.
@@ -450,23 +533,35 @@ public abstract class ScriptBehaviour
     public bool IsAudioPlaying => GameObject?.GetComponents<AudioComponent>().Any(a => a.IsPlaying) == true;
 
     /// <summary>Plays a non-positional (2D) sound. Returns null when audio is unavailable or the clip can't load.</summary>
-    public ScriptSound PlaySound(string clipPath, float volume = 1f, bool loop = false, float pitch = 1f) =>
-        Track(Audio.Instance?.PlaySound(clipPath, Math.Clamp(volume, 0f, 1f), pitch, loop, contentRelativePath: true));
+    public ScriptSound PlaySound(string clipPath, float volume = 1f, bool loop = false, float pitch = 1f,
+                                 AudioBus bus = AudioBus.Effects) =>
+        Track(Audio.Instance?.PlaySound(clipPath, Math.Clamp(volume, 0f, 1f), pitch, loop, contentRelativePath: true, bus));
 
     /// <summary>Plays a 3D sound that follows this gameobject (or camera): full volume within <paramref name="minDistance"/>, quieter beyond.</summary>
     public ScriptSound PlaySound3D(string clipPath, float volume = 1f, bool loop = false,
-                                   float minDistance = 10f, float maxDistance = 1000f)
+                                   float minDistance = 10f, float maxDistance = 1000f, AudioBus bus = AudioBus.Effects)
     {
         var self = this; // follows the gameobject or camera
         return Track(Audio.Instance?.PlaySound3D(clipPath, () => self.Position, Math.Clamp(volume, 0f, 1f), loop,
-            minDistance, Math.Max(maxDistance, minDistance), contentRelativePath: true));
+            minDistance, Math.Max(maxDistance, minDistance), contentRelativePath: true, bus));
     }
 
     /// <summary>Plays a 3D sound at a fixed world position.</summary>
     public ScriptSound PlaySoundAt(string clipPath, Vector3 position, float volume = 1f, bool loop = false,
-                                   float minDistance = 10f, float maxDistance = 1000f) =>
+                                   float minDistance = 10f, float maxDistance = 1000f, AudioBus bus = AudioBus.Effects) =>
         Track(Audio.Instance?.PlaySound3D(clipPath, position, Math.Clamp(volume, 0f, 1f), loop,
-            minDistance, Math.Max(maxDistance, minDistance), contentRelativePath: true));
+            minDistance, Math.Max(maxDistance, minDistance), contentRelativePath: true, bus));
+
+    /// <summary>
+    /// Streams a music track on the Music bus (Music volume), replacing the track playing now: only one plays at a
+    /// time. Like the other sounds it stops when this script stops, so play level music from a persistent gameobject
+    /// to keep it going across scene loads.
+    /// </summary>
+    public ScriptSound PlayMusic(string clipPath, float volume = 1f, bool loop = true) =>
+        Track(Audio.Instance?.PlayMusic(clipPath, Math.Clamp(volume, 0f, 1f), loop, contentRelativePath: true));
+
+    /// <summary>Stops the music track, whoever started it.</summary>
+    public void StopMusic() => Audio.StopMusic();
 
     /// <summary>Stops every sound this script started (also happens automatically when it stops).</summary>
     public void StopAllSounds()

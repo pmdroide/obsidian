@@ -1,0 +1,343 @@
+{
+  "Version": 2,
+  "Name": "FoliageTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        14,
+        -0.25
+      ],
+      "Scale": [
+        30,
+        30,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "a4a3b982-c258-5f35-a6d3-7050fbedc66b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.85,
+            "Green": 0.9,
+            "Blue": 0.75,
+            "Roughness": 0.95,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "TilingU": 60,
+            "TilingV": 60,
+            "BaseColorTexture": "GameObjects/Textures/Ground/RockyDirt_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/RockyDirt_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/RockyDirt_Roughness.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Tree",
+      "ModelKey": "Tree",
+      "Position": [
+        0.5,
+        10,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.0,
+        1.0
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Components": [
+        {
+          "Type": "foliage-wind",
+          "InstanceId": "24960641-d92c-5c49-9361-a59b4f8738ae",
+          "Data": {
+            "Height": 0,
+            "TrunkBend": 1.0,
+            "BranchSway": 1.0,
+            "LeafFlutter": 1.0,
+            "WindScale": 1.0,
+            "MinWind": 1.0,
+            "Speed": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Tree Large",
+      "ModelKey": "Tree",
+      "Position": [
+        -7,
+        16,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.573576,
+        0.819152
+      ],
+      "Scale": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "Components": [
+        {
+          "Type": "foliage-wind",
+          "InstanceId": "cc528929-861f-5e08-b6f2-c2f80201371e",
+          "Data": {
+            "Height": 0,
+            "TrunkBend": 1.0,
+            "BranchSway": 1.0,
+            "LeafFlutter": 1.0,
+            "WindScale": 1.0,
+            "MinWind": 1.0,
+            "Speed": 0.85,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Tree Young",
+      "ModelKey": "Tree",
+      "Position": [
+        5.5,
+        13.5,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.965926,
+        0.258819
+      ],
+      "Scale": [
+        0.75,
+        0.75,
+        0.75
+      ],
+      "Components": [
+        {
+          "Type": "foliage-wind",
+          "InstanceId": "42736e93-edd4-5773-b528-7b9dd6e55028",
+          "Data": {
+            "Height": 0,
+            "TrunkBend": 1.4,
+            "BranchSway": 1.2,
+            "LeafFlutter": 1.0,
+            "WindScale": 1.0,
+            "MinWind": 1.0,
+            "Speed": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Tree Far Left",
+      "ModelKey": "Tree",
+      "Position": [
+        -3,
+        25,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.939693,
+        -0.34202
+      ],
+      "Scale": [
+        1.3,
+        1.3,
+        1.3
+      ],
+      "Components": [
+        {
+          "Type": "foliage-wind",
+          "InstanceId": "c7b982d3-6398-5255-a248-27403191952d",
+          "Data": {
+            "Height": 0,
+            "TrunkBend": 1.0,
+            "BranchSway": 1.0,
+            "LeafFlutter": 1.0,
+            "WindScale": 1.0,
+            "MinWind": 1.0,
+            "Speed": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Tree Far Right",
+      "ModelKey": "Tree",
+      "Position": [
+        8,
+        24,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.5,
+        -0.866025
+      ],
+      "Scale": [
+        1.05,
+        1.05,
+        1.05
+      ],
+      "Components": [
+        {
+          "Type": "foliage-wind",
+          "InstanceId": "b8aa2979-cb79-5b69-9d6d-af8a68ad1079",
+          "Data": {
+            "Height": 0,
+            "TrunkBend": 1.0,
+            "BranchSway": 1.0,
+            "LeafFlutter": 1.0,
+            "WindScale": 1.0,
+            "MinWind": 1.0,
+            "Speed": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Tree Sheltered",
+      "ModelKey": "Tree",
+      "Position": [
+        -10.5,
+        7,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0.300706,
+        0.953717
+      ],
+      "Scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "Components": [
+        {
+          "Type": "foliage-wind",
+          "InstanceId": "3ec8f1dd-4b3c-5b2c-9f3b-20aca6b32b84",
+          "Data": {
+            "Height": 0,
+            "TrunkBend": 1.0,
+            "BranchSway": 1.0,
+            "LeafFlutter": 0.6,
+            "WindScale": 0.4,
+            "MinWind": 1.0,
+            "Speed": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 20,
+      "Name": "Sun",
+      "Direction": [
+        0.6,
+        -0.2,
+        -0.78
+      ],
+      "Position": [
+        0,
+        15,
+        10
+      ],
+      "Color": [
+        255,
+        244,
+        225,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 70,
+      "ShadowDepth": 140,
+      "ShadowResolution": 4096,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      12,
+      3
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 16,
+    "CycleDurationMinutes": 120,
+    "CloudCoverage": 0.3,
+    "CloudSpeed": 1,
+    "WindSpeed": 5,
+    "WindDirection": 20
+  },
+  "MainCamera": {
+    "Position": [
+      -1.5,
+      -2.5,
+      1.7
+    ],
+    "Forward": [
+      0.12,
+      1,
+      0.12
+    ],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "62c41f3d-287a-5030-ad66-f0f12a1f1742",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

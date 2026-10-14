@@ -20,6 +20,12 @@ namespace Engine.Animation
         /// <summary>Removes the root bone's horizontal travel (root motion), keeping its bob.</summary>
         public bool InPlace;
 
+        /// <summary>
+        /// Posed bones (Anvil Hierarchy > Armature) applied on top of every evaluated pose, each in its bone's own
+        /// space; null = none.
+        /// </summary>
+        public BonePose Overrides;
+
         /// <summary>Model-space skin matrices (inverse bind * posed bone), indexed like BlendIndices.</summary>
         public Matrix[] SkinTransforms { get; }
         /// <summary>Model-space bone transforms of the last <see cref="Evaluate"/>.</summary>
@@ -34,6 +40,8 @@ namespace Engine.Animation
         private readonly Quaternion _rootRotation;
         private readonly int _root;
         private Vector3 _up = Vector3.UnitZ;
+        // Model-space transform above the root bones for the last pose (the skeleton's, turned by the Armature).
+        private Matrix _poseRoot;
 
         // Clip mapping. Same skeleton: track -> bone. Retargeted: target bone -> source bone.
         private int[] _trackBone = Array.Empty<int>();
@@ -65,6 +73,7 @@ namespace Engine.Animation
             }
             Globals(skeleton, _bindRotation, _rootRotation, _bindGlobalRotation);
 
+            _poseRoot = skeleton.RootTransform;
             _root = Array.IndexOf(skeleton.ParentIndices, -1);
             if (_root >= 0 && _bindTranslation[_root].LengthSquared() > 1e-8f)
                 _up = Vector3.Normalize(_bindTranslation[_root]); // the root (hips) sits above the origin
@@ -112,17 +121,44 @@ namespace Engine.Animation
             }
         }
 
-        /// <summary>Poses the skeleton at <paramref name="time"/> seconds into the clip.</summary>
+        /// <summary>Poses the skeleton at <paramref name="time"/> seconds into the clip (bind pose without one).</summary>
         public void Evaluate(float time)
         {
             if (Clip == null) Array.Copy(Skeleton.BindPose, _local, _local.Length);
             else if (IsRetargeted) PoseRetargeted(time);
             else PoseDirect(time);
+            _poseRoot = Skeleton.RootTransform;
+            Overrides?.ApplyTo(Skeleton, _local, ref _poseRoot);
+            Finish();
+        }
 
+        /// <summary>
+        /// Mixes the last pose of <paramref name="from"/> (same skeleton, evaluated this frame) into this
+        /// player's last pose, bone by bone in parent space: <paramref name="weight"/> 0 keeps
+        /// <paramref name="from"/>'s pose, 1 keeps this one. Used to crossfade between clips.
+        /// </summary>
+        public void BlendFrom(AnimationPlayer from, float weight)
+        {
+            if (from == null || from == this || !ReferenceEquals(from.Skeleton, Skeleton) || !(weight < 1f)) return;
+            weight = Math.Max(weight, 0f);
+            for (int i = 0; i < _local.Length; i++)
+            {
+                from._local[i].Decompose(out Vector3 fromScale, out Quaternion fromRotation, out Vector3 fromTranslation);
+                _local[i].Decompose(out Vector3 scale, out Quaternion rotation, out Vector3 translation);
+                _local[i] = Compose(Vector3.Lerp(fromScale, scale, weight),
+                    Quaternion.Normalize(Quaternion.Slerp(fromRotation, rotation, weight)),
+                    Vector3.Lerp(fromTranslation, translation, weight));
+            }
+            Finish();
+        }
+
+        // Model-space bone and skin matrices from the local pose.
+        private void Finish()
+        {
             for (int i = 0; i < _local.Length; i++)
             {
                 int parent = Skeleton.ParentIndices[i];
-                BoneTransforms[i] = _local[i] * (parent >= 0 ? BoneTransforms[parent] : Skeleton.RootTransform);
+                BoneTransforms[i] = _local[i] * (parent >= 0 ? BoneTransforms[parent] : _poseRoot);
                 SkinTransforms[i] = Skeleton.InverseBindPose[i] * BoneTransforms[i];
             }
         }

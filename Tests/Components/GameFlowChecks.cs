@@ -11,7 +11,7 @@ using Microsoft.Xna.Framework.Input;
 
 /// <summary>
 /// The scene list (Content/System/SceneList.json), the MainMenu sample scene, runtime scene
-/// switching through GameFlow, and GameInput's menu navigation.
+/// switching through GameFlow (blocking and LoadSceneAsync), and GameInput's menu navigation.
 /// </summary>
 internal static class GameFlowChecks
 {
@@ -132,6 +132,110 @@ internal static class GameFlowChecks
             ApplyPending(logic);
             Check(!GameFlow.IsEditor && GameFlow.ActiveSceneIndex == 1 && logic.PlayMode.Mode == GameMode.Play,
                 "LoadNextScene moves from scene 0 to scene 1 in the standalone game");
+
+            // ---- GameFlow.LoadSceneAsync: spread over frames while the running scene plays ----
+            string arenaFile = SceneList.ResolvePath(SceneList.Scenes[SceneList.Find("SceneLoadingArena")]);
+            int arenaEntities = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(arenaFile))!["Entities"]!.AsArray().Count;
+            Scene before = logic.ActiveScene;
+            int loadedEvents = 0;
+            Action<SceneLoadOperation> onLoaded = _ => loadedEvents++;
+            GameFlow.LoadBudgetMs = 0.5f;
+            var load = GameFlow.LoadSceneAsync("SceneLoadingArena", loadingScreen: false)!;
+            // Subscribed after the request: starting it reported the blocking load before, which was still finishing.
+            GameFlow.SceneLoaded += onLoaded;
+            Check(load != null && load.Status == SceneLoadStatus.Reading && !load.Blocking && ReferenceEquals(GameFlow.CurrentLoad, load) &&
+                  ReferenceEquals(logic.ActiveScene, before),
+                "LoadSceneAsync starts reading on a worker thread and leaves the running scene alone");
+            int buildingFrames = 0, frames = 0;
+            float lastProgress = 0f;
+            bool monotonic = true, untouched = true;
+            int completed = 0;
+            load.Completed += _ => completed++;
+            while (!load.IsReady && !load.IsDone && frames++ < 20000)
+            {
+                Frame(logic);
+                if (load.Status == SceneLoadStatus.Reading) Thread.Sleep(1);
+                if (load.Status == SceneLoadStatus.Building) buildingFrames++;
+                monotonic &= load.Progress >= lastProgress;
+                lastProgress = load.Progress;
+                untouched &= ReferenceEquals(logic.ActiveScene, before);
+            }
+            Check(buildingFrames >= 3 && untouched && monotonic && load.ObjectsBuilt == load.ObjectCount && load.ObjectCount > arenaEntities &&
+                  load.TotalBytes == new FileInfo(arenaFile).Length && load.BytesRead == load.TotalBytes,
+                $"the arena ({load.ObjectCount} objects, {load.TotalBytes / 1024} KB) builds over {buildingFrames} frames with rising progress, the old scene still active");
+            Check(load.Status == SceneLoadStatus.WaitingForActivation && Math.Abs(load.Progress - 0.9f) < 1e-4f && load.Scene != null,
+                "once built it swaps on a frame of its own, at 90%");
+            Frame(logic);
+            Check(logic.ActiveScene.Name == "SceneLoadingArena" && logic.ActiveScene.BasicEntities.Count == arenaEntities &&
+                  logic.PlayMode.Mode == GameMode.Play && load.Status == SceneLoadStatus.Finishing && load.ActivationMs > 0,
+                "the swap puts the built scene in and keeps Play running");
+            Check(logic.ActiveScene.BasicEntities[0].Name == "Ground" && logic.ActiveScene.BasicEntities[0].Id == 1 &&
+                  logic.ActiveScene.BasicEntities.Select(e => e.Id).Distinct().Count() == arenaEntities,
+                "objects keep the IDs saved in the file when built across frames");
+            for (int i = 0; i < 10 && !load.IsDone; i++) Frame(logic);
+            Check(load.Status == SceneLoadStatus.Done && load.Progress == 1f && ReferenceEquals(GameFlow.LastLoad, load) &&
+                  GameFlow.CurrentLoad == null && loadedEvents == 1 && completed == 1 && load.Frames >= buildingFrames && load.LongestFrameMs > 0,
+                $"a few frames later it is Done: {load.Seconds:0.000} s, {load.Frames} frames, longest {load.LongestFrameMs:0.0} ms");
+
+            var oneFrame = SceneSerialization.LoadFromFile(arenaFile, assets);
+            Check(oneFrame.BasicEntities.Select(e => (e.Id, e.Name, e.Position)).SequenceEqual(logic.ActiveScene.BasicEntities.Select(e => (e.Id, e.Name, e.Position))) &&
+                  oneFrame.PointLights.Count == logic.ActiveScene.PointLights.Count && oneFrame.MainCamera.Components.Count == 1,
+                "LoadFromFile and the frame-by-frame builder produce the same scene");
+
+            // Held at ready: the scene waits, built, until AllowSceneActivation.
+            Scene arena = logic.ActiveScene;
+            var held = GameFlow.LoadSceneAsync("SceneLoadingTest", loadingScreen: false)!;
+            held.AllowSceneActivation = false;
+            for (int i = 0; i < 20000 && !held.IsReady && !held.IsDone; i++) { Frame(logic); Thread.Sleep(held.Status == SceneLoadStatus.Reading ? 1 : 0); }
+            for (int i = 0; i < 20; i++) Frame(logic);
+            Check(held.Status == SceneLoadStatus.WaitingForActivation && Math.Abs(held.Progress - 0.9f) < 1e-4f && ReferenceEquals(logic.ActiveScene, arena),
+                "AllowSceneActivation = false holds a built scene at 90% while the old one keeps running");
+            held.AllowSceneActivation = true;
+            Frame(logic);
+            Check(logic.ActiveScene.Name == "SceneLoadingTest" && held.WaitedSeconds > 0, "setting it swaps on the next frame");
+            Check(!held.Cancel() && held.Status == SceneLoadStatus.Finishing, "a load can't be canceled once it swapped");
+
+            // Cancel, replace, Stop.
+            Scene hub = logic.ActiveScene;
+            var canceled = GameFlow.LoadSceneAsync("SceneLoadingArena", loadingScreen: false)!;
+            Check(held.Status == SceneLoadStatus.Done, "a new load finishes the previous one that already swapped");
+            int canceledEvents = 0;
+            canceled.Completed += op => canceledEvents += op.Status == SceneLoadStatus.Canceled ? 1 : 0;
+            Check(GameFlow.CancelLoad() && canceled.Status == SceneLoadStatus.Canceled && canceledEvents == 1, "a load can be canceled while the worker reads it");
+            var heldBack = GameFlow.LoadSceneAsync("SceneLoadingArena", loadingScreen: false)!;
+            heldBack.AllowSceneActivation = false;
+            for (int i = 0; i < 20000 && !heldBack.IsReady && !heldBack.IsDone; i++) { Frame(logic); Thread.Sleep(1); }
+            Check(heldBack.Scene != null && heldBack.Cancel() && heldBack.Status == SceneLoadStatus.Canceled, "and once built, until it swaps");
+            for (int i = 0; i < 5; i++) Frame(logic);
+            Check(ReferenceEquals(logic.ActiveScene, hub) && GameFlow.CurrentLoad == null && ReferenceEquals(GameFlow.LastLoad, held),
+                "after a cancel the running scene stays and nothing is reported as loaded");
+            var first = GameFlow.LoadSceneAsync("SceneLoadingArena", loadingScreen: false)!;
+            var second = GameFlow.LoadSceneAsync("MainMenu", loadingScreen: false)!;
+            Check(first.Status == SceneLoadStatus.Canceled && ReferenceEquals(GameFlow.CurrentLoad, second), "a newer load replaces one that hasn't swapped");
+            Check(GameFlow.LoadScene("SceneLoadingTest") && second.Status == SceneLoadStatus.Canceled && GameFlow.CurrentLoad!.Blocking,
+                "so does a blocking LoadScene");
+            Frame(logic);
+            Frame(logic);
+            Check(GameFlow.CurrentLoad!.Status == SceneLoadStatus.Finishing && logic.ActiveScene.Name == "SceneLoadingTest" &&
+                  GameFlow.CurrentLoad.Frames == 1 && GameFlow.CurrentLoad.LongestFrameMs > 0,
+                "a blocking load does everything in one frame and measures that frame");
+            for (int i = 0; i < 10; i++) Frame(logic);
+            Check(GameFlow.LastLoad!.Blocking && GameFlow.LastLoad.Status == SceneLoadStatus.Done, "blocking loads report through LastLoad too");
+
+            string broken = Path.Combine(Path.GetTempPath(), "obsidian-broken-scene.obsc");
+            File.WriteAllText(broken, "{ \"Version\": 2, \"Entities\": [ {");
+            var failed = GameFlow.LoadSceneAsync(broken, loadingScreen: false)!;
+            for (int i = 0; i < 20000 && !failed.IsDone; i++) { Frame(logic); Thread.Sleep(1); }
+            File.Delete(broken);
+            Check(failed.Status == SceneLoadStatus.Failed && failed.Error!.Contains("Invalid .obsc JSON") && logic.ActiveScene.Name == "SceneLoadingTest",
+                "a broken file fails the load with the reason and the running scene carries on");
+
+            var interrupted = GameFlow.LoadSceneAsync("SceneLoadingArena")!;
+            Frame(logic);
+            logic.PlayMode.Stop();
+            Check(interrupted.Status == SceneLoadStatus.Canceled && GameFlow.CurrentLoad == null, "Stop cancels a load in progress");
+            GameFlow.SceneLoaded -= onLoaded;
+            GameFlow.LoadBudgetMs = 4f;
             GameFlow.PlayStopped -= onStopped;
         }
         finally
@@ -187,8 +291,18 @@ internal static class GameFlowChecks
         GameFlow.SceneLogic = logic;
     }
 
-    private static void ApplyPending(MainSceneLogic logic) =>
-        typeof(MainSceneLogic).GetMethod("ApplyPendingSceneLoad", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(logic, null);
+    // A blocking load runs whole in the first frame after the request.
+    private static void ApplyPending(MainSceneLogic logic) => Frame(logic);
+
+    /// <summary>The scene-load step at the start of MainSceneLogic.Update (GameFlow.UpdateLoad), without the rest of the frame.</summary>
+    internal static void Frame(MainSceneLogic logic)
+    {
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        var activate = (Func<SceneLoadOperation, Scene, bool>)Delegate.CreateDelegate(
+            typeof(Func<SceneLoadOperation, Scene, bool>), logic, typeof(MainSceneLogic).GetMethod("ActivateLoadedScene", flags)!);
+        var assets = (Assets)typeof(MainSceneLogic).GetField("_assets", flags)!.GetValue(logic)!;
+        typeof(GameFlow).GetMethod("UpdateLoad", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, new object[] { assets, activate });
+    }
 
     private static void Check(bool condition, string description)
     {

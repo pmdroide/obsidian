@@ -97,6 +97,26 @@ sightings to the HUD. The sentry's reporter sends the guard to search where it
 saw the player. It is the reference for the NPC component and its hooks. See
 [NPC_Navigation.md](NPC_Navigation.md).
 
+### Voxel Test
+
+`Engine/Content/Scripts/VoxelTestScript.cs` runs on the **Player** capsule of the
+`Scenes/VoxelTest.obsc` sample, a first-person builder in the scene's voxel world.
+The left mouse button digs, a right click (or F) builds the block picked with 1-0
+or the wheel, B blasts a crater, G throws a physics ball, V flies and N generates a
+new world from a random seed. A frame of four spawned bars marks the face under the
+crosshair. It is the reference for `ScriptBehaviour.Voxels`. See
+[Voxel_World.md](Voxel_World.md).
+
+### Water Test
+
+`Engine/Content/Scripts/WaterTestScript.cs` runs on the Main Camera of the
+`Scenes/WaterTest.obsc` sample (a pool and a wave tank in the rain), next to
+Freecam. A click drops the object picked with 1-4 (beach ball, crate, plank,
+boulder) from the drop height (Up/Down) onto the water under the mouse. Space
+drops a volley, X splashes without an object, V steps the pool's waves, R toggles
+the rain and G the automatic drops. It is the reference for `OnWaterEnter`,
+`Splash`, `IsInWater` and `RaycastWater`. See [Water.md](Water.md).
+
 ### Helpers on a camera
 
 In a camera script, `GameObject` is `null` and `Camera` is the camera. The
@@ -166,7 +186,8 @@ entity.AddComponent(new Engine.Components.ScriptBehaviourComponent
 });
 ```
 
-The working example is in `Engine/Content/Scripts/SpinExampleScript.cs`. The older
+The working example is in `Engine/Content/Scripts/SpinExampleScript.cs`;
+`TimerExampleScript.cs` (**Timer Example**) shows timers, a coroutine and tweens. The older
 code-only `BasicEntity.Scripts` / `IScript` API remains supported separately.
 
 ## Serialized fields
@@ -202,8 +223,9 @@ public sealed class DoorScript : ScriptBehaviour
 - **Not serialized:** `[NonSerialized]`, `readonly`, `static` and `const` fields, and properties.
 
 **Supported types:** `bool`, `int`, `float`, `double`, `string`, any enum,
-`Vector2`, `Vector3`, `Color` and `BasicEntity` (a gameobject reference, see
-[Gameobject references](#gameobject-references)). Fields of other types are ignored.
+`Vector2`, `Vector3`, `Color`, `BasicEntity` (a gameobject reference, see
+[Gameobject references](#gameobject-references)) and `Prefab` (see
+[Prefab fields](#prefab-fields)). Fields of other types are ignored.
 
 **Attributes** (namespace `Engine.Scripting`):
 
@@ -251,7 +273,8 @@ float height = door.GetField<float>("OpenHeight");
 
 Values are stored in the component's `Fields` record in the `.obsc` file:
 numbers and bools as JSON values, enums by name, vectors as `[x, y, z]` arrays,
-colours as `"#RRGGBBAA"` and gameobjects as their scene ID (`null` for none). `SpinExampleScript` (Degrees Per Second) and
+colours as `"#RRGGBBAA"`, gameobjects as their scene ID (`null` for none) and prefabs as
+their Content path (`"Prefabs/Crate.prefab"`, `null` for none). `SpinExampleScript` (Degrees Per Second) and
 `LaunchPadScript` (Up Speed, Forward Speed) are working examples.
 
 ### Gameobject references
@@ -288,6 +311,30 @@ public sealed class DoorButtonScript : ScriptBehaviour
 
 Only gameobjects can be referenced. Lights, decals and the Main Camera cannot.
 
+### Prefab fields
+
+A `Prefab` field (`using Engine.Logic;`) holds a prefab to place copies of, like a
+prefab in a Unity `GameObject` field:
+
+```csharp
+public sealed class TurretScript : ScriptBehaviour
+{
+    public Prefab Bullet;                 // pick it in the Inspector, or drag it from Assets
+    public float Interval = 0.5f;
+
+    public override void Start() =>
+        Every(Interval, () => Instantiate(Bullet, Position + Forward, Rotation));
+}
+```
+
+- **Inspector:** a picker with **None** and every `.prefab` in Content. Prefabs with the
+  same name show their path. You can also drag a prefab from Assets onto it.
+- **Saving:** the prefab's Content path. A file that is gone gives `null` and shows
+  **Missing (path)**; one that moved is found again by its name.
+- **From code:** `SetField("Bullet", prefab)` (a `Prefab`, its path or `null`).
+
+See [Prefabs.md](Prefabs.md) for making prefabs.
+
 ## Built-in helpers
 
 Every `ScriptBehaviour` has helpers for the transform, physics and audio of the
@@ -305,11 +352,14 @@ the physics engine uses.
 | `GameObject` | The `BasicEntity` this script runs on (`null` on the Main Camera). |
 | `Camera` | The camera this script runs on (`null` on a gameobject). |
 | `DeltaTime` | Seconds since the last frame. Multiply speeds by it. |
+| `Time` / `FrameCount` | Game-time seconds since this script started (held while paused) / Updates run so far. See [Timers, coroutines and tweens](#timers-coroutines-and-tweens). |
 | `GetComponent<T>()` | First component of type `T` on this gameobject, or `null`. |
 | `Log(message)` | Writes `[ObjectName] message` to the engine/editor log. |
 | `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
+| `Voxels` | The scene's voxel world (`VoxelWorld`), or `null` when it has none: `GetBlock`, `SetBlock`, `FillSphere`, `FillBox`, `Raycast`, `TryGetSurface`. Edited chunks are remeshed before the next physics step; Stop regenerates the world. Fetch it each frame, because changing a voxel setting replaces it. See [Voxel_World.md](Voxel_World.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
-| `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned. Happens automatically when the script stops. |
+| `Instantiate(prefab, position, rotation)` | Places a copy of a prefab (a `Prefab` field, or a name/path such as `"Crate"` or `"Prefabs/Crate.prefab"`) with its components and settings. Without a rotation it uses the prefab's own. Never saved, removed when the script stops (like `Spawn`). Returns `null` when the prefab doesn't exist. `LoadPrefab(name)` gets the `Prefab` itself. See [Prefabs.md](Prefabs.md). |
+| `Destroy(entity)` / `DestroyAllSpawned()` | Removes gameobjects this script spawned or instantiated. Happens automatically when the script stops. |
 | `DontDestroyOnLoad()` / `DontDestroyOnLoad(entity)` | Keeps this gameobject (or another, e.g. one it spawned) when a script loads another scene. It moves into the new scene with its scripts still running. Lasts for this Play session; the saved equivalent is **Inspector > Persistent**. See [Persistent_GameObjects.md](Persistent_GameObjects.md). |
 | `IsPersistent` | True when this gameobject survives scene loads. |
 | `OnSceneLoaded()` | Override it: runs on a persistent gameobject's scripts after a scene load carried it over, once the new scene's scripts have started. For example, move to the new scene's spawn point. |
@@ -371,6 +421,32 @@ with an enabled Physics component, and skip triggers unless `includeTriggers` is
 set. Water-role objects have no collider, so rays pass through them. `direction`
 does not need to be normalized.
 
+### Water
+
+Water is a gameobject with the **Water** role (Inspector > Role, or the material's
+**Apply Water Example**). Dynamic bodies that fall in splash on their own. See
+[Water.md](Water.md).
+
+| Member | What it does |
+| --- | --- |
+| `OnWaterEnter(WaterContact water)` | This gameobject's Dynamic body went into the water: its collider's bottom crossed the surface. Runs after the physics step, with or without Buoyancy. |
+| `OnWaterExit(WaterContact water)` | It came back out (its bottom rose more than 5 cm above the surface). |
+| `IsInWater(target = null)` | `true` while `target` (default: this gameobject) is partly under water. Play only. |
+| `RaycastWater(ray, maxDistance, out Vector3 point)` | Where a ray first meets a moving water surface, e.g. the water under `MouseRay`. |
+| `Splash(point, speed = 6, radius = 0.3f)` | Throws droplets, spray and a ring at `point` on the water, as if something `radius` m wide hit it at `speed` m/s. Below 1.2 m/s it only leaves a ring. |
+| `WaterSplashes` | The scene's splashes: `Enabled`, `SplashCount`, `ParticleCount`, `Ripples`, `AddRipple(...)` and the `Splashed(point, speed, radius)` event. |
+
+`WaterContact` has `GameObject`, `Point` (on the surface, under the collider's
+centre), `Velocity`, `Speed` (m/s into the water on enter, out of it on exit),
+`Radius` (the collider's horizontal half-size) and `Mass`.
+
+```csharp
+public override void OnWaterEnter(WaterContact water)
+{
+    if (water.Speed > 4f) PlaySoundAt("Audio/blip.wav", water.Point, water.Speed / 10f);
+}
+```
+
 ### Collision and trigger events
 
 Override these hooks to react to contacts. They need a Physics component on the
@@ -415,6 +491,32 @@ public override void OnCollisionEnter(Collision collision)
 {
     if (collision.ImpactSpeed > 3f)
         PlaySoundAt("Audio/blip.wav", collision.Point, collision.ImpactSpeed / 10f);
+}
+```
+
+### Animation
+
+`Animator` is the gameobject's Animator component (or `null`). Name its clips in Inspector >
+Animator > **Actions**, then play them by name. See
+[Skeletal_Animation.md](Skeletal_Animation.md).
+
+| Member | What it does |
+| --- | --- |
+| `Play("Walk", fade = -1)` | Blends to the action over Fade (or `fade` seconds). Does nothing if that action is already playing, so call it every frame. `""` plays the default clip. Returns `false` for an unknown name. |
+| `CrossFade("Walk", seconds)` | Same as `Play` with an explicit fade. |
+| `PlayOnce("Jump", then = null)` | Plays the action once from its start, then blends to `then` (`null` means the action that was playing before). |
+| `Stop()` / `Play()` | Bind pose / play the current action again from its start. |
+| `Pause()` / `Resume()` / `Restart()` | Hold the pose / continue / jump back to the start. |
+| `CurrentAction`, `IsPlayingAction(name)`, `HasAction(name)` | Which action plays. |
+| `Time`, `NormalizedTime`, `Duration`, `IsFinished`, `IsFading`, `IsPaused`, `IsStopped` | Playback state. Setting `Time` seeks. |
+| `ActionFinished` | Event `(animator, actionName)` raised when an action that doesn't loop reaches its end. |
+
+```csharp
+public override void Update()
+{
+    bool moving = GameInput.IsDown(Keys.Up);
+    Animator?.Play(moving ? "Walk" : "Idle");
+    if (GameInput.WasPressed(Keys.Space)) Animator?.PlayOnce("Jump");
 }
 ```
 
@@ -475,6 +577,110 @@ public sealed class HoverScript : ScriptBehaviour
 }
 ```
 
+### Timers, coroutines and tweens
+
+Delays, repeats, sequences and smooth motion without counting `DeltaTime` by
+hand. Everything here advances **after this script's `Update`**, in game time
+(held while `GameFlow.Paused`), and ends when the script stops (Stop, disable,
+removal). Pass `realtime: true` (or yield `WaitForSecondsRealtime`) to keep
+counting while paused; that only matters in a script with `UpdateWhilePaused`,
+because other scripts get no frames while paused. A callback or coroutine that
+throws stops the script like a throwing `Update`.
+
+| Member | What it does |
+| --- | --- |
+| `After(seconds, action)` | Runs `action` once after the delay (`0` = next frame). |
+| `Every(seconds, action, times)` | Runs `action` every interval, `times` in total (`0` = until cancelled). A long frame catches up on the runs it missed. |
+| `StartTimer(seconds)` | A countdown with no action: poll `IsDone`, `Remaining`, `Progress`. A cooldown: `if (_reload.IsDone) { Fire(); _reload.Restart(); }`. |
+| `CancelAllTimers()` | Cancels every timer and tween this script started. |
+| `Tween(from, to, seconds, apply, ease)` | Calls `apply(value)` every frame from `from` to `to` (`float`, `Vector3` or `Color`). `Tween(seconds, apply, ease)` passes the eased 0-1 progress. |
+| `MoveTo(target, seconds, ease)` / `MoveBy(offset, ...)` | Slides this gameobject (or camera). For objects without a Dynamic body; move bodies with `Velocity`. |
+| `ScaleTo(target, seconds, ease)` | Grows or shrinks this gameobject. |
+| `RotateTo(matrix or x, y, z degrees, seconds, ease)` | Turns the short way round (quaternion slerp). |
+| `StartCoroutine(IEnumerator)` | Runs an iterator method as a coroutine. It runs to its first `yield` straight away. Returns a `ScriptCoroutine` (`IsDone`, `Stop()`). |
+| `StopCoroutine(c)` / `StopAllCoroutines()` | Ends one or all of this script's coroutines. |
+
+Timers and tweens return a `ScriptTimer`:
+
+| Member | What it does |
+| --- | --- |
+| `Pause()` / `Resume()` / `Cancel()` | Hold, continue, or end it without running the action or `OnComplete`. A cancelled tween keeps the value it reached. |
+| `Complete()` | Finish now. A tween jumps to the end of this cycle, then the action and `OnComplete` run. |
+| `Restart()` | Start over from zero, also after it finished or was cancelled. |
+| `OnComplete(action)` | Runs after the last cycle. Chainable. |
+| `Loop(cycles, pingPong)` | Repeat, `cycles` runs in total (`0` = forever). With `pingPong`, a tween plays backwards every other cycle. Chainable. |
+| `Elapsed`, `Remaining`, `Progress`, `Duration`, `Completed` | Where it is in the current cycle, and how many cycles have finished. |
+| `IsRunning`, `IsPaused`, `IsDone`, `IsCancelled`, `Realtime` | State. |
+
+A coroutine can yield:
+
+| Yield | Resumes |
+| --- | --- |
+| `null` | On the next frame. |
+| `0.5f` or `new WaitForSeconds(0.5f)` | After that many seconds of game time. |
+| `new WaitForSecondsRealtime(s)` | After `s` seconds, still counting while paused. |
+| `new WaitForFrames(n)` | After `n` frames. |
+| `new WaitUntil(() => cond)` / `new WaitWhile(() => cond)` | When the condition turns true / false. It is checked after each `Update`. |
+| A `ScriptTimer`, for example `MoveTo(...)` | When the timer or tween is done. |
+| A `ScriptCoroutine` | When that coroutine ends. |
+| An `IEnumerator`, for example `OpenDoor()` | After running it as a nested step. |
+
+`Ease` sets the shape of a tween. It can also be a serialized field, so it shows
+as a dropdown in the Inspector. The values are `Linear`, `SmoothStep`, and
+`In`/`Out`/`InOut` variants of `Quad`, `Cubic`, `Quart`, `Sine`, `Expo`,
+`Circ`, `Back` (overshoots), `Elastic` (wobbles) and `Bounce`.
+`Easing.Evaluate(ease, t)` gives the curve's value for your own maths.
+
+```csharp
+using System.Collections;
+using Microsoft.Xna.Framework;
+
+public sealed class DoorScript : ScriptBehaviour
+{
+    private ScriptTimer _cooldown;
+
+    public override void Start()
+    {
+        _cooldown = StartTimer(0f);                                         // ready at once
+        Tween(1f, 1.05f, 0.8f, s => Scale = new Vector3(s), Ease.InOutSine)
+            .Loop(pingPong: true);                                          // idle "breathing"
+    }
+
+    public override void OnInteract(Engine.Components.Interaction interaction)
+    {
+        if (!_cooldown.IsDone) return;
+        _cooldown = StartTimer(3f);
+        StartCoroutine(OpenAndClose());
+    }
+
+    private IEnumerator OpenAndClose()
+    {
+        Vector3 closed = Position;
+        yield return MoveBy(Vector3.UnitZ * 2.5f, 0.6f, Ease.OutCubic);    // waits for the tween
+        yield return 2f;                                                    // stays open 2 s
+        yield return MoveTo(closed, 0.8f, Ease.OutBounce);
+        Log("Door closed");
+    }
+}
+```
+
+#### Maths and random helpers
+
+These are static classes in `Engine.Scripting`, so scripts can call them without
+a `using`. Pass `DeltaTime` where a method asks for it.
+
+| Member | What it does |
+| --- | --- |
+| `ScriptMath.Damp(current, target, sharpness, dt)` | Eases towards a target the same at any frame rate. Works on `float` and `Vector3`. `DampAngle` does the same for angles in degrees, the short way round. |
+| `ScriptMath.SmoothDamp(current, target, ref velocity, smoothTime, dt)` | A spring that settles without overshooting, for example a follow camera. Works on `float` and `Vector3`. |
+| `ScriptMath.MoveTowards(current, target, maxDelta)` | Steps towards a target without passing it. |
+| `InverseLerp`, `Remap`, `Repeat`, `PingPong`, `DeltaAngle`, `Approximately` | Small number helpers. |
+| `ScriptRandom.Range(min, max)` | A random number. For `int`, `max` is exclusive. |
+| `ScriptRandom.Value`, `Chance(p)`, `Sign` | 0 to 1, true with probability `p`, or ±1. |
+| `ScriptRandom.OnUnitSphere`, `InsideUnitSphere`, `InsideUnitCircle` | Random directions and points. The circle is on X/Y, the ground plane. |
+| `ScriptRandom.Color(saturation, value)`, `Pick(list)`, `Shuffle(list)` | A random hue, a random element, or the list shuffled in place. |
+| `ScriptRandom.Seed(n)` | Makes the numbers repeatable. |
+
 ### Audio
 
 Clip paths are relative to `Engine/Content` and include the extension, for
@@ -486,10 +692,16 @@ shows. Supported formats are `.wav`, `.mp3`, `.ogg` and `.flac`.
 | `PlayAudio()` | Plays the first enabled **Audio** component on this gameobject, using its Inspector settings. Returns `true` if it started. |
 | `StopAudio()` | Stops every Audio component on this gameobject. |
 | `IsAudioPlaying` | `true` while any Audio component on this gameobject is playing. |
-| `PlaySound(clip, volume = 1, loop = false, pitch = 1)` | Plays a 2D (non-positional) sound. |
-| `PlaySound3D(clip, volume = 1, loop = false, minDistance = 10, maxDistance = 1000)` | Plays a 3D sound that follows this gameobject. It is at full volume within `minDistance` and gets quieter farther away. |
-| `PlaySoundAt(clip, position, volume = 1, loop = false, minDistance = 10, maxDistance = 1000)` | Plays a 3D sound at a fixed world position. |
+| `PlaySound(clip, volume = 1, loop = false, pitch = 1, bus = Effects)` | Plays a 2D (non-positional) sound. |
+| `PlaySound3D(clip, volume = 1, loop = false, minDistance = 10, maxDistance = 1000, bus = Effects)` | Plays a 3D sound that follows this gameobject. It is at full volume within `minDistance` and gets quieter farther away. |
+| `PlaySoundAt(clip, position, volume = 1, loop = false, minDistance = 10, maxDistance = 1000, bus = Effects)` | Plays a 3D sound at a fixed world position. |
+| `PlayMusic(clip, volume = 1, loop = true)` | Streams a music track on the Music bus. It replaces the track playing now (one at a time). |
+| `StopMusic()` | Stops the music track, whoever started it. |
 | `StopAllSounds()` | Stops every sound this script started. |
+
+`bus` picks the volume setting that applies: `AudioBus.Effects` (default), `AudioBus.Music`
+or `AudioBus.Master`. Change the volumes with `Audio.MasterVolume`, `Audio.MusicVolume`
+and `Audio.EffectsVolume`. See [Audio_Volume.md](Audio_Volume.md).
 
 The `PlaySound...` methods return a `ScriptSound` that you can control while it
 plays: `IsPlaying`, `Volume` (0-1), `Pitch`, `Loop`, `Paused` and `Stop()`. They
@@ -531,6 +743,25 @@ public sealed class EngineSoundScript : ScriptBehaviour
 }
 ```
 
+### Input actions
+
+Read the project's named actions (Anvil > Window > Input Actions) instead of keys, so keyboard, mouse and
+gamepad all work and players can rebind them. Details: [Input_Actions.md](Input_Actions.md).
+
+| Helper | Returns |
+| --- | --- |
+| `WasActionPressed("Jump")`, `IsActionDown("Sprint")`, `WasActionReleased("Attack")` | Button state this frame |
+| `GetAxis("Zoom")` / `GetVector("Move")` | an Axis value / a Vector2 value (+Y forward) |
+| `BindingText("Interact")` | the key or button to show in a prompt, for the device the player uses ("E" or "X") |
+| `GetAction("Jump")` | the `InputAction`: `HeldTime`, `WasPressedWithin` + `ConsumePress` (input buffering), `Enabled`, `Rebind` |
+
+```csharp
+Vector2 move = GetVector("Move");                     // length up to 1
+Translate((Forward * move.Y + Right * move.X) * Speed * DeltaTime);
+if (WasActionPressed("Jump")) AddImpulse(Vector3.UnitZ * JumpImpulse);
+Prompt = $"{BindingText("Interact")}  Open";          // "E  Open" or "X  Open"
+```
+
 ### Game flow, input and UI
 
 Static APIs in `Engine.Logic` for game scripts (details in
@@ -541,8 +772,12 @@ Static APIs in `Engine.Logic` for game scripts (details in
 | `GameFlow.LoadScene(index or name)`, `LoadNextScene()`, `Quit()` | Moving between the scenes in Game Settings > Scenes. Pass `carryPersistent: false` to leave persistent gameobjects behind. |
 | `GameFlow.Paused` | Freezing the game (scripts, components, physics) behind a pause menu. |
 | `GameInput.MenuUp/Down/Confirm/Back`, `AnyInputPressed`, `WasPressed(...)` | Keyboard, mouse and gamepad input with pressed edges and key repeat. |
+| `InputActions.ListenForControl()`, `SaveBindings()` / `LoadBindings()`, `ResetBindings()` | Rebinding menus ([Input_Actions.md](Input_Actions.md#rebinding-in-a-game-menu)). |
 | `GameUI.Open("UI/Name")` / `GameUI.Close(ui)` | A Vista XML/CSS layer over the scene. |
+| `SaveData.Save(name, data)` / `Load<T>(name, fallback)`, `SaveAsync`, `SaveText`, `List`, `Delete` | Save games, settings and high scores in the player's save folder ([Save_Data.md](Save_Data.md)). |
 
 Run `dotnet run --project Tests/Components/Components.csproj` to verify script
 selection, bridge edits, cloning, scene persistence, lifecycle, error isolation,
 the example's rotation, and the built-in transform, physics and audio helpers.
+`ScriptTimingChecks` covers the timers, coroutines, tweens, easing, pause
+behaviour, `ScriptMath`/`ScriptRandom` and the Timer Example.

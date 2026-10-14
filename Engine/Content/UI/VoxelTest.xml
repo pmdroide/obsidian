@@ -1,0 +1,46 @@
+<!--
+  VoxelTest scene HUD (Vista). Driven by Engine/Content/Scripts/VoxelTestScript.cs, which fills #terrain,
+  #stats, #looking, #counts, #mode, #block-name and #message, and toggles .selected on the hotbar slots
+  (#slot0..#slot9, in VoxelBlocks.Placeable order). Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="crosshair">
+        <div id="dot"></div>
+    </div>
+    <div id="message"></div>
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Environment</div>
+        <div id="title">Voxel World</div>
+        <div id="terrain"></div>
+        <div id="stats"></div>
+        <div id="rule"></div>
+        <div id="looking"></div>
+        <div id="counts"></div>
+        <div id="mode"></div>
+    </div>
+
+    <div id="hotbar">
+        <div id="block-name"></div>
+        <div id="slot0" class="slot"><div class="swatch" id="swatch0"></div><div class="key">1</div></div>
+        <div id="slot1" class="slot"><div class="swatch" id="swatch1"></div><div class="key">2</div></div>
+        <div id="slot2" class="slot"><div class="swatch" id="swatch2"></div><div class="key">3</div></div>
+        <div id="slot3" class="slot"><div class="swatch" id="swatch3"></div><div class="key">4</div></div>
+        <div id="slot4" class="slot"><div class="swatch" id="swatch4"></div><div class="key">5</div></div>
+        <div id="slot5" class="slot"><div class="swatch" id="swatch5"></div><div class="key">6</div></div>
+        <div id="slot6" class="slot"><div class="swatch" id="swatch6"></div><div class="key">7</div></div>
+        <div id="slot7" class="slot"><div class="swatch" id="swatch7"></div><div class="key">8</div></div>
+        <div id="slot8" class="slot"><div class="swatch" id="swatch8"></div><div class="key">9</div></div>
+        <div id="slot9" class="slot"><div class="swatch" id="swatch9"></div><div class="key">0</div></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-build" class="keys-line">Left mouse dig  ·  right click / F build  ·  1-0 / wheel pick a block  ·  B blast a crater  ·  G throw a ball</div>
+        <div id="keys-world" class="keys-line">N new world  ·  T time of day  ·  V fly  ·  R reload</div>
+        <div id="keys-move" class="keys-line">Hold right mouse to look  ·  WASD move  ·  Space jump  ·  Shift run</div>
+    </div>
+
+</div>

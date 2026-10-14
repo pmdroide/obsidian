@@ -68,6 +68,7 @@ public static class BridgeReconciler
                 target.Add(vm);
             }
             CopySnapshotInto(vm, snap, bridge);
+            ApplyBones(vm, snap.Bones, bridge);
         }
 
         // Remove anything no longer in the snapshot.
@@ -79,11 +80,84 @@ public static class BridgeReconciler
         }
     }
 
+    /// <summary>
+    /// A skinned gameobject's Armature and bones as its children (Armature > root bone > ... in skeleton order).
+    /// The tree is rebuilt only when the set of bones changes (another model); otherwise the existing view models
+    /// are updated so expansion and selection stay.
+    /// </summary>
+    private static void ApplyBones(SceneObjectViewModel owner, IReadOnlyList<BoneSnapshot>? bones, IEditorBridge bridge)
+    {
+        if (bones == null || bones.Count == 0)
+        {
+            if (owner.Children.Count > 0) owner.Children.Clear();
+            return;
+        }
+
+        var existing = new Dictionary<int, SceneObjectViewModel>();
+        CollectBones(owner.Children, existing);
+        bool same = existing.Count == bones.Count;
+        for (int i = 0; same && i < bones.Count; i++) same = existing.ContainsKey(bones[i].Id);
+        if (!same)
+        {
+            owner.Children.Clear();
+            existing.Clear();
+            var byIndex = new Dictionary<int, SceneObjectViewModel>();
+            foreach (var bone in bones) // parents come first
+            {
+                var vm = new SceneObjectViewModel { Id = "engine-" + bone.Id, IsExpanded = false };
+                vm.AttachBridge(bridge, bone.Id, EditorObjectKind.Bone);
+                var siblings = byIndex.TryGetValue(bone.ParentIndex, out var parent) ? parent.Children : owner.Children;
+                siblings.Add(vm);
+                byIndex[bone.Index] = vm;
+                existing[bone.Id] = vm;
+            }
+        }
+
+        foreach (var bone in bones)
+        {
+            var vm = existing[bone.Id];
+            bool freezeFields = IsInspectorFocused && SelectedEngineId == bone.Id;
+            vm.BeginSuppressPush();
+            try
+            {
+                if (vm.Name != bone.Name) vm.Name = bone.Name;
+                var type = bone.Index < 0 ? SceneObjectType.Armature : SceneObjectType.Bone;
+                if (vm.Type != type) vm.Type = type;
+                if (vm.Visible != owner.Visible) vm.Visible = owner.Visible;
+                if (vm.IsPosed != bone.IsPosed) vm.IsPosed = bone.IsPosed;
+                if (freezeFields) continue;
+                SetIfChanged(v => vm.PositionX = v, vm.PositionX, bone.Position.X);
+                SetIfChanged(v => vm.PositionY = v, vm.PositionY, bone.Position.Y);
+                SetIfChanged(v => vm.PositionZ = v, vm.PositionZ, bone.Position.Z);
+                var (rx, ry, rz) = RotationConversion.MatrixToEuler(bone.Rotation);
+                SetIfChanged(v => vm.RotationX = v, vm.RotationX, rx);
+                SetIfChanged(v => vm.RotationY = v, vm.RotationY, ry);
+                SetIfChanged(v => vm.RotationZ = v, vm.RotationZ, rz);
+            }
+            finally
+            {
+                vm.EndSuppressPush();
+            }
+        }
+    }
+
+    private static void CollectBones(IEnumerable<SceneObjectViewModel> list, Dictionary<int, SceneObjectViewModel> result)
+    {
+        foreach (var vm in list)
+        {
+            if (vm.Kind == EditorObjectKind.Bone && vm.EngineId is int id) result[id] = vm;
+            CollectBones(vm.Children, result);
+        }
+    }
+
     // Epsilon for float-precision compares. NumericUpDown re-renders/loses focus
     // on every Value change notification — even when the snapshot delivers what
     // is effectively the same number with one bit of float noise. Skip writes
     // smaller than this so the user can keep typing without losing focus.
     private const double FloatEpsilon = 1e-4;
+
+    private static bool SameOverrides(IReadOnlyList<string>? a, IReadOnlyList<string>? b) =>
+        a == null ? b == null : b != null && a.SequenceEqual(b);
 
     private static void SetIfChanged(Action<double> setter, double current, double next)
     {
@@ -109,6 +183,11 @@ public static class BridgeReconciler
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
             if (vm.Role != snap.Role) vm.Role = snap.Role;
             if (vm.Persistent != snap.IsPersistent) vm.Persistent = snap.IsPersistent;
+            if (vm.DecalTexture != snap.DecalTexture) vm.DecalTexture = snap.DecalTexture;
+            if (vm.PrefabPath != snap.PrefabPath) vm.PrefabPath = snap.PrefabPath;
+            if (vm.PrefabMissing != snap.PrefabMissing) vm.PrefabMissing = snap.PrefabMissing;
+            // Only the selected instance carries its overrides; keep the list while it is unchanged.
+            if (!SameOverrides(vm.PrefabOverrides, snap.PrefabOverrides)) vm.PrefabOverrides = snap.PrefabOverrides;
 
             // Structural changes must reconcile even while the Add Component menu has focus.
             var componentIds = snap.Components.Select(c => (c.Type, c.InstanceId)).ToHashSet();
