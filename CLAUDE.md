@@ -1,12 +1,12 @@
 # CLAUDE.md
 
-## Spawning agents
+## Spawning agents and task handling
 
 Claude:
-For searching the codebase or other simple tasks use sonnet 5.5.
+For searching the codebase, researching or other simple tasks use sonnet 5.5. For decision making and architect use Opus 5.5.
 
 Codex:
-For searching the codebase or other simples tasks use GPT-5.6 Sol Light. For complex tasks use GPT-6.1 Sol Light. For blender use GPT 6 Astra High.
+For searching the codebase, researching or other simple tasks use GPT-5.6 Sol. For complex tasks use GPT-6.1 Sol. For blender use GPT 6 Astra.
 
 ## Project Snapshot
 

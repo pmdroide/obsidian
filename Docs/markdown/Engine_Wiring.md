@@ -12,6 +12,8 @@ It complements the topic docs instead of repeating them:
 
 Paths are relative to the repo root. Identifiers match the source. Line numbers are left out on purpose because they drift. Search for the method name instead.
 
+The documentation website lives in `Docs/website`. Its shared neutral light/dark color tokens are defined in `src/styles/theme.css`; `src/styles/site.css` consumes them for the homepage and documentation reader. The theme toggle in `src/app.tsx` sets `data-theme` on `<html>` and saves the choice in local storage; `index.html` restores it before paint. The homepage crystal in `src/welcome.tsx` uses grayscale SVG fills.
+
 ---
 
 ## 1. Assemblies and build wiring

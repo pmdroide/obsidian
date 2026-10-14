@@ -1,26 +1,4 @@
 /* Shared site chrome and the standalone welcome page. */
-:root, [data-theme='dark'] {
-  --background: #101014;
-  --foreground: #efedf5;
-  --card: #18171f;
-  --primary: #b7a1fa;
-  --muted-foreground: #a09baa;
-  --border: #2b2834;
-  --input: #18171f;
-  --art-line: #a58ad4;
-  color-scheme: dark;
-}
-[data-theme='light'] {
-  --background: #faf9fd;
-  --foreground: #24202f;
-  --card: #ffffff;
-  --primary: #6940b6;
-  --muted-foreground: #686174;
-  --border: #e4deed;
-  --input: #ffffff;
-  --art-line: #7851ac;
-  color-scheme: light;
-}
 html { font-size: 16px; scroll-padding-top: 100px; }
 body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
 * { box-sizing: border-box; }
@@ -55,8 +33,7 @@ main:focus { outline: none; }
 .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 11px; min-height: 48px; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid transparent; transition: transform .2s, background .2s, border-color .2s; white-space: nowrap; }
 .button:hover { transform: translateY(-2px); }
-.button-primary { background: var(--primary); color: #191025; }
-[data-theme='light'] .button-primary { color: #fff; }
+.button-primary { background: var(--primary); color: var(--primary-foreground); }
 .button-primary:hover { background: color-mix(in srgb, var(--primary) 88%, white); }
 .button-secondary { color: var(--foreground); border-color: var(--border); background: color-mix(in srgb, var(--card) 60%, transparent); }
 .button-secondary:hover { background: var(--card); border-color: var(--muted-foreground); }
@@ -66,8 +43,8 @@ main:focus { outline: none; }
 .art-grid { position: absolute; inset: 5%; background-image: linear-gradient(color-mix(in srgb, var(--art-line) 9%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--art-line) 9%, transparent) 1px, transparent 1px); background-size: 36px 36px; mask-image: radial-gradient(ellipse, #000 15%, transparent 70%); }
 .art-orbit { position: absolute; width: 370px; height: 370px; border: 1px solid color-mix(in srgb, var(--art-line) 14%, transparent); border-radius: 50%; transform: rotate(-24deg) scaleY(.55); }
 .orbit-two { transform: rotate(49deg) scaleY(.75); width: 390px; height: 390px; border-style: dashed; }
-.crystal-glow { position: absolute; width: 310px; height: 310px; border-radius: 50%; background: radial-gradient(ellipse, #9365cf35, transparent 68%); filter: blur(25px); }
-.hero-crystal { position: relative; width: min(94%, 380px); filter: drop-shadow(0 30px 40px #7246af28); transform: rotate(9deg); animation: float-crystal 8s ease-in-out infinite; }
+.crystal-glow { position: absolute; width: 310px; height: 310px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--art-line) 20%, transparent), transparent 68%); filter: blur(25px); }
+.hero-crystal { position: relative; width: min(94%, 380px); filter: drop-shadow(0 30px 40px #00000028); transform: rotate(9deg); animation: float-crystal 8s ease-in-out infinite; }
 .art-label { position: absolute; font: 9px 'JetBrains Mono', monospace; color: var(--muted-foreground); letter-spacing: 1.8px; display: flex; align-items: center; gap: 10px; }
 .art-label-top { top: 20px; right: 28px; }
 .art-label-top span { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
@@ -258,7 +235,7 @@ main:focus { outline: none; }
   .section-toggle { font-size: 13px; padding-top: 12px; padding-bottom: 12px; }
   .section-pages a { font-size: 13px; }
   .mobile-close { display: flex; }
-  .sidebar-backdrop { display: block; position: fixed; inset: 0; background: #08060dbf; backdrop-filter: blur(3px); z-index: 40; }
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; background: #080808bf; backdrop-filter: blur(3px); z-index: 40; }
   .docs-breadcrumb { margin-bottom: 24px; }
   .markdown-content { font-size: 14px; }
   .markdown-content h1 { font-size: 30px; }

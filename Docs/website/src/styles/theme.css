@@ -6,9 +6,8 @@
  * before JS runs (no flash), and each `[data-theme]` block overrides it.
  *
  * Switching theme = setting `data-theme="dark" | "light"` on <html> (see the
- * theme toggle in devdocs.tsx). Components only ever use the semantic Tailwind
- * tokens (bg-background, text-primary, …) declared in `@theme inline` below, so
- * flipping the attribute re-themes the whole UI.
+ * theme toggle in app.tsx). Shared site styles and Tailwind utilities use these
+ * semantic tokens, so flipping the attribute re-themes the whole UI.
  */
 
 :root {
@@ -17,58 +16,46 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --radius: 0.5rem;
-
-  /* Default theme: Dark (muted blue on slate) */
-  --background: #15181e;
-  --foreground: #d4d8e0;
-  --card: #1c2027;
-  --primary: #7e68ff;
-  --primary-foreground: #0b1424;
-  --secondary: #232830;
-  --muted-foreground: #8b94a3;
-  --accent: #2a3038;
-  --border: #2a3038;
-  --input: #1c2027;
-  --ring: #7e68ff;
-  --sidebar: #15181e;
-  --sidebar-border: #232830;
-  --sidebar-accent: #232830;
 }
 
-/* Dark — explicit, matches the :root default */
-[data-theme='dark'] {
-  --background: #15181e;
-  --foreground: #d4d8e0;
-  --card: #1c2027;
-  --primary: #7e68ff;
-  --primary-foreground: #0b1424;
-  --secondary: #232830;
-  --muted-foreground: #8b94a3;
-  --accent: #2a3038;
-  --border: #2a3038;
-  --input: #1c2027;
-  --ring: #7e68ff;
-  --sidebar: #15181e;
-  --sidebar-border: #232830;
-  --sidebar-accent: #232830;
+/* Dark — white and gray on a charcoal base; also used before JS runs. */
+:root, [data-theme='dark'] {
+  --background: #111111;
+  --foreground: #eeeeee;
+  --card: #1a1a1a;
+  --primary: #e5e5e5;
+  --primary-foreground: #171717;
+  --secondary: #222222;
+  --muted-foreground: #a3a3a3;
+  --accent: #2b2b2b;
+  --border: #303030;
+  --input: #1a1a1a;
+  --ring: var(--primary);
+  --sidebar: var(--background);
+  --sidebar-border: var(--border);
+  --sidebar-accent: var(--secondary);
+  --art-line: #a3a3a3;
+  color-scheme: dark;
 }
 
-/* Light — dark ink on a clean white base with a blue accent */
+/* Light — black and gray on a soft white base. */
 [data-theme='light'] {
-  --background: #ffffff;
-  --foreground: #1f2430;
-  --card: #f5f6f8;
-  --primary: #3b19ff;
+  --background: #fafafa;
+  --foreground: #171717;
+  --card: #ffffff;
+  --primary: #262626;
   --primary-foreground: #ffffff;
-  --secondary: #eef0f4;
-  --muted-foreground: #5b6472;
-  --accent: #eef1f6;
-  --border: #e4e7ec;
-  --input: #f5f6f8;
-  --ring: #3b19ff;
-  --sidebar: #f7f8fa;
-  --sidebar-border: #e4e7ec;
-  --sidebar-accent: #eef1f6;
+  --secondary: #f0f0f0;
+  --muted-foreground: #666666;
+  --accent: #ebebeb;
+  --border: #dedede;
+  --input: #ffffff;
+  --ring: var(--primary);
+  --sidebar: var(--background);
+  --sidebar-border: var(--border);
+  --sidebar-accent: var(--secondary);
+  --art-line: #737373;
+  color-scheme: light;
 }
 
 /*
@@ -81,8 +68,7 @@
 }
 
 [data-theme='light'] .brand-logo {
-  filter: brightness(0) saturate(100%) invert(13%) sepia(18%) saturate(900%)
-    hue-rotate(185deg) brightness(95%);
+  filter: brightness(0);
 }
 
 @theme inline {

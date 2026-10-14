@@ -1,5 +1,14 @@
 # Changelog
 
+## Changed: Neutral documentation website theme (2026-10-14)
+
+- Replaced purple and blue palettes with gray, white, and black in both light and dark modes across the homepage and documentation reader, including navigation, links, buttons, cards, code blocks, and focus indicators.
+- Consolidated shared color tokens in `Docs/website/src/styles/theme.css` and neutralized the crystal artwork, glow, logo filter, mobile backdrop, and browser theme color.
+- Updated `Docs/markdown/Engine_Wiring.md` with the website theme wiring.
+- Validation: `npm run build` and `npm run lint` pass in `Docs/website`.
+
+- Codex
+
 ## Added: Armature and posable bones in the Hierarchy (2026-10-13)
 
 **Why:** a skinned gameobject (Y Bot, the Wolf) showed as one row in the Hierarchy. Its skeleton was invisible to the editor and there was no way to pose a bone: in Edit mode the mesh always drew its bind pose.
