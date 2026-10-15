@@ -1,5 +1,38 @@
 # Changelog
 
+## Added: Source 2 look plan from the Half-Life: Alyx binaries (2026-10-14)
+
+- Added `Docs/Research/Source2Look/README.md`: what HLA's renderer does (from REA/Ghidra on `scenesystem.dll` and `engine2.dll`, plus string scans of `client.dll` and the shader VPK directories), Obsidian's verified gaps, and a phased plan to match the Source 2 look. Phases: reference/look-dev scene and per-scene post settings; tinted metal F0, indirect-only AO, bloom start value, bright-pixel exposure, sharp TAA; cascaded sun shadows, shadow atlas, cookies, light size; GGX-prefiltered normalised reflection probes and forward-pass parity; probe and lightmap baking; post-processing volumes; AO proxies; optional culling. Also lists the REA follow-ups needed for exact values.
+- Added `evidence/` string lists (scenesystem, engine2, client render strings, core/hlvr shader names) and a `.gitignore` for future HLA reference captures.
+- No engine code changed.
+
+- Claude
+
+## Changed: Volumetric fog rebuilt from the Alyx research draft (2026-10-14)
+
+- Froxel slices are now logarithmic in view-space Z, the depth the G-buffer stores, so fog matches the geometry behind it across the whole screen (it used radial distance for slicing and view Z for lookup, which disagreed away from the centre).
+- The injection stores the scattering source and extinction per metre; each slice is integrated exactly along its view ray and a 7-pass prefix scan replaces the per-froxel loop over every nearer slice. Prefixes keep optical depth instead of transmittance so thin slices survive half-float precision.
+- `DeferredCompose.fx` (`SampleFroxelFog`) takes the prefix up to a pixel's slice and integrates only the part of the slice in front of it.
+- Temporal history now filters the medium, reprojected into last frame's grid and clamped to this frame's neighbours, instead of blending the integrated fog at the same texel (which smeared when the camera moved and started from black). It is dropped on scene swaps, camera jumps over 10 m, FOV/projection changes, fog setting changes, probe re-bakes, fog toggles and shader hot reloads.
+- Baked bounce light: with a probe volume, the fog scatters the probes' mean radiance (visibility-tested, nothing where no probe sees the point). New per-scene setting **Environment > Volumetric Fog > Indirect** (`EnvironmentSettings.FogIndirectScatter`, default 0.1, `GameSettings.g_FroxelIndirectScatter`).
+- The 8 fog lights are now ranked (`FroxelRenderModule.RankPointLights`): enabled lights reaching into the view, brightest at the camera first, instead of the first 8 in the list.
+- Environment cubemap captures no longer compose the main camera's fog atlas into their faces (it was sampled with the wrong frustum; at startup the old empty history even read as transmittance 0).
+- `Froxel.fx` hot reloads are picked up by the froxel module. Removed the unused `ComposeFroxels`/`AccumulateFroxels` techniques. Fog memory: 4 half-float atlases (~56 MiB, was 3 / ~42 MiB).
+- Tests: `FogChecks` covers the Indirect setting, light ranking, and on the GPU (`--graphics`) the transport against the exact solution of a uniform sunlit medium (centre and corners, before/after camera turns and an FOV change; worst error 0.35%) plus the history lifetime rules. `FogChecks.RunGraphics` runs first among the graphics checks, because `PauseChecks.RunGraphics` currently fails on its settings-row count (unrelated to this change).
+- Docs: `Scene_Lighting_and_Fog.md` (how the fog is computed, Indirect, light ranking, transparents not fogged), `Engine_Wiring.md`, `CLAUDE.md`, research README status.
+
+- Claude
+
+## Added: Alyx volumetric lighting research and implementation draft (2026-10-14)
+
+- Added `Docs/Research/AlyxVolumetric/README.md` with installed-artifact evidence, confidence limits, the existing Obsidian fog wiring, and a concrete integration proposal.
+- Added reproducible read-only PE/string/FGD/VPK inspection and saved file hashes, offsets, shader-member integrity checks, REA observations and provider diagnostics.
+- Added an original standalone SM4 shader draft for exact segment transport, atlas prefix accumulation, partial-slice sampling and previous-frustum coordinate mapping. It is outside the engine content pipeline.
+- Validation: five shader entry points compile with Windows D3DCompiler; 3,945 analytic CPU comparisons pass. MonoGame effect packaging, GPU rendering and performance remain unverified.
+- Updated `Docs/markdown/Engine_Wiring.md` to link the proposal and describe its integration boundary.
+
+- Codex
+
 ## Changed: Neutral documentation website theme (2026-10-14)
 
 - Replaced purple and blue palettes with gray, white, and black in both light and dark modes across the homepage and documentation reader, including navigation, links, buttons, cards, code blocks, and focus indicators.

@@ -575,11 +575,11 @@ Two things depend on the material:
 | 9 | Decals (premultiplied-alpha blend; skips disabled ones and `g_drawdecals` off) | Albedo (copied through `DecalOffTarget`) | Depth |
 | 10 | SSR | `ScreenSpaceEffectReflection` | **previous** TAA buffer (or Composed) |
 | 11 | SSAO + bilateral blur | `SSAOEffect` (half res) → `…BlurVertical/Horizontal` → `BlurFinal` | Normal, Depth |
-| 12 | Froxel fog: `SetFogVolumes(entities)` (up to 8 enabled `FogVolumeComponent` boxes as world-to-unit-cube matrices; keeps their meshes `Hidden`), then injection (density = scene density × lerp(Near Density, 1, distance ramp) + Fog Volume density) and accumulation | froxel injection + ping-pong accumulation atlas (160 × 90·128) | lights, shadow maps, entities |
+| 12 | Froxel fog (`Renderer.DrawFroxelFog`): history dropped on a scene swap or while `g_FroxelsEnabled` is off; `SetFogVolumes(entities)` (up to 8 enabled `FogVolumeComponent` boxes as world-to-unit-cube matrices; keeps their meshes `Hidden`); `SetProbeVolume` (the baked probes and intensity the environment pass uses); then `RenderFroxelFog`: injection (rgb = scattering source per metre from the sun, the 8 ranked point/spot lights (`RankPointLights`) and the probes' L0 × `g_FroxelIndirectScatter`; a = density × absorption, density = scene density × lerp(Near Density, 1, distance ramp) + Fog Volume density), temporal resolve (reprojected into last frame's grid, neighbourhood-clamped, `g_FroxelHistoryBlend`), seed + 7 prefix-scan passes along Z | injection atlas (reused as a scan target), 2 history atlases (`FroxelMedium`), scan atlas; `FroxelAccumulation` = the prefixes (rgb in-scattering, a optical depth). All 160 × 90·128 `HalfVector4` | lights, shadow maps, entities, probe volume |
 | 13 | `LightAccumulationModule.DrawLights` | rebuild hardware depth into `Diffuse`'s D24S8 from linear depth (`ReconstructDepth`), then additive MRT `[Diffuse, Specular, Volume]`. Point and spot lights draw sphere proxies (stencil-culled); directional lights draw full-screen | G-buffer, shadow maps |
 | 14 | `DrawEnvironmentMap` | adds into the still-bound Diffuse/Specular | env cubemap, sky, baked probe SH (`Texture3D`s), SSR |
 | 6b | `_renderFeatureContext` | camera matrices, `CameraPosition`, `FarClip`, G-buffer targets, `Time`/`DeltaTime` for render features | |
-| 15 | `Compose` | `Composed` (`HalfVector4`). Sky pixels get the froxel fog up to `g_FroxelSkyShaftDistance` at full strength and the rest scaled by `g_FroxelSkyFogStrength` (keeps shafts visible when facing the sun) | Albedo, Diffuse, Specular, `BlurFinal` (AO), froxels |
+| 15 | `Compose` | `Composed` (`HalfVector4`). Fog per pixel = prefix up to its slice + the exact integral over the partial slice in front of it (`SampleFroxelFog`, positive view Z = G-buffer depth × far plane), bilaterally filtered. Sky pixels get the froxel fog up to `g_FroxelSkyShaftDistance` at full strength and the rest scaled by `g_FroxelSkyFogStrength` (keeps shafts visible when facing the sun) | Albedo, Diffuse, Specular, `BlurFinal` (AO), `FroxelAccumulation` + `FroxelMedium` |
 | 15b | Render features **After Opaques** (`DrawRenderFeatures`, in place) | `Composed` (via two scratch targets of its format, then copied back; the forward pass rebuilds its depth afterwards) | `RenderFeatures.All` with `Event == AfterOpaques && IsActive` |
 | 16 | `DrawForward` | `Composed` (after `ReconstructDepth` into its depth buffer) | `RenderType.Forward`, up to 40 point lights as arrays |
 | 17 | Water (`WaterRenderModule`: also splash rings from `WaterSplashes.FillRipples` as `SplashPositions/SplashShapes` arrays, up to 16, and raindrop rings from `SurfaceWetness.Ripples` as `RainRipples`), then particle systems (`ParticleRenderModule`: one instanced quad per particle, systems far to near, no depth buffer; Lit systems take the 4 point lights of `_frameLights` that shine most on their emitter (`SetPointLights`); water splash droplets are passed as `extraSystems` since they have no gameobject; Volumetric systems upload their `ParticleVolume` to a `Texture3D` and raymarch it with the `Volume` technique on a scissored full-screen triangle, premultiplied), then weather (haze + particles) | `Composed` | Depth (occlusion + ray end), env cubemap, sun, volume + 32³ noise 3D textures |
@@ -605,6 +605,16 @@ Two things depend on the material:
 - Bloom resizes lazily inside its own `Draw`. The froxel atlas has a fixed size.
 - Shadow maps belong to their lights. The env cubemap is created lazily.
 - If you add a target, add it in both places, or the shaders will keep sampling a disposed texture after a resize.
+
+The froxel fog follows the design in
+[`Docs/Research/AlyxVolumetric/README.md`](../Research/AlyxVolumetric/README.md)
+(view-Z slices, exact segment transport, prefix scan, partial-slice sampling,
+reprojected injection history, baked probe ambient, ranked lights). The standalone
+`VolumetricTransportDraft.fx` there stays outside `Content.mgcb`; the production
+passes are `Froxel.fx` / `DeferredCompose.fx`. Not adopted: fog on transparent
+surfaces drawn after composition, and clipmaps.
+- Planned renderer work to match the Source 2 / Half-Life: Alyx look (cascaded sun shadows, shadow atlas, reflection probes, bright-pixel exposure, post-processing volumes, lightmaps) is laid out in [`Docs/Research/Source2Look/README.md`](../Research/Source2Look/README.md). None of it is wired yet; this section describes the current pipeline.
+- Froxel history: `FroxelRenderModule` keeps last frame's view/projection/camera position and a hash of the fog settings, and drops the history (`InvalidateHistory`) when they jump; previous matrices are only stored after a frame rendered. `UsedHistory` says whether the last frame blended it.
 
 ### 9.5 Editor picking and outlines
 

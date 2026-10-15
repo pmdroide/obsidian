@@ -57,6 +57,8 @@ namespace Engine.Logic
         public float FogSunScatter { get; set; } = 0.1f;
         /// <summary>Brightness of point and spot lights in the fog.</summary>
         public float FogLightScatter { get; set; } = 1.5f;
+        /// <summary>Brightness of the baked bounce light (Lighting > probe volume) in the fog; none without a bake.</summary>
+        public float FogIndirectScatter { get; set; } = 0.1f;
         /// <summary>Henyey-Greenstein g: 0 scatters evenly, towards 1 the fog glows mostly when looking at the light.</summary>
         public float FogAnisotropy { get; set; } = 0.45f;
         /// <summary>Distance (m) where the density starts ramping up from Near Density.</summary>
@@ -120,6 +122,7 @@ namespace Engine.Logic
             FogAbsorption = Limit(FogAbsorption, 0, 1, 0.1f);
             FogSunScatter = Limit(FogSunScatter, 0, 4, 0.1f);
             FogLightScatter = Limit(FogLightScatter, 0, 16, 1.5f);
+            FogIndirectScatter = Limit(FogIndirectScatter, 0, 4, 0.1f);
             FogAnisotropy = Limit(FogAnisotropy, -0.95f, 0.95f, 0.45f);
             FogStartDistance = Limit(FogStartDistance, 0, 5000, 30);
             FogFullDistance = Limit(FogFullDistance, FogStartDistance + 1, 10000, Math.Max(400, FogStartDistance + 1));

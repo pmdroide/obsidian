@@ -163,6 +163,12 @@ namespace Engine.Recources
         public static readonly EffectParameter DeferredComposeEffectParameter_FroxelAccumulationTexture =
             DeferredCompose.Parameters["FroxelAccumulationTexture"];
 
+        public static readonly EffectParameter DeferredComposeEffectParameter_FroxelInjectionTexture =
+            DeferredCompose.Parameters["FroxelInjectionTexture"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_InverseProjection =
+            DeferredCompose.Parameters["InverseProjection"];
+
         public static readonly EffectParameter DeferredComposeEffectParameter_DepthMap =
             DeferredCompose.Parameters["DepthMap"];
 

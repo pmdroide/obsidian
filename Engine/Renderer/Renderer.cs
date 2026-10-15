@@ -46,6 +46,8 @@ namespace Engine.Renderer
         private CPURayMarch _cpuRayMarch;
         private LightAccumulationModule _lightAccumulationModule;
         private FroxelRenderModule _froxelRenderModule;
+        //Scene the fog history belongs to
+        private Scene _froxelScene;
 
         private ShadowMapRenderModule _shadowMapRenderModule;
         private GBufferRenderModule _gBufferRenderModule;
@@ -465,25 +467,8 @@ namespace Engine.Renderer
                 //Upsample/blur our SSAO / screen space shadows
                 DrawBilateralBlur();
 
-                // Froxel fog: injection + accumulation atlases (composed in DeferredCompose using per-pixel atlas UVs)
-                if (GameSettings.g_FroxelsEnabled)
-                {
-                    _froxelRenderModule.UpdateMatrices(
-                        _view,
-                        _projection,
-                        _inverseView,
-                        _inverseProjection,
-                        FroxelRenderModule.CameraNearPlane,
-                        _g_FarClip);
-                    _froxelRenderModule.SetFogVolumes(entities);
-                    _froxelRenderModule.BuildFroxels(
-                        pointLights,
-                        directionalLights,
-                        camera.Position,
-                        GameSettings.g_screenwidth,
-                        GameSettings.g_screenheight,
-                        (float)gameTime.TotalGameTime.TotalSeconds);
-                }
+                // Froxel fog: medium injection, temporal resolve and transport scan (composed in DeferredCompose)
+                DrawFroxelFog(camera, entities, pointLights, directionalLights, scene, gameTime);
 
                 //Light the scene
                 _lightAccumulationModule.DrawLights(pointLights, directionalLights, camera.Position, gameTime, _renderTargetLightBinding, _renderTargetDiffuse);
@@ -827,7 +812,8 @@ namespace Engine.Renderer
                 GameSettings.g_taa = false;
                 
                 //Shaders.DeferredCompose.CurrentTechnique = Shaders.DeferredComposeTechnique_NonLinear;
-                Compose();
+                //The froxel fog belongs to the main camera's frustum, not to this face
+                Compose(withFog: false);
                 //Shaders.DeferredCompose.CurrentTechnique = GameSettings.g_SSReflection
                 //    ? Shaders.DeferredComposeTechnique_Linear
                 //    : Shaders.DeferredComposeTechnique_NonLinear;
@@ -1453,16 +1439,62 @@ namespace Engine.Renderer
             //}
         }
 
-        private void ApplyDeferredComposeFroxelParameters()
+        /// <summary>
+        /// Volumetric fog atlases for this frame. Their history is dropped on a scene swap and while the froxels are off,
+        /// the module drops it itself for camera cuts, projection, fog setting and baked probe changes.
+        /// </summary>
+        private void DrawFroxelFog(Camera camera, List<BasicEntity> entities, List<PointLight> pointLights,
+            List<DirectionalLight> directionalLights, Scene scene, GameTime gameTime)
+        {
+            if (!ReferenceEquals(scene, _froxelScene))
+            {
+                _froxelScene = scene;
+                _froxelRenderModule.InvalidateHistory();
+            }
+            if (!GameSettings.g_FroxelsEnabled)
+            {
+                _froxelRenderModule.InvalidateHistory();
+                return;
+            }
+
+            _froxelRenderModule.UpdateMatrices(
+                _view,
+                _projection,
+                _inverseView,
+                _inverseProjection,
+                FroxelRenderModule.CameraNearPlane,
+                _g_FarClip);
+            _froxelRenderModule.SetFogVolumes(entities);
+
+            //Baked bounce light in the fog: the same probe volume and intensity the surfaces use
+            bool useProbes = _lighting?.GpuData != null && _lighting.ProbeSHR != null &&
+                             _lightingSettings != null && _lightingSettings.ProbeVolumeEnabled;
+            _froxelRenderModule.SetProbeVolume(useProbes ? _lighting : null,
+                (_lightingSettings?.Intensity ?? 1f) * _environmentSky.AmbientScale);
+
+            _froxelRenderModule.RenderFroxelFog(
+                pointLights,
+                directionalLights,
+                camera.Position,
+                GameSettings.g_screenwidth,
+                GameSettings.g_screenheight,
+                (float)(gameTime.TotalGameTime.TotalSeconds % 3600));
+        }
+
+        private void ApplyDeferredComposeFroxelParameters(bool withFog)
         {
             Texture2D froxelAtlas = _froxelRenderModule?.FroxelAccumulation;
             bool fogActive =
+                withFog &&
                 GameSettings.g_FroxelsEnabled &&
                 GameSettings.g_FroxelFogEnabled &&
                 froxelAtlas != null;
 
             Shaders.DeferredComposeEffectParameter_FroxelAccumulationTexture?.SetValue(
                 fogActive ? froxelAtlas : _renderTargetAlbedo);
+            Shaders.DeferredComposeEffectParameter_FroxelInjectionTexture?.SetValue(
+                fogActive ? _froxelRenderModule.FroxelMedium : _renderTargetAlbedo);
+            Shaders.DeferredComposeEffectParameter_InverseProjection?.SetValue(_inverseProjection);
 
             Shaders.DeferredComposeEffectParameter_DepthMap?.SetValue(_renderTargetDepth);
             Shaders.DeferredComposeEffectParameter_NearClip?.SetValue(FroxelRenderModule.CameraNearPlane);
@@ -1483,14 +1515,14 @@ namespace Engine.Renderer
         /// <summary>
         /// Compose the render by combining the albedo channel with the light channels
         /// </summary>
-        private RenderTarget2D Compose()
+        private RenderTarget2D Compose(bool withFog = true)
         {
             _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
 
             _graphicsDevice.SetRenderTarget(_renderTargetComposed);
             _graphicsDevice.BlendState = BlendState.Opaque;
 
-            ApplyDeferredComposeFroxelParameters();
+            ApplyDeferredComposeFroxelParameters(withFog);
 
             //combine!
             Shaders.DeferredCompose.CurrentTechnique.Passes[0].Apply();
@@ -1598,6 +1630,7 @@ namespace Engine.Renderer
             GameSettings.g_FroxelAbsorption = fog.FogAbsorption;
             GameSettings.g_FroxelDirectionalScatter = fog.FogSunScatter;
             GameSettings.g_FroxelPointScatter = fog.FogLightScatter;
+            GameSettings.g_FroxelIndirectScatter = fog.FogIndirectScatter;
             GameSettings.g_FroxelAnisotropy = fog.FogAnisotropy;
             GameSettings.g_FroxelFogDistanceStart = fog.FogStartDistance;
             GameSettings.g_FroxelFogDistanceFull = fog.FogFullDistance;

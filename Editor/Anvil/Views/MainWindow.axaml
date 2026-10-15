@@ -3644,6 +3644,12 @@
                                                        Value="{Binding FogLightScatter, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
                                     </Grid>
                                     <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Indirect" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Brightness of baked bounce light in the fog (needs a baked probe volume, Lighting window)." />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01"
+                                                       Value="{Binding FogIndirectScatter, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
                                         <TextBlock Grid.Column="0" Text="Anisotropy" Classes="muted" FontSize="11" VerticalAlignment="Center"
                                                    ToolTip.Tip="0 glows evenly; towards 1 it glows mostly when looking at the light." />
                                         <NumericUpDown Grid.Column="1" Classes="field" Minimum="-0.95" Maximum="0.95" Increment="0.05"

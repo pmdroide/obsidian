@@ -1,0 +1,3506 @@
+{
+  "inspection_kind": "supplementary-local-static-inspection-not-REA-Evidence",
+  "script_sha256": "518bccdd660971a6c8cdbfbefe1663bb202187163607e682916c761ea0ed9ce9",
+  "files": [
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\bin\\win64\\hlvr.exe",
+      "sha256": "5dececefab3caaa57df2efd1cbefdac0e964885deda8b34cac07a35f7dc5b18c",
+      "byte_length": 149456,
+      "ascii_strings": [
+        {
+          "file_offset": 68840,
+          "file_offset_hex": "0x10ce8",
+          "value": "Launcher Error"
+        },
+        {
+          "file_offset": 68960,
+          "file_offset_hex": "0x10d60",
+          "value": "Failed to load the engine2 DLL."
+        },
+        {
+          "file_offset": 69032,
+          "file_offset_hex": "0x10da8",
+          "value": "Source2Main"
+        },
+        {
+          "file_offset": 69048,
+          "file_offset_hex": "0x10db8",
+          "value": "engine2"
+        },
+        {
+          "file_offset": 100896,
+          "file_offset_hex": "0x18a20",
+          "value": "c:\\buildslave\\hlvr_rel_win64\\build\\src\\source2launcher\\Retailhlvr\\win64\\hlvr.pdb"
+        },
+        {
+          "file_offset": 105806,
+          "file_offset_hex": "0x19d4e",
+          "value": "USER32.dll"
+        },
+        {
+          "file_offset": 106308,
+          "file_offset_hex": "0x19f44",
+          "value": "KERNEL32.dll"
+        }
+      ],
+      "imports": [
+        {
+          "module": "USER32.dll",
+          "descriptor_file_offset": 105152,
+          "functions": [
+            {
+              "name": "MessageBoxA"
+            }
+          ]
+        },
+        {
+          "module": "KERNEL32.dll",
+          "descriptor_file_offset": 105172,
+          "functions": [
+            {
+              "name": "GetModuleHandleExW"
+            },
+            {
+              "name": "RaiseException"
+            },
+            {
+              "name": "GetLastError"
+            },
+            {
+              "name": "GetModuleFileNameW"
+            },
+            {
+              "name": "GetProcAddress"
+            },
+            {
+              "name": "LoadLibraryExW"
+            },
+            {
+              "name": "LocalAlloc"
+            },
+            {
+              "name": "LocalFree"
+            },
+            {
+              "name": "FormatMessageA"
+            },
+            {
+              "name": "MultiByteToWideChar"
+            },
+            {
+              "name": "WideCharToMultiByte"
+            },
+            {
+              "name": "QueryPerformanceCounter"
+            },
+            {
+              "name": "GetCurrentProcessId"
+            },
+            {
+              "name": "GetCurrentThreadId"
+            },
+            {
+              "name": "GetSystemTimeAsFileTime"
+            },
+            {
+              "name": "InitializeSListHead"
+            },
+            {
+              "name": "RtlCaptureContext"
+            },
+            {
+              "name": "RtlLookupFunctionEntry"
+            },
+            {
+              "name": "RtlVirtualUnwind"
+            },
+            {
+              "name": "IsDebuggerPresent"
+            },
+            {
+              "name": "UnhandledExceptionFilter"
+            },
+            {
+              "name": "SetUnhandledExceptionFilter"
+            },
+            {
+              "name": "GetStartupInfoW"
+            },
+            {
+              "name": "IsProcessorFeaturePresent"
+            },
+            {
+              "name": "GetModuleHandleW"
+            },
+            {
+              "name": "RtlUnwindEx"
+            },
+            {
+              "name": "SetLastError"
+            },
+            {
+              "name": "EnterCriticalSection"
+            },
+            {
+              "name": "LeaveCriticalSection"
+            },
+            {
+              "name": "DeleteCriticalSection"
+            },
+            {
+              "name": "InitializeCriticalSectionAndSpinCount"
+            },
+            {
+              "name": "TlsAlloc"
+            },
+            {
+              "name": "TlsGetValue"
+            },
+            {
+              "name": "TlsSetValue"
+            },
+            {
+              "name": "TlsFree"
+            },
+            {
+              "name": "FreeLibrary"
+            },
+            {
+              "name": "GetStdHandle"
+            },
+            {
+              "name": "WriteFile"
+            },
+            {
+              "name": "GetModuleFileNameA"
+            },
+            {
+              "name": "GetCurrentProcess"
+            },
+            {
+              "name": "ExitProcess"
+            },
+            {
+              "name": "TerminateProcess"
+            },
+            {
+              "name": "CreateFileW"
+            },
+            {
+              "name": "GetACP"
+            },
+            {
+              "name": "HeapFree"
+            },
+            {
+              "name": "HeapAlloc"
+            },
+            {
+              "name": "GetFileType"
+            },
+            {
+              "name": "CloseHandle"
+            },
+            {
+              "name": "FindClose"
+            },
+            {
+              "name": "FindFirstFileExA"
+            },
+            {
+              "name": "FindNextFileA"
+            },
+            {
+              "name": "IsValidCodePage"
+            },
+            {
+              "name": "GetOEMCP"
+            },
+            {
+              "name": "GetCPInfo"
+            },
+            {
+              "name": "GetCommandLineA"
+            },
+            {
+              "name": "GetCommandLineW"
+            },
+            {
+              "name": "GetEnvironmentStringsW"
+            },
+            {
+              "name": "FreeEnvironmentStringsW"
+            },
+            {
+              "name": "LCMapStringW"
+            },
+            {
+              "name": "SetStdHandle"
+            },
+            {
+              "name": "GetStringTypeW"
+            },
+            {
+              "name": "GetProcessHeap"
+            },
+            {
+              "name": "HeapSize"
+            },
+            {
+              "name": "HeapReAlloc"
+            },
+            {
+              "name": "GetConsoleCP"
+            },
+            {
+              "name": "GetConsoleMode"
+            },
+            {
+              "name": "SetFilePointerEx"
+            },
+            {
+              "name": "FlushFileBuffers"
+            },
+            {
+              "name": "WriteConsoleW"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\bin\\win64\\engine2.dll",
+      "sha256": "3e546c924db5cb5c19682a425f8a966367628278cbbac8eb817fe84d110b3afb",
+      "byte_length": 5777360,
+      "ascii_strings": [],
+      "imports": null
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\bin\\win64\\scenesystem.dll",
+      "sha256": "031bdf42e5219e943da88dd30348ac024b8f1ffa4aae4e9229fb438bf01bbdd3",
+      "byte_length": 2993616,
+      "ascii_strings": [
+        {
+          "file_offset": 2487752,
+          "file_offset_hex": "0x25f5c8",
+          "value": "SceneSystem/VolumetricFog"
+        },
+        {
+          "file_offset": 2516736,
+          "file_offset_hex": "0x266700",
+          "value": "VolumetricFogManifest"
+        },
+        {
+          "file_offset": 2516768,
+          "file_offset_hex": "0x266720",
+          "value": "c:\\buildslave\\hlvr_rel_win64\\build\\src\\scenesystem\\utils\\volumetricfog.cpp"
+        },
+        {
+          "file_offset": 2516848,
+          "file_offset_hex": "0x266770",
+          "value": "materials/dev/cs_volumetric_fog.vmat"
+        },
+        {
+          "file_offset": 2516928,
+          "file_offset_hex": "0x2667c0",
+          "value": "VolumetricFog"
+        },
+        {
+          "file_offset": 2516944,
+          "file_offset_hex": "0x2667d0",
+          "value": "volume_fog_enable_jitter"
+        },
+        {
+          "file_offset": 2516976,
+          "file_offset_hex": "0x2667f0",
+          "value": "volume_fog_enable_stereo"
+        },
+        {
+          "file_offset": 2517008,
+          "file_offset_hex": "0x266810",
+          "value": "volume_fog_disable"
+        },
+        {
+          "file_offset": 2517032,
+          "file_offset_hex": "0x266828",
+          "value": "volume_fog_width"
+        },
+        {
+          "file_offset": 2517056,
+          "file_offset_hex": "0x266840",
+          "value": "volume_fog_height"
+        },
+        {
+          "file_offset": 2517080,
+          "file_offset_hex": "0x266858",
+          "value": "volume_fog_depth"
+        },
+        {
+          "file_offset": 2517104,
+          "file_offset_hex": "0x266870",
+          "value": "volume_fog_jitter_offset_random"
+        },
+        {
+          "file_offset": 2517136,
+          "file_offset_hex": "0x266890",
+          "value": "volume_fog_vr_single_dispatch"
+        },
+        {
+          "file_offset": 2517168,
+          "file_offset_hex": "0x2668b0",
+          "value": "#%s/VolumetricFog/SetupConstantBuffer"
+        },
+        {
+          "file_offset": 2517208,
+          "file_offset_hex": "0x2668d8",
+          "value": "volume_fog_clipmap_update"
+        },
+        {
+          "file_offset": 2517240,
+          "file_offset_hex": "0x2668f8",
+          "value": "volume_fog_clipmaps_enabled"
+        },
+        {
+          "file_offset": 2517272,
+          "file_offset_hex": "0x266918",
+          "value": "volume_fog_intermediate_textures_hdr"
+        },
+        {
+          "file_offset": 2517312,
+          "file_offset_hex": "0x266940",
+          "value": "volume_fog_enlarge_frusta"
+        },
+        {
+          "file_offset": 2517344,
+          "file_offset_hex": "0x266960",
+          "value": "volume_fog_dither_scale"
+        },
+        {
+          "file_offset": 2517368,
+          "file_offset_hex": "0x266978",
+          "value": "volume_fog_show_volumes"
+        },
+        {
+          "file_offset": 2517496,
+          "file_offset_hex": "0x2669f8",
+          "value": "#%s/VolumetricFog/SetupConstantBuffer%s"
+        },
+        {
+          "file_offset": 2517576,
+          "file_offset_hex": "0x266a48",
+          "value": "CVolumetricFogClipmapRenderer::Render"
+        },
+        {
+          "file_offset": 2517856,
+          "file_offset_hex": "0x266b60",
+          "value": "volumetric_fog.vtex"
+        },
+        {
+          "file_offset": 2517880,
+          "file_offset_hex": "0x266b78",
+          "value": "CVolumetricFog::SetupConstantBuffer"
+        },
+        {
+          "file_offset": 2517984,
+          "file_offset_hex": "0x266be0",
+          "value": "CUtlLinkedList<struct CVolumetricFog::FogVolume_t,unsigned short,0,unsigned short,class CUtlMemory<struct UtlLinkedListElem_t<struct CVolumetricFog::FogVolume_t,unsigned short>,unsigned short> >::AllocInternal"
+        },
+        {
+          "file_offset": 2847752,
+          "file_offset_hex": "0x2b7408",
+          "value": ".?AVIVolumetricFog@@"
+        },
+        {
+          "file_offset": 2847792,
+          "file_offset_hex": "0x2b7430",
+          "value": ".?AVCVolumetricFogRenderer@@"
+        },
+        {
+          "file_offset": 2847840,
+          "file_offset_hex": "0x2b7460",
+          "value": ".?AVCVolumetricFog@@"
+        },
+        {
+          "file_offset": 2847880,
+          "file_offset_hex": "0x2b7488",
+          "value": ".?AVCVolumetricFogClipmapRenderer@@"
+        }
+      ],
+      "imports": null
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\bin\\win64\\worldrenderer.dll",
+      "sha256": "e31b6c16f5959fd119855e1fe35a48bd0f675ac91f00a4d50aec18fdeedefe90",
+      "byte_length": 1289168,
+      "ascii_strings": [],
+      "imports": null
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\bin\\win64\\renderingpipelines.dll",
+      "sha256": "7387b53421478f6b546d94632b654d7b1d82e75c9f3e04b865a1e58e6f545b6d",
+      "byte_length": 389072,
+      "ascii_strings": [
+        {
+          "file_offset": 307760,
+          "file_offset_hex": "0x4b230",
+          "value": "vr_enable_volume_fog"
+        },
+        {
+          "file_offset": 310952,
+          "file_offset_hex": "0x4bea8",
+          "value": "VolumetricFog"
+        },
+        {
+          "file_offset": 310976,
+          "file_offset_hex": "0x4bec0",
+          "value": "D_ENABLE_VOLUMETRIC_FOG is set, but cannot find CVolumetricFog via \"VolumetricFog\""
+        },
+        {
+          "file_offset": 313024,
+          "file_offset_hex": "0x4c6c0",
+          "value": "VolumeFogGraphicsSignalComputeLeft"
+        },
+        {
+          "file_offset": 313064,
+          "file_offset_hex": "0x4c6e8",
+          "value": "VolumeFogGraphicsSignalComputeRight"
+        },
+        {
+          "file_offset": 313208,
+          "file_offset_hex": "0x4c778",
+          "value": "VolumeFogGraphicsSignaledLeft"
+        },
+        {
+          "file_offset": 313240,
+          "file_offset_hex": "0x4c798",
+          "value": "VolumeFogGraphicsSignaledRight"
+        },
+        {
+          "file_offset": 313272,
+          "file_offset_hex": "0x4c7b8",
+          "value": "VolumeFogComputeSignalGraphics"
+        },
+        {
+          "file_offset": 313656,
+          "file_offset_hex": "0x4c938",
+          "value": "VolumeFogComputeSignaledLeft"
+        },
+        {
+          "file_offset": 313688,
+          "file_offset_hex": "0x4c958",
+          "value": "VolumeFogComputeSignaledRight"
+        },
+        {
+          "file_offset": 316960,
+          "file_offset_hex": "0x4d620",
+          "value": "VolumetricFogManifest"
+        }
+      ],
+      "imports": null
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\bin\\win64\\client.dll",
+      "sha256": "729d1f6199fee2ec4fbd8d963095837fbdabff4863754390a647356942d44dd1",
+      "byte_length": 16247248,
+      "ascii_strings": [
+        {
+          "file_offset": 10728320,
+          "file_offset_hex": "0xa3b380",
+          "value": "env_volumetric_fog_controller"
+        },
+        {
+          "file_offset": 10728352,
+          "file_offset_hex": "0xa3b3a0",
+          "value": "C_EnvVolumetricFogController"
+        },
+        {
+          "file_offset": 10728440,
+          "file_offset_hex": "0xa3b3f8",
+          "value": "CEnvVolumetricFogController"
+        },
+        {
+          "file_offset": 10729184,
+          "file_offset_hex": "0xa3b6e0",
+          "value": "fogirradiancevolume"
+        },
+        {
+          "file_offset": 10729528,
+          "file_offset_hex": "0xa3b838",
+          "value": "EnvVolumetricFogControllerSystem"
+        },
+        {
+          "file_offset": 10729568,
+          "file_offset_hex": "0xa3b860",
+          "value": "C_EnvVolumetricFogVolume"
+        },
+        {
+          "file_offset": 10729600,
+          "file_offset_hex": "0xa3b880",
+          "value": "env_volumetric_fog_volume"
+        },
+        {
+          "file_offset": 10729632,
+          "file_offset_hex": "0xa3b8a0",
+          "value": "CEnvVolumetricFogVolume"
+        },
+        {
+          "file_offset": 10976024,
+          "file_offset_hex": "0xa77b18",
+          "value": "m_flVolumetricIntensity"
+        },
+        {
+          "file_offset": 10976048,
+          "file_offset_hex": "0xa77b30",
+          "value": "m_bVolumetric"
+        },
+        {
+          "file_offset": 11262024,
+          "file_offset_hex": "0xabd848",
+          "value": "volume_fog_width"
+        },
+        {
+          "file_offset": 11262048,
+          "file_offset_hex": "0xabd860",
+          "value": "volume_fog_height"
+        },
+        {
+          "file_offset": 11262072,
+          "file_offset_hex": "0xabd878",
+          "value": "volume_fog_depth"
+        },
+        {
+          "file_offset": 14876040,
+          "file_offset_hex": "0xe2fd88",
+          "value": ".?AVC_EnvVolumetricFogVolume@@"
+        },
+        {
+          "file_offset": 14876096,
+          "file_offset_hex": "0xe2fdc0",
+          "value": ".?AV?$CGameSystemStaticFactory@VCEnvVolumetricFogControllerSystem@@V1@@@"
+        },
+        {
+          "file_offset": 14876328,
+          "file_offset_hex": "0xe2fea8",
+          "value": ".?AVCEnvVolumetricFogControllerSystem@@"
+        },
+        {
+          "file_offset": 14876384,
+          "file_offset_hex": "0xe2fee0",
+          "value": ".?AVC_EnvVolumetricFogController@@"
+        }
+      ],
+      "imports": null
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\bin\\win64\\server.dll",
+      "sha256": "0be47dd2922bf91c0b0d5a4f30b87c5bb980d3f4fa50a661d436470c5d5681e4",
+      "byte_length": 22730680,
+      "ascii_strings": [
+        {
+          "file_offset": 13995472,
+          "file_offset_hex": "0xd58dd0",
+          "value": "env_volumetric_fog_controller"
+        },
+        {
+          "file_offset": 13995520,
+          "file_offset_hex": "0xd58e00",
+          "value": "CEnvVolumetricFogController"
+        },
+        {
+          "file_offset": 13996240,
+          "file_offset_hex": "0xd590d0",
+          "value": "fogirradiancevolume"
+        },
+        {
+          "file_offset": 13996552,
+          "file_offset_hex": "0xd59208",
+          "value": "CEnvVolumetricFogVolume"
+        },
+        {
+          "file_offset": 13996600,
+          "file_offset_hex": "0xd59238",
+          "value": "env_volumetric_fog_volume"
+        },
+        {
+          "file_offset": 14261648,
+          "file_offset_hex": "0xd99d90",
+          "value": "m_bVolumetric"
+        },
+        {
+          "file_offset": 14261704,
+          "file_offset_hex": "0xd99dc8",
+          "value": "m_flVolumetricIntensity"
+        },
+        {
+          "file_offset": 14262256,
+          "file_offset_hex": "0xd99ff0",
+          "value": "ScriptSetVolumetrics"
+        },
+        {
+          "file_offset": 14262280,
+          "file_offset_hex": "0xd9a008",
+          "value": "SetVolumetrics"
+        },
+        {
+          "file_offset": 14262304,
+          "file_offset_hex": "0xd9a020",
+          "value": "Turn on/off light volumetrics: bool bOn, float flIntensity, float flNoise, int nPlanes, float flPlaneOffset"
+        },
+        {
+          "file_offset": 20944312,
+          "file_offset_hex": "0x13f95b8",
+          "value": ".?AVCEnvVolumetricFogVolume@@"
+        },
+        {
+          "file_offset": 20944400,
+          "file_offset_hex": "0x13f9610",
+          "value": ".?AVCEnvVolumetricFogController@@"
+        }
+      ],
+      "imports": null
+    }
+  ],
+  "definitions": [
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\core\\base.fgd",
+      "sha256": "62c0e2c8523ea409dd47646e96120a1109183867024d2997f797941768d90947",
+      "selected_lines": [
+        {
+          "line": 1179,
+          "text": "\t\t2 : \"Steam Audio Volumetric\""
+        },
+        {
+          "line": 1184,
+          "text": "\tvisibilitySamples(integer) : \"Visibility Samples\" : 8 : \"Number of samples to use for volumetric occlusion or dynamic pathing.\""
+        },
+        {
+          "line": 2199,
+          "text": "@PointClass fog() base(Targetname, SystemLevelChoice) tags( Lighting ) iconsprite(\"materials/editor/env_fog_controller.vmat\") global( fog ) color(255 255 255) = env_fog_controller : "
+        },
+        {
+          "line": 2200,
+          "text": "\t\"An entity that controls the fog and view distance in the map.\""
+        },
+        {
+          "line": 2203,
+          "text": "\tinput SetStartDist(float) : \"Set the fog start distance.\""
+        },
+        {
+          "line": 2204,
+          "text": "\tinput SetEndDist(float) : \"Set the fog end distance.\""
+        },
+        {
+          "line": 2205,
+          "text": "\tinput TurnOn(void) : \"Turn the fog on.\""
+        },
+        {
+          "line": 2206,
+          "text": "\tinput TurnOff(void) : \"Turn the fog off.\""
+        },
+        {
+          "line": 2207,
+          "text": "\tinput SetColor(color255) : \"Set the primary fog color.\""
+        },
+        {
+          "line": 2208,
+          "text": "\tinput SetColorSecondary(color255) : \"Set the secondary fog color.\""
+        },
+        {
+          "line": 2210,
+          "text": "\tinput SetAngles(string) : \"Set the angles to use for the secondary fog direction.\""
+        },
+        {
+          "line": 2211,
+          "text": "\tinput Set2DSkyboxFogFactor(float) : \"Set the current amount of fog to blend into the 2D skybox.  0 is no fog, 1 is fully fogged.\""
+        },
+        {
+          "line": 2212,
+          "text": "\tinput SetMaxDensity(float) : \"Set the current max fog density.\""
+        },
+        {
+          "line": 2214,
+          "text": "\tinput SetColorLerpTo(color255) : \"Set the primary fog color.\""
+        },
+        {
+          "line": 2215,
+          "text": "\tinput SetColorSecondaryLerpTo(color255) : \"Set the secondary fog color.\""
+        },
+        {
+          "line": 2216,
+          "text": "\tinput SetStartDistLerpTo(float) : \"Set the fog start distance.\""
+        },
+        {
+          "line": 2217,
+          "text": "\tinput SetEndDistLerpTo(float) : \"Set the fog end distance.\""
+        },
+        {
+          "line": 2218,
+          "text": "\tinput Set2DSkyboxFogFactorLerpTo(float) : \"Set the amount of fog to blend into the 2D skybox to lerp to.  0 is no fog, 1 is fully fogged.\""
+        },
+        {
+          "line": 2219,
+          "text": "\tinput SetMaxDensityLerpTo(float) : \"Set the current max density to lerp to.  0 is no fog, 1 is fully fogged.\""
+        },
+        {
+          "line": 2220,
+          "text": "\tinput StartFogTransition(void) : \"Start fog transition.\""
+        },
+        {
+          "line": 2222,
+          "text": "\t// Starting fog parameters for the level. These are selectable per LOD.\t"
+        },
+        {
+          "line": 2223,
+          "text": "\tfogenable(boolean) : \"Fog Enable\" : 1"
+        },
+        {
+          "line": 2224,
+          "text": "\tfogblend(boolean) : \"Fog Blend\" : 0"
+        },
+        {
+          "line": 2225,
+          "text": "\tuse_angles(boolean) : \"Use Angles for Fog Dir\" : 0"
+        },
+        {
+          "line": 2226,
+          "text": "\tfogcolor(color255) : \"Primary Fog Color\" : \"255 255 255\""
+        },
+        {
+          "line": 2227,
+          "text": "\tfogcolor2(color255) : \"Secondary Fog Color\" : \"255 255 255\""
+        },
+        {
+          "line": 2228,
+          "text": "\tfogdir(string) : \"Primary Fog Direction\" : \"1 0 0\""
+        },
+        {
+          "line": 2229,
+          "text": "\tfogstart(string) : \"Fog Start\" : \"500.0\""
+        },
+        {
+          "line": 2230,
+          "text": "\tfogend(string) : \"Fog End\" : \"2000.0\""
+        },
+        {
+          "line": 2231,
+          "text": "\tfogmaxdensity(float) : \"Fog Max Density [0..1]\" : \"1\""
+        },
+        {
+          "line": 2232,
+          "text": "\tfogexponent(float) : \"Fog Exponent [0..1]\" : \"2\""
+        },
+        {
+          "line": 2234,
+          "text": "\tfoglerptime(float) : \"Interpolate time\" : \"0\""
+        },
+        {
+          "line": 2238,
+          "text": "\tHDRColorScale(float) : \"HDR color scale.\" : \"1.0\" : \"float value to multiply fog color by when running in HDR mode.\""
+        },
+        {
+          "line": 2242,
+          "text": "\t\t1 : \"Master (Has priority if multiple env_fog_controllers exist)\" : 0"
+        },
+        {
+          "line": 2260,
+          "text": "\t// Starting fog parameters for the level. These are selectable per LOD.\t"
+        },
+        {
+          "line": 2669,
+          "text": "\tfogenable(boolean) : \"Fog Enable\" : 0"
+        },
+        {
+          "line": 2670,
+          "text": "\tfogblend(boolean) : \"Fog Blend\" : 0"
+        },
+        {
+          "line": 2671,
+          "text": "\tuse_angles(boolean) : \"Use Angles for Fog Dir\" : 0"
+        },
+        {
+          "line": 2674,
+          "text": "\tfogcolor(color255) : \"Primary Fog Color\" : \"255 255 255\""
+        },
+        {
+          "line": 2675,
+          "text": "\tfogcolor2(color255) : \"Secondary Fog Color\" : \"255 255 255\""
+        },
+        {
+          "line": 2676,
+          "text": "\tfogdir(string) : \"Primary Fog Direction\" : \"1 0 0\""
+        },
+        {
+          "line": 2677,
+          "text": "\tfogstart(string) : \"Fog Start\" : \"500.0\" : \"Distance at which the skybox fog should start.\""
+        },
+        {
+          "line": 2678,
+          "text": "\tfogend(string) : \"Fog End\" : \"2000.0\" : \"Distance at which the skybox fog should be fully opaque.\""
+        },
+        {
+          "line": 2679,
+          "text": "\tfogmaxdensity(float) : \"Fog Max Density [0..1]\" : \"1\""
+        },
+        {
+          "line": 2681,
+          "text": "\tHDRColorScale(float) : \"HDR color scale.\" : \"1.0\" : \"float value to multiply fog color by when running in HDR mode.\""
+        },
+        {
+          "line": 3492,
+          "text": "\t\t1 : \"Master (Default color correction when used with L4D fog_volume)\" : 0"
+        },
+        {
+          "line": 3493,
+          "text": "\t\t2 : \"Simulate client-side (Must be set when used with L4D fog_volume)\" : 1"
+        },
+        {
+          "line": 6561,
+          "text": "\t\t13 : \"Particle Ground Fog\""
+        },
+        {
+          "line": 7224,
+          "text": "\tfogEnable(boolean) : \"Fog Enable\" : 0"
+        },
+        {
+          "line": 7225,
+          "text": "\tfogColor(color255) : \"Fog Color\" : \"0 0 0\""
+        },
+        {
+          "line": 7226,
+          "text": "\tfogStart(float) : \"Fog Start\" : 2048 : \"The near fog plane.\""
+        },
+        {
+          "line": 7227,
+          "text": "\tfogEnd(float) : \"Fog End\" : 4096 : \"The far fog/clipping plane.\""
+        },
+        {
+          "line": 7228,
+          "text": "\tfogMaxDensity(float) : \"Fog Max Density [0..1]\" : 1 : \"The maximum fog density. 0=no fog, 1=full fog.\""
+        },
+        {
+          "line": 7484,
+          "text": "\t\t64 : \"No Fog\" : 0"
+        },
+        {
+          "line": 7782,
+          "text": "@SolidClass base( Targetname, EnableDisable ) tags( Lighting ) = fog_volume : \"An entity to control the fog in the map.\""
+        },
+        {
+          "line": 7784,
+          "text": "\tFogName(target_destination) : \"Fog Name\" : : \"The name of the fog entity associated with this volume.\""
+        },
+        {
+          "line": 8047,
+          "text": "\tfog_type(choices) : \"Fog Type\" : 1 ="
+        },
+        {
+          "line": 8054,
+          "text": "\tangular_fog_max_end( float ) : \"Fog Max Angle End\" : \"35.0\""
+        },
+        {
+          "line": 8055,
+          "text": "\tangular_fog_max_start( float ) : \"Fog Max Angle Start\" : \"25.0\""
+        },
+        {
+          "line": 8056,
+          "text": "\tangular_fog_min_start( float ) : \"Fog Min Angle Start\" : \"-25.0\""
+        },
+        {
+          "line": 8057,
+          "text": "\tangular_fog_min_end( float ) : \"Fog Min Angle End\" : \"-35.0\""
+        },
+        {
+          "line": 8097,
+          "text": "\tvolumetric_fog_controller( box_mins, box_maxs )"
+        },
+        {
+          "line": 8098,
+          "text": "= env_volumetric_fog_controller : \"Controller for volumetric fogging - bounds are extents of fog irradiance volume (for indirect)\""
+        },
+        {
+          "line": 8100,
+          "text": "\tIsMaster( bool )  : \"Master Fog Controller\" : \"0\" : \"Use this as the active fog if there are more than one\""
+        },
+        {
+          "line": 8102,
+          "text": "\tFogStrength( float ) : \"Fog strength\" : \"1.0\" : \"Technically the scattering value. Higher values make denser fog.\""
+        },
+        {
+          "line": 8103,
+          "text": "\tDrawDistance( float ) : \"Draw distance\" : \"600.0\" : \"Maximum distance to draw fog - WARNING! Changing from default will make fog blockier.\" "
+        },
+        {
+          "line": 8104,
+          "text": "\tFadeInStart( float ) : \"Fade-in start\" : \"20.0\" : \"Distance from the eye at which fog starts to fade in.\" "
+        },
+        {
+          "line": 8105,
+          "text": "\tFadeInEnd( float ) : \"Fade-in end\" : \"100.0\" : \"Distance from the eye at which fog finishes fading in and is at full strength.\" "
+        },
+        {
+          "line": 8118,
+          "text": "\tAnisotropy( float ) : \"Anisotropy\" : \"1.0\" : \"How much the fog should get brighter when you stare directly at the light.\" "
+        },
+        {
+          "line": 8119,
+          "text": "\tfogirradiancevolume(resource:texture) : \"Fog Irradiance Texture\" : \"\" : \"Name of the fog irradiance texture\""
+        },
+        {
+          "line": 8122,
+          "text": "\tinput SetFogStrength(float) : \"Set overall fog strength\""
+        },
+        {
+          "line": 8128,
+          "text": "\tinput ForceRefresh(void) : \"Forces the fog volume to update if a light's state has changed\""
+        },
+        {
+          "line": 8129,
+          "text": "\tinput EnableIndirect( bool ) : \"Turns on/off indirect fogging\""
+        },
+        {
+          "line": 8135,
+          "text": "\ticonsprite( \"materials/editor/fog_volume.vmat\" )"
+        },
+        {
+          "line": 8136,
+          "text": "= env_volumetric_fog_volume : \"Sets a user bounding volume for volumetric fog - if one of these are in the map then all fog will get clamped to it. More than one then fog gets rendered if it's inside any of them.\""
+        },
+        {
+          "line": 8142,
+          "text": "\tFogStrength( float ) : \"Fog strength\" : \"1.0\" : \"Technically the scattering value. Higher values make denser fog.\""
+        },
+        {
+          "line": 8143,
+          "text": "\tFalloffExponent( float ) : \"Falloff Exponent\" : \"1.0\" : \"Controls the fall off curve for the fog at the edges\""
+        }
+      ]
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\core\\lights.fgd",
+      "sha256": "ce0085cf93df2ace30974008cb436c64c3b99a62f1d1bb436dbccc83ba75011b",
+      "selected_lines": []
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\core\\lights_base.fgd",
+      "sha256": "26b13e2a0451bcd92f86058638020524b705381ba8733602f3c3d26a8ecd2bc2",
+      "selected_lines": [
+        {
+          "line": 166,
+          "text": "\t\"An entity that places an irradiance volume in the world.\" "
+        },
+        {
+          "line": 174,
+          "text": "\tfademindist(float) : \"Start Fade Dist\" : \"2048\" : \"Distance at which the irradiance volume begins to fade out.\""
+        },
+        {
+          "line": 175,
+          "text": "\tfademaxdist(float) : \"End Fade Dist\" : \"2560\" : \"Distance at which the irradiance volume is no longer visible.\""
+        },
+        {
+          "line": 950,
+          "text": "@PointClass base(Targetname, TimeOfDay, RealisticDayNightCycle) tags( Lighting ) editormodel(\"models/editor/sky_helper\") externalHelper( ToolObjects/env_time_of_day ) global( sun, sky, fog ) = env_time_of_day :"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\hlvr.fgd",
+      "sha256": "962846aee613210056594785166d0a967873403cb4ffc58713652a1d7e861776",
+      "selected_lines": [
+        {
+          "line": 19,
+          "text": "@exclude env_fog_controller"
+        },
+        {
+          "line": 24,
+          "text": "@exclude fog_volume"
+        },
+        {
+          "line": 234,
+          "text": "@EntityGroup \"Fog & Sky\" { start_expanded = true }"
+        },
+        {
+          "line": 1332,
+          "text": "\ticonsprite( \"materials/editor/env_fog_controller.vmat\" )"
+        },
+        {
+          "line": 1333,
+          "text": "\tgradientfog()"
+        },
+        {
+          "line": 1334,
+          "text": "\tglobal( gradient_fog )"
+        },
+        {
+          "line": 1337,
+          "text": "\t\tentity_tool_name = \"Gradient Fog\""
+        },
+        {
+          "line": 1338,
+          "text": "\t\tentity_tool_tip = \"Specifies fog based on a color gradient\""
+        },
+        {
+          "line": 1339,
+          "text": "\t\tentity_tool_group = \"Fog & Sky\""
+        },
+        {
+          "line": 1341,
+          "text": "= env_gradient_fog"
+        },
+        {
+          "line": 1343,
+          "text": "\tfogstart(float) : \"Fog Start Distance\" : \"0.0\""
+        },
+        {
+          "line": 1344,
+          "text": "\tfogend(float) : \"Fog End Distance\" : \"4000.0\""
+        },
+        {
+          "line": 1345,
+          "text": "\tfogstartheight(float) : \"Fog Start Height\" : \"0.0\""
+        },
+        {
+          "line": 1346,
+          "text": "\tfogendheight(float) : \"Fog End Height\" : \"200.0\""
+        },
+        {
+          "line": 1347,
+          "text": "\tfogmaxopacity(float) : \"Fog Maximum Opacity\" : \"0.5\" : \"Set the maximum opacity at the base of the gradient fog.\""
+        },
+        {
+          "line": 1348,
+          "text": "\tfogcolor(color255) : \"Fog Color (R G B)\" : \"255 255 255\" : \"Set the gradient fog color.\""
+        },
+        {
+          "line": 1349,
+          "text": "\tfogstrength(float) : \"Fog Strength\" : \"1.0\""
+        },
+        {
+          "line": 1350,
+          "text": "\tfogfalloffexponent(float) : \"Distance Falloff Exponent\" : \"2.0\" : \"Exponent for distance falloff.\""
+        },
+        {
+          "line": 1351,
+          "text": "\tfogverticalexponent(float) : \"Vertical Falloff Exponent\" : \"1.0\" : \"Exponent for vertical falloff.\""
+        },
+        {
+          "line": 1354,
+          "text": "\tinput SetFogStartDistance(float) : \"Set Fog Start Distance\""
+        },
+        {
+          "line": 1355,
+          "text": "\tinput SetFogEndDistance(float) : \"Set Fog End Distance\""
+        },
+        {
+          "line": 1356,
+          "text": "\tinput SetFogStartHeight(float) : \"Set Fog Start Height\""
+        },
+        {
+          "line": 1357,
+          "text": "\tinput SetFogEndHeight(float) : \"Set Fog End Height\""
+        },
+        {
+          "line": 1358,
+          "text": "\tinput SetFogMaxOpacity(float) : \"Set Fog Max Opacity\""
+        },
+        {
+          "line": 1359,
+          "text": "\tinput SetFogFalloffExponent(float) : \"Set Fog Falloff Exponent\""
+        },
+        {
+          "line": 1360,
+          "text": "\tinput SetFogVerticalExponent(float) : \"Set Fog Vertical Exponent\""
+        },
+        {
+          "line": 1361,
+          "text": "\tinput SetFogColor(color255) : \"Set Fog Color\""
+        },
+        {
+          "line": 1362,
+          "text": "\tinput SetFogStrength(float) : \"Set Fog Strength\""
+        },
+        {
+          "line": 1366,
+          "text": "\ticonsprite( \"materials/editor/env_fog_controller.vmat\" )"
+        },
+        {
+          "line": 1389,
+          "text": "\ticonsprite( \"materials/editor/env_cubemap_fog.vmat\" ) "
+        },
+        {
+          "line": 1390,
+          "text": "\tcubemap_fog()"
+        },
+        {
+          "line": 1393,
+          "text": "\t\tentity_tool_name = \"Cubemap fog\""
+        },
+        {
+          "line": 1394,
+          "text": "\t\tentity_tool_tip = \"Specifies fog based on an image.\""
+        },
+        {
+          "line": 1395,
+          "text": "\t\tentity_tool_group = \"Fog & Sky\""
+        },
+        {
+          "line": 1397,
+          "text": "= env_cubemap_fog  "
+        },
+        {
+          "line": 1399,
+          "text": "\tcubemapfogtexture(resource:texture) : \"Cubemap Texture\" : \"materials/skybox/tests/src/light_test_sky_sunset.vtex\""
+        },
+        {
+          "line": 1400,
+          "text": "\tcubemapfoglodbiase(float) : \"Cubemap LOD (mip) Bias\" : \"0.5\" : \"Adjust how quickly the cubemap blurs out into the distance\""
+        },
+        {
+          "line": 1401,
+          "text": "\tcubemapfogstartdistance(float) : \"Fog Start Distance\" : \"0.0\""
+        },
+        {
+          "line": 1402,
+          "text": "\tcubemapfogenddistance(float) : \"Fog End Distance\" : \"6000.0\""
+        },
+        {
+          "line": 1403,
+          "text": "\tcubemapfogfalloffexponent(float) : \"Distance Falloff Exponent\" : \"2.0\" : \"Exponent for distance falloff. For example, 2.0 = proportional to square of distance\""
+        },
+        {
+          "line": 1404,
+          "text": "\tcubemapfogheightwidth(float) : \"Height Fog Width\" : \"0.0\""
+        },
+        {
+          "line": 1405,
+          "text": "\tcubemapfogheightstart(float) : \"Height Fog Start\" : \"2000.0\""
+        },
+        {
+          "line": 1406,
+          "text": "\tcubemapfogheightexponent(float) : \"Height Fog Exponent\" : \"2.0\""
+        },
+        {
+          "line": 1758,
+          "text": " = trigger_physics : \"A volumetric trigger that affects the motion of vphysics objects that touch it.\""
+        },
+        {
+          "line": 1878,
+          "text": "\tfogcontributionstrength(float)  : \"Fog contribution strength\" : \"1\" : \"Overrides how much the light affects the fog (if enabled)\" "
+        },
+        {
+          "line": 1879,
+          "text": "\tfog_lighting(choices) : \"Volumetric Fogging\" : \"1\" : \"How should light interact with volumetric fogging\" ="
+        },
+        {
+          "line": 1901,
+          "text": "\tfogcontributionstrength(float) : \"Fog contribution strength\" : \"1\" : \"Overrides how much the light affects the fog (if enabled)\""
+        },
+        {
+          "line": 1902,
+          "text": "\tfog_lighting(choices) : \"Volumetric Fogging\" : \"0\" : \"How should light interact with volumetric fogging\" ="
+        },
+        {
+          "line": 1921,
+          "text": "\tfogcontributionstrength(float)  : \"Fog contribution strength\" : \"1\" : \"Overrides how much the light affects the fog (if enabled)\""
+        },
+        {
+          "line": 1922,
+          "text": "\tfog_lighting(choices) : \"Volumetric Fogging\" : \"1\" : \"How should light interact with volumetric fogging\" ="
+        },
+        {
+          "line": 1947,
+          "text": "\tfogcontributionstrength(float)  : \"Fog contribution strength\" : \"1\" : \"Overrides how much the light affects the fog (if enabled)\""
+        },
+        {
+          "line": 1948,
+          "text": "\tfog_lighting(choices)   : \"Volumetric Fogging\" : \"0\" : \"How should light interact with volumetric fogging\" ="
+        },
+        {
+          "line": 2730,
+          "text": "\t\tentity_tool_name = \"Volume Fog Controller\""
+        },
+        {
+          "line": 2731,
+          "text": "\t\tentity_tool_tip = \"Entity which controls volumetric fog for the map.\""
+        },
+        {
+          "line": 2732,
+          "text": "\t\tentity_tool_group = \"Fog & Sky\""
+        },
+        {
+          "line": 2734,
+          "text": "= env_volumetric_fog_controller"
+        },
+        {
+          "line": 2741,
+          "text": "\t\tentity_tool_name = \"Fog Volume\""
+        },
+        {
+          "line": 2742,
+          "text": "\t\tentity_tool_tip = \"Specifies a region in which volumetric fog is active\""
+        },
+        {
+          "line": 2743,
+          "text": "\t\tentity_tool_group = \"Fog & Sky\""
+        },
+        {
+          "line": 2745,
+          "text": "= env_volumetric_fog_volume"
+        },
+        {
+          "line": 2755,
+          "text": "\t\tentity_tool_group = \"Fog & Sky\""
+        }
+      ]
+    }
+  ],
+  "shader_archives": [
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\core\\shaders_pc_dir.vpk",
+      "sha256": "e8292582140dd6d57d804b08a1dcf1e01ca039097360a02d97d8518fe9ec09af",
+      "version": 2,
+      "tree_entries": 729,
+      "selected_entries": [
+        {
+          "logical_path": "shaders/vfx/sfm_volumetrics_frustum.ini",
+          "entry_file_offset": 2627,
+          "archive_index": 32767,
+          "archive_offset": 4294967295,
+          "payload_length": 0,
+          "preload_length": 0,
+          "expected_crc32": "00000000",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\core\\shaders_pc_dir.vpk",
+          "payload_source_offset": 4294998932,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_crc32": "00000000",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": []
+        },
+        {
+          "logical_path": "shaders/vfx/sfm_volumetrics_frustum_pc_40_features.vcs",
+          "entry_file_offset": 20476,
+          "archive_index": 1,
+          "archive_offset": 55656736,
+          "payload_length": 5635,
+          "preload_length": 0,
+          "expected_crc32": "cb90d1f8",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\core\\shaders_pc_001.vpk",
+          "payload_source_offset": 55656736,
+          "sha256": "8bc5c02c3a03864aa495250c7d934f2b08c3da8ca6c3252b7abdf712047c362f",
+          "observed_crc32": "cb90d1f8",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 20,
+              "file_offset_hex": "0x14",
+              "value": "Shader used by the SFM's volumetric lights"
+            },
+            {
+              "file_offset": 3199,
+              "file_offset_hex": "0xc7f",
+              "value": "SFMLightsConstantBuffer_t"
+            },
+            {
+              "file_offset": 3335,
+              "file_offset_hex": "0xd07",
+              "value": "SFMLightsConstantBuffer_t"
+            },
+            {
+              "file_offset": 3683,
+              "file_offset_hex": "0xe63",
+              "value": "g_tSFMCookieTextureArray"
+            },
+            {
+              "file_offset": 3819,
+              "file_offset_hex": "0xeeb",
+              "value": "SFMLightCookieTexture"
+            },
+            {
+              "file_offset": 4167,
+              "file_offset_hex": "0x1047",
+              "value": "g_tSFMShadowDepthTexture"
+            },
+            {
+              "file_offset": 4303,
+              "file_offset_hex": "0x10cf",
+              "value": "SFMShadowDepthTexture"
+            },
+            {
+              "file_offset": 4651,
+              "file_offset_hex": "0x122b",
+              "value": "g_tSceneDepth"
+            },
+            {
+              "file_offset": 4787,
+              "file_offset_hex": "0x12b3",
+              "value": "SFMSceneDepth"
+            },
+            {
+              "file_offset": 5135,
+              "file_offset_hex": "0x140f",
+              "value": "g_tSceneDepthMS"
+            },
+            {
+              "file_offset": 5271,
+              "file_offset_hex": "0x1497",
+              "value": "SFMSceneDepth"
+            }
+          ]
+        },
+        {
+          "logical_path": "shaders/vfx/sfm_volumetrics_frustum_pc_40_ps.vcs",
+          "entry_file_offset": 20527,
+          "archive_index": 1,
+          "archive_offset": 55662384,
+          "payload_length": 14790,
+          "preload_length": 0,
+          "expected_crc32": "410a9d0b",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\core\\shaders_pc_001.vpk",
+          "payload_source_offset": 55662384,
+          "sha256": "9912a992e83768e7d30a44d4af9c31bd1f8eb2e612e21f35bd9c2a792de8689b",
+          "observed_crc32": "410a9d0b",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 52,
+              "file_offset_hex": "0x34",
+              "value": "S_TOOLS_ENABLED"
+            },
+            {
+              "file_offset": 212,
+              "file_offset_hex": "0xd4",
+              "value": "D_SFM_LIGHTING"
+            },
+            {
+              "file_offset": 364,
+              "file_offset_hex": "0x16c",
+              "value": "D_SFM_SCENE_DEPTH_MSAA"
+            },
+            {
+              "file_offset": 516,
+              "file_offset_hex": "0x204",
+              "value": "D_LINEAR_DEPTH_BUFFER"
+            },
+            {
+              "file_offset": 4040,
+              "file_offset_hex": "0xfc8",
+              "value": "SFMLightsConstantBuffer_t"
+            },
+            {
+              "file_offset": 4176,
+              "file_offset_hex": "0x1050",
+              "value": "SFMLightsConstantBuffer_t"
+            },
+            {
+              "file_offset": 4524,
+              "file_offset_hex": "0x11ac",
+              "value": "g_tSFMCookieTextureArray"
+            },
+            {
+              "file_offset": 4660,
+              "file_offset_hex": "0x1234",
+              "value": "SFMLightCookieTexture"
+            },
+            {
+              "file_offset": 5008,
+              "file_offset_hex": "0x1390",
+              "value": "g_tSFMShadowDepthTexture"
+            },
+            {
+              "file_offset": 5144,
+              "file_offset_hex": "0x1418",
+              "value": "SFMShadowDepthTexture"
+            },
+            {
+              "file_offset": 5492,
+              "file_offset_hex": "0x1574",
+              "value": "g_tSceneDepth"
+            },
+            {
+              "file_offset": 5628,
+              "file_offset_hex": "0x15fc",
+              "value": "SFMSceneDepth"
+            },
+            {
+              "file_offset": 5976,
+              "file_offset_hex": "0x1758",
+              "value": "g_tSceneDepthMS"
+            },
+            {
+              "file_offset": 6112,
+              "file_offset_hex": "0x17e0",
+              "value": "SFMSceneDepth"
+            },
+            {
+              "file_offset": 6544,
+              "file_offset_hex": "0x1990",
+              "value": "g_matWorldToProjection"
+            },
+            {
+              "file_offset": 6624,
+              "file_offset_hex": "0x19e0",
+              "value": "g_matProjectionToWorld"
+            },
+            {
+              "file_offset": 6704,
+              "file_offset_hex": "0x1a30",
+              "value": "g_matWorldToView"
+            },
+            {
+              "file_offset": 6784,
+              "file_offset_hex": "0x1a80",
+              "value": "g_matViewToProjection"
+            },
+            {
+              "file_offset": 6864,
+              "file_offset_hex": "0x1ad0",
+              "value": "g_vInvProjRow3"
+            },
+            {
+              "file_offset": 6944,
+              "file_offset_hex": "0x1b20",
+              "value": "g_vClipPlane0"
+            },
+            {
+              "file_offset": 7024,
+              "file_offset_hex": "0x1b70",
+              "value": "g_flToneMapScalarLinear"
+            },
+            {
+              "file_offset": 7104,
+              "file_offset_hex": "0x1bc0",
+              "value": "g_flLightMapScalar"
+            },
+            {
+              "file_offset": 7184,
+              "file_offset_hex": "0x1c10",
+              "value": "g_flEnvMapScalar"
+            },
+            {
+              "file_offset": 7264,
+              "file_offset_hex": "0x1c60",
+              "value": "g_flToneMapScalarGamma"
+            },
+            {
+              "file_offset": 7344,
+              "file_offset_hex": "0x1cb0",
+              "value": "g_vCameraPositionWs"
+            },
+            {
+              "file_offset": 7424,
+              "file_offset_hex": "0x1d00",
+              "value": "g_flViewportMinZ"
+            },
+            {
+              "file_offset": 7504,
+              "file_offset_hex": "0x1d50",
+              "value": "g_vCameraDirWs"
+            },
+            {
+              "file_offset": 7584,
+              "file_offset_hex": "0x1da0",
+              "value": "g_flViewportMaxZ"
+            },
+            {
+              "file_offset": 7664,
+              "file_offset_hex": "0x1df0",
+              "value": "g_vCameraUpDirWs"
+            },
+            {
+              "file_offset": 7744,
+              "file_offset_hex": "0x1e40",
+              "value": "g_flTime"
+            },
+            {
+              "file_offset": 7824,
+              "file_offset_hex": "0x1e90",
+              "value": "g_vDepthPsToVsConversion"
+            },
+            {
+              "file_offset": 7904,
+              "file_offset_hex": "0x1ee0",
+              "value": "g_flNearPlane"
+            },
+            {
+              "file_offset": 7984,
+              "file_offset_hex": "0x1f30",
+              "value": "g_flFarPlane"
+            },
+            {
+              "file_offset": 8064,
+              "file_offset_hex": "0x1f80",
+              "value": "g_flLightBinnerFarPlane"
+            },
+            {
+              "file_offset": 8144,
+              "file_offset_hex": "0x1fd0",
+              "value": "g_vInvViewportSize"
+            },
+            {
+              "file_offset": 8224,
+              "file_offset_hex": "0x2020",
+              "value": "g_vViewportToGBufferRatio"
+            },
+            {
+              "file_offset": 8304,
+              "file_offset_hex": "0x2070",
+              "value": "g_vMorphTextureAtlasSize"
+            },
+            {
+              "file_offset": 8384,
+              "file_offset_hex": "0x20c0",
+              "value": "g_vInvGBufferSize"
+            },
+            {
+              "file_offset": 8464,
+              "file_offset_hex": "0x2110",
+              "value": "g_vViewportOffset"
+            },
+            {
+              "file_offset": 8544,
+              "file_offset_hex": "0x2160",
+              "value": "g_vViewportSize"
+            },
+            {
+              "file_offset": 8624,
+              "file_offset_hex": "0x21b0",
+              "value": "g_vRenderTargetSize"
+            },
+            {
+              "file_offset": 8704,
+              "file_offset_hex": "0x2200",
+              "value": "g_flFogBlendToBackground"
+            },
+            {
+              "file_offset": 8784,
+              "file_offset_hex": "0x2250",
+              "value": "g_flHenyeyGreensteinCoeff"
+            },
+            {
+              "file_offset": 8864,
+              "file_offset_hex": "0x22a0",
+              "value": "g_vFogColor"
+            },
+            {
+              "file_offset": 8944,
+              "file_offset_hex": "0x22f0",
+              "value": "g_flNegFogStartOverFogRange"
+            },
+            {
+              "file_offset": 9024,
+              "file_offset_hex": "0x2340",
+              "value": "g_flInvFogRange"
+            },
+            {
+              "file_offset": 9104,
+              "file_offset_hex": "0x2390",
+              "value": "g_flFogMaxDensity"
+            },
+            {
+              "file_offset": 9184,
+              "file_offset_hex": "0x23e0",
+              "value": "g_flFogExponent"
+            },
+            {
+              "file_offset": 9264,
+              "file_offset_hex": "0x2430",
+              "value": "g_flMod2xIdentity"
+            },
+            {
+              "file_offset": 9344,
+              "file_offset_hex": "0x2480",
+              "value": "g_bRoughnessParams"
+            },
+            {
+              "file_offset": 9424,
+              "file_offset_hex": "0x24d0",
+              "value": "g_bStereoEnabled"
+            },
+            {
+              "file_offset": 9504,
+              "file_offset_hex": "0x2520",
+              "value": "g_flStereoCameraIndex"
+            },
+            {
+              "file_offset": 9584,
+              "file_offset_hex": "0x2570",
+              "value": "g_vMiddleEyePositionWs"
+            },
+            {
+              "file_offset": 9664,
+              "file_offset_hex": "0x25c0",
+              "value": "g_flPad2"
+            },
+            {
+              "file_offset": 9744,
+              "file_offset_hex": "0x2610",
+              "value": "g_matWorldToProjectionMultiview"
+            },
+            {
+              "file_offset": 9824,
+              "file_offset_hex": "0x2660",
+              "value": "g_vCameraPositionWsMultiview"
+            },
+            {
+              "file_offset": 9904,
+              "file_offset_hex": "0x26b0",
+              "value": "g_vFrameBufferCopyInvSizeAndUvScale"
+            },
+            {
+              "file_offset": 9984,
+              "file_offset_hex": "0x2700",
+              "value": "g_vCameraAngles"
+            },
+            {
+              "file_offset": 10064,
+              "file_offset_hex": "0x2750",
+              "value": "g_vWorldToCameraOffset"
+            },
+            {
+              "file_offset": 10144,
+              "file_offset_hex": "0x27a0",
+              "value": "g_vWorldToCameraOffsetMultiview"
+            },
+            {
+              "file_offset": 10224,
+              "file_offset_hex": "0x27f0",
+              "value": "g_vPerViewConstantExtraData0"
+            },
+            {
+              "file_offset": 10304,
+              "file_offset_hex": "0x2840",
+              "value": "g_vPerViewConstantExtraData1"
+            },
+            {
+              "file_offset": 10384,
+              "file_offset_hex": "0x2890",
+              "value": "g_vPerViewConstantExtraData2"
+            },
+            {
+              "file_offset": 10464,
+              "file_offset_hex": "0x28e0",
+              "value": "g_vPerViewConstantExtraData3"
+            },
+            {
+              "file_offset": 10548,
+              "file_offset_hex": "0x2934",
+              "value": "SFMLightsConstantBuffer_t"
+            },
+            {
+              "file_offset": 10624,
+              "file_offset_hex": "0x2980",
+              "value": "g_SFMLight_Count"
+            },
+            {
+              "file_offset": 10704,
+              "file_offset_hex": "0x29d0",
+              "value": "g_SFMLight_VolumetricOffset"
+            },
+            {
+              "file_offset": 10784,
+              "file_offset_hex": "0x2a20",
+              "value": "g_SFMLight_PadZ"
+            },
+            {
+              "file_offset": 10864,
+              "file_offset_hex": "0x2a70",
+              "value": "g_SFMLight_PadW"
+            },
+            {
+              "file_offset": 10944,
+              "file_offset_hex": "0x2ac0",
+              "value": "g_SFMLight_ShadowSampleDelta0"
+            },
+            {
+              "file_offset": 11024,
+              "file_offset_hex": "0x2b10",
+              "value": "g_SFMLight_ShadowSampleDelta1"
+            },
+            {
+              "file_offset": 11104,
+              "file_offset_hex": "0x2b60",
+              "value": "g_SFMLight_ShadowSampleDelta2"
+            },
+            {
+              "file_offset": 11184,
+              "file_offset_hex": "0x2bb0",
+              "value": "g_SFMLight_ShadowSampleDelta3"
+            },
+            {
+              "file_offset": 11264,
+              "file_offset_hex": "0x2c00",
+              "value": "g_SFMLight_Position_Roundness"
+            },
+            {
+              "file_offset": 11344,
+              "file_offset_hex": "0x2c50",
+              "value": "g_SFMLight_Direction_ShadowFilterSize"
+            },
+            {
+              "file_offset": 11424,
+              "file_offset_hex": "0x2ca0",
+              "value": "g_SFMLight_Color_ShadowTexIndex"
+            },
+            {
+              "file_offset": 11504,
+              "file_offset_hex": "0x2cf0",
+              "value": "g_SFMLight_Attenuation_CookieTexIndex"
+            },
+            {
+              "file_offset": 11584,
+              "file_offset_hex": "0x2d40",
+              "value": "g_SFMLight_DepthParams_SpotFalloff"
+            },
+            {
+              "file_offset": 11664,
+              "file_offset_hex": "0x2d90",
+              "value": "g_SFMLight_GoboTexCoords"
+            },
+            {
+              "file_offset": 11744,
+              "file_offset_hex": "0x2de0",
+              "value": "g_SFMLight_PadXYZ_AmbientIntensity"
+            },
+            {
+              "file_offset": 11824,
+              "file_offset_hex": "0x2e30",
+              "value": "g_SFMLight_ViewProj"
+            }
+          ]
+        },
+        {
+          "logical_path": "shaders/vfx/sfm_volumetrics_frustum_pc_40_vs.vcs",
+          "entry_file_offset": 20578,
+          "archive_index": 1,
+          "archive_offset": 55677184,
+          "payload_length": 7996,
+          "preload_length": 0,
+          "expected_crc32": "a4326b5c",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\core\\shaders_pc_001.vpk",
+          "payload_source_offset": 55677184,
+          "sha256": "7dfde3b416225a4d8ae317aca0485bc2f21d275da588d82d2733eaad5115d8b1",
+          "observed_crc32": "a4326b5c",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 52,
+              "file_offset_hex": "0x34",
+              "value": "S_TOOLS_ENABLED"
+            },
+            {
+              "file_offset": 212,
+              "file_offset_hex": "0xd4",
+              "value": "D_SFM_LIGHTING"
+            },
+            {
+              "file_offset": 1412,
+              "file_offset_hex": "0x584",
+              "value": "g_matWorldToProjection"
+            },
+            {
+              "file_offset": 1492,
+              "file_offset_hex": "0x5d4",
+              "value": "g_matProjectionToWorld"
+            },
+            {
+              "file_offset": 1572,
+              "file_offset_hex": "0x624",
+              "value": "g_matWorldToView"
+            },
+            {
+              "file_offset": 1652,
+              "file_offset_hex": "0x674",
+              "value": "g_matViewToProjection"
+            },
+            {
+              "file_offset": 1732,
+              "file_offset_hex": "0x6c4",
+              "value": "g_vInvProjRow3"
+            },
+            {
+              "file_offset": 1812,
+              "file_offset_hex": "0x714",
+              "value": "g_vClipPlane0"
+            },
+            {
+              "file_offset": 1892,
+              "file_offset_hex": "0x764",
+              "value": "g_flToneMapScalarLinear"
+            },
+            {
+              "file_offset": 1972,
+              "file_offset_hex": "0x7b4",
+              "value": "g_flLightMapScalar"
+            },
+            {
+              "file_offset": 2052,
+              "file_offset_hex": "0x804",
+              "value": "g_flEnvMapScalar"
+            },
+            {
+              "file_offset": 2132,
+              "file_offset_hex": "0x854",
+              "value": "g_flToneMapScalarGamma"
+            },
+            {
+              "file_offset": 2212,
+              "file_offset_hex": "0x8a4",
+              "value": "g_vCameraPositionWs"
+            },
+            {
+              "file_offset": 2292,
+              "file_offset_hex": "0x8f4",
+              "value": "g_flViewportMinZ"
+            },
+            {
+              "file_offset": 2372,
+              "file_offset_hex": "0x944",
+              "value": "g_vCameraDirWs"
+            },
+            {
+              "file_offset": 2452,
+              "file_offset_hex": "0x994",
+              "value": "g_flViewportMaxZ"
+            },
+            {
+              "file_offset": 2532,
+              "file_offset_hex": "0x9e4",
+              "value": "g_vCameraUpDirWs"
+            },
+            {
+              "file_offset": 2612,
+              "file_offset_hex": "0xa34",
+              "value": "g_flTime"
+            },
+            {
+              "file_offset": 2692,
+              "file_offset_hex": "0xa84",
+              "value": "g_vDepthPsToVsConversion"
+            },
+            {
+              "file_offset": 2772,
+              "file_offset_hex": "0xad4",
+              "value": "g_flNearPlane"
+            },
+            {
+              "file_offset": 2852,
+              "file_offset_hex": "0xb24",
+              "value": "g_flFarPlane"
+            },
+            {
+              "file_offset": 2932,
+              "file_offset_hex": "0xb74",
+              "value": "g_flLightBinnerFarPlane"
+            },
+            {
+              "file_offset": 3012,
+              "file_offset_hex": "0xbc4",
+              "value": "g_vInvViewportSize"
+            },
+            {
+              "file_offset": 3092,
+              "file_offset_hex": "0xc14",
+              "value": "g_vViewportToGBufferRatio"
+            },
+            {
+              "file_offset": 3172,
+              "file_offset_hex": "0xc64",
+              "value": "g_vMorphTextureAtlasSize"
+            },
+            {
+              "file_offset": 3252,
+              "file_offset_hex": "0xcb4",
+              "value": "g_vInvGBufferSize"
+            },
+            {
+              "file_offset": 3332,
+              "file_offset_hex": "0xd04",
+              "value": "g_vViewportOffset"
+            },
+            {
+              "file_offset": 3412,
+              "file_offset_hex": "0xd54",
+              "value": "g_vViewportSize"
+            },
+            {
+              "file_offset": 3492,
+              "file_offset_hex": "0xda4",
+              "value": "g_vRenderTargetSize"
+            },
+            {
+              "file_offset": 3572,
+              "file_offset_hex": "0xdf4",
+              "value": "g_flFogBlendToBackground"
+            },
+            {
+              "file_offset": 3652,
+              "file_offset_hex": "0xe44",
+              "value": "g_flHenyeyGreensteinCoeff"
+            },
+            {
+              "file_offset": 3732,
+              "file_offset_hex": "0xe94",
+              "value": "g_vFogColor"
+            },
+            {
+              "file_offset": 3812,
+              "file_offset_hex": "0xee4",
+              "value": "g_flNegFogStartOverFogRange"
+            },
+            {
+              "file_offset": 3892,
+              "file_offset_hex": "0xf34",
+              "value": "g_flInvFogRange"
+            },
+            {
+              "file_offset": 3972,
+              "file_offset_hex": "0xf84",
+              "value": "g_flFogMaxDensity"
+            },
+            {
+              "file_offset": 4052,
+              "file_offset_hex": "0xfd4",
+              "value": "g_flFogExponent"
+            },
+            {
+              "file_offset": 4132,
+              "file_offset_hex": "0x1024",
+              "value": "g_flMod2xIdentity"
+            },
+            {
+              "file_offset": 4212,
+              "file_offset_hex": "0x1074",
+              "value": "g_bRoughnessParams"
+            },
+            {
+              "file_offset": 4292,
+              "file_offset_hex": "0x10c4",
+              "value": "g_bStereoEnabled"
+            },
+            {
+              "file_offset": 4372,
+              "file_offset_hex": "0x1114",
+              "value": "g_flStereoCameraIndex"
+            },
+            {
+              "file_offset": 4452,
+              "file_offset_hex": "0x1164",
+              "value": "g_vMiddleEyePositionWs"
+            },
+            {
+              "file_offset": 4532,
+              "file_offset_hex": "0x11b4",
+              "value": "g_flPad2"
+            },
+            {
+              "file_offset": 4612,
+              "file_offset_hex": "0x1204",
+              "value": "g_matWorldToProjectionMultiview"
+            },
+            {
+              "file_offset": 4692,
+              "file_offset_hex": "0x1254",
+              "value": "g_vCameraPositionWsMultiview"
+            },
+            {
+              "file_offset": 4772,
+              "file_offset_hex": "0x12a4",
+              "value": "g_vFrameBufferCopyInvSizeAndUvScale"
+            },
+            {
+              "file_offset": 4852,
+              "file_offset_hex": "0x12f4",
+              "value": "g_vCameraAngles"
+            },
+            {
+              "file_offset": 4932,
+              "file_offset_hex": "0x1344",
+              "value": "g_vWorldToCameraOffset"
+            },
+            {
+              "file_offset": 5012,
+              "file_offset_hex": "0x1394",
+              "value": "g_vWorldToCameraOffsetMultiview"
+            },
+            {
+              "file_offset": 5092,
+              "file_offset_hex": "0x13e4",
+              "value": "g_vPerViewConstantExtraData0"
+            },
+            {
+              "file_offset": 5172,
+              "file_offset_hex": "0x1434",
+              "value": "g_vPerViewConstantExtraData1"
+            },
+            {
+              "file_offset": 5252,
+              "file_offset_hex": "0x1484",
+              "value": "g_vPerViewConstantExtraData2"
+            },
+            {
+              "file_offset": 5332,
+              "file_offset_hex": "0x14d4",
+              "value": "g_vPerViewConstantExtraData3"
+            },
+            {
+              "file_offset": 5454,
+              "file_offset_hex": "0x154e",
+              "value": "flLightIndex"
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "Directory and selected payloads only; VCS instructions are not decoded.",
+        "Identifiers do not establish dispatch, data flow, parameter values, or execution."
+      ]
+    },
+    {
+      "path": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_dir.vpk",
+      "sha256": "12f2f2e6c4e6ef2b99fe5fc34f3e9545184a408bd32bf9ed972c0cb011d49b04",
+      "version": 2,
+      "tree_entries": 289,
+      "selected_entries": [
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_fog.ini",
+          "entry_file_offset": 129,
+          "archive_index": 32767,
+          "archive_offset": 4294967295,
+          "payload_length": 0,
+          "preload_length": 0,
+          "expected_crc32": "00000000",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_dir.vpk",
+          "payload_source_offset": 4294979731,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_crc32": "00000000",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": []
+        },
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_interaction.ini",
+          "entry_file_offset": 173,
+          "archive_index": 32767,
+          "archive_offset": 4294967295,
+          "payload_length": 0,
+          "preload_length": 0,
+          "expected_crc32": "00000000",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_dir.vpk",
+          "payload_source_offset": 4294979731,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_crc32": "00000000",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": []
+        },
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_interactions.ini",
+          "entry_file_offset": 218,
+          "archive_index": 32767,
+          "archive_offset": 4294967295,
+          "payload_length": 0,
+          "preload_length": 0,
+          "expected_crc32": "00000000",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_dir.vpk",
+          "payload_source_offset": 4294979731,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_crc32": "00000000",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": []
+        },
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_fog_pc_50_cs.vcs",
+          "entry_file_offset": 2807,
+          "archive_index": 2,
+          "archive_offset": 309904,
+          "payload_length": 40020,
+          "preload_length": 0,
+          "expected_crc32": "3064ba81",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_002.vpk",
+          "payload_source_offset": 309904,
+          "sha256": "75386dfa4694a2980274d64dc862031bfff7acf4ca7d13f1e6a4a6a47c373071",
+          "observed_crc32": "3064ba81",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 52,
+              "file_offset_hex": "0x34",
+              "value": "S_BINDLESS_RUNTIME"
+            },
+            {
+              "file_offset": 212,
+              "file_offset_hex": "0xd4",
+              "value": "D_PASS"
+            },
+            {
+              "file_offset": 364,
+              "file_offset_hex": "0x16c",
+              "value": "D_ENABLE_INDIRECT"
+            },
+            {
+              "file_offset": 516,
+              "file_offset_hex": "0x204",
+              "value": "D_FLOAT_INTERMEDIATE_TEXTURES"
+            },
+            {
+              "file_offset": 6968,
+              "file_offset_hex": "0x1b38",
+              "value": "InLightingTexture"
+            },
+            {
+              "file_offset": 7104,
+              "file_offset_hex": "0x1bc0",
+              "value": "InLightingTexture"
+            },
+            {
+              "file_offset": 7452,
+              "file_offset_hex": "0x1d1c",
+              "value": "OutLightingClipmap"
+            },
+            {
+              "file_offset": 7588,
+              "file_offset_hex": "0x1da4",
+              "value": "OutLightingClipmap"
+            },
+            {
+              "file_offset": 7936,
+              "file_offset_hex": "0x1f00",
+              "value": "OutLightingFroxelTexture"
+            },
+            {
+              "file_offset": 8072,
+              "file_offset_hex": "0x1f88",
+              "value": "OutLightingFroxelTexture"
+            },
+            {
+              "file_offset": 8420,
+              "file_offset_hex": "0x20e4",
+              "value": "OutScatteringTexture"
+            },
+            {
+              "file_offset": 8556,
+              "file_offset_hex": "0x216c",
+              "value": "OutScatteringTexture"
+            },
+            {
+              "file_offset": 9388,
+              "file_offset_hex": "0x24ac",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 9524,
+              "file_offset_hex": "0x2534",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 9872,
+              "file_offset_hex": "0x2690",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 10008,
+              "file_offset_hex": "0x2718",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 10356,
+              "file_offset_hex": "0x2874",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 10492,
+              "file_offset_hex": "0x28fc",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 10840,
+              "file_offset_hex": "0x2a58",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 10976,
+              "file_offset_hex": "0x2ae0",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 11324,
+              "file_offset_hex": "0x2c3c",
+              "value": "g_nFirstView"
+            },
+            {
+              "file_offset": 11460,
+              "file_offset_hex": "0x2cc4",
+              "value": "g_nFirstView"
+            },
+            {
+              "file_offset": 11808,
+              "file_offset_hex": "0x2e20",
+              "value": "g_nFogClipmapTexelOffsetX"
+            },
+            {
+              "file_offset": 11944,
+              "file_offset_hex": "0x2ea8",
+              "value": "g_vFogClipmapTexelOffsetX"
+            },
+            {
+              "file_offset": 12292,
+              "file_offset_hex": "0x3004",
+              "value": "g_nFogClipmapTexelOffsetY"
+            },
+            {
+              "file_offset": 12428,
+              "file_offset_hex": "0x308c",
+              "value": "g_vFogClipmapTexelOffsetY"
+            },
+            {
+              "file_offset": 12776,
+              "file_offset_hex": "0x31e8",
+              "value": "g_nFogClipmapTexelOffsetZ"
+            },
+            {
+              "file_offset": 12912,
+              "file_offset_hex": "0x3270",
+              "value": "g_vFogClipmapTexelOffsetZ"
+            },
+            {
+              "file_offset": 13260,
+              "file_offset_hex": "0x33cc",
+              "value": "g_nJitterOffset"
+            },
+            {
+              "file_offset": 13396,
+              "file_offset_hex": "0x3454",
+              "value": "g_nJitterOffset"
+            },
+            {
+              "file_offset": 13744,
+              "file_offset_hex": "0x35b0",
+              "value": "g_tFogIndirectVolume"
+            },
+            {
+              "file_offset": 13880,
+              "file_offset_hex": "0x3638",
+              "value": "g_tFogIndirect"
+            },
+            {
+              "file_offset": 14228,
+              "file_offset_hex": "0x3794",
+              "value": "g_tLastFrameFogVolume"
+            },
+            {
+              "file_offset": 14364,
+              "file_offset_hex": "0x381c",
+              "value": "g_tLastFrameFogVolume"
+            },
+            {
+              "file_offset": 14712,
+              "file_offset_hex": "0x3978",
+              "value": "g_tLightingClipmap0"
+            },
+            {
+              "file_offset": 14848,
+              "file_offset_hex": "0x3a00",
+              "value": "g_tLightingClipmap0"
+            },
+            {
+              "file_offset": 15196,
+              "file_offset_hex": "0x3b5c",
+              "value": "g_tLightingClipmap1"
+            },
+            {
+              "file_offset": 15332,
+              "file_offset_hex": "0x3be4",
+              "value": "g_tLightingClipmap1"
+            },
+            {
+              "file_offset": 15680,
+              "file_offset_hex": "0x3d40",
+              "value": "g_tLightingClipmap2"
+            },
+            {
+              "file_offset": 15816,
+              "file_offset_hex": "0x3dc8",
+              "value": "g_tLightingClipmap2"
+            },
+            {
+              "file_offset": 16164,
+              "file_offset_hex": "0x3f24",
+              "value": "g_tVrLightCookieTexture"
+            },
+            {
+              "file_offset": 16300,
+              "file_offset_hex": "0x3fac",
+              "value": "VrLightCookieTexture"
+            },
+            {
+              "file_offset": 16648,
+              "file_offset_hex": "0x4108",
+              "value": "g_tVrShadowDepthBufferDepth"
+            },
+            {
+              "file_offset": 16784,
+              "file_offset_hex": "0x4190",
+              "value": "VrShadowDepthBuffer"
+            },
+            {
+              "file_offset": 17132,
+              "file_offset_hex": "0x42ec",
+              "value": "g_vFogBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 17268,
+              "file_offset_hex": "0x4374",
+              "value": "g_vFogBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 17616,
+              "file_offset_hex": "0x44d0",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias0"
+            },
+            {
+              "file_offset": 17752,
+              "file_offset_hex": "0x4558",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias0"
+            },
+            {
+              "file_offset": 18100,
+              "file_offset_hex": "0x46b4",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias1"
+            },
+            {
+              "file_offset": 18236,
+              "file_offset_hex": "0x473c",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias1"
+            },
+            {
+              "file_offset": 18584,
+              "file_offset_hex": "0x4898",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias2"
+            },
+            {
+              "file_offset": 18720,
+              "file_offset_hex": "0x4920",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias2"
+            },
+            {
+              "file_offset": 19068,
+              "file_offset_hex": "0x4a7c",
+              "value": "g_vFogClipmapIndirectBBOffset"
+            },
+            {
+              "file_offset": 19204,
+              "file_offset_hex": "0x4b04",
+              "value": "g_vFogClipmapIndirectBBOffset"
+            },
+            {
+              "file_offset": 19552,
+              "file_offset_hex": "0x4c60",
+              "value": "g_vFogClipmapIndirectBBScale_flIndirectStrength"
+            },
+            {
+              "file_offset": 19688,
+              "file_offset_hex": "0x4ce8",
+              "value": "g_vIndirectBBScale_flIndirectStrength"
+            },
+            {
+              "file_offset": 20036,
+              "file_offset_hex": "0x4e44",
+              "value": "g_vFogClipmapUVBiasScale0"
+            },
+            {
+              "file_offset": 20172,
+              "file_offset_hex": "0x4ecc",
+              "value": "g_vFogClipmapUVBiasScale0"
+            },
+            {
+              "file_offset": 20520,
+              "file_offset_hex": "0x5028",
+              "value": "g_vFogClipmapUVBiasScale1"
+            },
+            {
+              "file_offset": 20656,
+              "file_offset_hex": "0x50b0",
+              "value": "g_vFogClipmapUVBiasScale1"
+            },
+            {
+              "file_offset": 21004,
+              "file_offset_hex": "0x520c",
+              "value": "g_vFogClipmapUVBiasScale2"
+            },
+            {
+              "file_offset": 21140,
+              "file_offset_hex": "0x5294",
+              "value": "g_vFogClipmapUVBiasScale2"
+            },
+            {
+              "file_offset": 21572,
+              "file_offset_hex": "0x5444",
+              "value": "g_bFogTypeEnabled"
+            },
+            {
+              "file_offset": 21652,
+              "file_offset_hex": "0x5494",
+              "value": "g_bOtherFxEnabled"
+            },
+            {
+              "file_offset": 21732,
+              "file_offset_hex": "0x54e4",
+              "value": "g_vAoProxyDownres"
+            },
+            {
+              "file_offset": 21812,
+              "file_offset_hex": "0x5534",
+              "value": "g_vXenAnimation"
+            },
+            {
+              "file_offset": 21892,
+              "file_offset_hex": "0x5584",
+              "value": "g_vWindDirection"
+            },
+            {
+              "file_offset": 21972,
+              "file_offset_hex": "0x55d4",
+              "value": "g_vWindStrengthFreqMulHighStrength"
+            },
+            {
+              "file_offset": 22052,
+              "file_offset_hex": "0x5624",
+              "value": "g_vInteractionProjectionOrigin"
+            },
+            {
+              "file_offset": 22132,
+              "file_offset_hex": "0x5674",
+              "value": "g_vInteractionVolumeInvExtents"
+            },
+            {
+              "file_offset": 22212,
+              "file_offset_hex": "0x56c4",
+              "value": "g_vInteractionTriggerVolumeInvMins"
+            },
+            {
+              "file_offset": 22292,
+              "file_offset_hex": "0x5714",
+              "value": "g_vInteractionTriggerVolumeWorldToVolumeScale"
+            },
+            {
+              "file_offset": 22372,
+              "file_offset_hex": "0x5764",
+              "value": "g_vGradientFogBiasAndScale"
+            },
+            {
+              "file_offset": 22452,
+              "file_offset_hex": "0x57b4",
+              "value": "m_vGradientFogExponents"
+            },
+            {
+              "file_offset": 22532,
+              "file_offset_hex": "0x5804",
+              "value": "g_vGradientFogColor_Opacity"
+            },
+            {
+              "file_offset": 22612,
+              "file_offset_hex": "0x5854",
+              "value": "g_vGradientFogCullingParams"
+            },
+            {
+              "file_offset": 22692,
+              "file_offset_hex": "0x58a4",
+              "value": "g_vCubeFog_Offset_Scale_Bias_Exponent"
+            },
+            {
+              "file_offset": 22772,
+              "file_offset_hex": "0x58f4",
+              "value": "g_vCubeFog_Height_Offset_Scale_Exponent_Log2Mip"
+            },
+            {
+              "file_offset": 22852,
+              "file_offset_hex": "0x5944",
+              "value": "g_matvCubeFogSkyWsToOs"
+            },
+            {
+              "file_offset": 22932,
+              "file_offset_hex": "0x5994",
+              "value": "g_vCubeFogCullingParams"
+            },
+            {
+              "file_offset": 23012,
+              "file_offset_hex": "0x59e4",
+              "value": "g_vSphericalVignetteBiasAndScale"
+            },
+            {
+              "file_offset": 23092,
+              "file_offset_hex": "0x5a34",
+              "value": "g_vSphericalVignetteOrigin_Exponent"
+            },
+            {
+              "file_offset": 23172,
+              "file_offset_hex": "0x5a84",
+              "value": "g_vSphericalVignetteColor_Opacity"
+            },
+            {
+              "file_offset": 23252,
+              "file_offset_hex": "0x5ad4",
+              "value": "g_vVolFog_VolumeScale_Shift_Near_Range"
+            },
+            {
+              "file_offset": 23332,
+              "file_offset_hex": "0x5b24",
+              "value": "g_vVolFogDitherScaleBias"
+            },
+            {
+              "file_offset": 23412,
+              "file_offset_hex": "0x5b74",
+              "value": "g_vVolFogPostWorldToFrustumScale"
+            },
+            {
+              "file_offset": 23492,
+              "file_offset_hex": "0x5bc4",
+              "value": "g_vVolFogPostWorldToFrustumBias"
+            },
+            {
+              "file_offset": 23572,
+              "file_offset_hex": "0x5c14",
+              "value": "g_mVolFogFromWorld"
+            },
+            {
+              "file_offset": 23652,
+              "file_offset_hex": "0x5c64",
+              "value": "g_vHighPrecisionLightingOffsetWs"
+            },
+            {
+              "file_offset": 23736,
+              "file_offset_hex": "0x5cb8",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 23812,
+              "file_offset_hex": "0x5d04",
+              "value": "g_vCurrentEyeDX"
+            },
+            {
+              "file_offset": 23892,
+              "file_offset_hex": "0x5d54",
+              "value": "g_vCurrentEyeDY"
+            },
+            {
+              "file_offset": 23972,
+              "file_offset_hex": "0x5da4",
+              "value": "g_vCurrentEyeCorner"
+            },
+            {
+              "file_offset": 24052,
+              "file_offset_hex": "0x5df4",
+              "value": "g_vCurrentEyePos"
+            },
+            {
+              "file_offset": 24132,
+              "file_offset_hex": "0x5e44",
+              "value": "g_vCurrentEyeDir"
+            },
+            {
+              "file_offset": 24212,
+              "file_offset_hex": "0x5e94",
+              "value": "g_vViewDX"
+            },
+            {
+              "file_offset": 24292,
+              "file_offset_hex": "0x5ee4",
+              "value": "g_vViewDY"
+            },
+            {
+              "file_offset": 24372,
+              "file_offset_hex": "0x5f34",
+              "value": "g_vViewCorner"
+            },
+            {
+              "file_offset": 24452,
+              "file_offset_hex": "0x5f84",
+              "value": "g_vViewPos"
+            },
+            {
+              "file_offset": 24532,
+              "file_offset_hex": "0x5fd4",
+              "value": "g_vViewDir"
+            },
+            {
+              "file_offset": 24612,
+              "file_offset_hex": "0x6024",
+              "value": "g_matAverageFogFrustum"
+            },
+            {
+              "file_offset": 24692,
+              "file_offset_hex": "0x6074",
+              "value": "g_matLastAverageFrustum"
+            },
+            {
+              "file_offset": 24772,
+              "file_offset_hex": "0x60c4",
+              "value": "g_matLeftEyeFogFrustum"
+            },
+            {
+              "file_offset": 24852,
+              "file_offset_hex": "0x6114",
+              "value": "g_matLastLeftEyeFogFrustum"
+            },
+            {
+              "file_offset": 24932,
+              "file_offset_hex": "0x6164",
+              "value": "g_vNearFarClipPlaneReciprocal"
+            },
+            {
+              "file_offset": 25012,
+              "file_offset_hex": "0x61b4",
+              "value": "g_flVolumeScale_Shift_Near_Far"
+            },
+            {
+              "file_offset": 25092,
+              "file_offset_hex": "0x6204",
+              "value": "g_flOffsetNear_OffsetFar_ScaleNear_ScaleFar"
+            },
+            {
+              "file_offset": 25172,
+              "file_offset_hex": "0x6254",
+              "value": "g_flAniosotrophy_Scattering_XYJitterScale"
+            },
+            {
+              "file_offset": 25252,
+              "file_offset_hex": "0x62a4",
+              "value": "g_vIndirectBBScale_flIndirectStrength"
+            },
+            {
+              "file_offset": 25332,
+              "file_offset_hex": "0x62f4",
+              "value": "g_vIndirectBBOffset"
+            },
+            {
+              "file_offset": 25412,
+              "file_offset_hex": "0x6344",
+              "value": "g_vFogBoundingBoxMinScale"
+            },
+            {
+              "file_offset": 25492,
+              "file_offset_hex": "0x6394",
+              "value": "g_vFogBoundingBoxInvMinScale"
+            },
+            {
+              "file_offset": 25572,
+              "file_offset_hex": "0x63e4",
+              "value": "g_vPostWorldToFrustumScale"
+            },
+            {
+              "file_offset": 25652,
+              "file_offset_hex": "0x6434",
+              "value": "g_vPostWorldToFrustumBias"
+            },
+            {
+              "file_offset": 25732,
+              "file_offset_hex": "0x6484",
+              "value": "g_vThreadToVoxelScale"
+            },
+            {
+              "file_offset": 25812,
+              "file_offset_hex": "0x64d4",
+              "value": "g_vThreadToVoxelBias"
+            },
+            {
+              "file_offset": 25892,
+              "file_offset_hex": "0x6524",
+              "value": "g_vFogFadeInScaleBias"
+            },
+            {
+              "file_offset": 25972,
+              "file_offset_hex": "0x6574",
+              "value": "g_nNumFogVolumeBoundingBoxes"
+            },
+            {
+              "file_offset": 26052,
+              "file_offset_hex": "0x65c4",
+              "value": "g_vFogVolumeBoundingBoxMin"
+            },
+            {
+              "file_offset": 26132,
+              "file_offset_hex": "0x6614",
+              "value": "g_vFogVolumeBoundingBoxScale"
+            },
+            {
+              "file_offset": 26212,
+              "file_offset_hex": "0x6664",
+              "value": "g_vFogVolumeBoundingBoxColorExponent"
+            },
+            {
+              "file_offset": 26292,
+              "file_offset_hex": "0x66b4",
+              "value": "g_nVolFogWidthHeightDepth"
+            },
+            {
+              "file_offset": 26372,
+              "file_offset_hex": "0x6704",
+              "value": "g_vOoVogFogWidthHeightDepth"
+            },
+            {
+              "file_offset": 26452,
+              "file_offset_hex": "0x6754",
+              "value": "g_nVolFogMultiviewOffset"
+            },
+            {
+              "file_offset": 26535,
+              "file_offset_hex": "0x67a7",
+              "value": "/PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 26612,
+              "file_offset_hex": "0x67f4",
+              "value": "g_vNumLights"
+            },
+            {
+              "file_offset": 26692,
+              "file_offset_hex": "0x6844",
+              "value": "g_vMultiviewData"
+            },
+            {
+              "file_offset": 26772,
+              "file_offset_hex": "0x6894",
+              "value": "g_vMultiviewViewAndSubviewIndexArray"
+            },
+            {
+              "file_offset": 26852,
+              "file_offset_hex": "0x68e4",
+              "value": "g_vLightParams"
+            },
+            {
+              "file_offset": 26932,
+              "file_offset_hex": "0x6934",
+              "value": "g_vLightPosition_flInvRadius"
+            },
+            {
+              "file_offset": 27012,
+              "file_offset_hex": "0x6984",
+              "value": "g_vLightColor"
+            },
+            {
+              "file_offset": 27092,
+              "file_offset_hex": "0x69d4",
+              "value": "g_vLightFalloffParams"
+            },
+            {
+              "file_offset": 27172,
+              "file_offset_hex": "0x6a24",
+              "value": "g_vLightDirection"
+            },
+            {
+              "file_offset": 27252,
+              "file_offset_hex": "0x6a74",
+              "value": "g_vSpotLightInnerOuterConeCosines"
+            },
+            {
+              "file_offset": 27332,
+              "file_offset_hex": "0x6ac4",
+              "value": "g_matWorldToShadow"
+            },
+            {
+              "file_offset": 27412,
+              "file_offset_hex": "0x6b14",
+              "value": "g_vShadow3x3PCFTermC0"
+            },
+            {
+              "file_offset": 27492,
+              "file_offset_hex": "0x6b64",
+              "value": "g_vShadow3x3PCFTermC1"
+            },
+            {
+              "file_offset": 27572,
+              "file_offset_hex": "0x6bb4",
+              "value": "g_vShadow3x3PCFTermC2"
+            },
+            {
+              "file_offset": 27652,
+              "file_offset_hex": "0x6c04",
+              "value": "g_vShadow3x3PCFTermC3"
+            },
+            {
+              "file_offset": 27732,
+              "file_offset_hex": "0x6c54",
+              "value": "g_vToolsAmbientLightingVr"
+            },
+            {
+              "file_offset": 27812,
+              "file_offset_hex": "0x6ca4",
+              "value": "g_vLightBinCameraPositionWs"
+            },
+            {
+              "file_offset": 27892,
+              "file_offset_hex": "0x6cf4",
+              "value": "g_vLightBinCameraDirWs"
+            },
+            {
+              "file_offset": 27972,
+              "file_offset_hex": "0x6d44",
+              "value": "g_vLightBinCameraNearZFarZ"
+            },
+            {
+              "file_offset": 28052,
+              "file_offset_hex": "0x6d94",
+              "value": "g_matLightBinViewProj"
+            },
+            {
+              "file_offset": 28132,
+              "file_offset_hex": "0x6de4",
+              "value": "g_vMultiviewScaleBias"
+            },
+            {
+              "file_offset": 28212,
+              "file_offset_hex": "0x6e34",
+              "value": "g_vMultiviewClipEdge0"
+            },
+            {
+              "file_offset": 28292,
+              "file_offset_hex": "0x6e84",
+              "value": "g_vMultiviewClipEdge1"
+            },
+            {
+              "file_offset": 28372,
+              "file_offset_hex": "0x6ed4",
+              "value": "g_flNumViews"
+            },
+            {
+              "file_offset": 28452,
+              "file_offset_hex": "0x6f24",
+              "value": "g_flOoNumViews"
+            },
+            {
+              "file_offset": 28532,
+              "file_offset_hex": "0x6f74",
+              "value": "g_flNumSubiews"
+            },
+            {
+              "file_offset": 28612,
+              "file_offset_hex": "0x6fc4",
+              "value": "g_flOoNumSubviews"
+            },
+            {
+              "file_offset": 28692,
+              "file_offset_hex": "0x7014",
+              "value": "g_flNumTotalMultiviews"
+            },
+            {
+              "file_offset": 28772,
+              "file_offset_hex": "0x7064",
+              "value": "g_flOoNumTotalMultiviews"
+            },
+            {
+              "file_offset": 28852,
+              "file_offset_hex": "0x70b4",
+              "value": "g_flVrLuminanceOffset"
+            },
+            {
+              "file_offset": 28932,
+              "file_offset_hex": "0x7104",
+              "value": "g_flVrLuminanceScale"
+            },
+            {
+              "file_offset": 29012,
+              "file_offset_hex": "0x7154",
+              "value": "g_vLightmapParams"
+            },
+            {
+              "file_offset": 29092,
+              "file_offset_hex": "0x71a4",
+              "value": "g_vScreenSpaceDitherParams"
+            },
+            {
+              "file_offset": 29172,
+              "file_offset_hex": "0x71f4",
+              "value": "g_matWorldToLightCookie"
+            },
+            {
+              "file_offset": 29252,
+              "file_offset_hex": "0x7244",
+              "value": "g_vSpotLightShadowOffsetScale"
+            },
+            {
+              "file_offset": 29332,
+              "file_offset_hex": "0x7294",
+              "value": "g_vSpotLightShadowBounds"
+            },
+            {
+              "file_offset": 29412,
+              "file_offset_hex": "0x72e4",
+              "value": "g_vLightProjectiveDepthToLinearDepth"
+            },
+            {
+              "file_offset": 29492,
+              "file_offset_hex": "0x7334",
+              "value": "g_vUnlitShadowColor"
+            },
+            {
+              "file_offset": 29572,
+              "file_offset_hex": "0x7384",
+              "value": "g_vAmbientLightingSH"
+            },
+            {
+              "file_offset": 29652,
+              "file_offset_hex": "0x73d4",
+              "value": "g_vLightIndexData"
+            },
+            {
+              "file_offset": 29732,
+              "file_offset_hex": "0x7424",
+              "value": "g_vSunLightIndexData"
+            },
+            {
+              "file_offset": 29812,
+              "file_offset_hex": "0x7474",
+              "value": "g_vAmbientOcclusionProxyLightPositions"
+            },
+            {
+              "file_offset": 29892,
+              "file_offset_hex": "0x74c4",
+              "value": "g_vAmbientOcclusionProxyLightConeAngles"
+            },
+            {
+              "file_offset": 29972,
+              "file_offset_hex": "0x7514",
+              "value": "g_vAmbientOcclusionProxyLightStrengths"
+            },
+            {
+              "file_offset": 30052,
+              "file_offset_hex": "0x7564",
+              "value": "g_vAmbientOcclusionProxyAmbientStrength"
+            },
+            {
+              "file_offset": 30132,
+              "file_offset_hex": "0x75b4",
+              "value": "g_vCubemapNormalizationParams"
+            }
+          ]
+        },
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_fog_pc_50_features.vcs",
+          "entry_file_offset": 2858,
+          "archive_index": 2,
+          "archive_offset": 349936,
+          "payload_length": 21215,
+          "preload_length": 0,
+          "expected_crc32": "8e9e5ec6",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_002.vpk",
+          "payload_source_offset": 349936,
+          "sha256": "3c97e3cadefe44479688129d410a04e45caa5482ff2aac59055d3ca050d81c1c",
+          "observed_crc32": "8e9e5ec6",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 20,
+              "file_offset_hex": "0x14",
+              "value": "Applies volumetric fog to each pixel on screen"
+            },
+            {
+              "file_offset": 6679,
+              "file_offset_hex": "0x1a17",
+              "value": "OutLightingClipmap"
+            },
+            {
+              "file_offset": 6815,
+              "file_offset_hex": "0x1a9f",
+              "value": "OutLightingClipmap"
+            },
+            {
+              "file_offset": 7163,
+              "file_offset_hex": "0x1bfb",
+              "value": "OutLightingFroxelTexture"
+            },
+            {
+              "file_offset": 7299,
+              "file_offset_hex": "0x1c83",
+              "value": "OutLightingFroxelTexture"
+            },
+            {
+              "file_offset": 7647,
+              "file_offset_hex": "0x1ddf",
+              "value": "OutScatteringTexture"
+            },
+            {
+              "file_offset": 7783,
+              "file_offset_hex": "0x1e67",
+              "value": "OutScatteringTexture"
+            },
+            {
+              "file_offset": 8615,
+              "file_offset_hex": "0x21a7",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 8751,
+              "file_offset_hex": "0x222f",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 9099,
+              "file_offset_hex": "0x238b",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 9235,
+              "file_offset_hex": "0x2413",
+              "value": "PerViewLightingConstantBufferVr_t"
+            },
+            {
+              "file_offset": 9583,
+              "file_offset_hex": "0x256f",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 9719,
+              "file_offset_hex": "0x25f7",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 10067,
+              "file_offset_hex": "0x2753",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 10203,
+              "file_offset_hex": "0x27db",
+              "value": "VolumetricFogConstantBuffer_t"
+            },
+            {
+              "file_offset": 10551,
+              "file_offset_hex": "0x2937",
+              "value": "g_nFirstView"
+            },
+            {
+              "file_offset": 10687,
+              "file_offset_hex": "0x29bf",
+              "value": "g_nFirstView"
+            },
+            {
+              "file_offset": 11035,
+              "file_offset_hex": "0x2b1b",
+              "value": "g_nFogClipmapTexelOffsetX"
+            },
+            {
+              "file_offset": 11171,
+              "file_offset_hex": "0x2ba3",
+              "value": "g_vFogClipmapTexelOffsetX"
+            },
+            {
+              "file_offset": 11519,
+              "file_offset_hex": "0x2cff",
+              "value": "g_nFogClipmapTexelOffsetY"
+            },
+            {
+              "file_offset": 11655,
+              "file_offset_hex": "0x2d87",
+              "value": "g_vFogClipmapTexelOffsetY"
+            },
+            {
+              "file_offset": 12003,
+              "file_offset_hex": "0x2ee3",
+              "value": "g_nFogClipmapTexelOffsetZ"
+            },
+            {
+              "file_offset": 12139,
+              "file_offset_hex": "0x2f6b",
+              "value": "g_vFogClipmapTexelOffsetZ"
+            },
+            {
+              "file_offset": 12487,
+              "file_offset_hex": "0x30c7",
+              "value": "g_nJitterOffset"
+            },
+            {
+              "file_offset": 12623,
+              "file_offset_hex": "0x314f",
+              "value": "g_nJitterOffset"
+            },
+            {
+              "file_offset": 12971,
+              "file_offset_hex": "0x32ab",
+              "value": "g_vFogBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 13107,
+              "file_offset_hex": "0x3333",
+              "value": "g_vFogBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 13455,
+              "file_offset_hex": "0x348f",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias0"
+            },
+            {
+              "file_offset": 13591,
+              "file_offset_hex": "0x3517",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias0"
+            },
+            {
+              "file_offset": 13939,
+              "file_offset_hex": "0x3673",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias1"
+            },
+            {
+              "file_offset": 14075,
+              "file_offset_hex": "0x36fb",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias1"
+            },
+            {
+              "file_offset": 14423,
+              "file_offset_hex": "0x3857",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias2"
+            },
+            {
+              "file_offset": 14559,
+              "file_offset_hex": "0x38df",
+              "value": "g_vFogBoundingBoxInvMinScaleWithBias2"
+            },
+            {
+              "file_offset": 14907,
+              "file_offset_hex": "0x3a3b",
+              "value": "g_vFogClipmapIndirectBBOffset"
+            },
+            {
+              "file_offset": 15043,
+              "file_offset_hex": "0x3ac3",
+              "value": "g_vFogClipmapIndirectBBOffset"
+            },
+            {
+              "file_offset": 15391,
+              "file_offset_hex": "0x3c1f",
+              "value": "g_vFogClipmapIndirectBBScale_flIndirectStrength"
+            },
+            {
+              "file_offset": 15527,
+              "file_offset_hex": "0x3ca7",
+              "value": "g_vIndirectBBScale_flIndirectStrength"
+            },
+            {
+              "file_offset": 15875,
+              "file_offset_hex": "0x3e03",
+              "value": "g_vFogClipmapUVBiasScale0"
+            },
+            {
+              "file_offset": 16011,
+              "file_offset_hex": "0x3e8b",
+              "value": "g_vFogClipmapUVBiasScale0"
+            },
+            {
+              "file_offset": 16359,
+              "file_offset_hex": "0x3fe7",
+              "value": "g_vFogClipmapUVBiasScale1"
+            },
+            {
+              "file_offset": 16495,
+              "file_offset_hex": "0x406f",
+              "value": "g_vFogClipmapUVBiasScale1"
+            },
+            {
+              "file_offset": 16843,
+              "file_offset_hex": "0x41cb",
+              "value": "g_vFogClipmapUVBiasScale2"
+            },
+            {
+              "file_offset": 16979,
+              "file_offset_hex": "0x4253",
+              "value": "g_vFogClipmapUVBiasScale2"
+            },
+            {
+              "file_offset": 17327,
+              "file_offset_hex": "0x43af",
+              "value": "InLightingTexture"
+            },
+            {
+              "file_offset": 17463,
+              "file_offset_hex": "0x4437",
+              "value": "InLightingTexture"
+            },
+            {
+              "file_offset": 17811,
+              "file_offset_hex": "0x4593",
+              "value": "g_tFogIndirectVolume"
+            },
+            {
+              "file_offset": 17947,
+              "file_offset_hex": "0x461b",
+              "value": "g_tFogIndirect"
+            },
+            {
+              "file_offset": 18295,
+              "file_offset_hex": "0x4777",
+              "value": "g_tLastFrameFogVolume"
+            },
+            {
+              "file_offset": 18431,
+              "file_offset_hex": "0x47ff",
+              "value": "g_tLastFrameFogVolume"
+            },
+            {
+              "file_offset": 18779,
+              "file_offset_hex": "0x495b",
+              "value": "g_tLightingClipmap0"
+            },
+            {
+              "file_offset": 18915,
+              "file_offset_hex": "0x49e3",
+              "value": "g_tLightingClipmap0"
+            },
+            {
+              "file_offset": 19263,
+              "file_offset_hex": "0x4b3f",
+              "value": "g_tLightingClipmap1"
+            },
+            {
+              "file_offset": 19399,
+              "file_offset_hex": "0x4bc7",
+              "value": "g_tLightingClipmap1"
+            },
+            {
+              "file_offset": 19747,
+              "file_offset_hex": "0x4d23",
+              "value": "g_tLightingClipmap2"
+            },
+            {
+              "file_offset": 19883,
+              "file_offset_hex": "0x4dab",
+              "value": "g_tLightingClipmap2"
+            },
+            {
+              "file_offset": 20231,
+              "file_offset_hex": "0x4f07",
+              "value": "g_tVrLightCookieTexture"
+            },
+            {
+              "file_offset": 20367,
+              "file_offset_hex": "0x4f8f",
+              "value": "VrLightCookieTexture"
+            },
+            {
+              "file_offset": 20715,
+              "file_offset_hex": "0x50eb",
+              "value": "g_tVrShadowDepthBufferDepth"
+            },
+            {
+              "file_offset": 20851,
+              "file_offset_hex": "0x5173",
+              "value": "VrShadowDepthBuffer"
+            }
+          ]
+        },
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_interactions_pc_50_cs.vcs",
+          "entry_file_offset": 2912,
+          "archive_index": 2,
+          "archive_offset": 371152,
+          "payload_length": 4752,
+          "preload_length": 0,
+          "expected_crc32": "578407d1",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_002.vpk",
+          "payload_source_offset": 371152,
+          "sha256": "5b005e536549736516f28edbd7800513bd8f761e4f016d551a965d639f938fee",
+          "observed_crc32": "578407d1",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 68,
+              "file_offset_hex": "0x44",
+              "value": "g_nTexelOffsetX"
+            },
+            {
+              "file_offset": 204,
+              "file_offset_hex": "0xcc",
+              "value": "g_nTexelOffsetX"
+            },
+            {
+              "file_offset": 552,
+              "file_offset_hex": "0x228",
+              "value": "g_nTexelOffsetY"
+            },
+            {
+              "file_offset": 688,
+              "file_offset_hex": "0x2b0",
+              "value": "g_nTexelOffsetY"
+            },
+            {
+              "file_offset": 1036,
+              "file_offset_hex": "0x40c",
+              "value": "g_nTexelOffsetZ"
+            },
+            {
+              "file_offset": 1172,
+              "file_offset_hex": "0x494",
+              "value": "g_nTexelOffsetZ"
+            },
+            {
+              "file_offset": 1520,
+              "file_offset_hex": "0x5f0",
+              "value": "g_tInputInteractionMap"
+            },
+            {
+              "file_offset": 1656,
+              "file_offset_hex": "0x678",
+              "value": "g_tInputInteractionMap"
+            },
+            {
+              "file_offset": 2004,
+              "file_offset_hex": "0x7d4",
+              "value": "g_tOutTexture"
+            },
+            {
+              "file_offset": 2140,
+              "file_offset_hex": "0x85c",
+              "value": "g_tOutTexture"
+            },
+            {
+              "file_offset": 2488,
+              "file_offset_hex": "0x9b8",
+              "value": "g_vBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 2624,
+              "file_offset_hex": "0xa40",
+              "value": "g_vBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 2972,
+              "file_offset_hex": "0xb9c",
+              "value": "g_vHandPosition1"
+            },
+            {
+              "file_offset": 3108,
+              "file_offset_hex": "0xc24",
+              "value": "g_vHandPosition1"
+            },
+            {
+              "file_offset": 3456,
+              "file_offset_hex": "0xd80",
+              "value": "g_vHandPosition2"
+            },
+            {
+              "file_offset": 3592,
+              "file_offset_hex": "0xe08",
+              "value": "g_vHandPosition2"
+            }
+          ]
+        },
+        {
+          "logical_path": "shaders/vfx/cs_volumetric_interactions_pc_50_features.vcs",
+          "entry_file_offset": 2972,
+          "archive_index": 2,
+          "archive_offset": 375904,
+          "payload_length": 4251,
+          "preload_length": 0,
+          "expected_crc32": "943c15a9",
+          "payload_source": "C:\\Games\\Half-Life - Alyx\\game\\hlvr\\shaders_pc_002.vpk",
+          "payload_source_offset": 375904,
+          "sha256": "2791631a8b75abe1a3947b8fb862d889062ee6a5b8fc2988363faaca975c1ea0",
+          "observed_crc32": "943c15a9",
+          "crc_matches": true,
+          "payload_status": "read",
+          "identifiers": [
+            {
+              "file_offset": 20,
+              "file_offset_hex": "0x14",
+              "value": "Volumetric Interaction"
+            },
+            {
+              "file_offset": 363,
+              "file_offset_hex": "0x16b",
+              "value": "g_nTexelOffsetX"
+            },
+            {
+              "file_offset": 499,
+              "file_offset_hex": "0x1f3",
+              "value": "g_nTexelOffsetX"
+            },
+            {
+              "file_offset": 847,
+              "file_offset_hex": "0x34f",
+              "value": "g_nTexelOffsetY"
+            },
+            {
+              "file_offset": 983,
+              "file_offset_hex": "0x3d7",
+              "value": "g_nTexelOffsetY"
+            },
+            {
+              "file_offset": 1331,
+              "file_offset_hex": "0x533",
+              "value": "g_nTexelOffsetZ"
+            },
+            {
+              "file_offset": 1467,
+              "file_offset_hex": "0x5bb",
+              "value": "g_nTexelOffsetZ"
+            },
+            {
+              "file_offset": 1815,
+              "file_offset_hex": "0x717",
+              "value": "g_tOutTexture"
+            },
+            {
+              "file_offset": 1951,
+              "file_offset_hex": "0x79f",
+              "value": "g_tOutTexture"
+            },
+            {
+              "file_offset": 2299,
+              "file_offset_hex": "0x8fb",
+              "value": "g_vBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 2435,
+              "file_offset_hex": "0x983",
+              "value": "g_vBoundingBoxBiasScale"
+            },
+            {
+              "file_offset": 2783,
+              "file_offset_hex": "0xadf",
+              "value": "g_vHandPosition1"
+            },
+            {
+              "file_offset": 2919,
+              "file_offset_hex": "0xb67",
+              "value": "g_vHandPosition1"
+            },
+            {
+              "file_offset": 3267,
+              "file_offset_hex": "0xcc3",
+              "value": "g_vHandPosition2"
+            },
+            {
+              "file_offset": 3403,
+              "file_offset_hex": "0xd4b",
+              "value": "g_vHandPosition2"
+            },
+            {
+              "file_offset": 3751,
+              "file_offset_hex": "0xea7",
+              "value": "g_tInputInteractionMap"
+            },
+            {
+              "file_offset": 3887,
+              "file_offset_hex": "0xf2f",
+              "value": "g_tInputInteractionMap"
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "Directory and selected payloads only; VCS instructions are not decoded.",
+        "Identifiers do not establish dispatch, data flow, parameter values, or execution."
+      ]
+    }
+  ],
+  "limitations": [
+    "No disassembly, decompilation, game execution or GPU capture.",
+    "ASCII matches are complete only for selected patterns in selected files.",
+    "Imports exclude delay-load and runtime module loading.",
+    "VPK CRC verifies member bytes against the directory, not publisher authenticity."
+  ]
+}

@@ -318,6 +318,14 @@ namespace Engine.Recources
             }
         }
 
+        // Baked bounce light (probe volume) scattered by the fog, like the two above; 0 without baked probes.
+        private static float _g_froxelIndirectScatter = 0.1f;
+        public static float g_FroxelIndirectScatter
+        {
+            get { return _g_froxelIndirectScatter; }
+            set { _g_froxelIndirectScatter = Math.Clamp(value, 0.0f, 4.0f); }
+        }
+
         private static float _g_froxelAbsorption = 0.1f;
         public static float g_FroxelAbsorption
         {

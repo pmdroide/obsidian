@@ -152,8 +152,8 @@ interior in `AutoExposureTest` is about 3 stops, and the offset swings from abou
 
 ## Volumetric fog
 
-A froxel grid of 160 × 90 × 128 over the view frustum, with logarithmic depth slices
-from 1 m to the far plane (`FroxelRenderModule`, `Froxel.fx`). The fog is **saved with
+A froxel grid of 160 × 90 × 128 over the view frustum, with logarithmic slices of
+view-space depth from 1 m to the far plane (`FroxelRenderModule`, `Froxel.fx`). The fog is **saved with
 the scene**: **Inspector > Environment > Volumetric Fog** (`EnvironmentSettings.Fog*`).
 The renderer copies it into `GameSettings.g_Froxel*` every frame
 (`Renderer.ApplySceneFog`), so scripts change it through `SceneEnvironment`. Only
@@ -165,13 +165,14 @@ The renderer copies it into `GameSettings.g_Froxel*` every frame
 | Absorption | 0.1 | How much the fog darkens what is behind it. |
 | Sun Scatter | 0.1 | In-scattering strength for the sun. |
 | Light Scatter | 1.5 | In-scattering strength for point and spot lights. Higher than the sun's because of 1/r² falloff. |
+| Indirect | 0.1 | In-scattering strength for baked bounce light (the probe volume, **Window > Lighting**). Does nothing without a bake. |
 | Anisotropy | 0.45 | Henyey-Greenstein *g*. Above 0, light scatters forwards: looking towards the sun glows. |
 | Start Dist. / Full Dist. | 30 m / 400 m | Density ramps linearly from Near Density at Start to full at Full. |
 | Near Density | 0 | Fraction of the density kept before Start. 0 = clear near the camera, 1 = no ramp. |
 | Sky Fog | 0.1 | How much of the fog beyond Sky Shafts covers sky pixels. |
 | Sky Shafts | 200 m | Fog in front of the sky up to this distance stays whole, so shafts still show when you look towards the sun through an opening. |
 | Max Auto Exp. | 3 EV | Caps how far eye adaptation brightens dark views (it can only lower Post Processing's **Max EV**). Lower it to keep a dark room dark around a bright opening. |
-| History *(Post Processing)* | 0.7 | Temporal blend. Higher is smoother but laggier. |
+| History *(Post Processing)* | 0.7 | Weight of last frame's reprojected fog. Higher is smoother, lower reacts faster. 0 turns it off. |
 
 The defaults are an outdoor haze: thin near the camera, thicker with distance. Fog dense
 enough for shafts indoors would haze the whole outdoors, so put it in a **Fog Volume**
@@ -201,6 +202,54 @@ shadows. Spot lights only scatter inside their cone.
 Each froxel tests the sun's shadow map at 6 points spread through its depth
 (`ComputeShadowAlongSlice`). Distant slices are about 10 m deep, so a single test aliased
 against the 12 m roof-slat spacing in `GodRayTest` and turned the shafts into blotches.
+
+The fog takes at most 8 point and spot lights (`MAX_FROXEL_POINT_LIGHTS`). Each frame
+`FroxelRenderModule.RankPointLights` keeps the enabled ones whose range reaches into
+the view, brightest at the camera first (brightness × (radius / distance)², 1 inside the
+radius). Particle System lights compete with the scene's lights.
+
+**Bounce light.** With a baked probe volume, the fog also scatters the probes' mean
+radiance (the SH L0 band; fog has no normal), scaled by **Indirect** and by the bake's
+Intensity (dimmed at night like the surfaces). Probes are blended with the same
+visibility test as surfaces, and a point no probe can see gets none, so a closed room
+doesn't glow with the light outside it. Outside the probe volume there is no bounce
+light in the fog.
+
+### How the fog is computed
+
+Each frame (`FroxelRenderModule.RenderFroxelFog`):
+
+1. **Injection** (`BuildFroxels`): per froxel, at a jittered point inside it, the
+   scattering source per metre (sun, point lights, bounce light) and the extinction per
+   metre (`density × Absorption`).
+2. **Temporal resolve** (`ResolveFroxels`): the froxel's centre is projected into last
+   frame's grid, last frame's medium is read there (blending the two nearest slices),
+   clamped to this frame's neighbours (so moving lights and fog volumes don't smear) and
+   blended by **History**. Outside last frame's view it isn't used.
+3. **Transport** (`SeedTransport` + 7 × `ScanTransport`): each froxel's slice becomes a
+   segment along its view ray, integrated exactly for a constant medium (light
+   scattered towards the camera, optical depth); a prefix scan then sums the segments
+   from the camera outwards, 7 passes for 128 slices instead of one loop over every
+   nearer slice per froxel.
+4. **Compose** (`DeferredCompose.fx`, `SampleFroxelFog`): a pixel at view depth *z*
+   takes the prefix up to the start of its slice and integrates only the part of its
+   slice in front of it, so a wall inside a 10 m deep slice isn't fogged as if it were
+   at the slice's far end.
+
+The history is dropped (the next frame uses only its own samples) on a scene swap,
+while the froxels are off, on a camera jump over 10 m (`CameraCutDistance`), a new
+projection (FOV, aspect, far plane), any fog setting change, a new or removed probe
+bake, and a debug hot reload of `Froxel.fx`.
+
+The atlases are half floats: the injection (reused by the scan), two history atlases
+and a scan atlas, about 56 MiB together. The prefixes keep optical depth rather than
+transmittance, because a thin slice's transmittance (0.9992…) rounds away in a half
+float. `Tests/Components` (`--graphics`, `FogChecks.RunGraphics`) renders a uniform
+sunlit medium and compares the result with the exact solution at the centre and
+corners of the screen.
+
+Transparent materials drawn after composition (forward pass, water, particles) are not
+fogged.
 
 ## Image clarity
 
@@ -384,6 +433,9 @@ up with the line of sight, so you see bright gaps instead.
 - **Fog beams are soft.** At 160 × 90 cells (about 8 px per froxel) plus the
   temporal filter, beam edges blur. The blotches inside the beams are fixed (see
   **Volumetric fog**). A faint ripple of about 1/255 remains along the beams.
+- **Transparent surfaces aren't fogged.** The forward pass, water and particles draw
+  after the fog is composed and don't sample it, so glass or water far away stays
+  clear in thick fog.
 - **Scenes without a bake look wrong indoors.** The outdoor cubemap lights and
   reflects inside every room, giving a pale haze and almost no difference between
   inside and outside for eye adaptation.

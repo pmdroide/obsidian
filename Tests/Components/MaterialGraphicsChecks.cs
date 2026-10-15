@@ -30,6 +30,7 @@ internal static class MaterialGraphicsChecks
             services.AddService<IGraphicsDeviceService>(new DeviceService(graphics));
             using var content = new ContentManager(services,
                 Path.Combine(AppContext.BaseDirectory, "Content"));
+            FogChecks.RunGraphics(graphics, content);
             MaterialAssetChecks.RunGraphics(graphics, content);
             EnvironmentChecks.RunGraphics(graphics, content);
             WeatherChecks.RunGraphics(graphics, content);
