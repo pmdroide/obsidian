@@ -152,6 +152,18 @@
 /processorParam:TextureFormat=Color
 /build:System/Editor/icon_decal.png
 
+#begin System/Cookies/flashlight.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:System/Cookies/flashlight.png
+
 #begin System/Decals/default_decal.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -444,6 +456,12 @@
 /processorParam:DebugMode=Auto
 /build:Shaders/Deferred/DeferredPointLight.fx
 
+#begin Shaders/Deferred/EnvironmentPrefilter.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Deferred/EnvironmentPrefilter.fx
+
 #begin Shaders/Deferred/Froxel.fx
 /importer:EffectImporter
 /processor:EffectProcessor
@@ -455,6 +473,12 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:Shaders/Editor/BillboardEffect.fx
+
+#begin Shaders/Editor/DebugView.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Editor/DebugView.fx
 
 #begin Shaders/Editor/Grid.fx
 /importer:EffectImporter
@@ -557,6 +581,18 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:Shaders/PostProcessing/ColorGrading.fx
+
+#begin Shaders/PostProcessing/Fxaa.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/PostProcessing/Fxaa.fx
+
+#begin Shaders/PostProcessing/RetinaBurn.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/PostProcessing/RetinaBurn.fx
 
 #begin Shaders/PostProcessing/lut.png
 /importer:TextureImporter

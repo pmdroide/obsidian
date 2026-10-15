@@ -137,6 +137,16 @@ namespace Engine
             if (!_bridge.IsHostedByEditor)
                 ApplyGameInfo();
 
+            //Look-dev capture (--scene/--shot): fixed size, no overlays
+            if (LookDevCapture.Active)
+            {
+                LookDevCapture.ApplySettings();
+                _graphics.IsFullScreen = false;
+                _graphics.PreferredBackBufferWidth = GameSettings.g_screenwidth;
+                _graphics.PreferredBackBufferHeight = GameSettings.g_screenheight;
+                _graphics.ApplyChanges();
+            }
+
             _screenManager.Load(Content, GraphicsDevice);
             // TODO: Add your initialization logic here
             _screenManager.Initialize(GraphicsDevice, _physics);
@@ -212,7 +222,7 @@ namespace Engine
 
             // Avalonia owns focus in Anvil. The child game window's activation
             // events must not stop FMOD, Play-mode scripts, or queued editor actions.
-            bool active = _isActive || _bridge.IsHostedByEditor;
+            bool active = _isActive || _bridge.IsHostedByEditor || LookDevCapture.Active;
             if (!active) return;
 
             //Exit the game when pressing escape (unless a menu uses Escape for Back)
@@ -238,7 +248,7 @@ namespace Engine
         protected override void Draw(GameTime gameTime)
         {
             //Don't draw when the game is not running
-            if (!_isActive && !_bridge.IsHostedByEditor)
+            if (!_isActive && !_bridge.IsHostedByEditor && !LookDevCapture.Active)
             {
                 Thread.Sleep(20);
                 return;

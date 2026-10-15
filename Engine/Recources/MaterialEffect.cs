@@ -16,6 +16,7 @@ namespace Engine.Recources
         private Texture2D _normalMap;
         private Texture2D _metallicMap;
         private Texture2D _displacementMap;
+        private Texture2D _ambientOcclusionMap;
 
         public bool IsTransparent = false;
 
@@ -46,6 +47,7 @@ namespace Engine.Recources
         public bool HasNormalMap;
         public bool HasMetallic;
         public bool HasDisplacement;
+        public bool HasAmbientOcclusion;
 
 
         public Vector3 DiffuseColor = Color.Gray.ToVector3();
@@ -104,6 +106,17 @@ namespace Engine.Recources
             {
                 _displacementMap = value;
                 HasDisplacement = value != null;
+            }
+        }
+
+        /// <summary>Baked ambient occlusion (red channel): darkens the indirect light only (Source 2 look, phase 6.2).</summary>
+        public Texture2D AmbientOcclusionMap
+        {
+            get { return _ambientOcclusionMap; }
+            set
+            {
+                _ambientOcclusionMap = value;
+                HasAmbientOcclusion = value != null;
             }
         }
 
@@ -229,6 +242,8 @@ namespace Engine.Recources
 
             if (NormalMap != b.NormalMap) return false;
 
+            if (AmbientOcclusionMap != b.AmbientOcclusionMap) return false;
+
             return true;
         }
 
@@ -244,6 +259,8 @@ namespace Engine.Recources
                 _normalMap = _normalMap,
                 _metallicMap = _metallicMap,
                 _displacementMap = _displacementMap,
+                _ambientOcclusionMap = _ambientOcclusionMap,
+                HasAmbientOcclusion = HasAmbientOcclusion,
                 IsTransparent = IsTransparent,
                 HasShadow = HasShadow,
                 IsInstanceMaterial = IsInstanceMaterial,

@@ -4,6 +4,8 @@ namespace Engine.Recources
 {
     public static class GameStats
     {
+        //Meshes skipped by occlusion culling this frame (GameSettings.g_occlusionculling)
+        public static int OccludedMeshes;
         public static int MeshDraws = 0;
         public static int MaterialDraws = 0;
         public static int LightsDrawn = 0;

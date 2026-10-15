@@ -23,9 +23,14 @@
 
 float4x4 InverseProjection;
 float4x4 InverseView;
-float4x4 LightViewProjection;
-float4x4 LightView;
-float LightFarClip;
+//Sun shadow cascades (world space), see DeferredDirectionalLight.fx / ShadowMapRenderModule.DrawCascades
+#define MAX_CASCADES 4
+float4x4 CascadeViewProjection[MAX_CASCADES];
+float4x4 CascadeView[MAX_CASCADES];
+float4 CascadeFarClip = float4(1, 1, 1, 1);
+float4 CascadeTexelSize = float4(1, 1, 1, 1);
+float CascadeCount = 0;
+float CascadeResolution = 1024;
 
 // Last frame's camera, for the temporal resolve (unjittered).
 float4x4 PreviousView;
@@ -98,22 +103,39 @@ float ProbeVolumeIntensity = 1.0f;
 float3 ProbeVolumeMin;
 float3 ProbeVolumeExtentRcp;
 float3 ProbeVolumeCells; //probes per axis - 1
-Texture3D ProbeSHR;
-Texture3D ProbeSHG;
-Texture3D ProbeSHB;
-Texture3D ProbeDistPos;
-Texture3D ProbeDistNeg;
+//Baked probe volume data, five grids side by side along X (LightingSystem.ProbeData): SH red, green, blue
+//(c0, cx, cy, cz), then the mean free distances along +X/+Y/+Z and -X/-Y/-Z. One texture keeps the pass under
+//MonoGame's 16 texture slots.
+Texture3D ProbeData;
+
+float4 ProbeTexel(int4 index, int grid)
+{
+    index.x += grid * ((int)ProbeVolumeCells.x + 1);
+    return ProbeData.Load(index);
+}
 
 Texture2D ShadowMap;
 
-Texture2D PointLightShadowMap0;
-Texture2D PointLightShadowMap1;
-Texture2D PointLightShadowMap2;
-Texture2D PointLightShadowMap3;
-Texture2D PointLightShadowMap4;
-Texture2D PointLightShadowMap5;
-Texture2D PointLightShadowMap6;
-Texture2D PointLightShadowMap7;
+//Point/spot light shadow atlas (ShadowMapRenderModule): light i's cube face f is tile PointLightShadowTiles[i * 6 + f]
+//= (x, y, size, 1 = in use) in atlas texels, faces without a tile are lit
+Texture2D PointShadowAtlas;
+float4 PointLightShadowTiles[MAX_FROXEL_POINT_LIGHTS * 6];
+
+//One spot light cookie in the fog (the highest ranked light with a cookie, -1 = none): Source 2 look phase 2.3
+Texture2D FogCookie;
+float FogCookieLight = -1;
+float3 FogCookieRightVS;
+float3 FogCookieUpVS;
+float FogCookieTanOuter = 1;
+SamplerState FogCookieSampler
+{
+    Texture = (FogCookie);
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = LINEAR;
+};
 
 // Medium atlas read by ResolveFroxels (this frame's raw injection) and SeedTransport (the resolved medium).
 Texture2D FroxelInjectionTexture;
@@ -263,25 +285,29 @@ float FogVolumeDensity(float3 worldPos)
     return density;
 }
 
-// Matches ShadowMap.fx: the directional shadow map stores light-view-space Z / -LightFarClip
-// (plus a small bias). Compare against the same linearised value, NOT the NDC z that ortho
-// projection yields, otherwise the comparison is in mismatched spaces and everything is in shadow
-// (or nothing is) depending on light orientation - which is why godrays vanish.
+// Matches ShadowMap.fx: each cascade stores light-view-space Z / -its far clip. Compare against the
+// same linearised value, NOT the NDC z that ortho projection yields. The first cascade that contains
+// the point answers (the cascades are nested spheres around the camera); beyond the last one it is lit.
 float ComputeShadow(float3 worldPos)
 {
-    float4 posLVP = mul(float4(worldPos, 1.0), LightViewProjection);
-    float4 posLV = mul(float4(worldPos, 1.0), LightView);
+    int count = (int)CascadeCount;
+    [loop]
+    for (int i = 0; i < count; i++)
+    {
+        float4 posLVP = mul(float4(worldPos, 1.0), CascadeViewProjection[i]);
+        float2 shadowUV = posLVP.xy / posLVP.w * 0.5 + 0.5;
+        shadowUV.y = 1.0 - shadowUV.y;
+        if (shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1)
+            continue;
 
-    float2 shadowUV = posLVP.xy / posLVP.w * 0.5 + 0.5;
-    shadowUV.y = 1.0 - shadowUV.y;
-
-    if (shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1)
-        return 1.0;
-
-    float linearDepthLV = posLV.z / -LightFarClip;
-    float shadowDepth = ShadowMap.SampleLevel(PointSampler, shadowUV, 0).r;
-    float bias = 0.0015;
-    return (linearDepthLV - bias < shadowDepth) ? 1.0 : 0.0;
+        float4 posLV = mul(float4(worldPos, 1.0), CascadeView[i]);
+        float linearDepthLV = posLV.z / -CascadeFarClip[i];
+        int2 texel = int2(i % 2, i / 2) * (int)CascadeResolution + min(int2(shadowUV * CascadeResolution), (int)CascadeResolution - 1);
+        float shadowDepth = ShadowMap.Load(int3(texel, 0)).r;
+        float bias = 2 * CascadeTexelSize[i] / CascadeFarClip[i];
+        return (linearDepthLV - bias < shadowDepth) ? 1.0 : 0.0;
+    }
+    return 1.0;
 }
 
 // Pulled from helper.fx GetSampleCoordinate but inlined so we don't drag the whole file in.
@@ -318,15 +344,12 @@ float2 PointShadowSampleCoord(float3 dir)
 
 float SamplePointLightShadow(int lightIndex, float2 uv)
 {
-    // MonoGame HLSL can't index Texture2D arrays in SM4 - branch by hand.
-    if (lightIndex == 0) return PointLightShadowMap0.SampleLevel(PointSampler, uv, 0).r;
-    if (lightIndex == 1) return PointLightShadowMap1.SampleLevel(PointSampler, uv, 0).r;
-    if (lightIndex == 2) return PointLightShadowMap2.SampleLevel(PointSampler, uv, 0).r;
-    if (lightIndex == 3) return PointLightShadowMap3.SampleLevel(PointSampler, uv, 0).r;
-    if (lightIndex == 4) return PointLightShadowMap4.SampleLevel(PointSampler, uv, 0).r;
-    if (lightIndex == 5) return PointLightShadowMap5.SampleLevel(PointSampler, uv, 0).r;
-    if (lightIndex == 6) return PointLightShadowMap6.SampleLevel(PointSampler, uv, 0).r;
-    return PointLightShadowMap7.SampleLevel(PointSampler, uv, 0).r;
+    int face = clamp((int)floor(uv.y * 6), 0, 5);
+    float4 tile = PointLightShadowTiles[lightIndex * 6 + face];
+    if (tile.w <= 0) return 0;
+    float2 local = saturate(float2(uv.x, uv.y * 6 - face));
+    int2 texel = int2(tile.xy) + min(int2(local * tile.z), (int)tile.z - 1);
+    return PointShadowAtlas.Load(int3(texel, 0)).r;
 }
 
 // Sample point-light cube shadow map. Shadow map stores `1 - distFromLightToOccluder/radius`,
@@ -386,8 +409,8 @@ float3 SampleProbeAmbient(float3 positionWS)
         float3 t = lerp(1 - f, f, corner);
         int4 index = int4(base + corner, 0);
         float3 toPoint = positionWS - (ProbeVolumeMin + (base + corner) * cellSize);
-        float w = t.x * t.y * t.z * ProbeVisibility(toPoint, ProbeDistPos.Load(index).xyz, ProbeDistNeg.Load(index).xyz);
-        l0 += float3(ProbeSHR.Load(index).x, ProbeSHG.Load(index).x, ProbeSHB.Load(index).x) * w;
+        float w = t.x * t.y * t.z * ProbeVisibility(toPoint, ProbeTexel(index, 3).xyz, ProbeTexel(index, 4).xyz);
+        l0 += float3(ProbeTexel(index, 0).x, ProbeTexel(index, 1).x, ProbeTexel(index, 2).x) * w;
         total += w;
     }
     if (total <= 0.00001f) return 0;
@@ -488,11 +511,23 @@ float4 PixelShaderBuildFroxels(VertexShaderOutput input) : COLOR0
         float cosTheta = dot(-lightDirPt, viewDir);
         float phase = HenyeyGreenstein(cosTheta, G);
 
+        // PointLightCastShadows = the light's shadow strength (fades out with distance from the camera)
         float ptShadow = 1.0;
-        if (PointLightCastShadows[li] > 0.5)
-            ptShadow = ComputePointLightShadow(li, worldPos, PointLightPositionsWS[li], radius);
+        if (PointLightCastShadows[li] > 0.001)
+            ptShadow = lerp(1, ComputePointLightShadow(li, worldPos, PointLightPositionsWS[li], radius), PointLightCastShadows[li]);
 
-        scatter += PointLightColors[li] * LIGHT_OUTPUT_SCALE * phase * density * PointScatter * attenuation * ptShadow;
+        // Spot light cookie (one per frame, FogCookieLight)
+        float3 cookie = 1;
+        [branch]
+        if (abs(FogCookieLight - li) < 0.5)
+        {
+            float3 l = -lightDirPt;
+            float forward = dot(l, PointLightSpotDirectionsVS[li]);
+            float2 uv = float2(dot(l, FogCookieRightVS), dot(l, FogCookieUpVS)) / max(forward * FogCookieTanOuter, 1e-4) * 0.5 + 0.5;
+            cookie = forward > 0.001 ? FogCookie.SampleLevel(FogCookieSampler, float2(uv.x, 1 - uv.y), 0).rgb : 0;
+        }
+
+        scatter += PointLightColors[li] * cookie * LIGHT_OUTPUT_SCALE * phase * density * PointScatter * attenuation * ptShadow;
     }
 
     // Bounce light: isotropic in-scattering of the probes' mean radiance (already in lit-surface units).

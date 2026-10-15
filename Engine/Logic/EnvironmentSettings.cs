@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace Engine.Logic
 {
-    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather, volumetric fog and the voxel world.</summary>
+    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather, volumetric fog, post processing and the voxel world.</summary>
     public sealed class EnvironmentSettings
     {
         public bool DayNightCycle { get; set; }
@@ -75,6 +75,9 @@ namespace Engine.Logic
         /// Lower it to keep dark interiors dark around bright openings.</summary>
         public float MaxAutoExposure { get; set; } = 3;
 
+        /// <summary>Tonemapping, grading, eye adaptation and bloom of this scene (Source 2 look, phase 0.3).</summary>
+        public PostProcessSettings Post { get; set; } = new PostProcessSettings();
+
         // Voxel world: block terrain generated from these settings, drawn and collidable in both Edit and Play
         // (Engine/Voxels, VoxelSystem). Changing any of them regenerates the world.
         public bool Voxels { get; set; }
@@ -97,7 +100,12 @@ namespace Engine.Logic
         /// <summary>Static colliders for the chunks (bodies, characters and raycasts hit the blocks).</summary>
         public bool VoxelCollision { get; set; } = true;
 
-        public EnvironmentSettings Clone() => (EnvironmentSettings)MemberwiseClone();
+        public EnvironmentSettings Clone()
+        {
+            var clone = (EnvironmentSettings)MemberwiseClone();
+            clone.Post = (Post ?? new PostProcessSettings()).Clone();
+            return clone;
+        }
 
         public void Normalize()
         {
@@ -130,6 +138,8 @@ namespace Engine.Logic
             FogSkyStrength = Limit(FogSkyStrength, 0, 1, 0.1f);
             FogSkyShaftDistance = Limit(FogSkyShaftDistance, 0, 10000, 200);
             MaxAutoExposure = Limit(MaxAutoExposure, -3, 3, 3);
+            Post ??= new PostProcessSettings();
+            Post.Normalize();
             if (!Enum.IsDefined(VoxelTerrain)) VoxelTerrain = VoxelTerrain.Hills;
             VoxelWorldSize = VoxelWorldSettings.ClampSize(VoxelWorldSize);
             VoxelWorldHeight = VoxelWorldSettings.ClampHeight(VoxelWorldHeight);

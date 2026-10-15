@@ -185,9 +185,9 @@ public sealed class ParticleLights : IDisposable
 
     private void ReleaseShadows()
     {
-        if (_pool.Count == 0 || _pool[0].ShadowMap == null) return;
-        _pool[0].ShadowMap.Dispose();
-        _pool[0].ShadowMap = null;
+        //Its atlas tiles go back on their own once it stops casting shadows; redraw them when it starts again
+        if (_pool.Count == 0) return;
+        _pool[0].ShadowTilesDrawn = false;
         _pool[0].HasChanged = true;
     }
 

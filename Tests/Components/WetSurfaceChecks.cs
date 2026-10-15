@@ -255,8 +255,9 @@ internal static class WetSurfaceChecks
         static IEnumerable<int> Surface(Vector4[] normal) => Enumerable.Range(0, normal.Length).Where(i => normal[i].X + normal[i].Y > 0.001f);
         var dry = Render(0);
         var dryPixels = Surface(dry.Normal).ToList();
-        Check(dryPixels.Count > Size * Size / 2 && dryPixels.All(i => dry.Albedo[i].A == 255),
-            "wet surfaces flag their pixels (albedo alpha) for the view-dependent fresnel");
+        // normal.b = metallic * 0.9 + material type; type 7 flags wet pixels (albedo alpha is the material AO now)
+        Check(dryPixels.Count > Size * Size / 2 && dryPixels.All(i => Math.Abs(dry.Normal[i].Z - 7) < 0.01f),
+            "wet surfaces flag their pixels (material type 7) for the view-dependent fresnel");
         Check(dryPixels.All(i => Math.Abs(dry.Normal[i].W - 0.9f) < 0.01f),
             "a dry wet surface keeps its own roughness");
 
@@ -275,7 +276,7 @@ internal static class WetSurfaceChecks
         Check(Surface(flooded.Normal).Count(i => flooded.Normal[i].W < 0.08f) > puddles,
             "a higher Puddle Amount covers more of the surface");
         Check(soakedPixels.All(i => soaked.Normal[i].W < 0.9f), "the whole soaked surface gets glossier");
-        Check(soakedPixels.All(i => soaked.Normal[i].Z < 0.01f),
+        Check(soakedPixels.All(i => Math.Abs(soaked.Normal[i].Z - 7) < 0.01f),
             "wet surfaces stay dielectric and light like a basic material");
 
         var rippled = Render(1, 1, 0.3f);
@@ -297,8 +298,8 @@ internal static class WetSurfaceChecks
         component.DisplacementTexture = ""; // Basic would switch to the parallax technique
         component.OnChanged(entity);
         var basic = Render(1);
-        Check(Surface(basic.Normal).All(i => basic.Albedo[i].A == 0 && Math.Abs(basic.Normal[i].W - 0.9f) < 0.01f),
-            "other materials ignore the weather and leave the wet flag clear");
+        Check(Surface(basic.Normal).All(i => basic.Normal[i].Z < 0.01f && basic.Albedo[i].A == 255 && Math.Abs(basic.Normal[i].W - 0.9f) < 0.01f),
+            "other materials ignore the weather and leave the wet flag clear (no AO map: unoccluded)");
 
         component.TilingU = component.TilingV = 1;
         component.OnChanged(entity);

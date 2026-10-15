@@ -5,6 +5,12 @@ float4x4 CurrentToPrevious;
 Texture2D DepthMap;
 Texture2D AccumulationMap;
 Texture2D UpdateMap;
+//G-buffer motion vectors in UV units (this frame - last frame), 0 where nothing was drawn (Source 2 look, phase 1.6)
+Texture2D VelocityMap;
+bool UseVelocity = true;
+
+//Contrast adaptive sharpening of the resolved image, 0 = off .. 1 = strongest
+float Sharpness = 0.35f;
 
 float2 Resolution = { 1280, 800 };
 
@@ -135,13 +141,62 @@ float3 InverseReinhardTonemap(float3 ldr)
 	return ldr * ((x + 1) / 1);
 }
 
+//The resolved (Reinhard tonemapped) TAA image back to HDR, sharpened first (AMD FidelityFX CAS, simplified): the
+//sharpening adapts to local contrast so edges get crisp without halos. The history itself is never sharpened.
 float4 InverseToneMapPixelShader(VertexShaderOutput input) : SV_Target
 {
-	int3 TexCoordInt = int3(input.TexCoord * Resolution, 0);
+	int2 pixel = int2(input.Position.xy);
+	int2 maxPixel = int2(Resolution) - 1;
 
-	float4 updatedColorSample = AccumulationMap.Load(TexCoordInt);
+	float4 center = UpdateMap.Load(int3(pixel, 0));
+	float3 c = center.rgb;
 
-	return float4(InverseReinhardTonemap(updatedColorSample.rgb), updatedColorSample.a);
+	[branch]
+	if (Sharpness > 0.001f)
+	{
+		float3 n = UpdateMap.Load(int3(clamp(pixel + int2(0, -1), 0, maxPixel), 0)).rgb;
+		float3 s = UpdateMap.Load(int3(clamp(pixel + int2(0, 1), 0, maxPixel), 0)).rgb;
+		float3 e = UpdateMap.Load(int3(clamp(pixel + int2(1, 0), 0, maxPixel), 0)).rgb;
+		float3 w = UpdateMap.Load(int3(clamp(pixel + int2(-1, 0), 0, maxPixel), 0)).rgb;
+
+		float3 minimum = min(c, min(min(n, s), min(e, w)));
+		float3 maximum = max(c, max(max(n, s), max(e, w)));
+		float3 amplitude = sqrt(saturate(min(minimum, 1 - maximum) / max(maximum, 1e-4f)));
+		float3 weight = -amplitude * lerp(1.0f / 8.0f, 1.0f / 5.0f, saturate(Sharpness));
+		c = saturate((c + (n + s + e + w) * weight) / (1 + 4 * weight));
+	}
+
+	return float4(InverseReinhardTonemap(c), center.a);
+}
+
+//Catmull-Rom history in 5 bilinear taps (Jimenez 2016): sharper than bilinear when reprojecting between pixels
+float4 SampleHistoryCatmullRom(float2 uv)
+{
+	float2 samplePos = uv * Resolution;
+	float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+	float2 f = samplePos - texPos1;
+
+	float2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+	float2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+	float2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+	float2 w3 = f * f * (-0.5f + 0.5f * f);
+
+	float2 w12 = w1 + w2;
+	float2 offset12 = w2 / w12;
+
+	float2 texPos0 = (texPos1 - 1) / Resolution;
+	float2 texPos3 = (texPos1 + 2) / Resolution;
+	float2 texPos12 = (texPos1 + offset12) / Resolution;
+
+	float4 result = 0;
+	float weight = 0;
+	float w;
+	w = w12.x * w0.y;  result += AccumulationMap.SampleLevel(linearSampler, float2(texPos12.x, texPos0.y), 0) * w; weight += w;
+	w = w0.x * w12.y;  result += AccumulationMap.SampleLevel(linearSampler, float2(texPos0.x, texPos12.y), 0) * w; weight += w;
+	w = w12.x * w12.y; result += AccumulationMap.SampleLevel(linearSampler, float2(texPos12.x, texPos12.y), 0) * w; weight += w;
+	w = w3.x * w12.y;  result += AccumulationMap.SampleLevel(linearSampler, float2(texPos3.x, texPos12.y), 0) * w; weight += w;
+	w = w12.x * w3.y;  result += AccumulationMap.SampleLevel(linearSampler, float2(texPos12.x, texPos3.y), 0) * w; weight += w;
+	return max(result / max(weight, 1e-4f), 0);
 }
 
 
@@ -180,6 +235,7 @@ PixelShaderOutput PixelShaderFunction(VertexShaderOutput input) : SV_Target
 	float3 boxMin = 100000;
 	float3 boxMax = -100000;
 	float closestDepth = 1;
+	int2 closestPixel = pixel;
 
 	[unroll]
 	for (int y = -1; y <= 1; y++)
@@ -204,7 +260,12 @@ PixelShaderOutput PixelShaderFunction(VertexShaderOutput input) : SV_Target
 			boxMin = min(boxMin, ycocg);
 			boxMax = max(boxMax, ycocg);
 
-			closestDepth = min(closestDepth, DepthMap.Load(samplePixel).r);
+			float neighbourDepth = DepthMap.Load(samplePixel).r;
+			if (neighbourDepth < closestDepth)
+			{
+				closestDepth = neighbourDepth;
+				closestPixel = samplePixel.xy;
+			}
 		}
 	}
 
@@ -216,9 +277,16 @@ PixelShaderOutput PixelShaderFunction(VertexShaderOutput input) : SV_Target
 
 	float2 sampleTexCoord = 0.5f * (float2(previousPositionVS.x, -previousPositionVS.y) + 1);
 
-	int3 sampleTexCoordInt = int3(sampleTexCoord * Resolution, 0);
+	//Geometry moves with its own motion vector (skinned, physics, animated objects); the sky with the camera
+	float2 velocity = 0;
+	[branch]
+	if (UseVelocity && closestDepth < 0.9999f)
+	{
+		velocity = VelocityMap.Load(int3(closestPixel, 0)).xy;
+		sampleTexCoord = (float2(pixel) + 0.5f) / Resolution - velocity;
+	}
 
-	float4 accumulationColorSample = AccumulationMap.Load(sampleTexCoordInt);
+	float4 accumulationColorSample = SampleHistoryCatmullRom(sampleTexCoord);
 
 	//Variance clipping: history that does not match anything around this pixel now (disocclusion,
 	//moving objects, lighting changes) is pulled into the current colour range instead of ghosting
@@ -231,6 +299,9 @@ PixelShaderOutput PixelShaderFunction(VertexShaderOutput input) : SV_Target
 
 	float alpha = accumulationColorSample.a;
 	alpha = min(1 - 1 / (1 / (1 - alpha) + 1), 0.9375);
+	//Fast motion: trust the new frame a little more so moving objects stay sharp
+	float motionPixels = length(velocity * Resolution);
+	alpha = min(alpha, lerp(0.9375f, 0.8f, saturate(motionPixels / 16)));
 
 	//Out of bounds, no info
 	if (sampleTexCoord.x > 1 || sampleTexCoord.x < 0 || sampleTexCoord.y > 1 || sampleTexCoord.y < 0)

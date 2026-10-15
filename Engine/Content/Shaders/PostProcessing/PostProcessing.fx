@@ -31,6 +31,30 @@ float PowExposure = 2;
 Texture2D AutoExposureTexture;
 float AutoExposureEnabled = 0;
 
+// Source 2 look (Docs/Research/Source2Look phase 1.5), per scene in EnvironmentSettings.Post:
+// 0 = Hejl 2015, 1 = ACES (Narkowicz), 2 = Hable (Uncharted 2), 3 = Reinhard (extended), 4 = linear (clamp)
+float TonemapCurve = 0;
+// 1 = exact sRGB encoding, 0 = plain 2.2 gamma
+float ExactSrgb = 1;
+float Saturation = 1;
+float Contrast = 1;
+// Linear multiplier before tonemapping
+float3 ColorFilter = float3(1, 1, 1);
+float VignetteStrength = 1;
+
+// Retina burn (Half-Life: Alyx): a slowly fading afterimage of bright lights, added before tonemapping
+Texture2D RetinaBurnTexture;
+float RetinaBurnStrength = 0;
+SamplerState RetinaSampler
+{
+	Texture = (RetinaBurnTexture);
+	AddressU = CLAMP;
+	AddressV = CLAMP;
+	MagFilter = LINEAR;
+	MinFilter = LINEAR;
+	Mipfilter = POINT;
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -164,6 +188,60 @@ float3 Uncharted2Tonemap(float3 x)
 	return ((x*(A*x + C*B) + D*E) / (x*(A*x + B) + D*F)) - E / F;
 }
 
+//Narkowicz 2015 fit of the ACES RRT + ODT (input pre-scaled by 0.6 so 1.0 lands where the other curves put it)
+float3 AcesFilm(float3 x)
+{
+	x *= 0.6f;
+	return saturate((x * (2.51f * x + 0.03f)) / (x * (2.43f * x + 0.59f) + 0.14f));
+}
+
+float3 ApplyTonemapCurve(float3 hdr)
+{
+	[branch]
+	if (TonemapCurve < 0.5f)
+		return ToneMapFilmic_Hejl2015(hdr, WhitePoint);
+	else if (TonemapCurve < 1.5f)
+		return AcesFilm(hdr);
+	else if (TonemapCurve < 2.5f)
+		return Uncharted2Tonemap(hdr * 2) / Uncharted2Tonemap(WhitePoint.xxx * 2);
+	else if (TonemapCurve < 3.5f)
+		return saturate(ReinhardTonemap(hdr, WhitePoint));
+	return saturate(hdr);
+}
+
+float3 LinearToSrgb(float3 c)
+{
+	c = saturate(c);
+	[branch]
+	if (ExactSrgb > 0.5f)
+		return c <= 0.0031308f ? c * 12.92f : 1.055f * pow(c, 1 / 2.4f) - 0.055f;
+	return pow(c, 1 / 2.2f);
+}
+
+//Saturation and contrast in linear light, around middle grey
+float3 Grade(float3 c)
+{
+	float luma = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+	c = max(lerp(luma.xxx, c, Saturation), 0);
+	[branch]
+	if (abs(Contrast - 1) > 0.001f)
+		c = 0.18f * pow(max(c / 0.18f, 0), Contrast);
+	return c;
+}
+
+//HDR scene colour -> display: exposure, colour filter, retina burn, curve, grading, encoding, S curve
+float3 Finish(float3 hdr, float2 texCoord)
+{
+	hdr *= ColorFilter;
+	float3 exposed = hdr * GetExposure();
+	//The afterimage is kept in exposed units (RetinaBurn.fx)
+	[branch]
+	if (RetinaBurnStrength > 0)
+		exposed += RetinaBurnTexture.SampleLevel(RetinaSampler, texCoord, 0).rgb * RetinaBurnStrength;
+	float3 ldr = Grade(ApplyTonemapCurve(exposed));
+	return ColorSCurve(LinearToSrgb(ldr));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  Main Post Processing
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -191,25 +269,15 @@ float4 VignetteChromaShiftPixelShaderFunction(float4 pos : SV_POSITION, float2 t
 		base.r = chromaR;
 	}
 
-	//Apply Tonemapping!
-
-	//base.rgb = base.rgb * PowExposure;
-	//base.rgb = //ReinhardTonemap(base.rgb * PowExposure, WhitePoint);
-	//		   //Uncharted2Tonemap(base.rgb * PowExposure) / Uncharted2Tonemap(WhitePoint.xxx);
-	base.rgb = ToneMapFilmic_Hejl2015(base.rgb * GetExposure(), WhitePoint);
-
-	//Convert back to 2.2 Gamma!
-
-	base = pow(abs(base), 0.4545454545f);
-
-	//Apply SCurve
-    base = ColorSCurve(base);
+	//Tonemapping, grading and sRGB
+	base = Finish(base, texCoord);
 
 	//Apply "Vignette" Effect
 	const float radiusX = 0.6;
 	const float radiusY = 0.2;
     dist *= 0.60f;
-    base.rgb *= smoothstep(radiusX, radiusY, dist);
+    base.rgb *= lerp(1, smoothstep(radiusX, radiusY, dist), saturate(VignetteStrength));
+    base.rgb *= 1 - max(VignetteStrength - 1, 0) * (1 - smoothstep(radiusX, radiusY, dist));
 
     return float4(base,1);
 }
@@ -222,13 +290,7 @@ float4 BasePixelShaderFunction(float4 pos : SV_POSITION, float2 texCoord : TEXCO
 	//Load base color
 	float3 base = ScreenTexture.Load(texCoordInt).rgb;
 
-	base.rgb = //ReinhardTonemap(base.rgb * PowExposure, WhitePoint);
-		//Uncharted2Tonemap(base.rgb * PowExposure) / Uncharted2Tonemap(WhitePoint.xxx);
-		ToneMapFilmic_Hejl2015(base.rgb * GetExposure(), WhitePoint);
-
-	base = pow(abs(base), 0.4545454545f);
-
-	base = ColorSCurve(base);
+	base = Finish(base, texCoord);
 
 	return float4(base,1);
 }

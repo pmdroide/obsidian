@@ -39,6 +39,10 @@ public static class ComponentRegistry
         Register<ParticleSystemComponent>(ParticleSystemComponent.TypeId, "Particle System");
         Register<FogVolumeComponent>(FogVolumeComponent.TypeId, "Fog Volume");
         Register<FoliageWindComponent>(FoliageWindComponent.TypeId, "Foliage Wind");
+        Register<ReflectionProbeComponent>(ReflectionProbeComponent.TypeId, "Reflection Probe");
+        Register<ProbeVolumeComponent>(ProbeVolumeComponent.TypeId, "Probe Volume");
+        Register<PostProcessVolumeComponent>(PostProcessVolumeComponent.TypeId, "Post Process Volume");
+        Register<AoProxyComponent>(AoProxyComponent.TypeId, "AO Proxy");
     }
 
     /// <summary>Definitions in registration order (the Add Component menu order).</summary>

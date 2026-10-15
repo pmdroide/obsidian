@@ -67,6 +67,8 @@ public sealed class MaterialComponent : GameComponent
     public string MetallicTexture { get; set; }
     public string MaskTexture { get; set; }
     public string DisplacementTexture { get; set; }
+    /// <summary>Ambient occlusion map (red channel): darkens only the indirect light, like Source 2's baked AO (phase 6.2).</summary>
+    public string AmbientOcclusionTexture { get; set; }
 
     /// <summary>
     /// Content-relative material asset (<see cref="MaterialAsset"/>, "Materials/Brick.mat") this component shows, or
@@ -185,6 +187,7 @@ public sealed class MaterialComponent : GameComponent
         material.UseComponentMetallicMap = ApplyTexture(MetallicTexture, content, texture => material.MetallicMap = texture) && material.HasMetallic;
         ApplyTexture(MaskTexture, content, texture => material.Mask = texture);
         ApplyTexture(DisplacementTexture, content, texture => material.DisplacementMap = texture);
+        ApplyTexture(AmbientOcclusionTexture, content, texture => material.AmbientOcclusionMap = texture);
     }
 
     private static bool ApplyTexture(string path, ContentManager content, Action<Texture2D> assign)

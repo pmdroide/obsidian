@@ -107,6 +107,25 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             _createLUTPass = _shaderEffect.Techniques["CreateLUT"].Passes[0];
         }
 
+        /// <summary>
+        /// Blends two lookup tables of the same size into <paramref name="target"/> (Source 2's combined colour correction
+        /// LUT): what a Post Process Volume between two LUTs grades with.
+        /// </summary>
+        public void Combine(GraphicsDevice graphics, Texture2D a, Texture2D b, float blend, RenderTarget2D target, FullScreenTriangle triangle)
+        {
+            graphics.SetRenderTarget(target);
+            graphics.BlendState = BlendState.Opaque;
+            graphics.DepthStencilState = DepthStencilState.None;
+            graphics.RasterizerState = RasterizerState.CullNone;
+            LookUpTable = a;
+            _shaderEffect.Parameters["LUT2"]?.SetValue(b);
+            _shaderEffect.Parameters["LutBlend"]?.SetValue(Math.Clamp(blend, 0, 1));
+            _shaderEffect.Techniques["CombineLUT"].Passes[0].Apply();
+            triangle.Draw(graphics);
+            _shaderEffect.Parameters["LUT2"]?.SetValue((Texture2D)null);
+            LookUpTable = null;
+        }
+
         public void Initialize(GraphicsDevice graphics )
         {
             _fullScreenTriangle = new FullScreenTriangle(graphics);

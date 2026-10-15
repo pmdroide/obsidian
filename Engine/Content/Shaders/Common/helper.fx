@@ -475,6 +475,150 @@ float3 SpecularCookTorrance(float NdotL, float3 normal, float3 negativeLightDire
     return specular;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//PBR (Source 2 look, Docs/Research/Source2Look): GGX specular with a coloured F0, Lambert diffuse energy-split by
+//(1 - F). The light buffers keep the convention every pass shares: diffuse is multiplied by the albedo (and 1 - metalness)
+//in DeferredCompose, specular already carries its colour (F0 = albedo for metals), so nothing is tinted twice.
+
+static const float PBR_PI = 3.14159265f;
+//Below this GGX highlights of point lights turn into single-pixel sparks that TAA can't hold
+static const float PBR_MIN_ROUGHNESS = 0.04f;
+
+//Albedo is stored gamma encoded in the G-buffer
+float3 AlbedoToLinear(float3 albedoGamma)
+{
+    return pow(abs(albedoGamma), 2.2f);
+}
+
+//Reflectance at normal incidence: 4% for dielectrics, the albedo for metals
+float3 GetF0(float3 albedoLinear, float metalness)
+{
+    return lerp(float3(0.04f, 0.04f, 0.04f), albedoLinear, metalness);
+}
+
+float3 FresnelSchlick(float3 f0, float cosTheta)
+{
+    float f = pow(1.0f - saturate(cosTheta), 5.0f);
+    return f0 + (1.0f - f0) * f;
+}
+
+//Fresnel for an image based light: rough surfaces don't reach a white rim (Lagarde)
+float3 FresnelSchlickRoughness(float3 f0, float cosTheta, float roughness)
+{
+    float f = pow(1.0f - saturate(cosTheta), 5.0f);
+    return f0 + (max(1.0f - roughness, f0) - f0) * f;
+}
+
+float D_GGX(float NdotH, float alpha)
+{
+    float a2 = alpha * alpha;
+    float d = NdotH * NdotH * (a2 - 1) + 1;
+    return a2 / (PBR_PI * d * d);
+}
+
+//Smith-Schlick visibility V = G / (4 NdotL NdotV), k = (r + 1)^2 / 8
+float V_SmithSchlick(float NdotV, float NdotL, float roughness)
+{
+    float k = (roughness + 1) * (roughness + 1) / 8;
+    float gv = NdotV * (1 - k) + k;
+    float gl = NdotL * (1 - k) + k;
+    return 0.25f / max(gv * gl, 1e-5f);
+}
+
+//One light's contribution. lightRadiance = colour * intensity * attenuation. Ld lights the diffuse term, Ls the specular
+//one (they differ for sphere/tube lights: Ls is the representative point, Karis 2013); normalizationScale widens the
+//GGX lobe for those, 1 for a point source.
+void EvaluateLightSplit(float3 N, float3 Ld, float3 Ls, float3 V, float3 lightRadiance, float3 f0, float roughness,
+    float normalizationScale, out float3 diffuse, out float3 specular)
+{
+    float NdotL = saturate(dot(N, Ld));
+    float NdotLs = saturate(dot(N, Ls));
+    diffuse = 0;
+    specular = 0;
+    [branch]
+    if (NdotL > 0 || NdotLs > 0)
+    {
+        roughness = max(roughness, PBR_MIN_ROUGHNESS);
+        float3 H = normalize(Ls + V);
+        float NdotV = max(dot(N, V), 1e-4f);
+        float NdotH = saturate(dot(N, H));
+        float VdotH = saturate(dot(V, H));
+        float alpha = roughness * roughness;
+
+        float3 F = FresnelSchlick(f0, VdotH);
+        specular = D_GGX(NdotH, alpha) * normalizationScale * V_SmithSchlick(NdotV, NdotLs, roughness) * F * NdotLs * lightRadiance;
+        diffuse = (1 - F) * (NdotL / PBR_PI) * lightRadiance;
+    }
+}
+
+void EvaluateLight(float3 N, float3 L, float3 V, float3 lightRadiance, float3 f0, float roughness, float normalizationScale,
+    out float3 diffuse, out float3 specular)
+{
+    EvaluateLightSplit(N, L, L, V, lightRadiance, f0, roughness, normalizationScale, diffuse, specular);
+}
+
+//Point/spot light falloff: inverse-square around a core of radius / 5 (or the light's source radius when larger), so the
+//light keeps a finite brightness at its centre, windowed smoothly to 0 at the light's radius (Karis 2013).
+//Mirrors PointLight.Attenuation on the CPU (probe bake, particle lights).
+float LightAttenuation(float distance, float radius, float sourceRadius)
+{
+    float x = distance / radius;
+    float window = saturate(1 - x * x * x * x);
+    float core = max(radius * 0.2f, sourceRadius);
+    return window * window * core * core / (distance * distance + core * core);
+}
+
+//Representative point of a sphere (radius sourceRadius) / tube (half length halfLength along axis) light for the
+//specular reflection direction r (Karis 2013). lightVector = surface to light centre. Returns the new (unnormalized)
+//light vector; normalizationScale compensates the widened lobe.
+float3 AreaLightSpecularVector(float3 lightVector, float3 r, float sourceRadius, float halfLength, float3 axis,
+    float roughness, out float normalizationScale)
+{
+    float alpha = max(roughness * roughness, PBR_MIN_ROUGHNESS * PBR_MIN_ROUGHNESS);
+    float distance = length(lightVector);
+    normalizationScale = 1;
+
+    [branch]
+    if (halfLength > 0)
+    {
+        float3 l0 = lightVector - axis * halfLength;
+        float3 l1 = lightVector + axis * halfLength;
+        float3 ld = l1 - l0;
+        float rdl = dot(r, ld);
+        float t = (dot(r, l0) * rdl - dot(l0, ld)) / max(dot(ld, ld) - rdl * rdl, 1e-5f);
+        lightVector = l0 + saturate(t) * ld;
+        float alphaLine = saturate(alpha + halfLength / (3 * max(distance, 1e-3f)));
+        normalizationScale = alpha / alphaLine;
+    }
+
+    [branch]
+    if (sourceRadius > 0)
+    {
+        float3 centerToRay = dot(lightVector, r) * r - lightVector;
+        lightVector += centerToRay * saturate(sourceRadius / max(length(centerToRay), 1e-5f));
+        float alphaSphere = saturate(alpha + sourceRadius / (2 * max(distance, 1e-3f)));
+        float s = alpha / alphaSphere;
+        normalizationScale *= s * s;
+    }
+    return lightVector;
+}
+
+//Specular occlusion from ambient occlusion (Lagarde & de Rousiers 2014)
+float SpecularOcclusion(float NdotV, float ao, float roughness)
+{
+    return saturate(pow(abs(NdotV + ao), exp2(-16.0f * roughness - 1.0f)) - 1.0f + ao);
+}
+
+//Split-sum environment BRDF without a lookup texture (Karis, mobile approximation). Returns F0 scale and bias.
+float2 EnvBRDFApprox(float NdotV, float roughness)
+{
+    const float4 c0 = float4(-1, -0.0275, -0.572, 0.022);
+    const float4 c1 = float4(1, 0.0425, 1.04, -0.04);
+    float4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    return float2(-1.04, 1.04) * a004 + r.zw;
+}
+
 float3 DiffuseOrenNayar(float NdotL, float3 normal, float3 lightDirection, float3 cameraDirection, float lightIntensity, float3 lightColor, float roughness)
 {
     const float PI = 3.14159;

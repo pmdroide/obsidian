@@ -62,7 +62,7 @@ namespace Engine.Logic
             // The Anvil editor is an exception: it skips the standalone intro video
             // entirely (never loaded — see Load) and boots straight into the live
             // scene. Standalone Engine.exe plays the intro as usual.
-            if (_bridge?.IsHostedByEditor == true)
+            if (_bridge?.IsHostedByEditor == true || LookDevCapture.Active)
                 _currentState = GameState.MainGame;
             else
                 _videoIntro.Initialize();
@@ -85,6 +85,10 @@ namespace Engine.Logic
 
             // User render passes (Anvil > Render Pipeline): loads or compiles their shaders.
             Renderer.Features.RenderFeatures.Load(Globals.content);
+
+            // Look-dev capture (--scene/--shot): straight into the scene, which is saved as a PNG after a few frames
+            if (LookDevCapture.Active)
+                LookDevCapture.Start(_sceneLogic);
 
             // Under Anvil, the in-engine "Editor Mode" toggle (formerly in
             // HelperSuite's right-side panel) no longer exists, so force the
@@ -228,6 +232,9 @@ namespace Engine.Logic
 
             // Engine debug stats (GameSettings.u_showdisplayinfo; Anvil's viewport Stats toggle) on top.
             _debug.Draw(gameTime);
+
+            if (LookDevCapture.AfterDraw(_graphicsDevice, _renderer))
+                GameFlow.QuitHandler?.Invoke();
         }
 
         public void UpdateResolution()

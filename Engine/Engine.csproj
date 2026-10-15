@@ -67,6 +67,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
+    <!-- Post processing profiles (Logic.PostProfile): used by Post Process Volume components. Any Content folder. -->
+    <None Update="Content\**\*.post">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
     <!-- Material assets (Recources.MaterialAsset): saved from Anvil, linked by Material components. Any Content folder. -->
     <None Update="Content\**\*.mat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

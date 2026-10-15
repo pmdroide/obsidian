@@ -841,6 +841,22 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueMutatePost(Action<PostProcessSettings> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var active = _scene?.ActiveScene;
+                if (active == null) return;
+                var settings = active.Environment.Clone();
+                settings.Post ??= new PostProcessSettings();
+                mutate(settings.Post);
+                settings.Normalize();
+                active.Environment = settings;
+                active.IsDirty = true;
+            });
+        }
+
         public void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted)
         {
             var requestedScene = _scene?.ActiveScene;
@@ -1173,13 +1189,18 @@ namespace Engine.Editor
                     direction: spot?.Direction ?? Vector3.Zero,
                     isSpot: spot != null,
                     spotAngle: spot?.SpotAngle ?? 0f,
-                    innerSpotAngle: spot?.InnerSpotAngle ?? 0f);
+                    innerSpotAngle: spot?.InnerSpotAngle ?? 0f,
+                    shadowResolution: p.ShadowResolution,
+                    staticShadows: p.StaticShadows,
+                    sourceRadius: p.SourceRadius,
+                    sourceLength: p.SourceLength,
+                    cookiePath: spot?.CookiePath);
                 list.Add(new EditorObjectSnapshot(
                     id: p.Id,
                     name: p.Name ?? (p.GetType().Name + " " + p.Id),
                     kind: spot != null ? EditorObjectKind.SpotLight : EditorObjectKind.PointLight,
                     position: p.Position,
-                    rotation: spot?.RotationMatrix ?? Matrix.Identity,
+                    rotation: p.RotationMatrix == default ? Matrix.Identity : p.RotationMatrix,
                     scale: Vector3.One,
                     isEnabled: p.IsEnabled,
                     light: ls,
@@ -1195,7 +1216,11 @@ namespace Engine.Editor
                     radius: 0f,
                     castShadows: d.CastShadows,
                     isDirectional: true,
-                    direction: d.Direction);
+                    direction: d.Direction,
+                    shadowResolution: d.ShadowResolution,
+                    cascadeCount: d.CascadeCount,
+                    shadowDistance: d.ShadowDistance,
+                    splitLambda: d.SplitLambda);
                 list.Add(new EditorObjectSnapshot(
                     id: d.Id,
                     name: d.Name ?? ("DirectionalLight " + d.Id),

@@ -13,9 +13,9 @@ namespace Engine.Renderer.Lighting
     ///
     /// Per pass, every probe traces <see cref="LightingSettings.SamplesPerProbe"/> rays:
     /// <list type="bullet">
-    /// <item>miss  → sky radiance</item>
+    /// <item>miss  → sky radiance above the horizon, dim ground below it</item>
     /// <item>back face → counted towards "probe is inside geometry", contributes nothing</item>
-    /// <item>front face → albedo × (direct light at the hit + previous pass's probe irradiance)</item>
+    /// <item>front face → albedo (per texel) × (direct light at the hit + previous pass's probe irradiance) + emission</item>
     /// </list>
     /// The radiance is projected into cosine-convolved L1 SH. Pass k reads the probes of pass k-1
     /// for the hit points' indirect light, so N passes give N bounces (the DDGI recurrence,
@@ -30,6 +30,8 @@ namespace Engine.Renderer.Lighting
         private const float LightOutputScale = 0.1f;
         private const float RayBias = 0.01f;
         private const int MinProbesPerAxis = 2;
+        //Albedo of the open ground below the horizon (rays that escape downwards)
+        private const float GroundAlbedo = 0.25f;
 
         public delegate void ProgressCallback(float progress, string stage);
 
@@ -68,8 +70,24 @@ namespace Engine.Renderer.Lighting
         {
             var timer = Stopwatch.StartNew();
 
-            ComputeLayout(s, input.GeometryBounds, out Vector3 min, out Vector3 max,
-                out int cx, out int cy, out int cz);
+            //The main volume, then the detail volumes of Probe Volume components (phase 4.1)
+            var layouts = new System.Collections.Generic.List<(Vector3 Min, Vector3 Max, int X, int Y, int Z, int Priority, float Margin)>();
+            ComputeLayout(s, input.GeometryBounds, out Vector3 min, out Vector3 max, out int cx, out int cy, out int cz);
+            layouts.Add((min, max, cx, cy, cz, int.MinValue, 0));
+            foreach (LightingBakeInput.DetailVolumeInput detail in input.DetailVolumes)
+            {
+                if (layouts.Count >= ProbeVolumeData.MaxVolumes) break;
+                var detailSettings = new LightingSettings
+                {
+                    AutoBounds = false,
+                    BoundsMin = detail.Bounds.Min,
+                    BoundsMax = detail.Bounds.Max,
+                    ProbeSpacing = detail.Spacing,
+                    MaxProbesPerAxis = s.MaxProbesPerAxis,
+                };
+                ComputeLayout(detailSettings, input.GeometryBounds, out Vector3 dMin, out Vector3 dMax, out int dx, out int dy, out int dz);
+                layouts.Add((dMin, dMax, dx, dy, dz, detail.Priority, detail.BlendMargin));
+            }
 
             progress?.Invoke(0, $"Building BVH ({input.TriangleCount:N0} triangles)");
             var bvh = new TriangleBvh(input.A, input.B, input.C);
@@ -82,88 +100,120 @@ namespace Engine.Renderer.Lighting
                 (float)Math.Pow(MathHelper.Clamp(s.SkyColor.X, 0, 1), 2.2),
                 (float)Math.Pow(MathHelper.Clamp(s.SkyColor.Y, 0, 1), 2.2),
                 (float)Math.Pow(MathHelper.Clamp(s.SkyColor.Z, 0, 1), 2.2)) * Math.Max(0, s.SkyIntensity);
+            //Escaping rays below the horizon see the ground lit by the sky: a dim grey bounce
+            Vector3 ground = new Vector3(Vector3.Dot(sky, new Vector3(0.2126f, 0.7152f, 0.0722f))) * GroundAlbedo;
 
             //Rays that leave the volume's neighbourhood count as escaped
             float maxDistance = Vector3.Distance(Vector3.Min(min, input.GeometryBounds.Min),
                                                  Vector3.Max(max, input.GeometryBounds.Max)) * 2 + 1;
 
+            int totalProbes = 0;
+            foreach (var layout in layouts) totalProbes += layout.X * layout.Y * layout.Z;
+
             ProbeVolumeData previous = null;
             ProbeVolumeData current = null;
-            int probeCount = cx * cy * cz;
-
-            //Free distances are only needed out to a few probes: a wall further away than that
-            //can't sit between a probe and the points it is blended into.
-            Vector3 extent = max - min;
-            float cellSize = Math.Max(extent.X / Math.Max(1, cx - 1), Math.Max(extent.Y / Math.Max(1, cy - 1), extent.Z / Math.Max(1, cz - 1)));
-            float distanceCap = cellSize * 4;
-
             for (int pass = 0; pass < passes; pass++)
             {
-                current = ProbeVolumeData.Create(cx, cy, cz, min, max);
                 int done = 0;
                 int passIndex = pass;
                 ProbeVolumeData indirect = previous;
-                string stage = $"Bounce {pass + 1}/{passes} — {probeCount:N0} probes × {sampleCount} rays";
+                string stage = $"Bounce {pass + 1}/{passes} — {totalProbes:N0} probes × {sampleCount} rays";
                 progress?.Invoke(pass / (float)passes, stage);
 
-                Parallel.For(0, probeCount, new ParallelOptions { CancellationToken = ct }, i =>
+                ProbeVolumeData main = null;
+                foreach (var layout in layouts)
                 {
-                    int x = i % cx, y = i / cx % cy, z = i / (cx * cy);
-                    Vector3 origin = current.ProbePosition(x, y, z);
-                    Matrix rotation = RandomRotation(i, passIndex);
+                    ProbeVolumeData volume = ProbeVolumeData.Create(layout.X, layout.Y, layout.Z, layout.Min, layout.Max);
+                    volume.Priority = layout.Priority;
+                    volume.BlendMargin = layout.Margin;
+                    if (main == null) main = volume;
+                    else main.Detail.Add(volume);
+                    int probeCount = volume.ProbeCount;
 
-                    Vector3 sum = Vector3.Zero, sumX = Vector3.Zero, sumY = Vector3.Zero, sumZ = Vector3.Zero;
-                    int backFaces = 0;
-                    Vector3 distPos = Vector3.Zero, distNeg = Vector3.Zero, weightPos = Vector3.Zero, weightNeg = Vector3.Zero;
+                    //Free distances are only needed out to a few probes: a wall further away than that
+                    //can't sit between a probe and the points it is blended into.
+                    Vector3 extent = layout.Max - layout.Min;
+                    float cellSize = Math.Max(extent.X / Math.Max(1, layout.X - 1), Math.Max(extent.Y / Math.Max(1, layout.Y - 1), extent.Z / Math.Max(1, layout.Z - 1)));
+                    float distanceCap = cellSize * 4;
 
-                    foreach (Vector3 baseDir in directions)
+                    Parallel.For(0, probeCount, new ParallelOptions { CancellationToken = ct }, i =>
                     {
-                        Vector3 dir = Vector3.TransformNormal(baseDir, rotation);
-                        Vector3 radiance;
+                        int x = i % volume.CountX, y = i / volume.CountX % volume.CountY, z = i / (volume.CountX * volume.CountY);
+                        Vector3 origin = volume.ProbePosition(x, y, z);
+                        Matrix rotation = RandomRotation(i, passIndex);
 
-                        bool hit = bvh.Intersect(origin, dir, maxDistance, out float t, out int tri);
-                        AccumulateDistance(dir, hit ? Math.Min(t, distanceCap) : distanceCap,
-                            ref distPos, ref distNeg, ref weightPos, ref weightNeg);
+                        Vector3 sum = Vector3.Zero, sumX = Vector3.Zero, sumY = Vector3.Zero, sumZ = Vector3.Zero;
+                        int backFaces = 0;
+                        Vector3 distPos = Vector3.Zero, distNeg = Vector3.Zero, weightPos = Vector3.Zero, weightNeg = Vector3.Zero;
 
-                        if (!hit)
+                        foreach (Vector3 baseDir in directions)
                         {
-                            radiance = sky;
-                        }
-                        else
-                        {
-                            Vector3 n = input.Normal[tri];
-                            if (Vector3.Dot(n, dir) > 0)
+                            Vector3 dir = Vector3.TransformNormal(baseDir, rotation);
+                            Vector3 radiance;
+
+                            bool hit = bvh.Intersect(origin, dir, maxDistance, out float t, out int tri);
+                            AccumulateDistance(dir, hit ? Math.Min(t, distanceCap) : distanceCap,
+                                ref distPos, ref distNeg, ref weightPos, ref weightNeg);
+
+                            if (!hit)
                             {
-                                backFaces++;
-                                continue;
+                                //Nothing below the horizon is sky: open ground there, never the sky colour leaking
+                                //under floors (Source 2 look, phase 4.1)
+                                radiance = dir.Z >= 0 ? sky : ground;
                             }
-                            Vector3 p = origin + dir * t + n * RayBias;
-                            Vector3 irradiance = DirectIrradiance(input, bvh, p, n, maxDistance);
-                            if (indirect != null) irradiance += indirect.EvaluateIrradiance(p, n);
-                            radiance = input.Albedo[tri] * irradiance;
+                            else
+                            {
+                                Vector3 n = input.Normal[tri];
+                                if (Vector3.Dot(n, dir) > 0)
+                                {
+                                    backFaces++;
+                                    continue;
+                                }
+                                Vector3 p = origin + dir * t + n * RayBias;
+                                Vector3 irradiance = DirectIrradiance(input, bvh, p, n, maxDistance);
+                                if (indirect != null) irradiance += indirect.VolumeAt(p).EvaluateIrradiance(p, n);
+                                //Per-texel albedo, plus the light emissive surfaces give off themselves
+                                //(Emitters themselves are sampled directly below, not through these rays)
+                                radiance = input.AlbedoAt(tri, p) * irradiance;
+                            }
+
+                            sum += radiance;
+                            sumX += radiance * dir.X;
+                            sumY += radiance * dir.Y;
+                            sumZ += radiance * dir.Z;
                         }
 
-                        sum += radiance;
-                        sumX += radiance * dir.X;
-                        sumY += radiance * dir.Y;
-                        sumZ += radiance * dir.Z;
-                    }
+                        //Cosine-convolved L1 SH, divided by π so a uniform radiance L gives E = L:
+                        //  c0 = mean(L),  c1 = (2/N) Σ L·dir
+                        float invN = 1f / directions.Length;
+                        Vector3 c0 = sum * invN, c1x = sumX * (2 * invN), c1y = sumY * (2 * invN), c1z = sumZ * (2 * invN);
 
-                    //Cosine-convolved L1 SH, divided by π so a uniform radiance L gives E = L:
-                    //  c0 = mean(L),  c1 = (2/N) Σ L·dir
-                    float invN = 1f / directions.Length;
-                    StoreProbe(current, i, sum * invN, sumX * (2 * invN), sumY * (2 * invN), sumZ * (2 * invN));
-                    current.DistPos[i] = new Vector4(distPos / Vector3.Max(weightPos, new Vector3(1e-6f)), 0);
-                    current.DistNeg[i] = new Vector4(distNeg / Vector3.Max(weightNeg, new Vector3(1e-6f)), 0);
-                    current.Valid[i] = (byte)(backFaces <= s.ValidityThreshold * directions.Length ? 1 : 0);
+                        //Emissive surfaces, each triangle as an area light (its solid angle from here, shadowed):
+                        //radiance L over solid angle Ω adds L Ω / 4π to c0 and 2 L Ω dir / 4π to c1
+                        foreach (int emitter in input.Emitters)
+                        {
+                            if (!EmitterSolidAngle(input, emitter, origin, out Vector3 toEmitter, out float distance, out float solidAngle)) continue;
+                            if (bvh.Occluded(origin, toEmitter, distance - RayBias * 4)) continue;
+                            Vector3 l = input.Emission[emitter] * (solidAngle / (4 * MathHelper.Pi));
+                            c0 += l;
+                            c1x += l * (2 * toEmitter.X);
+                            c1y += l * (2 * toEmitter.Y);
+                            c1z += l * (2 * toEmitter.Z);
+                        }
+                        StoreProbe(volume, i, c0, c1x, c1y, c1z);
+                        volume.DistPos[i] = new Vector4(distPos / Vector3.Max(weightPos, new Vector3(1e-6f)), 0);
+                        volume.DistNeg[i] = new Vector4(distNeg / Vector3.Max(weightNeg, new Vector3(1e-6f)), 0);
+                        volume.Valid[i] = (byte)(backFaces <= s.ValidityThreshold * directions.Length ? 1 : 0);
 
-                    int finished = Interlocked.Increment(ref done);
-                    if ((finished & 255) == 0)
-                        progress?.Invoke((passIndex + finished / (float)probeCount) / passes, stage);
-                });
+                        int finished = Interlocked.Increment(ref done);
+                        if ((finished & 255) == 0)
+                            progress?.Invoke((passIndex + finished / (float)totalProbes) / passes, stage);
+                    });
 
-                ct.ThrowIfCancellationRequested();
-                DilateInvalidProbes(current);
+                    ct.ThrowIfCancellationRequested();
+                    DilateInvalidProbes(volume);
+                }
+                current = main;
                 previous = current;
             }
 
@@ -177,7 +227,7 @@ namespace Engine.Renderer.Lighting
 
         /// <summary>
         /// Irradiance from the scene's lights at a surface point (white albedo), with hard shadows.
-        /// Point and spot light attenuation mirrors DeferredPointLight.fx.
+        /// Point and spot light attenuation mirrors DeferredPointLight.fx (PointLight.Attenuation).
         /// </summary>
         private static Vector3 DirectIrradiance(LightingBakeInput input, TriangleBvh bvh, Vector3 p, Vector3 n, float maxDistance)
         {
@@ -201,9 +251,7 @@ namespace Engine.Renderer.Lighting
                 float ndl = Vector3.Dot(n, l);
                 if (ndl <= 0) continue;
 
-                float relative = dist / pl.Radius;
-                float denominator = 4 * relative + 1;
-                float attenuation = MathHelper.Clamp(1 / (denominator * denominator) - 0.04f * relative, 0, 1);
+                float attenuation = PointLight.Attenuation(dist, pl.Radius, pl.SourceRadius);
                 attenuation *= SpotLight.ConeFactor(-l, pl.SpotDirection, pl.SpotCosOuter, pl.SpotCosInner);
                 if (attenuation <= 0) continue;
                 if (bvh.Occluded(p, l, dist - RayBias)) continue;
@@ -211,7 +259,40 @@ namespace Engine.Renderer.Lighting
                 result += pl.Radiance * (ndl * attenuation);
             }
 
-            return result * LightOutputScale;
+            //Lambert: a white surface reflects E / π, the radiance the deferred lights give it (helper.fx EvaluateLight)
+            result *= LightOutputScale / MathHelper.Pi;
+
+            //Emissive surfaces light their surroundings (their radiance is already in light buffer units)
+            foreach (int emitter in input.Emitters)
+            {
+                if (!EmitterSolidAngle(input, emitter, p, out Vector3 toEmitter, out float distance, out float solidAngle)) continue;
+                float ndl = Vector3.Dot(n, toEmitter);
+                if (ndl <= 0) continue;
+                if (bvh.Occluded(p, toEmitter, distance - RayBias * 4)) continue;
+                result += input.Emission[emitter] * (solidAngle * ndl / MathHelper.Pi);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Direction, distance and solid angle of an emissive triangle (its lit front side, approximated at its centre) seen
+        /// from <paramref name="p"/>. False when <paramref name="p"/> is behind it.
+        /// </summary>
+        private static bool EmitterSolidAngle(LightingBakeInput input, int triangle, Vector3 p, out Vector3 direction,
+            out float distance, out float solidAngle)
+        {
+            Vector3 a = input.A[triangle], b = input.B[triangle], c = input.C[triangle];
+            Vector3 center = (a + b + c) / 3;
+            Vector3 toEmitter = center - p;
+            distance = toEmitter.Length();
+            direction = distance > 1e-5f ? toEmitter / distance : Vector3.UnitZ;
+            solidAngle = 0;
+            float facing = -Vector3.Dot(input.Normal[triangle], direction);
+            if (facing <= 0 || distance < 1e-4f) return false;
+            float area = Vector3.Cross(b - a, c - a).Length() * 0.5f;
+            //Never more than the hemisphere (a point right on the panel)
+            solidAngle = Math.Min(area * facing / (distance * distance), MathHelper.TwoPi);
+            return true;
         }
 
         /// <summary>

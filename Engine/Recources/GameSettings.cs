@@ -40,6 +40,11 @@ namespace Engine.Recources
         public static float g_farplane = 1000;
         public static bool g_cpusort = true;
         public static bool g_cpuculling = true;
+        //Screen-size culling (Source 2 look, phase 7): radius / distance below which meshes are skipped in the view and
+        //in shadow maps (r_size_cull_threshold / _shadow); 0 = off. Occlusion culling with GPU queries (last frame's results).
+        public static float g_sizecullthreshold = 0.0015f;
+        public static float g_sizecullthresholdshadow = 0.003f;
+        public static bool g_occlusionculling = false;
         public static bool g_batchbymaterial = false; //Note this must be activated before the application is started.
 
         //Profiler
@@ -49,10 +54,24 @@ namespace Engine.Recources
         public static bool g_environmentmapping = true;
         public static bool g_envmapupdateeveryframe = false;
         public static int g_envmapresolution = 1024;
+        //Image based lighting (Source 2 look, phase 3): texels per face of the GGX-prefiltered global probe, and the
+        //cubemap normalisation (vr_cubemap_normalization_max / _roughness_begin): reflections are scaled by the baked
+        //light at the pixel over that at the capture point, at most NormalizationMax, fading in up to RoughnessBegin
+        public static int g_reflectionprobesize = 256;
+        public static float g_cubemapnormalizationmax = 1;
+        public static float g_cubemapnormalizationroughnessbegin = 0;
 
         //Shadow Settings
         public static int g_shadowforcefiltering = 2; //1 = PCF, 2 3 better PCF  4 = Poisson, 5 = VSM;
-        public static bool g_shadowforcescreenspace = false;
+
+        //Point / spot light shadow atlas (Source 2 look, phase 2.2): atlas size, lights redrawn per frame (time
+        //slicing), lights whose sphere covers less than this angle (radius / distance) get no shadows, and shadows fade
+        //out between these distances (m) from the camera to the light's sphere (sc_override_shadow_fade_min/max_dist)
+        public static int g_shadowatlassize = 4096;
+        public static int g_shadowupdatesperframe = 8;
+        public static float g_shadowsizecull = 0.02f;
+        public static float g_shadowfadestart = 60;
+        public static float g_shadowfadeend = 80;
 
         //Deferred Decals
         public static bool g_drawdecals = true;
@@ -64,6 +83,11 @@ namespace Engine.Recources
         public static bool g_taa = true;
         public static int g_taa_jittermode = 2;
         public static bool g_taa_tonemapped = true;
+        //Source 2 look (phase 1.6): G-buffer motion vectors for moving objects, contrast adaptive sharpening of the
+        //resolved image (0 = off), and FXAA on the final image while TAA is off (a still, MSAA-like image)
+        public static bool g_taa_velocity = true;
+        public static float g_taa_sharpness = 0.35f;
+        public static bool g_fxaa = true;
 
         //Screen Space Ambient Occlusion
 
@@ -76,7 +100,8 @@ namespace Engine.Recources
             set
             {
                 _g_ssao_draw = value;
-                Shaders.DeferredCompose.Parameters["useSSAO"].SetValue(_g_ssao_draw);
+                //SSAO darkens the indirect light in the environment pass (Renderer reads this every frame)
+                Shaders.DeferredCompose.Parameters["useSSAO"]?.SetValue(_g_ssao_draw);
             }
         }
         
@@ -137,7 +162,25 @@ namespace Engine.Recources
 
 
 
-        public static float g_BloomThreshold = 0.0f;
+        //Bloom (Source 2 look): exposed brightness where bloom starts, its soft knee and the amount added.
+        //Per scene in EnvironmentSettings.Post, copied here every frame by Renderer.ApplyScenePost.
+        public static float g_BloomStart = 1.5f;
+        public static float g_BloomKnee = 0.5f;
+        public static float g_BloomScale = 0.35f;
+
+        //Tonemapping / grading (EnvironmentSettings.Post, copied every frame by Renderer.ApplyScenePost)
+        public static Logic.TonemapCurve g_TonemapCurve = Logic.TonemapCurve.Hejl;
+        public static bool g_ExactSrgb = true;
+        public static float g_Saturation = 1;
+        public static float g_Contrast = 1;
+        public static Microsoft.Xna.Framework.Vector3 g_ColorFilter = Microsoft.Xna.Framework.Vector3.One; //linear
+        public static float g_Vignette = 1;
+        public static string g_LutPath;
+        //A second LUT faded in (Post Process Volumes between two LUTs); null = none
+        public static string g_LutBlendPath;
+        public static float g_LutBlend;
+        public static float g_RetinaBurn = 0;
+        public static float g_FogDensityScale = 1;
 
         // Emissive 
 
@@ -223,6 +266,11 @@ namespace Engine.Recources
         public static float g_AutoExposureSpeedDarkToLight = 3f; //Adaptation per second when the scene gets brighter
         public static float g_AutoExposureSpeedLightToDark = 1f; //... and when it gets darker
         public static float g_AutoExposureCenterWeight = 0.5f; //0 = whole frame, 1 = favour the screen center
+        //Source's tonemap controller: expose the brightest g_BrightPixelPercent % of the frame to g_BrightPixelTarget
+        public static Logic.ExposureMetering g_ExposureMetering = Logic.ExposureMetering.BrightPixels;
+        public static float g_BrightPixelPercent = 2f;
+        public static float g_BrightPixelTarget = 0.18f;
+        public static float g_MinAverageLuminance = 0.03f;
 
         // SSR
 

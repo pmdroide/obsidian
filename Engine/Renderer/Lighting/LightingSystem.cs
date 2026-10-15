@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +34,15 @@ namespace Engine.Renderer.Lighting
 
         private ProbeVolumeData _uploaded;
 
+        /// <summary>
+        /// The five probe grids side by side along X (SH red, green, blue, distances +, -): what the shaders bind, one
+        /// texture slot instead of five (Shaders: ProbeTexel).
+        /// </summary>
+        public Texture3D ProbeData { get; private set; }
+
+        /// <summary>Volumes packed in <see cref="ProbeData"/>, highest priority first (the main volume last), with their first Z slice.</summary>
+        public IReadOnlyList<(ProbeVolumeData Volume, int ZOffset)> PackedVolumes => _packed;
+        private readonly List<(ProbeVolumeData Volume, int ZOffset)> _packed = new List<(ProbeVolumeData, int)>();
         public Texture3D ProbeSHR { get; private set; }
         public Texture3D ProbeSHG { get; private set; }
         public Texture3D ProbeSHB { get; private set; }
@@ -174,12 +184,55 @@ namespace Engine.Renderer.Lighting
                 ProbeSHB = CreateTexture(graphicsDevice, data, data.SHB);
                 ProbeDistPos = CreateTexture(graphicsDevice, data, data.DistPos);
                 ProbeDistNeg = CreateTexture(graphicsDevice, data, data.DistNeg);
+                ProbeData = CreatePackedTexture(graphicsDevice, data);
             }
             catch (Exception e)
             {
                 EditorBridge.Log("LightingSystem: probe texture upload failed: " + e);
                 DisposeTextures();
             }
+        }
+
+        /// <summary>
+        /// Every volume's five grids side by side along X, the volumes stacked along Z: the main volume first (slice 0,
+        /// what the fog reads), then the detail volumes.
+        /// </summary>
+        private Texture3D CreatePackedTexture(GraphicsDevice device, ProbeVolumeData main)
+        {
+            List<ProbeVolumeData> order = main.VolumesByPriority();
+            var stacked = new List<ProbeVolumeData> { main };
+            foreach (ProbeVolumeData v in order) if (!ReferenceEquals(v, main)) stacked.Add(v);
+
+            int width = 0, height = 0, depth = 0;
+            foreach (ProbeVolumeData v in stacked)
+            {
+                width = Math.Max(width, v.CountX * 5);
+                height = Math.Max(height, v.CountY);
+                depth += v.CountZ;
+            }
+            var texture = new Texture3D(device, width, height, depth, false, SurfaceFormat.HalfVector4);
+            var packed = new HalfVector4[width * height * depth];
+            var offsets = new Dictionary<ProbeVolumeData, int>();
+            int zOffset = 0;
+            foreach (ProbeVolumeData v in stacked)
+            {
+                offsets[v] = zOffset;
+                Vector4[][] grids = { v.SHR, v.SHG, v.SHB, v.DistPos, v.DistNeg };
+                for (int z = 0; z < v.CountZ; z++)
+                for (int y = 0; y < v.CountY; y++)
+                for (int g = 0; g < grids.Length; g++)
+                for (int x = 0; x < v.CountX; x++)
+                {
+                    int source = (z * v.CountY + y) * v.CountX + x;
+                    packed[((zOffset + z) * height + y) * width + g * v.CountX + x] = new HalfVector4(grids[g][source]);
+                }
+                zOffset += v.CountZ;
+            }
+            texture.SetData(packed);
+
+            _packed.Clear();
+            foreach (ProbeVolumeData v in order) _packed.Add((v, offsets[v]));
+            return texture;
         }
 
         private static Texture3D CreateTexture(GraphicsDevice device, ProbeVolumeData data, Vector4[] values)
@@ -239,6 +292,8 @@ namespace Engine.Renderer.Lighting
 
         private void DisposeTextures()
         {
+            ProbeData?.Dispose();
+            ProbeData = null;
             ProbeSHR?.Dispose(); ProbeSHR = null;
             ProbeSHG?.Dispose(); ProbeSHG = null;
             ProbeSHB?.Dispose(); ProbeSHB = null;

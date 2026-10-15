@@ -238,6 +238,18 @@ public static class BridgeReconciler
                     SetIfChanged(v => vm.Light.Intensity = v, vm.Light.Intensity, l.Intensity);
                     SetIfChanged(v => vm.Light.Radius = v, vm.Light.Radius, l.Radius);
                     if (vm.Light.CastShadows != l.CastShadows) vm.Light.CastShadows = l.CastShadows;
+                    SetIfChanged(v => vm.Light.ShadowResolution = v, vm.Light.ShadowResolution, l.ShadowResolution);
+                    if (vm.Light.StaticShadows != l.StaticShadows) vm.Light.StaticShadows = l.StaticShadows;
+                    SetIfChanged(v => vm.Light.SourceRadius = v, vm.Light.SourceRadius, l.SourceRadius);
+                    SetIfChanged(v => vm.Light.SourceLength = v, vm.Light.SourceLength, l.SourceLength);
+                    string cookie = l.CookiePath ?? "";
+                    if (vm.Light.CookiePath != cookie) vm.Light.CookiePath = cookie;
+                    if (l.IsDirectional)
+                    {
+                        SetIfChanged(v => vm.Light.CascadeCount = v, vm.Light.CascadeCount, l.CascadeCount);
+                        SetIfChanged(v => vm.Light.ShadowDistance = v, vm.Light.ShadowDistance, l.ShadowDistance);
+                        SetIfChanged(v => vm.Light.SplitLambda = v, vm.Light.SplitLambda, l.SplitLambda);
+                    }
                     if (l.IsSpot)
                     {
                         SetIfChanged(v => vm.Light.SpotAngle = v, vm.Light.SpotAngle, l.SpotAngle);

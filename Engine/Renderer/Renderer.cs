@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Engine.Components;
 using Engine.Entities;
+using Engine.Editor;
 using Engine.Logic;
 using Engine.Physics;
 using Engine.Recources;
@@ -31,6 +33,13 @@ namespace Engine.Renderer
     public class Renderer : IDisposable
     {
         private readonly EnvironmentSky _environmentSky = new EnvironmentSky();
+        //This frame's post processing: the scene's, blended with the Post Process Volumes at the camera
+        private readonly PostProcessSettings _postBlend = new PostProcessSettings();
+        //This frame's suns (the day/night cycle's when it runs) and environment sample, for the forward pass
+        private List<DirectionalLight> _frameDirectionalLights;
+        private EnvironmentSample _frameEnvSample;
+        private float _lastSizeCull = -1;
+        private List<BasicEntity> _frameEntities;
         #region VARIABLES
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //  VARIABLES
@@ -77,6 +86,12 @@ namespace Engine.Renderer
         private HelperGeometryRenderModule _helperGeometryRenderModule;
         private DistanceFieldRenderModule _distanceFieldRenderModule;
 
+        //Debug views (RenderModes.IndirectDiffuse / AmbientOcclusion / ShadowCascades)
+        private Effect _debugViewEffect;
+        //View Z where each sun shadow cascade ends, for RenderModes.ShadowCascades (set by the shadow pass)
+        private Vector4 _cascadeEnds = new Vector4(float.MaxValue);
+        private int _cascadeCount;
+
         private BloomFilter _bloomFilter;
         private ColorGradingFilter _colorGradingFilter;
         private AutoExposureFilter _autoExposureFilter;
@@ -119,7 +134,6 @@ namespace Engine.Renderer
         private float _supersampling = 1;
         //private bool _hologramDraw;
         private int _forceShadowFiltering;
-        private bool _forceShadowSS;
         private bool _ssr = true;
         private bool _g_SSReflectionNoise;
 
@@ -140,17 +154,35 @@ namespace Engine.Renderer
             SSBlur,
             //Emissive,
             SSR,
-            HDR
+            HDR,
+            // Source 2 look debug views (Docs/Research/Source2Look phase 0.4)
+            IndirectDiffuse,
+            AmbientOcclusion,
+            ShadowCascades
         }
 
         //Render targets
         private RenderTarget2D _renderTargetAlbedo;
-        private readonly RenderTargetBinding[] _renderTargetBinding = new RenderTargetBinding[3];
+        private readonly RenderTargetBinding[] _renderTargetBinding = new RenderTargetBinding[4];
 
         private RenderTarget2D _renderTargetDepth;
         private RenderTarget2D _renderTargetNormal;
 
         private RenderTarget2D _renderTargetDecalOffTarget;
+
+        //Motion vectors of the G-buffer (TAA, Source 2 look phase 1.6) and the unjittered view projection of last frame
+        private RenderTarget2D _renderTargetVelocity;
+        private Matrix _lastStaticViewProjection;
+        private bool _hasLastStaticViewProjection;
+
+        //Retina burn (Half-Life: Alyx): quarter resolution afterimage ping-pong
+        private Effect _retinaBurnEffect;
+        private RenderTarget2D _retinaBurnA, _retinaBurnB;
+        private bool _retinaBurnFlip;
+
+        //FXAA of the final image while TAA is off
+        private Effect _fxaaEffect;
+        private RenderTarget2D _renderTargetFxaa;
 
         //Subsurface Scattering
         private RenderTarget2D _renderTargetSSS;
@@ -159,6 +191,9 @@ namespace Engine.Renderer
         private RenderTarget2D _renderTargetSpecular;
         private RenderTarget2D _renderTargetVolume;
         private readonly RenderTargetBinding[] _renderTargetLightBinding = new RenderTargetBinding[3];
+        //Environment pass: diffuse, specular and its own indirect diffuse (rgb) + ambient occlusion (a) for the debug views
+        private RenderTarget2D _renderTargetIndirect;
+        private readonly RenderTargetBinding[] _renderTargetEnvironmentBinding = new RenderTargetBinding[3];
 
         private RenderTarget2D _renderTargetComposed;
         private RenderTarget2D _renderTargetBloom;
@@ -184,8 +219,17 @@ namespace Engine.Renderer
 
         private RenderTarget2D _currentOutput;
         
-        //Cubemap
+        //Cubemap: the raw capture of the scene's EnvironmentSample (water, particles and weather read it)
         private RenderTargetCube _renderTargetCubeMap;
+        //Image based lighting (Source 2 look, phase 3): GGX-prefiltered global probe, BRDF lookup, Reflection Probes
+        private EnvironmentPrefilter _environmentPrefilter;
+        private TextureCube _prefilteredGlobal;
+        private readonly ReflectionProbes _reflectionProbes = new ReflectionProbes();
+        //AO Proxy components of this frame (Source 2 look, phase 6.1)
+        private readonly AoProxyShapes _aoProxies = new AoProxyShapes();
+        //Optional occlusion culling (phase 7)
+        private readonly OcclusionCulling _occlusionCulling = new OcclusionCulling();
+        private readonly Dictionary<int, RenderTargetCube> _probeCaptureTargets = new Dictionary<int, RenderTargetCube>();
 
         //Color Correction LUT
 
@@ -244,6 +288,10 @@ namespace Engine.Renderer
             _autoExposureFilter = new AutoExposureFilter(content, "Shaders/PostProcessing/AutoExposure");
 
             _lut = content.Load<Texture2D>("Shaders/PostProcessing/lut");
+            _debugViewEffect = content.Load<Effect>("Shaders/Editor/DebugView");
+            _environmentPrefilter = new EnvironmentPrefilter(content);
+            _fxaaEffect = content.Load<Effect>("Shaders/PostProcessing/Fxaa");
+            _retinaBurnEffect = content.Load<Effect>("Shaders/PostProcessing/RetinaBurn");
         }
 
         /// <summary>
@@ -304,6 +352,7 @@ namespace Engine.Renderer
                 _deferredEnvironmentMapRenderModule.SkyTexture = _assets.SkyTexture;
             }
             SetUpRenderTargets(GameSettings.g_screenwidth, GameSettings.g_screenheight, false);
+            _deferredEnvironmentMapRenderModule.BrdfLut = _environmentPrefilter.BrdfLut(graphicsDevice);
             
         }
 
@@ -354,6 +403,9 @@ namespace Engine.Renderer
             if (scene != null)
             {
                 directionalLights = _environmentSky.Apply(scene, gameTime, _graphicsDevice, _assets, _deferredEnvironmentMapRenderModule);
+                // Post processing of the scene, blended with the Post Process Volumes around the camera (before the fog:
+                // volumes scale its density)
+                ApplyScenePost(PostProcessVolumes.Evaluate(scene.Environment?.Post, entities, camera.Position, _postBlend));
                 ApplySceneFog(scene.Environment);
                 _autoExposureFilter.SceneMaxExposure = scene.Environment?.MaxAutoExposure ?? float.MaxValue;
             }
@@ -370,6 +422,10 @@ namespace Engine.Renderer
             _gBufferRenderModule.SceneWetness = _surfaceWetness.Wetness;
             _gBufferRenderModule.SceneRipples = _surfaceWetness.Ripples;
             _gBufferRenderModule.Time = (float)_wetSurfaceTime;
+
+            _frameDirectionalLights = directionalLights;
+            _frameEnvSample = envSample;
+            _frameEntities = entities;
 
             //Reset the stat counter, so we can count stats/information for this frame only
             ResetStats();
@@ -397,14 +453,20 @@ namespace Engine.Renderer
             //Update the mesh data for changes in physics etc.
             meshMaterialLibrary.FlagMovedObjects(entities);
 
+            //Reflection Probe components (their box meshes are hidden before any pass draws)
+            _reflectionProbes.Update(entities);
+
             //LOD components: pick each gameobject's level for this camera before any pass draws
             meshMaterialLibrary.SelectLevelsOfDetail(entities, camera.Position);
 
             //Check if we changed some drastic stuff for which we need to reload some elements
             CheckRenderChanges(directionalLights);
 
-            //Render ShadowMaps
+            //Render ShadowMaps (their own screen-size culling threshold)
+            MeshMaterialLibrary.SizeCullThreshold = Math.Max(GameSettings.g_sizecullthresholdshadow, 0);
+            meshMaterialLibrary.SkipOccluded = false;
             DrawShadowMaps(meshMaterialLibrary, entities, pointLights, directionalLights, camera);
+            MeshMaterialLibrary.SizeCullThreshold = 0;
 
             //Update SDFs
             if (IsSDFUsed(pointLights))
@@ -419,8 +481,19 @@ namespace Engine.Renderer
                 envSample.NeedsUpdate = false;
             }
 
-            //Update our view projection matrices if the camera moved
+            //Reflection Probe components: one capture per frame, nearest first (Source 2 look, phase 3.2)
+            if (GameSettings.g_environmentmapping && _prefilteredGlobal != null)
+            {
+                ReflectionProbes.Probe next = _reflectionProbes.NextCapture(camera.Position);
+                if (next != null) CaptureReflectionProbe(next, meshMaterialLibrary, entities, pointLights, directionalLights, gameTime, camera);
+            }
+
+            //Update our view projection matrices if the camera moved (the view culls by screen size; the size test needs
+            //the culling to run again whenever the threshold changes)
+            MeshMaterialLibrary.SizeCullThreshold = Math.Max(GameSettings.g_sizecullthreshold, 0);
+            if (_lastSizeCull != MeshMaterialLibrary.SizeCullThreshold) { _lastSizeCull = MeshMaterialLibrary.SizeCullThreshold; camera.HasChanged = true; }
             UpdateViewProjection(camera, meshMaterialLibrary, entities);
+            MeshMaterialLibrary.SizeCullThreshold = 0;
 
             //What render features read: camera, G-buffer, time
             _renderFeatureContext = new RenderFeatureRenderModule.Context
@@ -441,8 +514,15 @@ namespace Engine.Renderer
             GraphicsDeviceDebugMarkers.BeginEventGroup(_graphicsDevice, "G-Buffer Pass");
             try
             {
-                //Draw our meshes to the G Buffer
+                //Draw our meshes to the G Buffer, with motion vectors since last frame
+                _gBufferRenderModule.StaticViewProjection = _staticViewProjection;
+                _gBufferRenderModule.PreviousStaticViewProjection = _hasLastStaticViewProjection ? _lastStaticViewProjection : _staticViewProjection;
+                meshMaterialLibrary.SkipOccluded = GameSettings.g_occlusionculling;
                 DrawGBuffer(meshMaterialLibrary);
+
+                //Occlusion queries against this G-buffer's depth, read next frame
+                _occlusionCulling.Update(_graphicsDevice, meshMaterialLibrary, _staticViewProjection, camera.Position);
+                GameStats.OccludedMeshes = _occlusionCulling.Occluded;
 
                 //Deferred Decals
                 DrawDecals(decals);
@@ -460,9 +540,6 @@ namespace Engine.Renderer
 
                 //SSAO
                 DrawScreenSpaceAmbientOcclusion(camera);
-
-                //Screen space shadows for directional lights to an offscreen render target
-                DrawScreenSpaceDirectionalShadow(directionalLights);
 
                 //Upsample/blur our SSAO / screen space shadows
                 DrawBilateralBlur();
@@ -533,6 +610,9 @@ namespace Engine.Renderer
                 //Eye adaptation: meter the final HDR image here, once per frame (RenderMode runs twice)
                 UpdateAutoExposure(_currentOutput, gameTime);
 
+                //Bright lights burn an afterimage in (Post Processing > Retina Burn)
+                UpdateRetinaBurn(_currentOutput, gameTime);
+
                 //Render features: After Bloom. Not in place: the image can be the TAA history.
                 _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterBloom, _currentOutput, inPlace: false);
             }
@@ -582,8 +662,12 @@ namespace Engine.Renderer
             //Draw debug geometry
             _helperGeometryRenderModule.Draw(_graphicsDevice, _staticViewProjection);
             
-            //Set up the frustum culling for the next frame
+            meshMaterialLibrary.SkipOccluded = false;
+
+            //Set up the frustum culling for the next frame (and keep this frame's transforms for the motion vectors)
             meshMaterialLibrary.FrustumCullingFinalizeFrame(entities);
+            _lastStaticViewProjection = _staticViewProjection;
+            _hasLastStaticViewProjection = true;
 
             //Performance Profiler
             if (GameSettings.d_profiler)
@@ -722,17 +806,56 @@ namespace Engine.Renderer
                 //Create a new cube map
                 _renderTargetCubeMap = new RenderTargetCube(_graphicsDevice, GameSettings.g_envmapresolution, true, SurfaceFormat.HalfVector4,
                     DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
-
-                //Set this cubemap in the shader of the environment map
-                _deferredEnvironmentMapRenderModule.Cubemap = _renderTargetCubeMap;
             }
 
-            //Set up all the base rendertargets with the resolution of our cubemap
-            SetUpRenderTargets(GameSettings.g_envmapresolution, GameSettings.g_envmapresolution, true);
+            CaptureCube(origin, _renderTargetCubeMap, meshMaterialLibrary, entities, pointLights, dirLights, gameTime, camera, withIndirect: false);
 
-            //We don't want to use SSAO in this cubemap
-            Shaders.DeferredComposeEffectParameter_UseSSAO.SetValue(false);
-            
+            //The global probe: GGX prefiltered for the environment pass (Source 2 look, phase 3.1)
+            _prefilteredGlobal = _environmentPrefilter.Prefilter(_graphicsDevice, _fullScreenTriangle, _renderTargetCubeMap,
+                Math.Clamp(GameSettings.g_reflectionprobesize, 32, 1024), _prefilteredGlobal);
+            _deferredEnvironmentMapRenderModule.SetGlobalProbe(_prefilteredGlobal);
+
+            //Performance Profiler
+            if (GameSettings.d_profiler)
+            {
+                long performanceCurrentTime = _performanceTimer.ElapsedTicks;
+                GameStats.d_profileDrawCubeMap = performanceCurrentTime - _performancePreviousTime;
+
+                _performancePreviousTime = performanceCurrentTime;
+            }
+        }
+
+        /// <summary>Captures and prefilters one Reflection Probe component (its box centre, with the baked indirect light).</summary>
+        private void CaptureReflectionProbe(ReflectionProbes.Probe probe, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities,
+            List<PointLight> pointLights, List<DirectionalLight> dirLights, GameTime gameTime, Camera camera)
+        {
+            int size = probe.Component.ClampedResolution;
+            //Captured at twice the probe size so the prefilter's mirror mip stays sharp
+            int captureSize = Math.Min(size * 2, 1024);
+            if (!_probeCaptureTargets.TryGetValue(captureSize, out RenderTargetCube target))
+                _probeCaptureTargets[captureSize] = target = new RenderTargetCube(_graphicsDevice, captureSize, true,
+                    SurfaceFormat.HalfVector4, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
+
+            //Its own mesh is hidden; nothing else changes while capturing
+            CaptureCube(probe.Owner.Position, target, meshMaterialLibrary, entities, pointLights, dirLights, gameTime, camera, withIndirect: true);
+            probe.Cube = _environmentPrefilter.Prefilter(_graphicsDevice, _fullScreenTriangle, target, size, probe.Cube);
+            probe.CapturedRequest = probe.Component.CaptureRequest;
+            probe.CapturedResolution = size;
+            probe.CapturedBox = ReflectionProbeComponent.BoxWorld(probe.Owner);
+        }
+
+        /// <summary>
+        /// Renders the scene around <paramref name="origin"/> into <paramref name="target"/>'s six faces (no TAA, fog,
+        /// SSR or AO). <paramref name="withIndirect"/> adds the baked diffuse light (probe volume / sky) like the main view.
+        /// </summary>
+        private void CaptureCube(Vector3 origin, RenderTargetCube target, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities,
+            List<PointLight> pointLights, List<DirectionalLight> dirLights, GameTime gameTime, Camera camera, bool withIndirect)
+        {
+            float farPlane = GameSettings.g_farplane;
+
+            //Set up all the base rendertargets with the resolution of our cubemap
+            SetUpRenderTargets(target.Size, target.Size, true);
+
             //Create our projection, which is a basic pyramid
             _projection = Matrix.CreatePerspectiveFieldOfView((float)(Math.PI / 2), 1, 1, farPlane);
 
@@ -790,13 +913,15 @@ namespace Engine.Renderer
 
                 if (_boundingFrustum == null) _boundingFrustum = new BoundingFrustum(_viewProjection);
                 else _boundingFrustum.Matrix = _viewProjection;
-                ComputeFrustumCorners(_boundingFrustum, camera);
+                ComputeFrustumCorners(_boundingFrustum, origin);
 
                 _lightAccumulationModule.UpdateViewProjection(_boundingFrustum, _viewProjectionHasChanged, _view, _inverseView, _viewIT, _projection, _viewProjection, _inverseViewProjection);
-                
+
                 //Base stuff, for description look in Draw()
                 meshMaterialLibrary.FrustumCulling(entities, _boundingFrustum, true, origin);
 
+                _gBufferRenderModule.StaticViewProjection = _viewProjection;
+                _gBufferRenderModule.PreviousStaticViewProjection = _viewProjection;
                 DrawGBuffer(meshMaterialLibrary);
 
                 bool volumeEnabled = GameSettings.g_VolumetricLights;
@@ -804,6 +929,10 @@ namespace Engine.Renderer
                 _lightAccumulationModule.DrawLights(pointLights, dirLights, origin, gameTime, _renderTargetLightBinding, _renderTargetDiffuse);
 
                 _deferredEnvironmentMapRenderModule.DrawSky(_graphicsDevice, _fullScreenTriangle);
+
+                //Baked diffuse light, so probes in rooms show the room's bounce light like the main view does
+                if (withIndirect && GameSettings.g_environmentmapping)
+                    _deferredEnvironmentMapRenderModule.DrawCapture(_graphicsDevice, origin, _view, _fullScreenTriangle);
 
                 GameSettings.g_VolumetricLights = volumeEnabled;
 
@@ -818,24 +947,14 @@ namespace Engine.Renderer
                 //    ? Shaders.DeferredComposeTechnique_Linear
                 //    : Shaders.DeferredComposeTechnique_NonLinear;
                 GameSettings.g_taa = tempAa;
-                DrawMapToScreenToCube(_renderTargetComposed, _renderTargetCubeMap, cubeMapFace);
+                DrawMapToScreenToCube(_renderTargetComposed, target, cubeMapFace);
             }
-            Shaders.DeferredComposeEffectParameter_UseSSAO.SetValue(GameSettings.g_ssao_draw);
 
             //Change RTs back to normal
             SetUpRenderTargets(GameSettings.g_screenwidth, GameSettings.g_screenheight, true);
-            
+
             //Our camera has changed we need to reinitialize stuff because we used a different camera in the cubemap render
             camera.HasChanged = true;
-
-            //Performance Profiler
-            if (GameSettings.d_profiler)
-            {
-                long performanceCurrentTime = _performanceTimer.ElapsedTicks;
-                GameStats.d_profileDrawCubeMap = performanceCurrentTime - _performancePreviousTime;
-
-                _performancePreviousTime = performanceCurrentTime;
-            }
         }
 
                 #endregion
@@ -919,19 +1038,6 @@ namespace Engine.Renderer
                 }
             }
 
-            if (_forceShadowSS != GameSettings.g_shadowforcescreenspace)
-            {
-                _forceShadowSS = GameSettings.g_shadowforcescreenspace;
-
-                for (var index = 0; index < dirLights.Count; index++)
-                {
-                    DirectionalLight light = dirLights[index];
-                    light.ScreenSpaceShadowBlur = _forceShadowSS;
-
-                    light.HasChanged = true;
-                }
-            }
-
             if (_ssr != GameSettings.g_SSReflection)
             {
                 _graphicsDevice.SetRenderTarget(_renderTargetScreenSpaceEffectReflection);
@@ -964,6 +1070,18 @@ namespace Engine.Renderer
             if (_boundingFrustum == null) UpdateViewProjection(camera, meshMaterialLibrary, entities);
 
             _shadowMapRenderModule.Draw(_graphicsDevice, meshMaterialLibrary, entities, pointLights, dirLights, camera);
+            _lightAccumulationModule.PointLightRenderModule.ShadowAtlas = _shadowMapRenderModule.Atlas?.Target;
+            _froxelRenderModule.ShadowAtlas = _shadowMapRenderModule.Atlas?.Target;
+
+            //Cascade distances of the first shadowed sun, for RenderModes.ShadowCascades
+            _cascadeCount = 0;
+            foreach (DirectionalLight light in dirLights)
+                if (light.IsEnabled && light.CastShadows && light.ActiveCascades > 0)
+                {
+                    _cascadeEnds = light.CascadeEnds;
+                    _cascadeCount = light.ActiveCascades;
+                    break;
+                }
 
             //Performance Profiler
             if (GameSettings.d_profiler)
@@ -1060,7 +1178,7 @@ namespace Engine.Renderer
                 else _boundingFrustum.Matrix = _staticViewProjection;
 
                 // Compute the frustum corners for cheap view direction computation in shaders
-                ComputeFrustumCorners(_boundingFrustum, camera);
+                ComputeFrustumCorners(_boundingFrustum, camera.Position);
             }
 
             //We need to update whether or not entities are in our boundingFrustum and then cull them or not!
@@ -1125,7 +1243,7 @@ namespace Engine.Renderer
         /// http://mynameismjp.wordpress.com/2009/03/10/reconstructing-position-from-depth/
         /// </summary>
         /// <param name="cameraFrustum"></param>
-        private void ComputeFrustumCorners(BoundingFrustum cameraFrustum, Camera camera)
+        private void ComputeFrustumCorners(BoundingFrustum cameraFrustum, Vector3 viewPosition)
         {
             cameraFrustum.GetCorners(_cornersWorldSpace);
 
@@ -1133,7 +1251,7 @@ namespace Engine.Renderer
             //World Space Corners - Camera Position
             for (int i = 0; i < 4; i++) //take only the 4 farthest points
             {
-                _currentFrustumCorners[i] = _cornersWorldSpace[i + 4] - camera.Position;
+                _currentFrustumCorners[i] = _cornersWorldSpace[i + 4] - viewPosition;
             }
             Vector3 temp = _currentFrustumCorners[3];
             _currentFrustumCorners[3] = _currentFrustumCorners[2];
@@ -1270,62 +1388,6 @@ namespace Engine.Renderer
         }
 
         /// <summary>
-        /// Screen space blur for directional lights
-        /// </summary>
-        /// <param name="dirLights"></param>
-        private void DrawScreenSpaceDirectionalShadow(List<DirectionalLight> dirLights)
-        {
-            if (_viewProjectionHasChanged)
-            {
-                Shaders.deferredDirectionalLightParameterViewProjection.SetValue(_viewProjection);
-                Shaders.deferredDirectionalLightParameterInverseViewProjection.SetValue(_inverseViewProjection);
-
-            }
-            for (var index = 0; index < dirLights.Count; index++)
-            {
-                DirectionalLight light = dirLights[index];
-                if (light.CastShadows && light.ScreenSpaceShadowBlur)
-                {
-                    throw new NotImplementedException();
-
-                    /*
-                    //Draw our map!
-                    _graphicsDevice.SetRenderTarget(_renderTargetScreenSpaceEffectUpsampleBlurVertical);
-
-                    Shaders.deferredDirectionalLightParameter_LightDirection.SetValue(light.Direction);
-
-                    if (_viewProjectionHasChanged)
-                    {
-                        light.DirectionViewSpace = Vector3.Transform(light.Direction, _viewIT);
-                        light.LightViewProjection_ViewSpace = _inverseView * light.LightViewProjection;
-                        light.LightView_ViewSpace = _inverseView * light.LightView;
-                    }
-
-                    Shaders.deferredDirectionalLightParameterLightViewProjection.SetValue(light
-                        .LightViewProjection_ViewSpace);
-                    Shaders.deferredDirectionalLightParameterLightView.SetValue(light.LightViewProjection_ViewSpace);
-                    Shaders.deferredDirectionalLightParameter_ShadowMap.SetValue(light.ShadowMap);
-                    Shaders.deferredDirectionalLightParameter_ShadowFiltering.SetValue((int) light.ShadowFiltering);
-                    Shaders.deferredDirectionalLightParameter_ShadowMapSize.SetValue((float) light.ShadowResolution);
-
-                    Shaders.deferredDirectionalLightShadowOnly.Passes[0].Apply();
-
-                    _quadRenderer.RenderQuad(_graphicsDevice, Vector2.One * -1, Vector2.One);
-                    */
-                }
-            }
-
-            //Performance Profiler
-            if (GameSettings.d_profiler)
-            {
-                long performanceCurrentTime = _performanceTimer.ElapsedTicks;
-                GameStats.d_profileDrawScreenSpaceDirectionalShadow = performanceCurrentTime - _performancePreviousTime;
-
-                _performancePreviousTime = performanceCurrentTime;
-            }
-        }
-
-        /// <summary>
         /// Bilateral blur, to upsample our undersampled SSAO
         /// </summary>
         private void DrawBilateralBlur()
@@ -1394,6 +1456,20 @@ namespace Engine.Renderer
                              _lightingSettings != null && _lightingSettings.ProbeVolumeEnabled;
             _deferredEnvironmentMapRenderModule.SetProbeVolume(useProbes ? _lighting : null,
                 (_lightingSettings?.Intensity ?? 1f) * _environmentSky.AmbientScale, envSample.Position);
+
+            //Soft contact shadows of dynamic objects (AO Proxy components), indirect light only
+            _aoProxies.Collect(_frameEntities, camera.Position);
+            _deferredEnvironmentMapRenderModule.SetAoProxies(_aoProxies);
+
+            //Local reflection probes seen by this view, normalised against the baked light at their capture points
+            _reflectionProbes.SelectVisible(_boundingFrustum, camera.Position);
+            _deferredEnvironmentMapRenderModule.SetLocalProbes(_reflectionProbes.Visible, useProbes ? _lighting?.GpuData : null);
+
+            //Indirect light goes on top of the lights (additive) and into its own debug target
+            _graphicsDevice.SetRenderTarget(_renderTargetIndirect);
+            _graphicsDevice.Clear(Color.Transparent);
+            _graphicsDevice.SetRenderTargets(_renderTargetEnvironmentBinding);
+            _deferredEnvironmentMapRenderModule.UseSSAO = GameSettings.g_ssao_draw;
 
             _deferredEnvironmentMapRenderModule.DrawEnvironmentMap(_graphicsDevice, camera, _view, _fullScreenTriangle, envSample, gameTime, GameSettings.g_SSReflection_FireflyReduction, GameSettings.g_SSReflection_FireflyThreshold);
 
@@ -1479,6 +1555,22 @@ namespace Engine.Renderer
                 GameSettings.g_screenwidth,
                 GameSettings.g_screenheight,
                 (float)(gameTime.TotalGameTime.TotalSeconds % 3600));
+        }
+
+        /// <summary>The froxel fog lookup of Common/FroxelFog.fx on any effect (the forward pass fogs transparents too).</summary>
+        private void ApplyFroxelFogParameters(EffectParameterCollection p, string useParameter)
+        {
+            Texture2D froxelAtlas = _froxelRenderModule?.FroxelAccumulation;
+            bool fogActive = GameSettings.g_FroxelsEnabled && GameSettings.g_FroxelFogEnabled && froxelAtlas != null;
+            p[useParameter]?.SetValue(fogActive);
+            if (!fogActive) return;
+            p["FroxelAccumulationTexture"]?.SetValue(froxelAtlas);
+            p["FroxelInjectionTexture"]?.SetValue(_froxelRenderModule.FroxelMedium);
+            p["InverseProjection"]?.SetValue(_inverseProjection);
+            p["NearClip"]?.SetValue(FroxelRenderModule.CameraNearPlane);
+            p["FarClip"]?.SetValue(_g_FarClip);
+            p["GridDimensions"]?.SetValue(new Vector3(FroxelRenderModule.FROXEL_GRID_X, FroxelRenderModule.FROXEL_GRID_Y, FroxelRenderModule.FROXEL_GRID_Z));
+            p["ScreenResolution"]?.SetValue(new Vector2(GameSettings.g_screenwidth, GameSettings.g_screenheight));
         }
 
         private void ApplyDeferredComposeFroxelParameters(bool withFog)
@@ -1567,8 +1659,26 @@ namespace Engine.Renderer
 
             _graphicsDevice.SetRenderTarget(input);
             ReconstructDepth();
-            
-            return _forwardRenderModule.Draw(_graphicsDevice, input, meshMaterialLibrary, _viewProjection, camera, pointLights, _boundingFrustum);
+
+            bool useProbes = _lighting?.GpuData != null && _lighting.ProbeData != null &&
+                             _lightingSettings != null && _lightingSettings.ProbeVolumeEnabled;
+            var context = new ForwardRenderModule.Context
+            {
+                Camera = camera,
+                Frustum = _boundingFrustum,
+                PointLights = pointLights,
+                DirectionalLights = _frameDirectionalLights,
+                GlobalProbe = _prefilteredGlobal,
+                BrdfLut = _environmentPrefilter.BrdfLut(_graphicsDevice),
+                LocalProbes = _reflectionProbes.Visible,
+                Lighting = useProbes ? _lighting : null,
+                LightingIntensity = (_lightingSettings?.Intensity ?? 1f) * _environmentSky.AmbientScale,
+                GlobalCapturePosition = _frameEnvSample?.Position ?? Vector3.Zero,
+                AmbientStrength = (_frameEnvSample?.DiffuseStrength ?? 0.2f) * 5,
+                ApplyFog = p => ApplyFroxelFogParameters(p, "UseFog"),
+                Resolution = new Vector2(GameSettings.g_screenwidth, GameSettings.g_screenheight),
+            };
+            return _forwardRenderModule.Draw(_graphicsDevice, input, meshMaterialLibrary, _viewProjection, context);
         }
 
         /// <summary>
@@ -1590,8 +1700,11 @@ namespace Engine.Renderer
 
         private RenderTarget2D DrawBloom(RenderTarget2D input)
         {
-            if (GameSettings.g_BloomEnable)
+            if (GameSettings.g_BloomEnable && GameSettings.g_BloomScale > 0)
             {
+                //Bloom Start is in exposed units: the exposure the tonemapper applies (last frame's auto exposure)
+                _bloomFilter.SetExposure(Shaders.PostProcessingParameter_PowExposure.GetValueSingle(),
+                    GameSettings.g_AutoExposure ? _autoExposureFilter.CurrentExposure : null);
                 Texture2D bloom = _bloomFilter.Draw(input, GameSettings.g_screenwidth,
                     GameSettings.g_screenheight);
                 
@@ -1602,7 +1715,7 @@ namespace Engine.Renderer
                 _spriteBatch.Draw(input,
                     new Rectangle(0, 0, GameSettings.g_screenwidth, GameSettings.g_screenheight), Color.White);
                 _spriteBatch.Draw(bloom, new Rectangle(0, 0, GameSettings.g_screenwidth, GameSettings.g_screenheight),
-                    Color.White);
+                    new Color(new Vector3(MathHelper.Clamp(GameSettings.g_BloomScale, 0, 1))));
 
                 _spriteBatch.End();
 
@@ -1626,7 +1739,7 @@ namespace Engine.Renderer
         public static void ApplySceneFog(EnvironmentSettings fog)
         {
             if (fog == null) return;
-            GameSettings.g_FroxelDensity = fog.FogDensity;
+            GameSettings.g_FroxelDensity = fog.FogDensity * GameSettings.g_FogDensityScale;
             GameSettings.g_FroxelAbsorption = fog.FogAbsorption;
             GameSettings.g_FroxelDirectionalScatter = fog.FogSunScatter;
             GameSettings.g_FroxelPointScatter = fog.FogLightScatter;
@@ -1637,6 +1750,148 @@ namespace Engine.Renderer
             GameSettings.g_FroxelNearDensity = fog.FogNearDensity;
             GameSettings.g_FroxelSkyFogStrength = fog.FogSkyStrength;
             GameSettings.g_FroxelSkyShaftDistance = fog.FogSkyShaftDistance;
+        }
+
+        /// <summary>
+        /// The scene's post processing (Anvil > Post Processing, EnvironmentSettings.Post, blended with Post Process
+        /// Volumes): copied into GameSettings, which the post passes read. Scripts change it through
+        /// ScriptBehaviour.SceneEnvironment.Post.
+        /// </summary>
+        public static void ApplyScenePost(PostProcessSettings post)
+        {
+            if (post == null) return;
+            GameSettings.g_TonemapCurve = post.Tonemap;
+            GameSettings.Exposure = post.Exposure;
+            GameSettings.WhitePoint = post.WhitePoint;
+            GameSettings.SCurveStrength = post.SCurveStrength;
+            GameSettings.g_ExactSrgb = post.ExactSrgb;
+            GameSettings.g_ColorGrading = post.ColorGrading;
+            GameSettings.g_LutPath = post.LutPath;
+            GameSettings.g_LutBlendPath = post.BlendLutPath;
+            GameSettings.g_LutBlend = post.LutBlend;
+            GameSettings.g_Saturation = post.Saturation;
+            GameSettings.g_Contrast = post.Contrast;
+            GameSettings.g_ColorFilter = post.ColorFilter.ToVector3().Pow(2.2f);
+            GameSettings.g_Vignette = post.Vignette;
+            if (GameSettings.ChromaticAbberationStrength != post.ChromaticAberration)
+                GameSettings.ChromaticAbberationStrength = post.ChromaticAberration;
+            GameSettings.g_AutoExposure = post.AutoExposure;
+            GameSettings.g_ExposureMetering = post.Metering;
+            GameSettings.g_AutoExposureKey = post.AutoExposureKey;
+            GameSettings.g_BrightPixelPercent = post.BrightPixelPercent;
+            GameSettings.g_BrightPixelTarget = post.BrightPixelTarget;
+            GameSettings.g_MinAverageLuminance = post.MinAverageLuminance;
+            GameSettings.g_AutoExposureMin = post.AutoExposureMin;
+            GameSettings.g_AutoExposureMax = post.AutoExposureMax;
+            GameSettings.g_AutoExposureSpeedDarkToLight = post.AdaptationSpeedUp;
+            GameSettings.g_AutoExposureSpeedLightToDark = post.AdaptationSpeedDown;
+            GameSettings.g_AutoExposureCenterWeight = post.CenterWeight;
+            GameSettings.g_BloomEnable = post.Bloom;
+            GameSettings.g_BloomStart = post.BloomStart;
+            GameSettings.g_BloomKnee = post.BloomKnee;
+            GameSettings.g_BloomScale = post.BloomScale;
+            GameSettings.g_FogDensityScale = post.FogDensityScale;
+            GameSettings.g_RetinaBurn = post.RetinaBurn;
+        }
+
+        //Colour lookup textures of post profiles (EnvironmentSettings.Post.LutPath), by content path; null = failed
+        private readonly Dictionary<string, Texture2D> _luts = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
+
+        //The two LUTs of a volume blend combined into one (Source 2 look, phase 5.2)
+        private RenderTarget2D _combinedLut;
+
+        private Texture2D CurrentLut()
+        {
+            Texture2D lut = LoadLut(GameSettings.g_LutPath);
+            if (GameSettings.g_LutBlendPath == null || GameSettings.g_LutBlend <= 0.001f) return lut;
+            Texture2D second = LoadLut(GameSettings.g_LutBlendPath);
+            if (second == lut || second.Width != lut.Width || second.Height != lut.Height) return GameSettings.g_LutBlend < 0.5f ? lut : second;
+            if (_combinedLut == null || _combinedLut.Width != lut.Width || _combinedLut.Height != lut.Height)
+            {
+                _combinedLut?.Dispose();
+            _retinaBurnEffect?.Dispose();
+            _occlusionCulling.Dispose();
+            _retinaBurnA?.Dispose();
+            _retinaBurnB?.Dispose();
+                _combinedLut = new RenderTarget2D(_graphicsDevice, lut.Width, lut.Height, false, SurfaceFormat.Color, DepthFormat.None);
+            }
+            _colorGradingFilter.Combine(_graphicsDevice, lut, second, GameSettings.g_LutBlend, _combinedLut, _fullScreenTriangle);
+            return _combinedLut;
+        }
+
+        private Texture2D LoadLut(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return _lut;
+            path = path.Replace('\\', '/');
+            int dot = path.LastIndexOf('.');
+            if (dot > path.LastIndexOf('/')) path = path.Substring(0, dot);
+            if (!_luts.TryGetValue(path, out Texture2D lut))
+            {
+                try { lut = Globals.content.Load<Texture2D>(path); }
+                catch (Exception e) { EditorBridge.Log("Post processing: can't load LUT '" + path + "': " + e.Message); lut = null; }
+                _luts[path] = lut;
+            }
+            return lut ?? _lut;
+        }
+
+        /// <summary>
+        /// Retina burn (Source 2 look, phase 5.3): what is far brighter than white leaves an afterimage that fades over
+        /// a second or two. Off (and cleared) while Post Processing > Retina Burn is 0.
+        /// </summary>
+        private void UpdateRetinaBurn(RenderTarget2D input, GameTime gameTime)
+        {
+            float strength = GameSettings.g_RetinaBurn;
+            Shaders.PostProcessing.Parameters["RetinaBurnStrength"]?.SetValue(strength);
+            if (strength <= 0)
+            {
+                _retinaBurnA?.Dispose(); _retinaBurnA = null;
+                _retinaBurnB?.Dispose(); _retinaBurnB = null;
+                return;
+            }
+            int w = Math.Max(GameSettings.g_screenwidth / 4, 1), h = Math.Max(GameSettings.g_screenheight / 4, 1);
+            if (_retinaBurnA == null || _retinaBurnA.Width != w || _retinaBurnA.Height != h)
+            {
+                _retinaBurnA?.Dispose(); _retinaBurnB?.Dispose();
+                _retinaBurnA = new RenderTarget2D(_graphicsDevice, w, h, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+                _retinaBurnB = new RenderTarget2D(_graphicsDevice, w, h, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+                foreach (RenderTarget2D rt in new[] { _retinaBurnA, _retinaBurnB })
+                {
+                    _graphicsDevice.SetRenderTarget(rt);
+                    _graphicsDevice.Clear(Color.Transparent);
+                }
+            }
+            RenderTarget2D previous = _retinaBurnFlip ? _retinaBurnA : _retinaBurnB;
+            RenderTarget2D output = _retinaBurnFlip ? _retinaBurnB : _retinaBurnA;
+            _retinaBurnFlip = !_retinaBurnFlip;
+
+            EffectParameterCollection p = _retinaBurnEffect.Parameters;
+            p["FrameTexture"]?.SetValue(input);
+            p["PreviousBurn"]?.SetValue(previous);
+            bool auto = GameSettings.g_AutoExposure && _autoExposureFilter.CurrentExposure != null;
+            p["AutoExposureEnabled"]?.SetValue(auto ? 1f : 0f);
+            if (auto) p["AutoExposureTexture"]?.SetValue(_autoExposureFilter.CurrentExposure);
+            p["PowExposure"]?.SetValue(Shaders.PostProcessingParameter_PowExposure.GetValueSingle());
+            p["DeltaTime"]?.SetValue(GameFlow.Paused ? 0f : MathHelper.Clamp((float)gameTime.ElapsedGameTime.TotalSeconds, 0, 0.1f));
+
+            _graphicsDevice.SetRenderTarget(output);
+            _graphicsDevice.BlendState = BlendState.Opaque;
+            _graphicsDevice.DepthStencilState = DepthStencilState.None;
+            _graphicsDevice.RasterizerState = RasterizerState.CullNone;
+            _retinaBurnEffect.Techniques["Burn"].Passes[0].Apply();
+            _fullScreenTriangle.Draw(_graphicsDevice);
+            p["PreviousBurn"]?.SetValue((Texture2D)null);
+
+            Shaders.PostProcessing.Parameters["RetinaBurnTexture"]?.SetValue(output);
+        }
+
+        /// <summary>The adapted auto exposure in EV (reads the GPU value back: for tools and checks, not per frame).</summary>
+        public float ReadAutoExposureEV()
+        {
+            Texture2D exposure = _autoExposureFilter?.CurrentExposure;
+            if (exposure == null || !GameSettings.g_AutoExposure) return 0;
+            var value = new float[1];
+            exposure.GetData(value);
+            return value[0];
         }
 
         /// <summary>
@@ -1749,6 +2004,15 @@ namespace Engine.Renderer
                 case RenderModes.HDR:
                         DrawMapToScreenToFullScreen(currentInput);
                     break;
+                case RenderModes.IndirectDiffuse:
+                    DrawDebugChannel(_renderTargetIndirect, 0);
+                    break;
+                case RenderModes.AmbientOcclusion:
+                    DrawDebugChannel(_renderTargetIndirect, 1);
+                    break;
+                case RenderModes.ShadowCascades:
+                    DrawDebugChannel(_renderTargetComposed, 2);
+                    break;
                 default:
                     DrawPostProcessing(currentInput);
                     break;
@@ -1781,6 +2045,13 @@ namespace Engine.Renderer
                 destinationRenderTarget = _renderTargetOutput;
 
                 Shaders.PostProcessingParameter_ScreenTexture.SetValue(currentInput);
+                EffectParameterCollection post = Shaders.PostProcessing.Parameters;
+                post["TonemapCurve"]?.SetValue((float)(int)GameSettings.g_TonemapCurve);
+                post["ExactSrgb"]?.SetValue(GameSettings.g_ExactSrgb ? 1f : 0f);
+                post["Saturation"]?.SetValue(GameSettings.g_Saturation);
+                post["Contrast"]?.SetValue(GameSettings.g_Contrast);
+                post["ColorFilter"]?.SetValue(GameSettings.g_ColorFilter);
+                post["VignetteStrength"]?.SetValue(GameSettings.g_Vignette);
                 _graphicsDevice.SetRenderTarget(destinationRenderTarget);
 
                 _graphicsDevice.DepthStencilState = DepthStencilState.Default;
@@ -1790,7 +2061,21 @@ namespace Engine.Renderer
                 _fullScreenTriangle.Draw(_graphicsDevice);
 
                 if(GameSettings.g_ColorGrading)
-                destinationRenderTarget = _colorGradingFilter.Draw(_graphicsDevice, destinationRenderTarget, _lut);
+                destinationRenderTarget = _colorGradingFilter.Draw(_graphicsDevice, destinationRenderTarget, CurrentLut());
+
+                //Without TAA: FXAA on the final image (Source 2 look, phase 1.6)
+                if (!GameSettings.g_taa && GameSettings.g_fxaa)
+                {
+                    _graphicsDevice.SetRenderTarget(_renderTargetFxaa);
+                    _graphicsDevice.BlendState = BlendState.Opaque;
+                    _graphicsDevice.DepthStencilState = DepthStencilState.None;
+                    _graphicsDevice.RasterizerState = RasterizerState.CullNone;
+                    _fxaaEffect.Parameters["ScreenTexture"].SetValue(destinationRenderTarget);
+                    _fxaaEffect.Parameters["InverseResolution"].SetValue(new Vector2(1f / destinationRenderTarget.Width, 1f / destinationRenderTarget.Height));
+                    _fxaaEffect.Techniques["Fxaa"].Passes[0].Apply();
+                    _fullScreenTriangle.Draw(_graphicsDevice);
+                    destinationRenderTarget = _renderTargetFxaa;
+                }
 
                 //Render features: After Post Processing (final LDR image)
                 _finalImage = DrawRenderFeatures(RenderFeatureEvent.AfterPostProcessing, destinationRenderTarget, inPlace: false);
@@ -1825,6 +2110,8 @@ namespace Engine.Renderer
             {
                 _renderTargetAlbedo.Dispose();
                 _renderTargetDecalOffTarget.Dispose();
+                _renderTargetVelocity.Dispose();
+                _renderTargetFxaa.Dispose();
                 _renderTargetDepth.Dispose();
                 _renderTargetNormal.Dispose();
                 _renderTargetComposed.Dispose();
@@ -1832,6 +2119,7 @@ namespace Engine.Renderer
                 _renderTargetDiffuse.Dispose();
                 _renderTargetSpecular.Dispose();
                 _renderTargetVolume.Dispose();
+                _renderTargetIndirect.Dispose();
                 _renderTargetOutput.Dispose();
                 //_renderTargetSSS.Dispose();
 
@@ -1872,9 +2160,16 @@ namespace Engine.Renderer
             //_renderTargetSSS = new RenderTarget2D(_graphicsDevice, targetWidth,
             //    targetHeight, false, SurfaceFormat.Color, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
 
+            _renderTargetVelocity = new RenderTarget2D(_graphicsDevice, targetWidth,
+                targetHeight, false, SurfaceFormat.HalfVector2, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
+
+            _renderTargetFxaa = new RenderTarget2D(_graphicsDevice, targetWidth,
+                targetHeight, false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
+
             _renderTargetBinding[0] = new RenderTargetBinding(_renderTargetAlbedo);
             _renderTargetBinding[1] = new RenderTargetBinding(_renderTargetNormal);
             _renderTargetBinding[2] = new RenderTargetBinding(_renderTargetDepth);
+            _renderTargetBinding[3] = new RenderTargetBinding(_renderTargetVelocity);
 
             _renderTargetDiffuse = new RenderTarget2D(_graphicsDevice, targetWidth,
                targetHeight, false, SurfaceFormat.HalfVector4, DepthFormat.Depth24Stencil8, 0, RenderTargetUsage.PreserveContents);
@@ -1890,6 +2185,12 @@ namespace Engine.Renderer
             _renderTargetLightBinding[0] = new RenderTargetBinding(_renderTargetDiffuse);
             _renderTargetLightBinding[1] = new RenderTargetBinding(_renderTargetSpecular);
             _renderTargetLightBinding[2] = new RenderTargetBinding(_renderTargetVolume);
+
+            _renderTargetIndirect = new RenderTarget2D(_graphicsDevice, targetWidth,
+               targetHeight, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
+            _renderTargetEnvironmentBinding[0] = new RenderTargetBinding(_renderTargetDiffuse);
+            _renderTargetEnvironmentBinding[1] = new RenderTargetBinding(_renderTargetSpecular);
+            _renderTargetEnvironmentBinding[2] = new RenderTargetBinding(_renderTargetIndirect);
 
             _renderTargetComposed = new RenderTarget2D(_graphicsDevice, targetWidth,
                targetHeight, false, SurfaceFormat.HalfVector4, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
@@ -1970,7 +2271,6 @@ namespace Engine.Renderer
             Shaders.deferredDirectionalLightParameter_DepthMap.SetValue(_renderTargetDepth);
             Shaders.deferredDirectionalLightParameter_NormalMap.SetValue(_renderTargetNormal);
 
-            Shaders.deferredDirectionalLightParameter_SSShadowMap.SetValue(onlyEssentials ? _renderTargetScreenSpaceEffectUpsampleBlurVertical : _renderTargetScreenSpaceEffectBlurFinal);
 
             _deferredEnvironmentMapRenderModule.AlbedoMap = _renderTargetAlbedo;
             _deferredEnvironmentMapRenderModule.NormalMap = _renderTargetNormal;
@@ -1990,7 +2290,8 @@ namespace Engine.Renderer
             Shaders.DeferredComposeEffectParameter_specularLightMap.SetValue(_renderTargetSpecular);
             // volumeLightMap is omitted from compiled DeferredCompose when unused in HLSL (parameter becomes null).
             Shaders.DeferredComposeEffectParameter_volumeLightMap?.SetValue(_renderTargetVolume);
-            Shaders.DeferredComposeEffectParameter_SSAOMap.SetValue(_renderTargetScreenSpaceEffectBlurFinal);
+            // SSAO darkens indirect light only: the environment pass reads it (Source 2 look, phase 1.2)
+            _deferredEnvironmentMapRenderModule.SSAOMap = _renderTargetScreenSpaceEffectBlurFinal;
             //Shaders.DeferredComposeEffectParameter_HologramMap.SetValue(_renderTargetHologram);
             // Shaders.DeferredComposeEffectParameter_SSRMap.SetValue(_renderTargetScreenSpaceEffectReflection);
 
@@ -2006,7 +2307,8 @@ namespace Engine.Renderer
             Shaders.EmissiveEffectParameter_DepthMap.SetValue(_renderTargetDepth);
             Shaders.EmissiveEffectParameter_NormalMap.SetValue(_renderTargetNormal);
 
-            _temporalAntialiasingRenderModule.DepthMap = _renderTargetDepth;  
+            _temporalAntialiasingRenderModule.DepthMap = _renderTargetDepth;
+            _temporalAntialiasingRenderModule.VelocityMap = _renderTargetVelocity;
         }
 
             #endregion
@@ -2024,6 +2326,24 @@ namespace Engine.Renderer
             _spriteBatch.Begin(0, BlendState.Opaque, SamplerState.PointClamp);
             _spriteBatch.Draw(map, new Rectangle(0, 0, map.Width, map.Height), Color.White);
             _spriteBatch.End();
+        }
+
+        /// <summary>
+        /// Full-screen debug view: 0 = a target's colour (tonemapped), 1 = its alpha, 2 = the lit image tinted by sun shadow cascade.
+        /// </summary>
+        private void DrawDebugChannel(Texture2D map, int view)
+        {
+            _graphicsDevice.SetRenderTarget(null);
+            _graphicsDevice.BlendState = BlendState.Opaque;
+            _graphicsDevice.DepthStencilState = DepthStencilState.None;
+            _graphicsDevice.RasterizerState = RasterizerState.CullNone;
+            _debugViewEffect.Parameters["InputTexture"]?.SetValue(map);
+            _debugViewEffect.Parameters["DepthMap"]?.SetValue(_renderTargetDepth);
+            _debugViewEffect.Parameters["FarClip"]?.SetValue(_g_FarClip);
+            _debugViewEffect.Parameters["CascadeEnds"]?.SetValue(_cascadeEnds);
+            _debugViewEffect.Parameters["CascadeCount"]?.SetValue((float)_cascadeCount);
+            _debugViewEffect.Techniques[view == 0 ? "Color" : view == 1 ? "Alpha" : "Cascades"].Passes[0].Apply();
+            _fullScreenTriangle.Draw(_graphicsDevice);
         }
 
         private void DrawMapToScreenToFullScreen(Texture2D map, BlendState blendState = null, RenderTarget2D output = null)
@@ -2094,14 +2414,20 @@ namespace Engine.Renderer
             _gridRenderModule?.Dispose();
             _particleRenderModule?.Dispose();
             _renderFeatureRenderModule?.Dispose();
+            _debugViewEffect?.Dispose();
+            _combinedLut?.Dispose();
             _assets?.Dispose();
             _renderTargetAlbedo?.Dispose();
             _renderTargetDepth?.Dispose();
             _renderTargetNormal?.Dispose();
             _renderTargetDecalOffTarget?.Dispose();
+            _renderTargetVelocity?.Dispose();
+            _renderTargetFxaa?.Dispose();
+            _fxaaEffect?.Dispose();
             _renderTargetDiffuse?.Dispose();
             _renderTargetSpecular?.Dispose();
             _renderTargetVolume?.Dispose();
+            _renderTargetIndirect?.Dispose();
             _renderTargetComposed?.Dispose();
             _renderTargetBloom?.Dispose();
             _renderTargetTAA_1?.Dispose();
@@ -2114,6 +2440,10 @@ namespace Engine.Renderer
             _renderTargetOutput?.Dispose();
             _currentOutput?.Dispose();
             _renderTargetCubeMap?.Dispose();
+            _prefilteredGlobal?.Dispose();
+            _environmentPrefilter?.Dispose();
+            _reflectionProbes.Dispose();
+            foreach (RenderTargetCube cube in _probeCaptureTargets.Values) cube.Dispose();
         }
     }
 

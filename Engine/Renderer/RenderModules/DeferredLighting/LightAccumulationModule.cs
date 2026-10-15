@@ -199,11 +199,12 @@ namespace Engine.Renderer.RenderModules
             if (!light.IsEnabled) return;
 
             //Unshadowed lights keep HasChanged set, so a moving light (day/night sun) updates under a still camera
-            if (_viewProjectionHasChanged || light.HasChanged)
+            //Cascades follow the camera, so their view space matrices change every frame the shadows were fitted
+            light.DirectionViewSpace = Vector3.Transform(light.Direction, _viewIT);
+            for (int i = 0; i < light.ActiveCascades; i++)
             {
-                light.DirectionViewSpace = Vector3.Transform(light.Direction, _viewIT);
-                light.LightViewProjection_ViewSpace = _inverseView * light.LightViewProjection;
-                light.LightView_ViewSpace = _inverseView*light.LightView;
+                light.CascadeViewProjectionVS[i] = _inverseView * light.CascadeViewProjection[i];
+                light.CascadeViewVS[i] = _inverseView * light.CascadeView[i];
             }
 
             Shaders.deferredDirectionalLightParameter_LightColor.SetValue(light.ColorV3);

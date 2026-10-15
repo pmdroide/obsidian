@@ -223,6 +223,9 @@ namespace Engine.Logic
                     castShadows: rec.CastShadows, isVolumetric: rec.IsVolumetric,
                     shadowResolution: rec.ShadowResolution, softShadowBlurAmount: rec.SoftShadowBlurAmount,
                     staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
+                pl.SourceRadius = rec.SourceRadius;
+                pl.SourceLength = rec.SourceLength;
+                if (rec.Rotation != Quaternion.Identity) pl.RotationMatrix = Matrix.CreateFromQuaternion(rec.Rotation);
                 pl.Name = rec.Name ?? pl.Name;
                 pl.IsEnabled = rec.IsEnabled;
                 ClaimId(pl, rec.Id);
@@ -236,6 +239,9 @@ namespace Engine.Logic
                     castShadows: rec.CastShadows, isVolumetric: rec.IsVolumetric,
                     shadowResolution: rec.ShadowResolution, softShadowBlurAmount: rec.SoftShadowBlurAmount,
                     staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
+                sl.SourceRadius = rec.SourceRadius;
+                sl.SourceLength = rec.SourceLength;
+                sl.CookiePath = rec.CookiePath;
                 sl.Name = rec.Name ?? sl.Name;
                 sl.IsEnabled = rec.IsEnabled;
                 ClaimId(sl, rec.Id);
@@ -249,6 +255,9 @@ namespace Engine.Logic
                     shadowResolution: rec.ShadowResolution,
                     shadowFiltering: (DirectionalLight.ShadowFilteringTypes)rec.ShadowFiltering,
                     screenspaceshadowblur: rec.ScreenSpaceShadowBlur);
+                dl.CascadeCount = rec.CascadeCount;
+                dl.ShadowDistance = rec.ShadowDistance;
+                dl.SplitLambda = rec.SplitLambda;
                 dl.Name = rec.Name ?? dl.Name;
                 dl.IsEnabled = rec.IsEnabled;
                 ClaimId(dl, rec.Id);
@@ -473,6 +482,7 @@ namespace Engine.Logic
                         StaticShadow = sl.StaticShadows, VolumetricDensity = sl.LightVolumeDensity,
                         Rotation = Quaternion.CreateFromRotationMatrix(sl.RotationMatrix),
                         SpotAngle = sl.SpotAngle, InnerSpotAngle = sl.InnerSpotAngle,
+                        SourceRadius = sl.SourceRadius, SourceLength = sl.SourceLength, CookiePath = sl.CookiePath,
                     });
                     continue;
                 }
@@ -483,6 +493,9 @@ namespace Engine.Logic
                     CastShadows = pl.CastShadows, IsVolumetric = pl.IsVolumetric,
                     ShadowResolution = pl.ShadowResolution, SoftShadowBlurAmount = pl.SoftShadowBlurAmount,
                     StaticShadow = pl.StaticShadows, VolumetricDensity = pl.LightVolumeDensity,
+                    SourceRadius = pl.SourceRadius, SourceLength = pl.SourceLength,
+                    // Point lights only rotate to aim a tube light
+                    Rotation = pl.SourceLength > 0 ? Quaternion.CreateFromRotationMatrix(pl.RotationMatrix) : Quaternion.Identity,
                 });
             }
 
@@ -496,6 +509,7 @@ namespace Engine.Logic
                     CastShadows = dl.CastShadows, ShadowSize = dl.ShadowSize,
                     ShadowDepth = dl.ShadowDepth, ShadowResolution = dl.ShadowResolution,
                     ShadowFiltering = (int)dl.ShadowFiltering, ScreenSpaceShadowBlur = dl.ScreenSpaceShadowBlur,
+                    CascadeCount = dl.CascadeCount, ShadowDistance = dl.ShadowDistance, SplitLambda = dl.SplitLambda,
                 });
             }
 
@@ -715,11 +729,17 @@ namespace Engine.Logic
             public int SoftShadowBlurAmount { get; set; }
             public bool StaticShadow { get; set; }
             public float VolumetricDensity { get; set; } = 1f;
+            // Light source shape (Source 2 look, phase 2.4): sphere radius and tube length in metres, 0 = a point.
+            public float SourceRadius { get; set; }
+            public float SourceLength { get; set; }
+            // The tube's axis (local X) for point lights; spot lights' cone.
+            public Quaternion Rotation { get; set; } = Quaternion.Identity;
         }
 
         public class SpotLightRecord : PointLightRecord
         {
-            public Quaternion Rotation { get; set; } = Quaternion.Identity;
+            // Light cookie, a Content texture path (phase 2.3); null = a plain cone.
+            public string CookiePath { get; set; }
             public float SpotAngle { get; set; } = 60f;
             public float InnerSpotAngle { get; set; } = 40f;
         }
@@ -739,6 +759,10 @@ namespace Engine.Logic
             public int ShadowResolution { get; set; } = 512;
             public int ShadowFiltering { get; set; }
             public bool ScreenSpaceShadowBlur { get; set; }
+            // Cascaded shadows (Source 2 look, phase 2.1). Missing in older scenes: the defaults.
+            public int CascadeCount { get; set; } = DirectionalLight.MaxCascades;
+            public float ShadowDistance { get; set; } = 150f;
+            public float SplitLambda { get; set; } = 0.75f;
         }
 
         public class DecalRecord

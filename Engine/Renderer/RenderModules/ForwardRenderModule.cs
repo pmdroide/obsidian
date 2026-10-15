@@ -1,61 +1,61 @@
-//#define SHOWTILES
-
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Engine.Entities;
-using Engine.Logic;
+using Engine.Recources;
 using Engine.Renderer.Helper;
+using Engine.Renderer.Lighting;
 using Engine.Renderer.RenderModules.Default;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using DirectionalLight = Engine.Entities.DirectionalLight;
 
 namespace Engine.Renderer.RenderModules
 {
+    /// <summary>
+    /// Forward shaded materials (glass, transparent plastics: MaterialTypes.ForwardShaded), lit like the deferred path
+    /// (Source 2 look, Docs/Research/Source2Look phase 3.4): their own colour/texture, roughness and metalness, the sun
+    /// with cascaded shadows, the <see cref="MaxLights"/> most important point and spot lights, the probe volume and
+    /// reflection probes, and the froxel fog. Drawn premultiplied over the composed image.
+    /// </summary>
     public class ForwardRenderModule : IRenderModule, IDisposable
     {
-        private const int MAXLIGHTS = 40;
-        private const int MAXLIGHTSPERTILE = 40;
+        public const int MaxLights = 40;
+
+        /// <summary>What the forward pass reads from the rest of the frame.</summary>
+        public struct Context
+        {
+            public Camera Camera;
+            public BoundingFrustum Frustum;
+            public List<PointLight> PointLights;
+            public List<DirectionalLight> DirectionalLights;
+            public TextureCube GlobalProbe;
+            public Texture2D BrdfLut;
+            public IReadOnlyList<ReflectionProbes.Probe> LocalProbes;
+            public LightingSystem Lighting;
+            public float LightingIntensity;
+            public Vector3 GlobalCapturePosition;
+            public float AmbientStrength;
+            /// <summary>Sets the froxel fog parameters (Common/FroxelFog.fx) on the effect, or disables the fog.</summary>
+            public Action<EffectParameterCollection> ApplyFog;
+            public Vector2 Resolution;
+        }
 
         private Effect _shader;
-        
+        private EffectPass _pass;
+
         private EffectParameter _worldParam;
         private EffectParameter _worldViewProjParam;
         private EffectParameter _worldViewITParam;
 
-        private EffectParameter _lightAmountParam;
-
-        private EffectParameter _lightPositionWSParam;
-        private EffectParameter _lightRadiusParam;
-        private EffectParameter _lightIntensityParam;
-        private EffectParameter _lightColorParam;
-        private EffectParameter _lightSpotDirectionParam;
-        private EffectParameter _lightSpotCosParam;
-
-        private EffectParameter _tiledListLengthParam;
-
-        private EffectParameter _cameraPositionWSParam;
-
-        private Vector3[] LightPositionWS;
-        private float[] LightRadius;
-        private float[] LightIntensity;
-        private Vector3[] LightColor;
-        private Vector3[] LightSpotDirectionWS;
-        private Vector2[] LightSpotCos;
-
-        private int[][] TiledList;
-        private float[] TiledListLength;
-        private BoundingFrustumEx _tileFrustum;
-        private Vector3[] _tileFrustumCorners = new Vector3[8];
-
-        private EffectPass _pass1;
-        
-        public Matrix World { set { _worldParam.SetValue(value); } }
-        public Matrix WorldViewProj { set { _worldViewProjParam.SetValue(value); } }
-        public Matrix WorldViewIT { set { _worldViewITParam.SetValue(value); } }
+        private readonly Vector3[] _lightPositionWS = new Vector3[MaxLights];
+        private readonly float[] _lightRadius = new float[MaxLights];
+        private readonly float[] _lightIntensity = new float[MaxLights];
+        private readonly Vector3[] _lightColor = new Vector3[MaxLights];
+        private readonly Vector3[] _lightSpotDirectionWS = new Vector3[MaxLights];
+        private readonly Vector2[] _lightSpotCos = new Vector2[MaxLights];
+        private readonly float[] _lightSourceRadius = new float[MaxLights];
+        private readonly List<(PointLight Light, float Score)> _ranked = new List<(PointLight, float)>();
 
         public ForwardRenderModule(ContentManager content, string shaderPath)
         {
@@ -68,208 +68,121 @@ namespace Engine.Renderer.RenderModules
             _worldParam = _shader.Parameters["World"];
             _worldViewProjParam = _shader.Parameters["WorldViewProj"];
             _worldViewITParam = _shader.Parameters["WorldViewIT"];
-
-            _lightAmountParam = _shader.Parameters["LightAmount"];
-            
-            _lightPositionWSParam = _shader.Parameters["LightPositionWS"];
-            _lightRadiusParam = _shader.Parameters["LightRadius"];
-            _lightIntensityParam = _shader.Parameters["LightIntensity"];
-            _lightColorParam = _shader.Parameters["LightColor"];
-            _lightSpotDirectionParam = _shader.Parameters["LightSpotDirectionWS"];
-            _lightSpotCosParam = _shader.Parameters["LightSpotCos"];
-
-            _tiledListLengthParam = _shader.Parameters["TiledListLength"];
-
-            _cameraPositionWSParam = _shader.Parameters["CameraPositionWS"];
-
-            _pass1 = _shader.Techniques["Default"].Passes[0];
+            _pass = _shader.Techniques["Default"].Passes[0];
         }
 
         public void Load(ContentManager content, string shaderPath)
         {
             _shader = content.Load<Effect>(shaderPath);
-
         }
 
-        /// <summary>
-        /// Draw forward shaded, alpha blended materials. Very basic and unoptimized algorithm. Can be improved to use tiling in future.
-        /// </summary>
-        /// <param name="graphicsDevice"></param>
-        /// <param name="output"></param>
-        /// <param name="meshMat"></param>
-        /// <param name="viewProjection"></param>
-        /// <param name="camera"></param>
-        /// <param name="pointLights"></param>
-        /// <param name="frustum"></param>
-        /// <returns></returns>
-        public RenderTarget2D Draw(GraphicsDevice graphicsDevice, RenderTarget2D output, MeshMaterialLibrary meshMat, Matrix viewProjection, Camera camera, List<PointLight> pointLights, BoundingFrustum frustum)
+        /// <summary>Draws the forward shaded materials into <paramref name="output"/> (its depth must hold the opaque scene).</summary>
+        public RenderTarget2D Draw(GraphicsDevice graphicsDevice, RenderTarget2D output, MeshMaterialLibrary meshMat, Matrix viewProjection, Context context)
         {
             graphicsDevice.DepthStencilState = DepthStencilState.Default;
 
-            SetupLighting(camera, pointLights, frustum);
+            EffectParameterCollection p = _shader.Parameters;
+            p["CameraPositionWS"]?.SetValue(context.Camera.Position);
+            p["CameraForwardWS"]?.SetValue(Vector3.Normalize(context.Camera.Forward));
+            p["Resolution"]?.SetValue(context.Resolution);
+            p["AmbientStrength"]?.SetValue(context.AmbientStrength);
 
-            //Draw Frustum debug test
-            //Matrix view = Matrix.CreateLookAt(new Vector3(-88, -11f, 4), new Vector3(38, 8, 32), Vector3.UnitZ);
-            //Matrix projection = Matrix.CreatePerspectiveFieldOfView((float)(Math.PI / 2), 1.6f, 1, 100);
-            //BoundingFrustumEx frustum2 = new BoundingFrustumEx(view * projection);
-            //LineHelperManager.AddFrustum(frustum2, 1, Color.Red);
-
-            //Vector3[] corners = frustum.GetCorners();
-            //BoundingFrustumEx frustum3 = new BoundingFrustumEx(ref corners);
-            
-            //TiledLighting(frustum, pointLights, 20, 10);
+            SetupLights(context);
+            SetupSun(context.DirectionalLights);
+            ImageBasedLightingParameters.ApplyGlobal(p, context.GlobalProbe, context.BrdfLut);
+            ImageBasedLightingParameters.ApplyProbeVolume(p, context.Lighting, context.LightingIntensity, context.GlobalCapturePosition);
+            ImageBasedLightingParameters.ApplyLocalProbes(p, context.LocalProbes, context.Lighting?.GpuData != null && context.Lighting.ProbeData != null ? context.Lighting.GpuData : null);
+            if (context.ApplyFog != null) context.ApplyFog(p);
+            else p["UseFog"]?.SetValue(false);
 
             meshMat.Draw(MeshMaterialLibrary.RenderType.Forward, viewProjection, renderModule: this);
-
             return output;
         }
 
-        private void TiledLighting(BoundingFrustum frustum, List<PointLight> pointLights, int cols, int rows)
+        /// <summary>Ranks the visible point/spot lights by brightness reaching the camera, keeps the first <see cref="MaxLights"/>.</summary>
+        private void SetupLights(Context context)
         {
-            if (TiledList == null || TiledList.Length != cols * rows)
+            _ranked.Clear();
+            List<PointLight> lights = context.PointLights;
+            Vector3 camera = context.Camera.Position;
+            if (lights != null)
             {
-                TiledList = new int[cols*rows][];
-                TiledListLength = new float[cols*rows];
-
-                for (var index = 0; index < TiledList.Length; index++)
+                foreach (PointLight light in lights)
                 {
-                    TiledList[index] = new int[MAXLIGHTSPERTILE];
+                    if (!light.IsEnabled || light.Intensity <= 0 || light.Radius <= 0) continue;
+                    if (context.Frustum != null && context.Frustum.Contains(light.BoundingSphere) == ContainmentType.Disjoint) continue;
+                    Vector3 color = light.ColorV3 * light.Intensity;
+                    float brightness = 0.2126f * color.X + 0.7152f * color.Y + 0.0722f * color.Z;
+                    float reach = light.Radius / Math.Max(Vector3.Distance(camera, light.Position), light.Radius * 0.25f);
+                    _ranked.Add((light, brightness * reach * reach));
                 }
             }
-            
-            if(_tileFrustum==null)
-                _tileFrustum = new BoundingFrustumEx(frustum.Matrix);
+            _ranked.Sort((a, b) => b.Score.CompareTo(a.Score));
 
-            Vector3[] mainfrustumCorners = frustum.GetCorners();
-            
-            for (float col = 0; col < cols; col++)
+            int count = Math.Min(_ranked.Count, MaxLights);
+            for (int i = 0; i < count; i++)
             {
-                for (float row = 0; row < rows; row++)
-                {
-
-                    //top left
-                    _tileFrustumCorners[0] = mainfrustumCorners[0] 
-                        + (mainfrustumCorners[1]-mainfrustumCorners[0]) * col / cols 
-                        + (mainfrustumCorners[3] - mainfrustumCorners[0]) * row / rows;
-
-                    //top right
-                    _tileFrustumCorners[1] = mainfrustumCorners[0] 
-                        + (mainfrustumCorners[1] - mainfrustumCorners[0]) * (col + 1) / cols
-                        + (mainfrustumCorners[3] - mainfrustumCorners[0]) * row / rows; 
-
-
-                    //bot right
-                    _tileFrustumCorners[2] = mainfrustumCorners[0] 
-                        + (mainfrustumCorners[1] - mainfrustumCorners[0]) * (col + 1) / cols
-                        + (mainfrustumCorners[2] - mainfrustumCorners[1]) * (row + 1) / rows;
-
-                    //bot left
-                    _tileFrustumCorners[3] = mainfrustumCorners[0]
-                        + (mainfrustumCorners[1] - mainfrustumCorners[0]) * (col) / cols
-                        + (mainfrustumCorners[2] - mainfrustumCorners[1]) * (row + 1) / rows;
-                    
-                    _tileFrustumCorners[4] = mainfrustumCorners[4]
-                                             + (mainfrustumCorners[5] - mainfrustumCorners[4]) * col / cols
-                                             + (mainfrustumCorners[7] - mainfrustumCorners[4]) * row / rows;
-                    
-                    _tileFrustumCorners[5] = mainfrustumCorners[4]
-                                             + (mainfrustumCorners[5] - mainfrustumCorners[4]) * (col + 1) / cols
-                                             + (mainfrustumCorners[7] - mainfrustumCorners[4]) * row / rows;
-
-                    
-                    _tileFrustumCorners[6] = mainfrustumCorners[4]
-                                             + (mainfrustumCorners[5] - mainfrustumCorners[4]) * (col + 1) / cols
-                                             + (mainfrustumCorners[6] - mainfrustumCorners[5]) * (row + 1) / rows;
-                    
-                    _tileFrustumCorners[7] = mainfrustumCorners[4]
-                                             + (mainfrustumCorners[5] - mainfrustumCorners[4]) * (col) / cols
-                                             + (mainfrustumCorners[6] - mainfrustumCorners[5]) * (row + 1) / rows;
-                    
-                    _tileFrustum.SetCorners(ref _tileFrustumCorners);
-                    _tileFrustum.CreatePlanesFromCorners();
-
-                    //Now we are ready to frustum cull... phew
-
-                    int index = (int)(row * cols + col);
-
-                    int numberOfLightsInTile = 0;
-
-                    for (var i = 0; i < pointLights.Count; i++)
-                    {
-                        var pointLight = pointLights[i];
-                        ContainmentType containmentType = _tileFrustum.Contains(pointLight.BoundingSphere);
-
-                        if (containmentType == ContainmentType.Intersects ||
-                            containmentType == ContainmentType.Contains)
-                        {
-                            TiledList[index][numberOfLightsInTile] = i;
-                            numberOfLightsInTile++;
-                        }
-
-                        if (numberOfLightsInTile >= MAXLIGHTSPERTILE) break;
-                    }
-
-                    TiledListLength[index] = numberOfLightsInTile;
-
-#if SHOWTILES
-                    LineHelperManager.AddFrustum(_tileFrustum, 1,numberOfLightsInTile > 1 ? Color.Red : numberOfLightsInTile > 0 ? Color.Blue : Color.Green);
-#endif
-                }
-            }
-
-            //Note: This needs a custom monogame version, since the default doesn't like to pass int[];
-            _tiledListLengthParam.SetValue(TiledListLength);
-        }
-
-        private void SetupLighting(Camera camera, List<PointLight> pointLights, BoundingFrustum frustum)
-        {
-            //Setup camera
-            _cameraPositionWSParam.SetValue(camera.Position);
-
-            int count = pointLights.Count > 40 ? MAXLIGHTS : pointLights.Count;
-
-            //Only when the (clamped) count changes: particle Lights modules change it from frame to frame
-            if (LightPositionWS == null || count != LightPositionWS.Length)
-            {
-                LightPositionWS = new Vector3[count];
-                LightColor = new Vector3[count];
-                LightIntensity = new float[count];
-                LightRadius = new float[count];
-                LightSpotDirectionWS = new Vector3[count];
-                LightSpotCos = new Vector2[count];
-            }
-
-            //Fill
-            int lightsInBounds = 0;
-
-            for (var index = 0; index < count; index++)
-            {
-                PointLight light = pointLights[index];
-                
-                //Check frustum culling
-                if (frustum.Contains(light.BoundingSphere) == ContainmentType.Disjoint) continue;
-                
-                LightPositionWS[lightsInBounds] = light.Position;
-                LightColor[lightsInBounds] = light.ColorV3;
-                LightIntensity[lightsInBounds] = light.Intensity;
-                LightRadius[lightsInBounds] = light.Radius;
-                //Point lights: outer cosine -2 lights every direction (see SpotConeFactor in Forward.fx)
+                PointLight light = _ranked[i].Light;
+                _lightPositionWS[i] = light.Position;
+                _lightColor[i] = light.ColorV3;
+                _lightIntensity[i] = light.Intensity;
+                _lightRadius[i] = light.Radius;
+                _lightSourceRadius[i] = light.SourceRadius;
+                //Point lights: outer cosine -2 lights every direction
                 SpotLight spot = light as SpotLight;
-                LightSpotDirectionWS[lightsInBounds] = spot?.Direction ?? Vector3.UnitZ;
-                LightSpotCos[lightsInBounds] = spot != null ? new Vector2(spot.CosOuter, spot.CosInner) : new Vector2(-2, -1);
-                lightsInBounds++;
+                _lightSpotDirectionWS[i] = spot?.Direction ?? Vector3.UnitZ;
+                _lightSpotCos[i] = spot != null ? new Vector2(spot.CosOuter, spot.CosInner) : new Vector2(-2, -1);
             }
 
-            _lightAmountParam.SetValue(lightsInBounds);
-
-            _lightPositionWSParam.SetValue(LightPositionWS);
-            _lightColorParam.SetValue(LightColor);
-            _lightIntensityParam.SetValue(LightIntensity);
-            _lightRadiusParam.SetValue(LightRadius);
-            _lightSpotDirectionParam?.SetValue(LightSpotDirectionWS);
-            _lightSpotCosParam?.SetValue(LightSpotCos);
+            EffectParameterCollection p = _shader.Parameters;
+            p["LightAmount"]?.SetValue(count);
+            p["LightPositionWS"]?.SetValue(_lightPositionWS);
+            p["LightColor"]?.SetValue(_lightColor);
+            p["LightIntensity"]?.SetValue(_lightIntensity);
+            p["LightRadius"]?.SetValue(_lightRadius);
+            p["LightSpotDirectionWS"]?.SetValue(_lightSpotDirectionWS);
+            p["LightSpotCos"]?.SetValue(_lightSpotCos);
+            p["LightSourceRadius"]?.SetValue(_lightSourceRadius);
         }
-        
+
+        /// <summary>The first enabled sun, with its cascades when it casts shadows.</summary>
+        private void SetupSun(List<DirectionalLight> suns)
+        {
+            EffectParameterCollection p = _shader.Parameters;
+            DirectionalLight sun = null;
+            if (suns != null)
+                foreach (DirectionalLight light in suns)
+                    if (light.IsEnabled) { sun = light; break; }
+
+            p["UseSun"]?.SetValue(sun != null);
+            if (sun == null) return;
+            p["SunDirection"]?.SetValue(Vector3.Normalize(sun.Direction));
+            p["SunColor"]?.SetValue(sun.ColorV3 * sun.Intensity);
+            bool shadowed = sun.CastShadows && sun.ShadowMap != null && sun.ActiveCascades > 0;
+            p["SunCascadeCount"]?.SetValue(shadowed ? (float)sun.ActiveCascades : 0f);
+            if (!shadowed) return;
+            p["SunCascadeViewProjection"]?.SetValue(sun.CascadeViewProjection);
+            p["SunCascadeView"]?.SetValue(sun.CascadeView);
+            p["SunCascadeEnds"]?.SetValue(sun.CascadeEnds);
+            p["SunCascadeFarClip"]?.SetValue(sun.CascadeFarClip);
+            p["SunCascadeTexelSize"]?.SetValue(sun.CascadeTexelSize);
+            p["SunShadowMapSize"]?.SetValue((float)sun.CascadeResolution);
+            p["SunShadowMap"]?.SetValue(sun.ShadowMap);
+        }
+
+        /// <summary>The material's surface (MeshMaterialLibrary calls it per material).</summary>
+        public void SetMaterialSettings(MaterialEffect material)
+        {
+            EffectParameterCollection p = _shader.Parameters;
+            bool hasAlbedo = material.HasDiffuse && material.AlbedoMap != null;
+            p["DiffuseColor"]?.SetValue(material.DiffuseColor);
+            p["Roughness"]?.SetValue(material.Roughness);
+            p["Metallic"]?.SetValue(material.Metallic);
+            p["Opacity"]?.SetValue(MathHelper.Clamp(material.Opacity, 0, 1));
+            p["HasAlbedo"]?.SetValue(hasAlbedo);
+            if (hasAlbedo) p["AlbedoMap"]?.SetValue(material.AlbedoMap);
+            p["TextureTiling"]?.SetValue(material.TextureTiling);
+        }
 
         public void Dispose()
         {
@@ -278,16 +191,10 @@ namespace Engine.Renderer.RenderModules
 
         public void Apply(Matrix localWorldMatrix, Matrix? view, Matrix viewProjection)
         {
-            //Matrix worldView = localWorldMatrix * (Matrix)view;
-            World = localWorldMatrix;
-            WorldViewProj = localWorldMatrix * viewProjection;
-            WorldViewIT = Matrix.Transpose( Matrix.Invert(localWorldMatrix));
-
-            _pass1.Apply();
-            //_WorldViewProj.SetValue(localWorldMatrix * viewProjection);
-
-            //worldView = Matrix.Transpose(Matrix.Invert(worldView));
-            //_WorldViewIT.SetValue(worldView);
+            _worldParam.SetValue(localWorldMatrix);
+            _worldViewProjParam.SetValue(localWorldMatrix * viewProjection);
+            _worldViewITParam.SetValue(Matrix.Transpose(Matrix.Invert(localWorldMatrix)));
+            _pass.Apply();
         }
     }
 }

@@ -374,6 +374,10 @@ namespace Engine.Entities
         public Vector3 Scale;
 
         public Matrix World;
+        // World of the previous frame (motion vectors for TAA); valid once HasPrevious, kept by
+        // MeshMaterialLibrary.FrustumCullingFinalizeFrame at the end of every frame.
+        public Matrix PreviousWorld;
+        public bool HasPrevious;
 
         // Posed vertex buffers (Animator component) drawn in place of the shared mesh's; null = static.
         public Animation.SkinnedMeshInstance Skin;

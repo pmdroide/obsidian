@@ -40,6 +40,39 @@ float3 spotDirection = float3(0, 0, -1);
 float spotCosOuter = -2;
 float spotCosInner = -1;
 
+//Spot light cookie (Source 2: lightcookie): projected along the cone, spotRight/spotUp = its u/v axes (view space)
+bool UseCookie = false;
+Texture2D CookieTexture;
+float3 spotRight = float3(1, 0, 0);
+float3 spotUp = float3(0, 1, 0);
+float spotTanOuter = 1;
+SamplerState CookieSampler
+{
+	Texture = (CookieTexture);
+	AddressU = CLAMP;
+	AddressV = CLAMP;
+	MagFilter = LINEAR;
+	MinFilter = LINEAR;
+	Mipfilter = LINEAR;
+};
+
+//The cookie's colour for a unit vector from the light towards the shaded point
+float3 CookieColor(float3 lightToSurface)
+{
+	[branch]
+	if (!UseCookie) return 1;
+	float forward = dot(lightToSurface, spotDirection);
+	if (forward <= 0.001f) return 0;
+	float2 uv = float2(dot(lightToSurface, spotRight), dot(lightToSurface, spotUp)) / (forward * spotTanOuter);
+	uv = uv * 0.5f + 0.5f;
+	return CookieTexture.SampleLevel(CookieSampler, float2(uv.x, 1 - uv.y), 0).rgb;
+}
+
+//Light source shape (2.4): sphere radius and tube half length along lightAxis (view space), 0 = point source
+float lightSourceRadius = 0;
+float lightSourceLength = 0;
+float3 lightAxis = float3(1, 0, 0);
+
 float ShadowMapSize = 512;
 float ShadowMapRadius = 3;
 float DepthBias = 0.02;
@@ -69,7 +102,12 @@ SamplerState PointSampler
     Mipfilter = POINT;
 };
 
+//The shadow atlas of every point and spot light (ShadowMapRenderModule): this light's cube faces are square tiles,
+//ShadowTiles[face] = (x, y, size, 1 = in use) in atlas texels. Faces a spot light doesn't need are lit.
 Texture2D ShadowMap;
+float4 ShadowTiles[6];
+//0..1: shadows fade out with distance from the camera (ShadowMapRenderModule)
+float ShadowStrength = 1;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
@@ -156,123 +194,67 @@ float SpotConeFactor(float3 lightToSurface);
 		return t * t;
 	}
 
+	//Diffuse and specular of this light at a G-buffer pixel, before shadows. lightVector = surface to light centre (view space).
+	void ShadeLight(in int3 texCoordInt, in float distanceToLight, in float3 lightVector, in float3 cameraDirection,
+		out float3 diffuseOutput, out float3 specularOutput, out float NdL)
+	{
+		float4 normalData = NormalMap.Load(texCoordInt);
+		float3 normal = decode(normalData.xyz);
+		float roughness = normalData.a;
+		float4 color = AlbedoMap.Load(texCoordInt);
+		float metalness = decodeMetalness(normalData.b);
+		float3 f0 = GetF0(AlbedoToLinear(color.rgb), metalness);
+
+		float attenuation = LightAttenuation(distanceToLight, lightRadius, lightSourceRadius);
+		float3 l = lightVector / distanceToLight;
+		attenuation *= SpotConeFactor(-l);
+		NdL = saturate(dot(normal, l));
+
+		//Sphere / tube lights: the highlight comes from the point of the light closest to the reflection ray
+		float3 r = reflect(-cameraDirection, normal);
+		float normalizationScale;
+		float3 ls = normalize(AreaLightSpecularVector(lightVector, r, lightSourceRadius, lightSourceLength, lightAxis,
+			roughness, normalizationScale));
+
+		EvaluateLightSplit(normal, l, ls, cameraDirection, lightColor * CookieColor(-l) * lightIntensity * attenuation, f0, roughness,
+			normalizationScale, diffuseOutput, specularOutput);
+		diffuseOutput *= OUTPUTCONST;
+		specularOutput *= OUTPUTCONST;
+	}
+
 	void LightingCalculation(in int3 texCoordInt, in float distanceToLight, in float3 lightVector, in float3 cameraDirection, inout float3 diffuseOutput, inout float3 specularOutput)
 	{
-		//get normal data from the NormalMap
-		float4 normalData = NormalMap.Load(texCoordInt);
-		//tranform normal back into [-1,1] range
-		float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
-												//get metalness
-		float roughness = normalData.a;
-		//get specular intensity from the AlbedoMap
-		float4 color = AlbedoMap.Load(texCoordInt);
-
-		float metalness = decodeMetalness(normalData.b);
-
-		float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
-
-		//compute attenuation based on distance - linear attenuation
-		//float attenuation = saturate(1.0f - distanceLtoR / lightRadius);
-		float relativeDistance = distanceToLight / lightRadius; //normalized
-		float denominator = (4 * relativeDistance + 1);
-
-		float attenuation = saturate(1 / (denominator*denominator) - 0.04*relativeDistance);
-
-		//normalize light vector
-		lightVector /= distanceToLight;
-		attenuation *= SpotConeFactor(-lightVector);
-
-		float NdL = saturate(dot(normal, lightVector));
-		float3 diffuseLight = 0;
-		[branch]
-		if (metalness < 0.99)
-		{
-			diffuseLight = DiffuseOrenNayar(NdL, normal, lightVector, cameraDirection, lightIntensity, lightColor, roughness); //NdL * lightColor.rgb;
-		}
-		float3 specular = SpecularCookTorrance(NdL, normal, lightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
-		diffuseOutput = (attenuation * diffuseLight * (1 - f0)) * OUTPUTCONST;
-		specularOutput = specular * attenuation * OUTPUTCONST;
+		float NdL;
+		ShadeLight(texCoordInt, distanceToLight, lightVector, cameraDirection, diffuseOutput, specularOutput, NdL);
 	}
 
 	void LightingShadowedCalculation(in int3 texCoordInt, in float distanceToLight, in float3 lightVector, in float3 cameraDirection, inout float3 diffuseOutput, inout float3 specularOutput)
 	{
-		float4 normalData = NormalMap.Load(texCoordInt);
-		//tranform normal back into [-1,1] range
-		float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
-												//get metalness
-		float roughness = normalData.a;
-		//get specular intensity from the AlbedoMap
-		float4 color = AlbedoMap.Load(texCoordInt);
+		float NdL;
+		ShadeLight(texCoordInt, distanceToLight, lightVector, cameraDirection, diffuseOutput, specularOutput, NdL);
 
-		float metalness = decodeMetalness(normalData.b);
+		float relativeDistance = distanceToLight / lightRadius;
+		float3 lightVectorWS = -mul(float4(lightVector / distanceToLight, 0), InverseView).xyz;
+		float shadowFactor = distanceToLight < lightRadius ? CalcShadowTermPCF(relativeDistance, NdL, lightVectorWS) : 0;
+		shadowFactor = lerp(1, shadowFactor, ShadowStrength);
 
-		float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
-
-		//compute attenuation based on distance - linear attenuation
-		//float attenuation = saturate(1.0f - distanceLtoR / lightRadius);
-		float relativeDistance = distanceToLight / lightRadius; //normalized
-		float denominator = (4 * relativeDistance + 1);
-
-		float attenuation = saturate(1 / (denominator*denominator) - 0.04*relativeDistance);
-
-		//normalize light vector
-		lightVector /= distanceToLight;
-		attenuation *= SpotConeFactor(-lightVector);
-		//compute diffuse light
-		float NdL = saturate(dot(normal, lightVector));
-		float3 lightVectorWS = -mul(float4(lightVector, 0), InverseView).xyz;
-
-		float shadowFactor = CalcShadowTermPCF(relativeDistance, NdL, lightVectorWS);
-
-		float3 diffuseLight = float3(0, 0, 0);
-		float3 specular = float3(0, 0, 0);
-
-		[branch]
-		if (shadowFactor > 0.01f && distanceToLight < lightRadius)
-		{
-			[branch]
-			if (metalness < 0.99)
-			{
-				diffuseLight = DiffuseOrenNayar(NdL, normal, lightVector, cameraDirection, lightIntensity, lightColor, roughness); //NdL * lightColor.rgb;
-			}
-			specular = SpecularCookTorrance(NdL, normal, lightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
-		}
-		diffuseOutput = (attenuation * diffuseLight * (1 - f0)) *shadowFactor * OUTPUTCONST;
-		specularOutput = specular * attenuation * shadowFactor* OUTPUTCONST;
+		diffuseOutput *= shadowFactor;
+		specularOutput *= shadowFactor;
 	}
 
 	void LightingSDFCalculation(in float3 posVS, in int3 texCoordInt, in float distanceToLight, in float3 lightVector, in float3 cameraDirection, inout float3 diffuseOutput, inout float3 specularOutput)
 	{
 		float4 normalData = NormalMap.Load(texCoordInt);
-		//tranform normal back into [-1,1] range
-		float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
-												//get metalness
-		float roughness = normalData.a;
-		//get specular intensity from the AlbedoMap
 		float4 color = AlbedoMap.Load(texCoordInt);
 
-		float metalness = decodeMetalness(normalData.b);
-
-		float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
-
-		//compute attenuation based on distance - linear attenuation
-		//float attenuation = saturate(1.0f - distanceLtoR / lightRadius);
-		float relativeDistance = distanceToLight / lightRadius; //normalized
-		float denominator = (4 * relativeDistance + 1);
-
-		float attenuation = saturate(1 / (denominator*denominator) - 0.04*relativeDistance);
-
-		//normalize light vector
-		lightVector /= distanceToLight;
-		attenuation *= SpotConeFactor(-lightVector);
-		//compute diffuse light
-		float NdL = saturate(dot(normal, lightVector));
-
+		float NdL;
+		ShadeLight(texCoordInt, distanceToLight, lightVector, cameraDirection, diffuseOutput, specularOutput, NdL);
+		float attenuation = LightAttenuation(distanceToLight, lightRadius, lightSourceRadius) * SpotConeFactor(-lightVector / distanceToLight);
 
 		float3 positionWS = mul(float4(posVS, 1), InverseView).xyz;
 		float3 lightWS = mul(float4(lightPosition, 1), InverseView).xyz;
 
-		float shadowFactor = 0;//should be
+		float shadowFactor = 0;
 		float4 sss = 0;
 
 		bool hasSubsurfaceScattering = abs(decodeMattype(normalData.b) - 4.0) < 0.01f;
@@ -283,54 +265,37 @@ float SpotConeFactor(float3 lightToSurface);
 			float3 exitpoint = 0;
 			sss.rgb = Subsurface(positionWS, lightWS, distance(positionWS, lightWS), exitpoint);
 			sss.rgb = saturate(1 - sss.rgb / ShadowMapRadius) * 0.05f;
-
 			sss.a = max(max(sss.r, sss.g), sss.b);
-
 			positionWS = exitpoint;
 		}
 
 		[branch]
 		if (NdL > 0 || sss.a > 0)
 		{
-			/*float3 start = sss.a > 0 ? lightWS : positionWS;
-			float3 end = sss.a > 0 ? positionWS : lightWS;*/
-
-			float3 start = positionWS;
-			float3 end = lightWS;
-			
-			shadowFactor = RaymarchSoft(start, end, distance(positionWS, lightWS), sss.a > 0 ? (1-sss.a)*8.0f :32.0f);
-
+			shadowFactor = RaymarchSoft(positionWS, lightWS, distance(positionWS, lightWS), sss.a > 0 ? (1-sss.a)*8.0f :32.0f);
 		}
-		
 
-		float3 diffuseLight = float3(0, 0, 0);
-		float3 specular = float3(0, 0, 0);
-
-		[branch]
-		if (shadowFactor > 0.01f && distanceToLight < lightRadius)
-		{
-			[branch]
-			if (metalness < 0.99)
-			{
-				diffuseLight = DiffuseOrenNayar(NdL, normal, lightVector, cameraDirection, lightIntensity, lightColor, roughness); //NdL * lightColor.rgb;
-			}
-			specular = SpecularCookTorrance(NdL, normal, lightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
-		}
-		diffuseOutput = (attenuation * diffuseLight * (1 - f0)) *shadowFactor * OUTPUTCONST + color.rgb * shadowFactor * sss.rgb * attenuation * lightIntensity * lightColor * OUTPUTCONST;
-		specularOutput = specular * attenuation * shadowFactor* OUTPUTCONST;
+		if (distanceToLight >= lightRadius) shadowFactor = 0;
+		diffuseOutput = diffuseOutput * shadowFactor + AlbedoToLinear(color.rgb) * shadowFactor * sss.rgb * attenuation * lightIntensity * lightColor * OUTPUTCONST;
+		specularOutput *= shadowFactor;
 	}
 
-	//Loads a texel based off of input vector
-	float4 LoadShadowMap(float3 vec3)
-	{
-		return ShadowMap.Load(int3(GetSampleCoordinate(vec3) * float2(ShadowMapSize, 6 * ShadowMapSize), 0)).r;
-	}
-
-	//Loads a texel based on float2 texCoord. The texCoord can be obtained by calling GetSampleCoordinate(vec3).
+	//Loads a texel based on a coordinate in the 6-face strip layout of GetSampleCoordinate(vec3) (helper.fx), from
+	//the face's tile in the shadow atlas. Faces without a tile read 0 = far (lit).
 	//One can additionally add an offset, like this GetSampleOffset(sampleCoord, float2(x, y)*texelSize)
 	float4 LoadShadowMapUV(float2 coord)
 	{
-		return ShadowMap.Load(int3(coord * float2(ShadowMapSize, 6 * ShadowMapSize), 0)).r;
+		int face = clamp((int)floor(coord.y * 6), 0, 5);
+		float4 tile = ShadowTiles[face];
+		if (tile.w <= 0) return 0;
+		float2 local = saturate(float2(coord.x, coord.y * 6 - face));
+		int2 texel = int2(tile.xy) + min(int2(local * tile.z), (int)tile.z - 1);
+		return ShadowMap.Load(int3(texel, 0)).r;
+	}
+
+	float4 LoadShadowMap(float3 vec3)
+	{
+		return LoadShadowMapUV(GetSampleCoordinate(vec3));
 	}
 
 //For Virtual Shadow Maps

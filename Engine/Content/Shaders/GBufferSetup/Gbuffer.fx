@@ -19,6 +19,10 @@ float4x4  ViewProjection;
 
 float3 Camera;
 float2 Resolution;
+
+//Motion vectors for TAA (Source 2 look, phase 1.6): this frame's and last frame's world * unjittered view projection
+float4x4  CurrentWorldViewProj;
+float4x4  PreviousWorldViewProj;
 float FarClip = 200;
 
 float Roughness = 0.3f;
@@ -60,11 +64,16 @@ Texture2D<float4> DisplacementMap;
 
 Texture2D<float4> Mask;
 
+//Material ambient occlusion (red channel) into albedo alpha: the environment pass darkens indirect light with it
+bool UseAoMap = false;
+Texture2D<float4> AoMap;
+
 sampler TextureSampler
 {
 	Texture = (Texture);
 	Filter = Anisotropic;
 	MaxAnisotropy = 8;
+	MipLODBias = -0.5f;
 	AddressU = Wrap;
 	AddressV = Wrap;
 };
@@ -75,6 +84,7 @@ sampler TextureSamplerTrilinear
 	MagFilter = LINEAR;
 	MinFilter = LINEAR;
 	Mipfilter = LINEAR;
+	MipLODBias = -0.5f;
 	AddressU = Wrap;
 	AddressV = Wrap;
 };
@@ -96,6 +106,8 @@ struct DrawBasic_VSOut
     float2 TexCoord : TEXCOORD1;
     float Depth : TEXCOORD2;
     float3 WorldPos : TEXCOORD6;
+    float4 CurrentClip : TEXCOORD7;
+    float4 PreviousClip : TEXCOORD8;
 };
 
 struct DrawNormals_VSIn
@@ -114,6 +126,8 @@ struct DrawNormals_VSOut
     float2 TexCoord : TEXCOORD1;
     float Depth : TEXCOORD0;
     float3 WorldPos : TEXCOORD6;
+    float4 CurrentClip : TEXCOORD7;
+    float4 PreviousClip : TEXCOORD8;
 };
 
 struct Render_IN
@@ -127,6 +141,8 @@ struct Render_IN
     float3 WorldPos : TEXCOORD3;
     // Interpolated mesh normal (view space) before normal mapping
     float3 GeoNormal : TEXCOORD4;
+    // Screen motion since last frame in UV units (this frame - last frame)
+    float2 Velocity : TEXCOORD5;
 };
 
 struct PixelShaderOutput
@@ -134,7 +150,15 @@ struct PixelShaderOutput
     float4 Color : COLOR0;
     float4 Normal : COLOR1;
     float4 Depth : COLOR2;
+    float4 Velocity : COLOR3;
 };
+
+float2 ScreenVelocity(float4 currentClip, float4 previousClip)
+{
+    float2 current = currentClip.xy / currentClip.w;
+    float2 previous = previousClip.xy / previousClip.w;
+    return (current - previous) * float2(0.5f, -0.5f);
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,6 +171,8 @@ DrawBasic_VSOut DrawBasic_VertexShader(DrawBasic_VSIn input)
 	Output.Normal = mul(input.Normal, WorldViewIT);//mul(float4(input.Normal, 0), World).xyz;
     Output.TexCoord = input.TexCoord * TextureTiling;
     Output.WorldPos = mul(input.Position, World).xyz;
+    Output.CurrentClip = mul(input.Position, CurrentWorldViewProj);
+    Output.PreviousClip = mul(input.Position, PreviousWorldViewProj);
 
 	//Linear Depth buffer instead of Z / W
 	Output.Depth = mul(input.Position, WorldView).z / -FarClip;//float2(Output.Position.z, Output.Position.w);
@@ -168,6 +194,8 @@ DrawNormals_VSOut DrawNormals_VertexShader(DrawNormals_VSIn input)
 {
     DrawNormals_VSOut Output;
     Output.Position = mul(input.Position, WorldViewProj);
+    Output.CurrentClip = mul(input.Position, CurrentWorldViewProj);
+    Output.PreviousClip = mul(input.Position, PreviousWorldViewProj);
 	Output.WorldToTangentSpace[0] = mul(input.Tangent, WorldViewIT);//mul(normalize(float4(input.Tangent, 0)), World).xyz;
     Output.WorldToTangentSpace[1] = mul(input.Binormal, WorldViewIT);//mul(normalize(float4(input.Binormal, 0)), World).xyz;
     Output.WorldToTangentSpace[2] = mul(input.Normal, WorldViewIT);//mul(normalize(float4(input.Normal, 0)), World).xyz;
@@ -315,8 +343,8 @@ PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
 
     Out.Color = finalValue;
 
-	//Flags Wet Surface pixels for the view-dependent fresnel in DeferredEnvironmentMap
-	Out.Color.a = WetSurface ? 1 : 0; //encodeMetallicMattype(input.Metallic, MaterialType);
+	//Ambient occlusion of the material (Source 2 look, phase 6.2); Wet Surface pixels are flagged by material type 7
+	Out.Color.a = UseAoMap ? AoMap.Sample(TextureSampler, texCoord).r : 1;
 
 	//Only use rg with this encoding
     Out.Normal.rg =  encode(input.Normal).xy; //
@@ -343,6 +371,8 @@ PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
 
 	Out.Depth = input.Depth.x;
 
+    Out.Velocity = float4(input.Velocity, 0, 1);
+
     return Out;
 }
 
@@ -355,6 +385,7 @@ PixelShaderOutput DrawTexture_PixelShader(DrawBasic_VSOut input)
     float4 outputColor = textureColor; //* input.Color;
  
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
@@ -377,6 +408,7 @@ PixelShaderOutput DrawTextureSpecular_PixelShader(DrawBasic_VSOut input)
     float RoughnessTexture = RoughnessMap.Sample(TextureSampler, input.TexCoord).r;
 
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
@@ -400,6 +432,7 @@ PixelShaderOutput DrawTextureSpecularMetallic_PixelShader(DrawBasic_VSOut input)
     float metallicTexture = MetallicMap.Sample(TextureSampler, input.TexCoord).r;
 
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
@@ -428,6 +461,7 @@ PixelShaderOutput DrawTextureSpecularNormal_PixelShader(DrawNormals_VSOut input)
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
@@ -456,6 +490,7 @@ PixelShaderOutput DrawTextureSpecularNormalMetallic_PixelShader(DrawNormals_VSOu
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
@@ -484,6 +519,7 @@ PixelShaderOutput DrawTextureNormal_PixelShader(DrawNormals_VSOut input)
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
@@ -508,6 +544,7 @@ PixelShaderOutput DrawNormal_PixelShader(DrawNormals_VSOut input)
 	normalMap = normalize(mul(normalMap, worldSpace));
 
 	renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
 	renderParams.WorldPos = input.WorldPos;
 	renderParams.GeoNormal = input.WorldToTangentSpace[2];
 	renderParams.Color = outputColor;
@@ -532,6 +569,7 @@ PixelShaderOutput DrawTextureMask_PixelShader(DrawBasic_VSOut input)
         clip(-1);
  
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
@@ -558,6 +596,7 @@ PixelShaderOutput DrawTextureSpecularMask_PixelShader(DrawBasic_VSOut input)
     float RoughnessTexture = RoughnessMap.Sample(TextureSampler, input.TexCoord).r;
 
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
@@ -591,6 +630,7 @@ PixelShaderOutput DrawTextureSpecularNormalMask_PixelShader(DrawNormals_VSOut in
     normalMap = normalize(mul(normalMap, worldSpace));
   
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;
@@ -626,6 +666,7 @@ PixelShaderOutput DrawTextureNormalMask_PixelShader(DrawNormals_VSOut input)
 	normalMap = normalize(mul(normalMap, worldSpace));
 
 	renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
 	renderParams.WorldPos = input.WorldPos;
 	renderParams.GeoNormal = input.WorldToTangentSpace[2];
 	renderParams.Color = outputColor;
@@ -645,6 +686,7 @@ PixelShaderOutput DrawBasic_PixelShader(DrawBasic_VSOut input)
 
          
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.Normal;
     renderParams.Color = outputColor;
@@ -686,6 +728,7 @@ PixelShaderOutput DrawTextureDisplacement_PixelShader(DrawNormals_VSOut input)
     normalMap = normalize(mul(normalMap, worldToTangent));
 
     renderParams.Position = input.Position;
+    renderParams.Velocity = ScreenVelocity(input.CurrentClip, input.PreviousClip);
     renderParams.WorldPos = input.WorldPos;
     renderParams.GeoNormal = input.WorldToTangentSpace[2];
     renderParams.Color = outputColor;

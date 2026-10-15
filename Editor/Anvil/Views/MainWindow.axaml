@@ -1508,9 +1508,50 @@
                                                        VerticalAlignment="Center"
                                                        HorizontalAlignment="Right" />
                                         </Grid>
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
+                                              IsVisible="{Binding HasRadius}">
+                                            <TextBlock Grid.Column="0" Text="Source Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="Radius of the glowing sphere: softer, wider highlights" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="10" Increment="0.01"
+                                                           Value="{Binding SourceRadius, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
+                                              IsVisible="{Binding HasRadius}">
+                                            <TextBlock Grid.Column="0" Text="Tube Length" Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="Length of a tube light along the light's X axis (rotate it)" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="50" Increment="0.05"
+                                                           Value="{Binding SourceLength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8" IsVisible="{Binding IsSpot}">
+                                            <TextBlock Grid.Column="0" Text="Cookie" Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="A texture projected along the cone (System/Cookies/flashlight.png)" />
+                                            <TextBox Grid.Column="1" Classes="field" Text="{Binding CookiePath, Mode=TwoWay}" Watermark="System/Cookies/flashlight.png" />
+                                        </Grid>
                                         <CheckBox Content="Cast Shadows"
                                                   IsChecked="{Binding CastShadows, Mode=TwoWay}"
                                                   FontSize="11" />
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="Shadow Res." Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="Texels per cube face (point/spot) or per cascade (sun)" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="64" Maximum="4096" Increment="64"
+                                                           Value="{Binding ShadowResolution, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                        </Grid>
+                                        <CheckBox Content="Static Shadows" IsChecked="{Binding StaticShadows, Mode=TwoWay}" FontSize="11" IsVisible="{Binding HasRadius}"
+                                                  ToolTip.Tip="Drawn once and kept in the shadow atlas" />
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
+                                              IsVisible="{Binding IsDirectional}">
+                                            <TextBlock Grid.Column="0" Text="Cascades" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="1" Maximum="4" Increment="1"
+                                                           Value="{Binding CascadeCount, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
+                                              IsVisible="{Binding IsDirectional}">
+                                            <TextBlock Grid.Column="0" Text="Shadow Dist." Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="Where sun shadows end, metres from the camera" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="5" Maximum="5000" Increment="10"
+                                                           Value="{Binding ShadowDistance, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
+                                              IsVisible="{Binding IsDirectional}">
+                                            <TextBlock Grid.Column="0" Text="Split Lambda" Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="0 = even cascades, 1 = logarithmic" />
+                                            <NumericUpDown Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05"
+                                                           Value="{Binding SplitLambda, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
                                     </StackPanel>
                                 </Expander>
 
@@ -1855,6 +1896,175 @@
                                                     </Grid>
                                                     <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
                                                                Text="Sways the gameobject in the scene wind (Environment > Wind Speed / Direction), in the editor too: the trunk bends with gusts, branches bob and leaves flutter. Only materials with Shader Foliage flutter (the Tree model's leaves). Height 0 = the model's height; the model's base must be at its origin, Z up. Visual only: colliders stay still." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:ReflectionProbeComponentViewModel" x:DataType="m:ReflectionProbeComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Aperture" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Metres inside the box over which the probe fades in">
+                                                        <TextBlock Grid.Column="0" Text="Blend Distance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BlendDistance, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Box Projection" IsChecked="{Binding BoxProjection, Mode=TwoWay}" FontSize="11" ToolTip.Tip="Parallax-correct reflections against the box walls (rooms)" />
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Higher priority probes win where boxes overlap">
+                                                        <TextBlock Grid.Column="0" Text="Priority" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Priority, Mode=TwoWay}"
+                                                                       Minimum="-100" Maximum="100" Increment="1" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Texels per cube face">
+                                                        <TextBlock Grid.Column="0" Text="Resolution" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Resolution, Mode=TwoWay}"
+                                                                       Minimum="64" Maximum="512" Increment="64" FormatString="0" />
+                                                    </Grid>
+                                                    <Button Content="Capture" Command="{Binding CaptureCommand}" HorizontalAlignment="Stretch" ToolTip.Tip="Capture the cubemap again (after the room changed)" />
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="A local cubemap for the box of this gameobject (position, rotation and scale, like a Cube). Surfaces inside it reflect the captured room instead of the sky; the mesh is hidden while enabled. Captured at scene load and when the probe moves; at most 4 draw at once." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:ProbeVolumeComponentViewModel" x:DataType="m:ProbeVolumeComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Grid3x3" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Metres between probes">
+                                                        <TextBlock Grid.Column="0" Text="Spacing" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ProbeSpacing, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="20" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Higher priority volumes win where they overlap">
+                                                        <TextBlock Grid.Column="0" Text="Priority" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Priority, Mode=TwoWay}"
+                                                                       Minimum="-100" Maximum="100" Increment="1" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Metres inside the box over which it fades into the volumes below">
+                                                        <TextBlock Grid.Column="0" Text="Blend Margin" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BlendMargin, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="20" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="A detail probe volume: a denser grid of baked indirect light inside this gameobject's box (rooms, corridors). Bake lighting again after changing it. The mesh is hidden while enabled; at most 4 volumes (including the scene's) are baked." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:PostProcessVolumeComponentViewModel" x:DataType="m:PostProcessVolumeComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Palette" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <CheckBox Content="Infinite (whole scene)" IsChecked="{Binding Infinite, Mode=TwoWay}" FontSize="11" ToolTip.Tip="Applies everywhere instead of inside the box" />
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Metres outside the box over which it fades in">
+                                                        <TextBlock Grid.Column="0" Text="Blend Distance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BlendDistance, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Weight" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Weight, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Higher priority volumes blend on top">
+                                                        <TextBlock Grid.Column="0" Text="Priority" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Priority, Mode=TwoWay}"
+                                                                       Minimum="-100" Maximum="100" Increment="1" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="A .post profile (PostProfiles/Name.post); empty = the values below">
+                                                        <TextBlock Grid.Column="0" Text="Profile" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding ProfilePath, Mode=TwoWay}" Watermark="PostProfiles/Dark.post" />
+                                                    </Grid>
+                                                    <TextBlock Text="Overrides" Classes="muted" FontSize="11" FontWeight="SemiBold" />
+                                                    <ItemsControl ItemsSource="{Binding Overrides}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="m:PostOverrideRow">
+                                                                <Grid ColumnDefinitions="22,100,*" ColumnSpacing="4" Margin="0,1">
+                                                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsOverridden, Mode=TwoWay}" ToolTip.Tip="Override this setting" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" ToolTip.Tip="{Binding Setting}" Classes="muted" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                                    <NumericUpDown Grid.Column="2" Classes="field" IsVisible="{Binding IsNumber}" Value="{Binding Number, Mode=TwoWay}"
+                                                                                   Increment="0.05" FormatString="0.###" ShowButtonSpinner="False" />
+                                                                    <CheckBox Grid.Column="2" IsVisible="{Binding IsSwitch}" IsChecked="{Binding Switch, Mode=TwoWay}" />
+                                                                    <ComboBox Grid.Column="2" Classes="field" HorizontalAlignment="Stretch" IsVisible="{Binding IsChoice}"
+                                                                              ItemsSource="{Binding Choices}" SelectedIndex="{Binding Choice, Mode=TwoWay}" />
+                                                                    <TextBox Grid.Column="2" Classes="field" IsVisible="{Binding IsText}" Text="{Binding Text, Mode=TwoWay}" />
+                                                                    <Button Grid.Column="2" IsVisible="{Binding IsColor}" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                                        <Border Width="44" Height="18" CornerRadius="3"
+                                                                                Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                                                                BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                                        <Button.Flyout>
+                                                                            <Flyout Opening="OwnedFlyout_Opening">
+                                                                                <ColorPicker x:DataType="m:PostOverrideRow" Color="{Binding Color, Mode=TwoWay}" />
+                                                                            </Flyout>
+                                                                        </Button.Flyout>
+                                                                    </Button>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Changes the post processing (tonemapping, exposure, grading, bloom, fog density) inside this gameobject's box, blended by distance, weight and priority over the scene's Post Processing. Tick a row to override it; editing a value ticks it. The mesh is hidden while enabled." />
+                                                    <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:AoProxyComponentViewModel" x:DataType="m:AoProxyComponentViewModel">
+                                            <Expander IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Circle" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Shape" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:AoProxyComponentViewModel.Shapes}"
+                                                                  SelectedItem="{Binding Shape, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Intensity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Intensity, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Grows or shrinks the occluder against the model's bounds">
+                                                        <TextBlock Grid.Column="0" Text="Size Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SizeScale, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="4" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How far the darkening reaches, in occluder radii">
+                                                        <TextBlock Grid.Column="0" Text="Falloff" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Falloff, Mode=TwoWay}"
+                                                                       Minimum="0.25" Maximum="8" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Skipped when the camera is farther than this many times its size">
+                                                        <TextBlock Grid.Column="0" Text="Cull Distance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CullDistance, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="1000" Increment="5" FormatString="0" />
+                                                    </Grid>
+                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
+                                                               Text="Soft contact shadow under a moving object (characters, props) on the indirect light, like Source 2's AO proxies. Auto picks Bones for skinned models (a capsule per limb) and an ellipsoid from the bounds otherwise. At most 16 draw." />
                                                     <Button Content="Remove Component" Command="{Binding RemoveCommand}" HorizontalAlignment="Stretch" />
                                                 </StackPanel>
                                             </Expander>
@@ -3105,326 +3315,281 @@
                             <StackPanel Spacing="0" DataContext="{Binding PostProcessing}"
                                         x:DataType="m:PostProcessingViewModel">
 
-                                <!-- Tone mapping / colour -->
-                                <Expander IsExpanded="True">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Wand" />
-                                            <TextBlock Text="Post Processing" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="True">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Wand" />
+                                                <TextBlock Text="Tonemapping (scene)" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <TextBlock Text="Saved with the scene (Environment > Post); Post Process Volume components blend over it." TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Curve" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <ComboBox Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding TonemapCurves}" SelectedIndex="{Binding TonemapCurve, Mode=TwoWay}" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Exposure (EV)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="-8" Maximum="8" Increment="0.05" Value="{Binding Exposure, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="White Point" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0.1" Maximum="32" Increment="0.05" Value="{Binding WhitePoint, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Text="S-Curve" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="-1" Maximum="1" Increment="0.01" Value="{Binding SCurveStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
+                                            <CheckBox Content="Exact sRGB output" IsChecked="{Binding ExactSrgb, Mode=TwoWay}" ToolTip.Tip="Off = a plain 2.2 gamma (the engine's original output)" />
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Temporal AA"
-                                                  IsChecked="{Binding Taa, Mode=TwoWay}" />
-                                        <CheckBox Content="Tonemap TAA"
-                                                  IsChecked="{Binding TonemapTaa, Mode=TwoWay}" />
-                                        <CheckBox Content="Color Grading"
-                                                  IsChecked="{Binding ColorGrading, Mode=TwoWay}" />
+                                    </Expander>
 
-                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto"
-                                              RowSpacing="6">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="White Point"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="4" Increment="0.05"
-                                                           Value="{Binding WhitePoint, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Exposure"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
-                                                           Minimum="-8" Maximum="8" Increment="0.05"
-                                                           Value="{Binding Exposure, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="S-Curve"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
-                                                           Minimum="-1" Maximum="1" Increment="0.01"
-                                                           Value="{Binding SCurveStrength, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Chr. Aberr."
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="1" Increment="0.005"
-                                                           Value="{Binding ChromaticAberration, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.000" />
-                                        </Grid>
-                                    </StackPanel>
-                                </Expander>
-
-                                <!-- Eye adaptation / auto exposure: EV on top of the Exposure above -->
-                                <Expander IsExpanded="True">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Eye" />
-                                            <TextBlock Text="Eye Adaptation" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="True">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Palette" />
+                                                <TextBlock Text="Color Grading (scene)" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <CheckBox Content="Color Grading (LUT)" IsChecked="{Binding ColorGrading, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="LUT" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <TextBox Grid.Row="0" Grid.Column="1" Classes="field" Text="{Binding LutPath, Mode=TwoWay}" Watermark="Shaders/PostProcessing/lut" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Saturation" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="0" Maximum="3" Increment="0.05" Value="{Binding Saturation, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Contrast" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0.25" Maximum="3" Increment="0.05" Value="{Binding Contrast, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Color Filter" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <Button Grid.Row="3" Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                    <Border Width="28" Height="20" CornerRadius="3" Background="{Binding ColorFilter, Converter={StaticResource ColorToBrush}}" BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                    <Button.Flyout>
+                                                        <Flyout>
+                                                            <ColorPicker x:DataType="m:PostProcessingViewModel" Color="{Binding ColorFilter, Mode=TwoWay}" />
+                                                        </Flyout>
+                                                    </Button.Flyout>
+                                                </Button>
+                                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Vignette" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field" Minimum="0" Maximum="2" Increment="0.05" Value="{Binding Vignette, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Chr. Aberr." Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="0" Maximum="5" Increment="0.005" Value="{Binding ChromaticAberration, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Retina Burn" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.05" Value="{Binding RetinaBurn, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Fog Density x" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field" Minimum="0" Maximum="16" Increment="0.05" Value="{Binding FogDensityScale, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Auto Exposure"
-                                                  IsChecked="{Binding AutoExposure, Mode=TwoWay}" />
-                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
-                                              RowSpacing="6" IsEnabled="{Binding AutoExposure}">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Key Value"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="0.01" Maximum="1" Increment="0.01"
-                                                           Value="{Binding AutoExposureKey, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Min EV"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
-                                                           Minimum="-10" Maximum="10" Increment="0.25"
-                                                           Value="{Binding AutoExposureMin, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Max EV"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
-                                                           Minimum="-10" Maximum="10" Increment="0.25"
-                                                           Value="{Binding AutoExposureMax, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Dark → Light"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="20" Increment="0.1"
-                                                           Value="{Binding AutoExposureSpeedDarkToLight, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Light → Dark"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="20" Increment="0.1"
-                                                           Value="{Binding AutoExposureSpeedLightToDark, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Center Weight"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="1" Increment="0.05"
-                                                           Value="{Binding AutoExposureCenterWeight, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                        </Grid>
-                                    </StackPanel>
-                                </Expander>
+                                    </Expander>
 
-                                <!-- Bloom -->
-                                <Expander IsExpanded="True">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Sun" />
-                                            <TextBlock Text="Bloom" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="True">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Eye" />
+                                                <TextBlock Text="Eye Adaptation (scene)" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <CheckBox Content="Auto Exposure" IsChecked="{Binding AutoExposure, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6" IsEnabled="{Binding AutoExposure}">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Metering" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <ComboBox Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding MeteringModes}" SelectedIndex="{Binding Metering, Mode=TwoWay}" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Bright Pixels %" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="0.01" Maximum="50" Increment="0.5" Value="{Binding BrightPixelPercent, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Bright Target" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0.01" Maximum="16" Increment="0.01" Value="{Binding BrightPixelTarget, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Min Average" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.005" Value="{Binding MinAverageLuminance, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Key (Average)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field" Minimum="0.01" Maximum="4" Increment="0.01" Value="{Binding AutoExposureKey, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Min EV" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="-12" Maximum="12" Increment="0.25" Value="{Binding AutoExposureMin, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Max EV" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="-12" Maximum="12" Increment="0.25" Value="{Binding AutoExposureMax, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Dark &#x2192; Light" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field" Minimum="0" Maximum="50" Increment="0.1" Value="{Binding AutoExposureSpeedDarkToLight, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Light &#x2192; Dark" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field" Minimum="0" Maximum="50" Increment="0.1" Value="{Binding AutoExposureSpeedLightToDark, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="9" Grid.Column="0" Text="Center Weight" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="9" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding AutoExposureCenterWeight, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Enable Bloom"
-                                                  IsChecked="{Binding BloomEnabled, Mode=TwoWay}" />
-                                        <Grid ColumnDefinitions="100,*" RowSpacing="6">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Threshold"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="4" Increment="0.05"
-                                                           Value="{Binding BloomThreshold, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="MIP0 Radius"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomRadius1, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="MIP0 Strength"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomStrength1, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="MIP1 Radius"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomRadius2, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="MIP1 Strength"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomStrength2, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="MIP2 Radius"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomRadius3, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="MIP2 Strength"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomStrength3, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="7" Grid.Column="0" Text="MIP3 Radius"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomRadius4, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="8" Grid.Column="0" Text="MIP3 Strength"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomStrength4, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="9" Grid.Column="0" Text="MIP4 Radius"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="9" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomRadius5, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="10" Grid.Column="0" Text="MIP4 Strength"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="10" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="8" Increment="0.1"
-                                                           Value="{Binding BloomStrength5, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                        </Grid>
-                                    </StackPanel>
-                                </Expander>
+                                    </Expander>
 
-                                <!-- Volumetric Fog (froxels) -->
-                                <Expander IsExpanded="False">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="CloudFog" />
-                                            <TextBlock Text="Volumetric Fog" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="True">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Sun" />
+                                                <TextBlock Text="Bloom" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <CheckBox Content="Enable Bloom (scene)" IsChecked="{Binding BloomEnabled, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Start (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0" Maximum="64" Increment="0.05" Value="{Binding BloomStart, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Knee (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="0" Maximum="16" Increment="0.05" Value="{Binding BloomKnee, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Scale (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.01" Value="{Binding BloomScale, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Text="MIP0 Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomRadius1, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="4" Grid.Column="0" Text="MIP0 Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomStrength1, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="5" Grid.Column="0" Text="MIP1 Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomRadius2, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="6" Grid.Column="0" Text="MIP1 Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomStrength2, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="7" Grid.Column="0" Text="MIP2 Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomRadius3, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="8" Grid.Column="0" Text="MIP2 Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="8" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomStrength3, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="9" Grid.Column="0" Text="MIP3 Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="9" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomRadius4, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="10" Grid.Column="0" Text="MIP3 Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="10" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomStrength4, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="11" Grid.Column="0" Text="MIP4 Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="11" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomRadius5, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="12" Grid.Column="0" Text="MIP4 Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="12" Grid.Column="1" Classes="field" Minimum="0" Maximum="8" Increment="0.1" Value="{Binding BloomStrength5, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                            </Grid>
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Enable Fog"
-                                                  IsChecked="{Binding FogEnabled, Mode=TwoWay}" />
-                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto"
-                                              RowSpacing="6" IsEnabled="{Binding FogEnabled}">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="History"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="0.98" Increment="0.05"
-                                                           Value="{Binding FogHistoryBlend, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                        </Grid>
-                                        <TextBlock Text="Density, scatter, distances and the sky are saved per scene: Environment > Volumetric Fog." TextWrapping="Wrap" Classes="muted" FontSize="11" />
-                                    </StackPanel>
-                                </Expander>
+                                    </Expander>
 
-                                <!-- Screen-Space Reflections -->
-                                <Expander IsExpanded="False">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Sparkles" />
-                                            <TextBlock Text="Screen-Space Reflections" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="False">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Monitor" />
+                                                <TextBlock Text="Anti-Aliasing" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <CheckBox Content="Temporal AA" IsChecked="{Binding Taa, Mode=TwoWay}" />
+                                            <CheckBox Content="Tonemap TAA" IsChecked="{Binding TonemapTaa, Mode=TwoWay}" />
+                                            <CheckBox Content="Motion Vectors" IsChecked="{Binding TaaVelocity, Mode=TwoWay}" ToolTip.Tip="G-buffer velocity: moving objects reproject without trails" />
+                                            <CheckBox Content="FXAA without TAA" IsChecked="{Binding Fxaa, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sharpen" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding TaaSharpness, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Enable SSR"
-                                                  IsChecked="{Binding SsrEnabled, Mode=TwoWay}" />
-                                        <CheckBox Content="Stochastic Distribution"
-                                                  IsChecked="{Binding SsrStochastic, Mode=TwoWay}" />
-                                        <CheckBox Content="Temporal Noise"
-                                                  IsChecked="{Binding SsrTemporalNoise, Mode=TwoWay}" />
-                                        <CheckBox Content="Firefly Reduction"
-                                                  IsChecked="{Binding SsrFireflyReduction, Mode=TwoWay}" />
-                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto"
-                                              RowSpacing="6">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Firefly Thr."
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="5" Increment="0.05"
-                                                           Value="{Binding SsrFireflyThreshold, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Samples"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
-                                                           Minimum="1" Maximum="100" Increment="1"
-                                                           Value="{Binding SsrSamples, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Search Samples"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
-                                                           Minimum="1" Maximum="100" Increment="1"
-                                                           Value="{Binding SsrRefinementSamples, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0" />
-                                        </Grid>
-                                    </StackPanel>
-                                </Expander>
+                                    </Expander>
 
-                                <!-- Ambient Occlusion -->
-                                <Expander IsExpanded="False">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Aperture" />
-                                            <TextBlock Text="Ambient Occlusion" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="False">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Lightbulb" />
+                                                <TextBlock Text="Shadows &amp; Reflections" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <TextBlock Text="Point and spot lights share one shadow atlas; sun shadows are set per Directional Light." TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Atlas Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="512" Maximum="8192" Increment="512" Value="{Binding ShadowAtlasSize, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Updates / Frame" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="1" Maximum="64" Increment="1" Value="{Binding ShadowUpdatesPerFrame, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Fade Start (m)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0" Maximum="1000" Increment="1" Value="{Binding ShadowFadeStart, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Fade End (m)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="0" Maximum="1000" Increment="1" Value="{Binding ShadowFadeEnd, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Size Cull" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.005" Value="{Binding ShadowSizeCull, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Probe Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="32" Maximum="1024" Increment="32" Value="{Binding ReflectionProbeSize, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Normalize Max" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.05" Value="{Binding CubemapNormalizationMax, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Normalize Rough." Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding CubemapNormalizationRoughnessBegin, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Enable SSAO"
-                                                  IsChecked="{Binding SsaoEnabled, Mode=TwoWay}" />
-                                        <CheckBox Content="SSAO Blur"
-                                                  IsChecked="{Binding SsaoBlur, Mode=TwoWay}" />
-                                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto"
-                                              RowSpacing="6">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Samples"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
-                                                           Minimum="1" Maximum="32" Increment="1"
-                                                           Value="{Binding SsaoSamples, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Sample Radius"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
-                                                           Minimum="1" Maximum="100" Increment="0.5"
-                                                           Value="{Binding SsaoRadius, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.0" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Strength"
-                                                       Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
-                                                           Minimum="0" Maximum="4" Increment="0.05"
-                                                           Value="{Binding SsaoStrength, Mode=TwoWay}"
-                                                           ShowButtonSpinner="False" FormatString="0.00" />
-                                        </Grid>
-                                    </StackPanel>
-                                </Expander>
+                                    </Expander>
 
-                                <!-- Viewport / SDF -->
-                                <Expander IsExpanded="False">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:LucideIcon Icon="Eye" />
-                                            <TextBlock Text="Viewport" FontSize="11.5"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Expander IsExpanded="False">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="CloudFog" />
+                                                <TextBlock Text="Volumetric Fog" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <CheckBox Content="Enable Fog" IsChecked="{Binding FogEnabled, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto" RowSpacing="6" IsEnabled="{Binding FogEnabled}">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="History" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0" Maximum="0.98" Increment="0.05" Value="{Binding FogHistoryBlend, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
+                                            <TextBlock Text="Density, scatter, distances and the sky are saved per scene: Environment > Volumetric Fog." TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Spacing="6" Margin="12,8,12,12">
-                                        <CheckBox Content="Highlight Meshes"
-                                                  IsChecked="{Binding HighlightMeshes, Mode=TwoWay}" />
-                                        <CheckBox Content="Draw SDF distance"
-                                                  IsChecked="{Binding DrawSdf, Mode=TwoWay}" />
-                                        <CheckBox Content="Draw SDF volume"
-                                                  IsChecked="{Binding DrawSdfVolume, Mode=TwoWay}" />
-                                    </StackPanel>
-                                </Expander>
+                                    </Expander>
+
+                                    <Expander IsExpanded="False">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Sparkles" />
+                                                <TextBlock Text="Screen-Space Reflections" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <CheckBox Content="Enable SSR" IsChecked="{Binding SsrEnabled, Mode=TwoWay}" />
+                                            <CheckBox Content="Stochastic Distribution" IsChecked="{Binding SsrStochastic, Mode=TwoWay}" />
+                                            <CheckBox Content="Temporal Noise" IsChecked="{Binding SsrTemporalNoise, Mode=TwoWay}" />
+                                            <CheckBox Content="Firefly Reduction" IsChecked="{Binding SsrFireflyReduction, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Firefly Thr." Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0" Maximum="5" Increment="0.05" Value="{Binding SsrFireflyThreshold, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Samples" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="1" Maximum="100" Increment="1" Value="{Binding SsrSamples, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Search Samples" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="1" Maximum="100" Increment="1" Value="{Binding SsrRefinementSamples, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <Expander IsExpanded="False">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Aperture" />
+                                                <TextBlock Text="Ambient Occlusion" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <TextBlock Text="SSAO darkens indirect light only, like Source 2's baked AO and AO proxies." TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                            <CheckBox Content="Enable SSAO" IsChecked="{Binding SsaoEnabled, Mode=TwoWay}" />
+                                            <CheckBox Content="SSAO Blur" IsChecked="{Binding SsaoBlur, Mode=TwoWay}" />
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Samples" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="1" Maximum="32" Increment="1" Value="{Binding SsaoSamples, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Sample Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="1" Maximum="100" Increment="0.5" Value="{Binding SsaoRadius, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.05" Value="{Binding SsaoStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <Expander IsExpanded="False">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <controls:LucideIcon Icon="Eye" />
+                                                <TextBlock Text="Viewport" FontSize="11.5"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6" Margin="12,8,12,12">
+                                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Debug View" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <ComboBox Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding DebugViews}" SelectedIndex="{Binding DebugView, Mode=TwoWay}" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Size Cull" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="0" Maximum="0.1" Increment="0.0005" Value="{Binding SizeCullThreshold, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0000" />
+                                            </Grid>
+                                            <CheckBox Content="Occlusion Culling" IsChecked="{Binding OcclusionCulling, Mode=TwoWay}" ToolTip.Tip="Skip meshes hidden last frame (GPU occlusion queries)" />
+                                            <CheckBox Content="Highlight Meshes" IsChecked="{Binding HighlightMeshes, Mode=TwoWay}" />
+                                            <CheckBox Content="Draw SDF distance" IsChecked="{Binding DrawSdf, Mode=TwoWay}" />
+                                            <CheckBox Content="Draw SDF volume" IsChecked="{Binding DrawSdfVolume, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </Expander>
 
                             </StackPanel>
                         </ScrollViewer>

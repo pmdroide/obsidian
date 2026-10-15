@@ -1,0 +1,3959 @@
+{
+  "Version": 2,
+  "Name": "LookDev",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Floor",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.125
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        30,
+        30,
+        0.125
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "27a3ea47-1a83-5d10-a573-5c3709dffe97",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.45,
+            "Green": 0.45,
+            "Blue": 0.45,
+            "Roughness": 0.85,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "affadd9a-f461-5169-be06-efec59f8b4ce",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 2,
+      "Name": "Plastic r0.05",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -8,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "23b394d8-6a9f-52aa-a118-a037215d9e0c",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8,
+            "Green": 0.8,
+            "Blue": 0.8,
+            "Roughness": 0.05,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "6bb6f602-1aaf-5da1-b950-965962d50350",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 3,
+      "Name": "Plastic r0.25",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -6.4,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "048a3efb-82be-5dda-802b-ae790489a8ee",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8,
+            "Green": 0.8,
+            "Blue": 0.8,
+            "Roughness": 0.25,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "e9a03423-3ad1-56cd-a1f3-eabf35ca1310",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 4,
+      "Name": "Plastic r0.50",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -4.8,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "48edf28d-59be-5432-99d2-b62c1ca87b7d",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8,
+            "Green": 0.8,
+            "Blue": 0.8,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "4990fb95-b8d9-5e15-9c0f-873b6c3db88d",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 5,
+      "Name": "Plastic r0.75",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -3.2,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3877691b-3a2e-5052-a197-fbeee7c52c19",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8,
+            "Green": 0.8,
+            "Blue": 0.8,
+            "Roughness": 0.75,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "0c774352-e367-508c-b13a-623ce48976d4",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 6,
+      "Name": "Plastic r1.00",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -1.6,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "19d9be84-1f96-5c95-b83f-534e2fd797b8",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8,
+            "Green": 0.8,
+            "Blue": 0.8,
+            "Roughness": 1,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "7f6c63e6-a9ce-5b0d-8b14-af6186c3ec36",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 7,
+      "Name": "Gold Sphere",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0.5,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "949b4ee4-f978-5fc8-b006-bccaf9daa036",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 1,
+            "Green": 0.86,
+            "Blue": 0.57,
+            "Roughness": 0.2,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "b724e22c-90ac-5100-9b8d-744dd409e6c2",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 8,
+      "Name": "Copper Sphere",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        2.1,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d716e869-e343-53cf-8c9a-cfe4c9fb6b4e",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.98,
+            "Green": 0.82,
+            "Blue": 0.76,
+            "Roughness": 0.3,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "2d32abc4-6ac6-5a99-b591-f47f3130d220",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 9,
+      "Name": "Chrome Sphere",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        3.7,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "1538d0e5-6abf-5b02-8edd-245de9f6a0e7",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.77,
+            "Green": 0.78,
+            "Blue": 0.78,
+            "Roughness": 0.03,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "b14aaa3f-3f09-579e-9555-a8fb9320a566",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 10,
+      "Name": "Rough Iron Sphere",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        5.3,
+        0,
+        0.6
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b527e859-00c4-535b-9663-4dc5f7d1903a",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.77,
+            "Green": 0.76,
+            "Blue": 0.75,
+            "Roughness": 0.6,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "231d7685-8ef6-5ac6-b2e3-a645bd214d36",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 11,
+      "Name": "Checker Board",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4,
+        4.05,
+        1.25
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        1.6,
+        0.025,
+        1.1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "bbcf4289-8f19-513c-adf9-09205fcc5823",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.05,
+            "Green": 0.05,
+            "Blue": 0.05,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "983a4592-8ab4-5f99-ac78-583aa10b7120",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 12,
+      "Name": "Checker 01",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.25,
+        4,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "f523cdad-b65a-5fa6-894b-3828b764ca07",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.4509804,
+            "Green": 0.32156864,
+            "Blue": 0.26666668,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 13,
+      "Name": "Checker 02",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.75,
+        4,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "e47369ce-c54d-5a32-8940-1cc1e7f97683",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7607843,
+            "Green": 0.5882353,
+            "Blue": 0.50980395,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 14,
+      "Name": "Checker 03",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.25,
+        4,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "fdb36191-2e03-50eb-8894-db011ded2500",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.38431373,
+            "Green": 0.47843137,
+            "Blue": 0.6156863,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 15,
+      "Name": "Checker 04",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.75,
+        4,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3281efba-dc96-5e34-a06e-bb3a2656f51a",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.34117648,
+            "Green": 0.42352942,
+            "Blue": 0.2627451,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 16,
+      "Name": "Checker 05",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.25,
+        4,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "f6469dc4-309d-568a-b436-9f2043611737",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.52156866,
+            "Green": 0.5019608,
+            "Blue": 0.69411767,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 17,
+      "Name": "Checker 06",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.75,
+        4,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ba2f6328-3861-5ee4-a629-4f9ff345fe8e",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.40392157,
+            "Green": 0.7411765,
+            "Blue": 0.6666667,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 18,
+      "Name": "Checker 07",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.25,
+        4,
+        1.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ffe2edd7-2568-5204-bb70-cb06c1f0c8e1",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8392157,
+            "Green": 0.49411765,
+            "Blue": 0.17254902,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 19,
+      "Name": "Checker 08",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.75,
+        4,
+        1.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "888af7c0-ee90-54bf-983e-86cc8761ac3c",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.3137255,
+            "Green": 0.35686275,
+            "Blue": 0.6509804,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 20,
+      "Name": "Checker 09",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.25,
+        4,
+        1.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0847db9a-1674-5054-8f59-a2b3797ed6a4",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.75686276,
+            "Green": 0.3529412,
+            "Blue": 0.3882353,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 21,
+      "Name": "Checker 10",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.75,
+        4,
+        1.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d844355a-dc59-5853-899d-64eb6d84a6cc",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.36862746,
+            "Green": 0.23529412,
+            "Blue": 0.42352942,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 22,
+      "Name": "Checker 11",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.25,
+        4,
+        1.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "e2c0f635-be1d-54b7-a89c-2a01be6726b9",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.6156863,
+            "Green": 0.7372549,
+            "Blue": 0.2509804,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 23,
+      "Name": "Checker 12",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.75,
+        4,
+        1.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "01b61ead-b6ea-5403-8741-066adaeaa8d6",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8784314,
+            "Green": 0.6392157,
+            "Blue": 0.18039216,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 24,
+      "Name": "Checker 13",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.25,
+        4,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "72bcd8b5-a7c2-50e8-9d75-b4866012e6d3",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.21960784,
+            "Green": 0.23921569,
+            "Blue": 0.5882353,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 25,
+      "Name": "Checker 14",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.75,
+        4,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "190eed54-d666-51a3-87bd-851f822b09e2",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.27450982,
+            "Green": 0.5803922,
+            "Blue": 0.28627452,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 26,
+      "Name": "Checker 15",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.25,
+        4,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8f3d52c3-2a5a-5ad5-9196-bf441e7860d2",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.6862745,
+            "Green": 0.21176471,
+            "Blue": 0.23529412,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 27,
+      "Name": "Checker 16",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.75,
+        4,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3677eb0b-c03b-580b-a2ed-549e705d20b7",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.90588236,
+            "Green": 0.78039217,
+            "Blue": 0.12156863,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 28,
+      "Name": "Checker 17",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.25,
+        4,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "16d84652-0313-5785-9c74-3e8dc464e139",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.73333335,
+            "Green": 0.3372549,
+            "Blue": 0.58431375,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 29,
+      "Name": "Checker 18",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.75,
+        4,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "66c56d43-0b31-5dbd-83ee-a8997d03f1b2",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.03137255,
+            "Green": 0.52156866,
+            "Blue": 0.6313726,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 30,
+      "Name": "Checker 19",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.25,
+        4,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "e4eb1f26-d7cb-54c9-bdfc-431efd684856",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.9529412,
+            "Green": 0.9529412,
+            "Blue": 0.9490196,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 31,
+      "Name": "Checker 20",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.75,
+        4,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3078776b-6419-5400-8e60-1e2bfa630c0f",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.78431374,
+            "Green": 0.78431374,
+            "Blue": 0.78431374,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 32,
+      "Name": "Checker 21",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -4.25,
+        4,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "705d32fc-af41-51cb-80a2-d98822c59dc6",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.627451,
+            "Green": 0.627451,
+            "Blue": 0.627451,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 33,
+      "Name": "Checker 22",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.75,
+        4,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "966cacc2-ab35-5c86-852f-5902984a8c78",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.47843137,
+            "Green": 0.47843137,
+            "Blue": 0.4745098,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 34,
+      "Name": "Checker 23",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.25,
+        4,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9abec6a9-e5e9-5305-a1aa-0d30c7a561e6",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.33333334,
+            "Green": 0.33333334,
+            "Blue": 0.33333334,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 35,
+      "Name": "Checker 24",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.75,
+        4,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.21,
+        0.02,
+        0.21
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3621a086-ef39-5093-acef-a14a5e0eada3",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.20392157,
+            "Green": 0.20392157,
+            "Blue": 0.20392157,
+            "Roughness": 0.9,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 36,
+      "Name": "Room Floor",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        0,
+        0.05
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        4,
+        4,
+        0.05
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "dc46b98b-4e92-5808-a229-8aa7665746b4",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.5,
+            "Green": 0.48,
+            "Blue": 0.45,
+            "Roughness": 0.7,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "c5e6dd24-3fda-53df-88c5-2a4d59bdec84",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 37,
+      "Name": "Room Roof",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        0,
+        4.15
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        4.3,
+        4.3,
+        0.15
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9d3c1c38-8fe2-5360-8717-3bc4227cec94",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "c9dcd3c1-c031-5b9f-a538-2e68e509278f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 38,
+      "Name": "Room East Wall",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        18.15,
+        0,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.15,
+        4.3,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0216b9a8-ccd4-509d-aa16-f57502c28545",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7,
+            "Green": 0.68,
+            "Blue": 0.64,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "dbd323d5-21dd-5932-bc7c-3f66cfd7ffb1",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 39,
+      "Name": "Room North Wall",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        4.15,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        4,
+        0.15,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3c19f524-d37a-5f71-b48c-514503542ec3",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7,
+            "Green": 0.68,
+            "Blue": 0.64,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "46ffdc43-f2ee-5222-85bd-12d93abe8af2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 40,
+      "Name": "Room South Wall",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        -4.15,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        4,
+        0.15,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5ece2969-f8f5-58e5-a3cf-d8f126196385",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7,
+            "Green": 0.68,
+            "Blue": 0.64,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "2db1b098-e04b-5fd7-9178-d53b8f06f611",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 41,
+      "Name": "Room West Wall N",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        9.85,
+        2.6,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.15,
+        1.4,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "c0b2220f-f346-5caa-96e4-522fbbad1421",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7,
+            "Green": 0.68,
+            "Blue": 0.64,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "91e6b83a-e24a-5e62-9078-066a05383fc9",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 42,
+      "Name": "Room West Wall S",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        9.85,
+        -2.6,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.15,
+        1.4,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0b8c920d-0f26-5cab-a841-d314c121af9e",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7,
+            "Green": 0.68,
+            "Blue": 0.64,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "9d18bd24-aac6-5cae-a229-671139e75a15",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 43,
+      "Name": "Room Lintel",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        9.85,
+        0,
+        3.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.15,
+        1.2,
+        0.5
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "23788e5d-d330-53ab-ad1c-37821cbf9c4e",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.7,
+            "Green": 0.68,
+            "Blue": 0.64,
+            "Roughness": 0.8,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "856e3059-e288-5f90-b463-155618a0febe",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 44,
+      "Name": "Room Chrome Sphere",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        16,
+        -2,
+        0.7
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "6507b081-a2bc-5ee1-b46a-38a9e226b213",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.77,
+            "Green": 0.78,
+            "Blue": 0.78,
+            "Roughness": 0.05,
+            "Metallic": 1,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "fbc6b36c-b83c-5103-80ef-cd2a804c9cfd",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 45,
+      "Name": "Room Grey Sphere",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        16,
+        2,
+        0.7
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "f4a06191-a0e7-5ee4-abb3-e0732a653a7c",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.5,
+            "Green": 0.5,
+            "Blue": 0.5,
+            "Roughness": 0.5,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "c06a1b08-73c1-56e5-866c-4a33ebc4c5f0",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 46,
+      "Name": "Room Crate",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14.5,
+        2.8,
+        0.5
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.4,
+        0.4,
+        0.4
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "6f6f9046-e6a6-55a8-8bbb-1cdffb7dc891",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.55,
+            "Green": 0.35,
+            "Blue": 0.2,
+            "Roughness": 0.7,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "38445d42-e8d3-54b6-ad92-519e0e68437a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 47,
+      "Name": "Room Probe Volume",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        0,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        4.5,
+        4.5,
+        2.3
+      ],
+      "Components": [
+        {
+          "Type": "probe-volume",
+          "InstanceId": "18d3b1d8-0c6f-5915-9fc9-335465dfa2ed",
+          "Data": {
+            "ProbeSpacing": 0.75,
+            "Priority": 1,
+            "BlendMargin": 0.5,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 48,
+      "Name": "Room Emissive Panel",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        16.5,
+        3.94,
+        2.4
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.04,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "62889f7c-809f-5361-abdd-6db5cd6b54a5",
+          "Data": {
+            "MaterialType": 3,
+            "IsTransparent": false,
+            "Red": 1,
+            "Green": 0.75,
+            "Blue": 0.45,
+            "Roughness": 0.4,
+            "Metallic": 0,
+            "EmissiveStrength": 6,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 49,
+      "Name": "Room Reflection Probe",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        14,
+        0,
+        2
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        4,
+        4,
+        2
+      ],
+      "Components": [
+        {
+          "Type": "reflection-probe",
+          "InstanceId": "0cd68ae1-330c-5460-b7e5-0643f6371b87",
+          "Data": {
+            "BlendDistance": 0.5,
+            "BoxProjection": true,
+            "Priority": 1,
+            "Resolution": 128,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 50,
+      "Name": "Glass Wall",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -12,
+        0,
+        1.25
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.125,
+        2,
+        1.25
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8b65f5e1-8dad-5f6f-8ad0-886093fe5720",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.75,
+            "Green": 0.3,
+            "Blue": 0.2,
+            "Roughness": 0.6,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "e3082a7d-2404-54a6-95f1-88684b604e69",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "ColliderSizeX": 2.000001,
+            "ColliderSizeY": 2.000001,
+            "ColliderSizeZ": 2,
+            "ActiveBodyType": 1,
+            "ClampedMass": 1,
+            "ClampedBuoyancyStrength": 2,
+            "ClampedWaterDrag": 3,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 51,
+      "Name": "Glass Pane",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "Cube",
+      "Position": [
+        -11,
+        0,
+        1
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.02,
+        1.2,
+        0.8
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "2f5b573e-7336-55d5-9799-3a6d61dd3e3e",
+          "Data": {
+            "MaterialType": 5,
+            "IsTransparent": true,
+            "Red": 0.12,
+            "Green": 0.14,
+            "Blue": 0.15,
+            "Roughness": 0.05,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.35,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 52,
+      "Name": "Y Bot",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        3,
+        -3,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "944d42ce-30cd-5b9e-860b-0e4831c36776",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.55,
+            "Green": 0.55,
+            "Blue": 0.58,
+            "Roughness": 0.45,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "37c1a7df-bc9d-5186-b3b1-d2abf68c431a",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 53,
+      "Name": "Dragon",
+      "IsEnabled": true,
+      "Role": "Default",
+      "ModelKey": "StanfordDragon",
+      "Position": [
+        -3,
+        -4,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4dc8de82-e6c2-5929-8763-e3a6914f2b0e",
+          "Data": {
+            "MaterialType": 0,
+            "IsTransparent": false,
+            "Red": 0.8,
+            "Green": 0.8,
+            "Blue": 0.8,
+            "Roughness": 0.35,
+            "Metallic": 0,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Opacity": 0.65,
+            "WaveScale": 0.3,
+            "WaveSpeed": 1,
+            "WaveStrength": 0.2,
+            "WaveHeight": 0.5,
+            "Clarity": 4,
+            "Foam": 0.5,
+            "Wetness": 0,
+            "PuddleAmount": 0.5,
+            "PuddleSize": 3,
+            "WeatherWetness": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": null,
+            "NormalTexture": null,
+            "RoughnessTexture": null,
+            "MetallicTexture": null,
+            "MaskTexture": null,
+            "DisplacementTexture": null,
+            "AmbientOcclusionTexture": null,
+            "MaterialPath": null,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "44544095-caf6-5ed5-ad14-13daf7ad0b01",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1,
+            "SizeScale": 1,
+            "Falloff": 2,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ]
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 900,
+      "Name": "Room Tube Light",
+      "IsEnabled": true,
+      "Position": [
+        17,
+        0,
+        3.6
+      ],
+      "Radius": 7,
+      "Color": [
+        210,
+        225,
+        255,
+        255
+      ],
+      "Intensity": 1.5,
+      "CastShadows": true,
+      "IsVolumetric": false,
+      "ShadowResolution": 512,
+      "SoftShadowBlurAmount": 0,
+      "StaticShadow": false,
+      "VolumetricDensity": 1,
+      "SourceRadius": 0.05,
+      "SourceLength": 1.2,
+      "Rotation": [
+        0,
+        0,
+        0.7071069,
+        0.7071067
+      ]
+    }
+  ],
+  "SpotLights": [
+    {
+      "CookiePath": "System/Cookies/flashlight.png",
+      "SpotAngle": 45,
+      "InnerSpotAngle": 20,
+      "Id": 901,
+      "Name": "Flashlight",
+      "IsEnabled": true,
+      "Position": [
+        12,
+        -3,
+        1.6
+      ],
+      "Radius": 12,
+      "Color": [
+        255,
+        244,
+        225,
+        255
+      ],
+      "Intensity": 60,
+      "CastShadows": true,
+      "IsVolumetric": false,
+      "ShadowResolution": 1024,
+      "SoftShadowBlurAmount": 0,
+      "StaticShadow": false,
+      "VolumetricDensity": 1,
+      "SourceRadius": 0.03,
+      "SourceLength": 0,
+      "Rotation": [
+        0.45535272,
+        -0.48019072,
+        0,
+        0.7497134
+      ]
+    },
+    {
+      "SpotAngle": 60,
+      "InnerSpotAngle": 40,
+      "Id": 902,
+      "Name": "Checker Spot",
+      "IsEnabled": true,
+      "Position": [
+        -4,
+        0.5,
+        4.5
+      ],
+      "Radius": 9,
+      "Color": [
+        255,
+        250,
+        245,
+        255
+      ],
+      "Intensity": 3,
+      "CastShadows": true,
+      "IsVolumetric": false,
+      "ShadowResolution": 512,
+      "SoftShadowBlurAmount": 0,
+      "StaticShadow": false,
+      "VolumetricDensity": 1,
+      "SourceRadius": 0,
+      "SourceLength": 0,
+      "Rotation": [
+        0.39622408,
+        0,
+        0,
+        0.9181539
+      ]
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 903,
+      "Name": "Sun",
+      "IsEnabled": true,
+      "Direction": [
+        0.621712,
+        0.25069034,
+        -0.74204344
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        247,
+        235,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 100,
+      "ShadowDepth": 120,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1,
+      "ScreenSpaceShadowBlur": false,
+      "CascadeCount": 4,
+      "ShadowDistance": 120,
+      "SplitLambda": 0.8
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      -4,
+      2
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true,
+    "UseSDFAO": false
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15,
+    "CycleDurationMinutes": 10,
+    "CloudCoverage": 0.45,
+    "CloudSpeed": 1,
+    "DaySkyColor": [
+      81,
+      148,
+      231,
+      255
+    ],
+    "DayHorizonColor": [
+      210,
+      228,
+      249,
+      255
+    ],
+    "SunsetColor": [
+      243,
+      136,
+      81,
+      255
+    ],
+    "NightSkyColor": [
+      15,
+      21,
+      38,
+      255
+    ],
+    "NightHorizonColor": [
+      34,
+      41,
+      59,
+      255
+    ],
+    "SunBrightness": 1,
+    "SunSize": 1,
+    "MoonBrightness": 1,
+    "MoonSize": 1,
+    "StarBrightness": 1,
+    "DayExposure": -1,
+    "NightExposure": -2.5,
+    "Weather": "None",
+    "WeatherIntensity": 0.7,
+    "WeatherHaze": 0.6,
+    "WindSpeed": 4,
+    "WindDirection": 45,
+    "FogDensity": 0.02,
+    "FogAbsorption": 0.1,
+    "FogSunScatter": 0.1,
+    "FogLightScatter": 1.5,
+    "FogIndirectScatter": 0.1,
+    "FogAnisotropy": 0.45,
+    "FogStartDistance": 20,
+    "FogFullDistance": 400,
+    "FogNearDensity": 0,
+    "FogSkyStrength": 0.1,
+    "FogSkyShaftDistance": 200,
+    "MaxAutoExposure": 3,
+    "Post": {
+      "Tonemap": "Hejl",
+      "Exposure": 0.75,
+      "WhitePoint": 1.1,
+      "SCurveStrength": 0.05,
+      "ExactSrgb": true,
+      "ColorGrading": true,
+      "Saturation": 1,
+      "Contrast": 1,
+      "ColorFilter": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "Vignette": 1,
+      "ChromaticAberration": 0,
+      "AutoExposure": true,
+      "Metering": "BrightPixels",
+      "AutoExposureKey": 0.18,
+      "BrightPixelPercent": 2,
+      "BrightPixelTarget": 0.18,
+      "MinAverageLuminance": 0.03,
+      "AutoExposureMin": -3,
+      "AutoExposureMax": 3,
+      "AdaptationSpeedUp": 3,
+      "AdaptationSpeedDown": 1,
+      "CenterWeight": 0.5,
+      "Bloom": true,
+      "BloomStart": 1.5,
+      "BloomKnee": 0.5,
+      "BloomScale": 0.35,
+      "FogDensityScale": 1,
+      "RetinaBurn": 0
+    },
+    "Voxels": false,
+    "VoxelTerrain": "Hills",
+    "VoxelSeed": 1337,
+    "VoxelWorldSize": 128,
+    "VoxelWorldHeight": 64,
+    "VoxelBlockSize": 1,
+    "VoxelBaseHeight": -24,
+    "VoxelCaves": true,
+    "VoxelTrees": 0.5,
+    "VoxelSeaLevel": 0.3,
+    "VoxelCollision": true
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -14,
+      3.2
+    ],
+    "Forward": [
+      0,
+      0.9854312,
+      -0.17007455
+    ],
+    "FieldOfView": 0.9,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "70c47c4d-8559-5f68-ab73-78097b08d30b",
+        "Data": {
+          "ScriptId": "freecam",
+          "Fields": {},
+          "Enabled": true
+        }
+      }
+    ]
+  },
+  "Lighting": {
+    "Settings": {
+      "ProbeVolumeEnabled": true,
+      "Intensity": 1,
+      "ShowProbes": false,
+      "AutoBounds": true,
+      "BoundsPadding": 1,
+      "BoundsMin": [
+        -20,
+        -20,
+        0
+      ],
+      "BoundsMax": [
+        20,
+        20,
+        10
+      ],
+      "ProbeSpacing": 2,
+      "MaxProbesPerAxis": 48,
+      "SamplesPerProbe": 256,
+      "Bounces": 2,
+      "ValidityThreshold": 0.25,
+      "SkyColor": [
+        0.55,
+        0.7,
+        1
+      ],
+      "SkyIntensity": 0.3
+    },
+    "ProbeDataFile": "LookDev.probes"
+  }
+}

@@ -111,6 +111,7 @@ public partial class MaterialInfo : ComponentViewModel
             new("Metallic", c => c.MetallicTexture, path => Push(c => ((MaterialComponent)c).MetallicTexture = path)),
             new("Mask", c => c.MaskTexture, path => Push(c => ((MaterialComponent)c).MaskTexture = path)),
             new("Displacement", c => c.DisplacementTexture, path => Push(c => ((MaterialComponent)c).DisplacementTexture = path)),
+            new("Ambient Occlusion", c => c.AmbientOcclusionTexture, path => Push(c => ((MaterialComponent)c).AmbientOcclusionTexture = path)),
         ];
     }
 
@@ -208,12 +209,24 @@ public partial class MaterialInfo : ComponentViewModel
 
 public partial class LightInfo : ObservableObject
 {
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasRadius)), NotifyPropertyChangedFor(nameof(IsSpot))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasRadius)), NotifyPropertyChangedFor(nameof(IsSpot)), NotifyPropertyChangedFor(nameof(IsDirectional))]
     private LightType _type = LightType.Directional;
     [ObservableProperty] private Color _color = Color.Parse("#FFF7D6");
     [ObservableProperty] private double _intensity = 1.0;
     [ObservableProperty] private double _radius = 10.0;
     [ObservableProperty] private bool _castShadows;
+    [ObservableProperty] private double _shadowResolution = 512;
+    [ObservableProperty] private bool _staticShadows;
+    // Point and spot lights: the glowing sphere / tube the light comes from (Source 2 light source size), metres.
+    [ObservableProperty] private double _sourceRadius;
+    [ObservableProperty] private double _sourceLength;
+    // Spot lights: cookie (Content texture path), empty = none.
+    [ObservableProperty] private string _cookiePath = "";
+    // Directional lights: cascaded shadows.
+    [ObservableProperty] private double _cascadeCount = 4;
+    [ObservableProperty] private double _shadowDistance = 150;
+    [ObservableProperty] private double _splitLambda = 0.75;
+    public bool IsDirectional => Type == LightType.Directional;
     // Spot lights only: full cone angles in degrees.
     [ObservableProperty] private double _spotAngle = 60.0;
     [ObservableProperty] private double _innerSpotAngle = 40.0;
@@ -288,15 +301,39 @@ public partial class LightInfo : ObservableObject
 
     partial void OnCastShadowsChanged(bool value)
     {
-        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
+        Mutate(obj =>
         {
-            bridge.EnqueueMutate(id, obj =>
-            {
-                // DirectionalLight.CastShadows is readonly; only PointLight is settable at runtime.
-                if (obj is PointLight pl) pl.CastShadows = value;
-            });
-        }
+            if (obj is PointLight pl) pl.CastShadows = value;
+            else if (obj is DirectionalLight dl) dl.CastShadows = value;
+        });
     }
+
+    private void Mutate(System.Action<Engine.Entities.TransformableObject> change)
+    {
+        if (_parent is { SuppressPush: false } p && p.EngineId is int id && p.Bridge is { } bridge)
+            bridge.EnqueueMutate(id, change);
+    }
+
+    partial void OnShadowResolutionChanged(double value)
+    {
+        int v = (int)value;
+        Mutate(obj =>
+        {
+            if (obj is PointLight pl) pl.ShadowResolution = v;
+            else if (obj is DirectionalLight dl) dl.ShadowResolution = v;
+        });
+    }
+    partial void OnStaticShadowsChanged(bool value) => Mutate(obj => { if (obj is PointLight pl) { pl.StaticShadows = value; pl.HasChanged = true; } });
+    partial void OnSourceRadiusChanged(double value) => Mutate(obj => { if (obj is PointLight pl) pl.SourceRadius = (float)value; });
+    partial void OnSourceLengthChanged(double value) => Mutate(obj => { if (obj is PointLight pl) pl.SourceLength = (float)value; });
+    partial void OnCookiePathChanged(string value)
+    {
+        string path = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        Mutate(obj => { if (obj is SpotLight sl) sl.CookiePath = path; });
+    }
+    partial void OnCascadeCountChanged(double value) => Mutate(obj => { if (obj is DirectionalLight dl) dl.CascadeCount = (int)value; });
+    partial void OnShadowDistanceChanged(double value) => Mutate(obj => { if (obj is DirectionalLight dl) dl.ShadowDistance = (float)value; });
+    partial void OnSplitLambdaChanged(double value) => Mutate(obj => { if (obj is DirectionalLight dl) dl.SplitLambda = (float)value; });
 }
 
 public partial class CameraInfo : ObservableObject

@@ -7,6 +7,7 @@ struct PixelShaderOutput
 	float4 Color : COLOR0;
 	float4 Normal : COLOR1;
 	float4 Depth : COLOR2;
+	float4 Velocity : COLOR3;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,6 +28,8 @@ PixelShaderOutput PixelShaderFunction() : COLOR
     output.Normal = 0;
     //max depth
     output.Depth = 1.0f;
+    //no motion (the sky reprojects from the camera in TAA)
+    output.Velocity = 0;
     return output;
 }
 

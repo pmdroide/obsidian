@@ -84,9 +84,6 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramScanStride;
         private EffectParameter _paramNoiseMap;
         private EffectParameter _paramTime;
-        private EffectParameter _paramLightViewProjection;
-        private EffectParameter _paramLightView;
-        private EffectParameter _paramLightFarClip;
         private EffectParameter _paramFroxelDensity;
         private EffectParameter _paramFroxelAbsorption;
         private EffectParameter _paramDirectionalScatter;
@@ -109,7 +106,11 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private EffectParameter _paramPointLightShadowMapSize;
         private EffectParameter _paramPointLightSpotDirectionsVS;
         private EffectParameter _paramPointLightSpotCos;
-        private readonly EffectParameter[] _paramPointLightShadowMaps = new EffectParameter[MAX_FROXEL_POINT_LIGHTS];
+        private readonly Vector4[] _pointLightShadowTiles = new Vector4[MAX_FROXEL_POINT_LIGHTS * 6];
+        private int _fogCookieLight = -1;
+
+        /// <summary>The point/spot light shadow atlas (ShadowMapRenderModule.Atlas), set by the Renderer each frame.</summary>
+        public Texture2D ShadowAtlas;
         private EffectParameter _paramUseProbeVolume;
         private EffectParameter _paramProbeVolumeIntensity;
         private EffectParameter _paramProbeVolumeMin;
@@ -239,9 +240,6 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramScanStride = GetEffectParameter("ScanStride");
             _paramNoiseMap = GetEffectParameter("NoiseMap");
             _paramTime = GetEffectParameter("Time");
-            _paramLightViewProjection = GetEffectParameter("LightViewProjection");
-            _paramLightView = GetEffectParameter("LightView");
-            _paramLightFarClip = GetEffectParameter("LightFarClip");
             _paramFroxelDensity = GetEffectParameter("FroxelDensity");
             _paramFroxelAbsorption = GetEffectParameter("FroxelAbsorption");
             _paramDirectionalScatter = GetEffectParameter("DirectionalScatter");
@@ -264,14 +262,12 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramPointLightShadowMapSize = GetEffectParameter("PointLightShadowMapSize");
             _paramPointLightSpotDirectionsVS = GetEffectParameter("PointLightSpotDirectionsVS");
             _paramPointLightSpotCos = GetEffectParameter("PointLightSpotCos");
-            for (int i = 0; i < MAX_FROXEL_POINT_LIGHTS; ++i)
-                _paramPointLightShadowMaps[i] = GetEffectParameter("PointLightShadowMap" + i);
             _paramUseProbeVolume = GetEffectParameter("UseProbeVolume");
             _paramProbeVolumeIntensity = GetEffectParameter("ProbeVolumeIntensity");
             _paramProbeVolumeMin = GetEffectParameter("ProbeVolumeMin");
             _paramProbeVolumeExtentRcp = GetEffectParameter("ProbeVolumeExtentRcp");
             _paramProbeVolumeCells = GetEffectParameter("ProbeVolumeCells");
-            _paramProbeSHR = GetEffectParameter("ProbeSHR");
+            _paramProbeSHR = GetEffectParameter("ProbeData");
             _paramProbeSHG = GetEffectParameter("ProbeSHG");
             _paramProbeSHB = GetEffectParameter("ProbeSHB");
             _paramProbeDistPos = GetEffectParameter("ProbeDistPos");
@@ -357,7 +353,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         public void SetProbeVolume(LightingSystem lighting, float intensity)
         {
             ProbeVolumeData data = lighting?.GpuData;
-            if (data == null || lighting.ProbeSHR == null || _paramProbeSHR == null || _paramUseProbeVolume == null)
+            if (data == null || lighting.ProbeData == null || _paramProbeSHR == null || _paramUseProbeVolume == null)
             {
                 if (_probeData != null) InvalidateHistory();
                 _probeData = null;
@@ -374,11 +370,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramProbeVolumeMin?.SetValue(data.BoundsMin);
             _paramProbeVolumeExtentRcp?.SetValue(new Vector3(1f / extent.X, 1f / extent.Y, 1f / extent.Z));
             _paramProbeVolumeCells?.SetValue(new Vector3(data.CountX - 1, data.CountY - 1, data.CountZ - 1));
-            _paramProbeSHR.SetValue(lighting.ProbeSHR);
-            _paramProbeSHG?.SetValue(lighting.ProbeSHG);
-            _paramProbeSHB?.SetValue(lighting.ProbeSHB);
-            _paramProbeDistPos?.SetValue(lighting.ProbeDistPos);
-            _paramProbeDistNeg?.SetValue(lighting.ProbeDistNeg);
+            _paramProbeSHR?.SetValue(lighting.ProbeData);
         }
 
         public void SetNoiseMap(Texture2D noiseMap)
@@ -460,6 +452,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _frustum.Matrix = _view * _projection;
             RankPointLights(pointLights, cameraPosition, _frustum, _rankedLights, _lightRanks, MAX_FROXEL_POINT_LIGHTS);
             int count = _paramPointLightCount != null ? _rankedLights.Count : 0;
+            _fogCookieLight = -1;
 
             for (int i = 0; i < count; ++i)
             {
@@ -474,10 +467,21 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 _pointLightSpotDirectionsVS[i] = spot != null ? Vector3.Normalize(Vector3.TransformNormal(spot.Direction, _view)) : Vector3.UnitZ;
                 _pointLightSpotCos[i] = spot != null ? new Vector2(spot.CosOuter, spot.CosInner) : new Vector2(-2, -1);
 
-                bool hasShadow = light.CastShadows && light.ShadowMap != null;
-                _pointLightCastShadows[i] = hasShadow ? 1f : 0f;
-                _pointLightShadowMapSizes[i] = hasShadow ? light.ShadowResolution : 0f;
-                _paramPointLightShadowMaps[i]?.SetValue(hasShadow ? light.ShadowMap : (Texture2D)_dummyShadowMap);
+                bool hasShadow = light.HasShadowThisFrame && ShadowAtlas != null;
+                _pointLightCastShadows[i] = hasShadow ? light.ShadowStrength : 0f;
+                _pointLightShadowMapSizes[i] = hasShadow ? light.ShadowTileSize : 0f;
+                for (int f = 0; f < 6; f++)
+                    _pointLightShadowTiles[i * 6 + f] = hasShadow ? light.ShadowTiles[f] : Vector4.Zero;
+
+                //The first ranked spot light with a cookie shapes its light in the fog
+                if (_fogCookieLight < 0 && spot?.Cookie != null)
+                {
+                    _fogCookieLight = i;
+                    GetEffectParameter("FogCookie")?.SetValue(spot.Cookie);
+                    GetEffectParameter("FogCookieRightVS")?.SetValue(Vector3.Normalize(Vector3.TransformNormal(spot.Right, _view)));
+                    GetEffectParameter("FogCookieUpVS")?.SetValue(Vector3.Normalize(Vector3.TransformNormal(spot.Up, _view)));
+                    GetEffectParameter("FogCookieTanOuter")?.SetValue((float)Math.Tan(MathHelper.ToRadians(Math.Min(spot.SpotAngle, 170) * 0.5f)));
+                }
             }
 
             for (int i = count; i < MAX_FROXEL_POINT_LIGHTS; ++i)
@@ -490,7 +494,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 _pointLightShadowMapSizes[i] = 0f;
                 _pointLightSpotDirectionsVS[i] = Vector3.UnitZ;
                 _pointLightSpotCos[i] = new Vector2(-2, -1);
-                _paramPointLightShadowMaps[i]?.SetValue((Texture2D)_dummyShadowMap);
+                for (int f = 0; f < 6; f++) _pointLightShadowTiles[i * 6 + f] = Vector4.Zero;
             }
 
             GameStats.d_froxelsLightCount = count;
@@ -501,6 +505,9 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             _paramPointLightRadii?.SetValue(_pointLightRadii);
             _paramPointLightCastShadows?.SetValue(_pointLightCastShadows);
             _paramPointLightShadowMapSize?.SetValue(_pointLightShadowMapSizes);
+            GetEffectParameter("PointLightShadowTiles")?.SetValue(_pointLightShadowTiles);
+            GetEffectParameter("PointShadowAtlas")?.SetValue(ShadowAtlas ?? (Texture2D)_dummyShadowMap);
+            GetEffectParameter("FogCookieLight")?.SetValue((float)_fogCookieLight);
             _paramPointLightSpotDirectionsVS?.SetValue(_pointLightSpotDirectionsVS);
             _paramPointLightSpotCos?.SetValue(_pointLightSpotCos);
         }
@@ -516,19 +523,22 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
                 _paramUseDirectionalLight?.SetValue(true);
                 _paramDirectionalLightDirectionVS?.SetValue(dirVS);
                 _paramDirectionalLightColor?.SetValue(directionalLight.ColorV3 * directionalLight.Intensity);
-                _paramLightViewProjection?.SetValue(directionalLight.LightViewProjection);
-                _paramLightView?.SetValue(directionalLight.LightView);
-                _paramLightFarClip?.SetValue(directionalLight.ShadowDepth);
-                _paramShadowMap?.SetValue(directionalLight.ShadowMap ?? _dummyShadowMap);
+                // Sun shadow cascades (world space): the shafts follow the camera out to the light's Shadow Distance
+                bool shadowed = directionalLight.CastShadows && directionalLight.ShadowMap != null;
+                GetEffectParameter("CascadeViewProjection")?.SetValue(directionalLight.CascadeViewProjection);
+                GetEffectParameter("CascadeView")?.SetValue(directionalLight.CascadeView);
+                GetEffectParameter("CascadeFarClip")?.SetValue(directionalLight.CascadeFarClip);
+                GetEffectParameter("CascadeTexelSize")?.SetValue(directionalLight.CascadeTexelSize);
+                GetEffectParameter("CascadeCount")?.SetValue(shadowed ? (float)directionalLight.ActiveCascades : 0f);
+                GetEffectParameter("CascadeResolution")?.SetValue((float)directionalLight.CascadeResolution);
+                _paramShadowMap?.SetValue(shadowed ? directionalLight.ShadowMap : _dummyShadowMap);
             }
             else
             {
                 _paramUseDirectionalLight?.SetValue(false);
                 _paramDirectionalLightDirectionVS?.SetValue(Vector3.Zero);
                 _paramDirectionalLightColor?.SetValue(Vector3.Zero);
-                _paramLightViewProjection?.SetValue(Matrix.Identity);
-                _paramLightView?.SetValue(Matrix.Identity);
-                _paramLightFarClip?.SetValue(1f);
+                GetEffectParameter("CascadeCount")?.SetValue(0f);
                 _paramShadowMap?.SetValue(_dummyShadowMap);
             }
         }

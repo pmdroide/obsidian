@@ -36,6 +36,7 @@ internal static class MaterialGraphicsChecks
             WeatherChecks.RunGraphics(graphics, content);
             WetSurfaceChecks.RunGraphics(graphics, content);
             AutoExposureChecks.RunGraphics(graphics, content);
+            Source2LookChecks.RunGraphics(graphics, content);
             AnimationChecks.RunGraphics(graphics, content);
             BoneChecks.RunGraphics(graphics, content);
             RagdollChecks.RunGraphics(graphics, content);
