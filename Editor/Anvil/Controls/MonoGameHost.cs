@@ -172,6 +172,7 @@ public class MonoGameHost : NativeControlHost
 
     private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
     {
+        if (!IsEffectivelyVisible) return;
         if (_game?.Bridge is not EditorBridge b) return;
         XnaKeys xna = MapAvaloniaKey(e.Key);
         if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, true);
@@ -183,7 +184,7 @@ public class MonoGameHost : NativeControlHost
         if (_game?.Bridge is not EditorBridge b) return;
         XnaKeys xna = MapAvaloniaKey(e.Key);
         if (xna != XnaKeys.None) b.SetHostKeyState((int)xna, false);
-        if (IsGameKeyInPlay(b, e)) e.Handled = true;
+        if (IsEffectivelyVisible && IsGameKeyInPlay(b, e)) e.Handled = true;
     }
 
     /// <summary>
@@ -231,6 +232,21 @@ public class MonoGameHost : NativeControlHost
         base.OnDetachedFromVisualTree(e);
     }
 
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != IsVisibleProperty) return;
+        _game?.Bridge?.SetHostPointerOverViewport(IsVisible);
+        if (!IsVisible)
+        {
+            // Switching away from the engine tab must release keys even when their
+            // KeyUp will happen on another workspace page.
+            (_game?.Bridge as EditorBridge)?.ClearHostKeys();
+            return;
+        }
+        NudgeResizeSettle();
+    }
+
     private void OnWindowActivated(object? sender, EventArgs e)
     {
         // Alt-tabbing back can also leave nothing focused; re-assert over a short window.
@@ -258,7 +274,7 @@ public class MonoGameHost : NativeControlHost
     // untouched, so this never steals focus mid-edit.
     private void RestoreEditorKeyboardFocus()
     {
-        if (_disposed) return;
+        if (_disposed || !IsEffectivelyVisible) return;
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel == null) return;
 
@@ -480,6 +496,7 @@ public class MonoGameHost : NativeControlHost
 
                 Dispatcher.UIThread.Post(() =>
                 {
+                    bridge.SetHostPointerOverViewport(IsVisible);
                     try { BridgeReady?.Invoke(bridge); }
                     catch (Exception ex) { EditorBridge.Log("BridgeReady handler threw: " + ex); }
                 });

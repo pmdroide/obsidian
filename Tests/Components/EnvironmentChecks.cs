@@ -90,11 +90,11 @@ internal static class EnvironmentChecks
             "the moon rises opposite the sun");
         var main = new MainWindowViewModel();
         main.SetInspectorViewCommand.Execute("Environment");
-        Check(main.IsInspectorEnvironmentView && !main.IsInspectorSelectionView && !main.IsInspectorLightingView,
-            "Environment button opens the Environment Inspector section");
+        Check(main.IsWorkspaceEnvironmentView && main.IsInspectorSelectionView && !main.IsWorkspaceLightingView,
+            "Environment button opens its workspace tab while keeping the object Inspector");
         main.SetInspectorViewCommand.Execute("World");
-        Check(main.IsInspectorWorldView && !main.IsInspectorEnvironmentView && !main.IsInspectorSelectionView,
-            "World button opens the World Inspector section (voxel world)");
+        Check(main.IsWorkspaceWorldView && !main.IsWorkspaceEnvironmentView && main.IsInspectorSelectionView,
+            "World button opens its workspace tab while keeping the object Inspector");
     }
 
     public static void RunGraphics(GraphicsDevice device, ContentManager content)

@@ -197,11 +197,10 @@ namespace Engine.Editor
         void SetHostKeyState(int xnaKeyCode, bool down);
 
         /// <summary>
-        /// True while the host pointer is hovering over the viewport. Defaults to
-        /// true (standalone engine has no host). When hosted in Anvil and the
-        /// cursor is over the Inspector / Hierarchy / Console, this is false and
-        /// the engine input layer treats the mouse as idle so picking and camera
-        /// drag don't leak across Avalonia panels.
+        /// True while the host permits viewport input. Defaults to true
+        /// (standalone engine has no host). Anvil sets this false while the Engine
+        /// tab is hidden, suppressing input regardless of cursor coordinates.
+        /// Viewport bounds separately gate pointer input over surrounding panels.
         /// </summary>
         bool IsHostPointerOverViewport { get; }
         void SetHostPointerOverViewport(bool inside);

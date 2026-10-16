@@ -111,8 +111,8 @@ namespace Engine.Editor
 
         // Pointer-over-viewport gate. Defaults to true so standalone Engine.exe
         // (where no host pushes pointer-enter/leave events) is unaffected. The
-        // host flips it false when the pointer leaves the viewport so the engine
-        // ignores Win32's globally-visible mouse state during that interval.
+        // host can disable this while the Engine tab is hidden so the engine
+        // ignores Win32's globally-visible mouse state over another workspace.
         private volatile bool _hostPointerOverViewport = true;
         private volatile bool _hostDragDropActive;
         public bool IsHostDragDropActive => _hostDragDropActive;

@@ -41,8 +41,43 @@ UpdateSceneEditor();
 Check(ReferenceEquals(sceneEditor.SelectedObject, entity), "panel drag keeps the selected gameobject");
 MouseFrame(Mouse(20, ButtonState.Released));
 
+bridge.SetHostPointerOverViewport(false);
+MouseFrame(new MouseState(40, 30, 120, ButtonState.Pressed, ButtonState.Released,
+    ButtonState.Pressed, ButtonState.Released, ButtonState.Released));
+GameInput.Update(1f / 60f);
+Check(!Input.WasLMBClicked() && !Input.IsLMBPressed() && Input.mouseState.RightButton == ButtonState.Released &&
+      GameInput.MouseScroll == 0 && GameInput.MouseDelta == Vector2.Zero,
+    "hidden engine tab suppresses clicks, camera drag, wheel and mouse delta");
+UpdateSceneEditor();
+Check(ReferenceEquals(sceneEditor.SelectedObject, entity), "clicking an empty workspace tab does not change scene selection");
+bridge.SetHostPointerOverViewport(true);
+MouseFrame(Mouse(20, ButtonState.Pressed));
+Check(!Input.WasLMBClicked() && !Input.IsLMBPressed(), "returning to Engine suppresses an already-held pointer button until release");
+MouseFrame(Mouse(20, ButtonState.Released));
+
 var mainVm = new MainWindowViewModel();
 typeof(MainWindowViewModel).GetField("_bridge", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(mainVm, bridge);
+Publish();
+Check(mainVm.WorkspaceTabs.Count == 1 && mainVm.IsEngineWorkspaceSelected,
+    "workspace starts with Engine and no example tabs");
+var engineTab = mainVm.SelectedWorkspaceTab;
+var environmentEditor = mainVm.Environment;
+foreach (var panel in mainVm.AvailableWorkspacePanels) mainVm.OpenWorkspaceTabCommand.Execute(panel.Kind);
+Check(mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count + 1 &&
+      mainVm.WorkspaceTabs.Select(t => t.Kind).Distinct().Count() == mainVm.WorkspaceTabs.Count,
+    "every add-panel menu choice opens one real panel tab");
+mainVm.OpenWorkspaceTabCommand.Execute("Environment");
+var environmentTab = mainVm.SelectedWorkspaceTab;
+mainVm.OpenWorkspaceTabCommand.Execute("World");
+mainVm.SetInspectorViewCommand.Execute("Environment");
+Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, environmentTab) && ReferenceEquals(mainVm.Environment, environmentEditor) &&
+      mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count + 1,
+    "reopening a panel selects its existing tab and keeps its editor state");
+Check(mainVm.IsInspectorSelectionView && bridge.SelectedId == entity.Id,
+    "opening workspace panels preserves the object Inspector and scene selection");
+mainVm.OpenWorkspaceTabCommand.Execute("Engine");
+Check(mainVm.IsEngineWorkspaceSelected && ReferenceEquals(mainVm.SelectedWorkspaceTab, engineTab),
+    "returning to Engine selects the original persistent workspace");
 mainVm.SetAssetDragActive(true);
 Check(bridge.IsHostDragDropActive, "asset drag guard reaches the engine synchronously");
 Input.mouseLastState = Mouse(20, ButtonState.Released);

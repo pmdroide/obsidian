@@ -1,5 +1,82 @@
 # Changelog
 
+## Added: Real workspace panel tabs and add-panel menu (2026-10-16)
+
+- Removed the three example tabs. The editor starts with Engine; the adjacent + menu opens Environment, World, Pipeline, Post Processing, Lighting, Input Devices or Steam as real workspace tabs.
+- Reopening a panel selects its existing tab and preserves its controls and editor state. Tabs scroll horizontally as more panels are opened, with + remaining accessible.
+- Moved the existing settings views into the shared workspace area and routed their toolbar, Inspector-header and Window-menu shortcuts to the same tab-opening command. The right-hand Inspector continues showing object selection or a material asset.
+- Added the workspace tab model and panel catalog; updated panel-routing checks and the wiring documentation.
+- Validation: Anvil builds successfully with existing warnings. All component checks pass, including opening every panel, reusing existing tabs, preserving the Inspector and scene selection, and returning to Engine. `git diff --check` passes.
+
+- Codex
+
+## Changed: Engine included in the workspace tabs (2026-10-16)
+
+- Added Engine as the default tab beside Tab 1, Tab 2 and Tab 3. All four pages now share the full center content area; removed the workspace/game split and divider.
+- Kept the native engine host attached while hidden so switching tabs preserves the running engine and scene. Hidden engine tabs stop forwarding key presses, release held host keys, suppress mouse/scroll input and skip keyboard-focus restoration.
+- Updated the workspace layout and input wiring documentation.
+- Validation: Anvil builds successfully with existing warnings. `dotnet run --project Tests/Components/Components.csproj --no-restore` passes all component checks, including the new hidden-viewport input and selection checks; `git diff --check` passes.
+
+- Codex
+
+## Changed: Workspace tabs docked above the game viewport (2026-10-16)
+
+- Replaced separate tab windows with an embedded workspace panel between the viewport toolbar and the game. Each tab selects its own empty page, with Tab 1 visible initially.
+- Added a draggable horizontal divider to resize the workspace and game areas; the game remains visible below the tabs.
+- Removed `WorkspaceWindow` and its window-opening handlers. Updated the layout wiring documentation.
+- Validation: Anvil builds successfully with existing warnings; `git diff --check` passes.
+
+- Codex
+
+## Added: Empty windows for workspace tabs (2026-10-16)
+
+- Each toolbar tab now opens a separate empty, resizable, non-modal window using the editor theme. Selecting an already-open tab activates its window and restores it if minimized; closing a window allows it to be reopened from its tab.
+- Windows belong to the main editor and close with it. No windows open automatically at startup. Keyboard tab selection and Enter/Space activation are supported.
+- Added the shared `WorkspaceWindow` view and documented its tab/window lifecycle in `Docs/markdown/Engine_Wiring.md`.
+- Validation: Anvil builds successfully with existing warnings; `git diff --check` passes.
+
+- Codex
+
+## Added: Empty viewport toolbar tabs (2026-10-16)
+
+- Added three selectable placeholder tabs (Tab 1, Tab 2 and Tab 3) in the toolbar space between Pipeline and the viewport tool icons. The first tab is selected by default; tabs have an accent underline, hover and keyboard-focus states, with no content attached yet.
+- Documented `ViewportTabs` and its local styles in `Docs/markdown/Engine_Wiring.md`.
+- Validation: `dotnet build Editor/Anvil/Anvil.csproj --no-restore -v quiet` passes with existing warnings; `git diff --check` passes.
+
+- Codex
+
+## Changed: White debug stats and component header removal (2026-10-15)
+
+- Changed the detailed viewport debug stats from orange to white, retaining the black text shadow.
+- Replaced all 17 Remove Component body buttons with a compact X at the far right of the component header. The X uses the existing attachment-specific removal command, includes a tooltip and accessible name, and works while collapsed.
+- Updated `Docs/markdown/Engine_Wiring.md` with the stats color and shared header button wiring.
+- Validation: Engine and Anvil builds pass with existing warnings. An offscreen preview verifies the X button's header placement, attachment-specific command binding and independence from expansion and enablement while collapsed.
+
+- Codex
+
+## Changed: Subtle accent checkbox backgrounds (2026-10-15)
+
+- Added an 18% opacity editor-accent background to checked and mixed checkboxes, keeping the fine accent mark and dark inset base. The fill follows the existing accent brush.
+- Updated the wiring documentation. Validation: Anvil compilation and an isolated offscreen control preview pass. Output copying was disabled because the running editor locks the normal build output.
+
+- Codex
+
+## Changed: Reference-style Inspector checkboxes (2026-10-15)
+
+- Refined main-window checkboxes to match the second reference: 12 px dark squares, nearly square corners, a subtle border and a fine blue accent tick. Checked and mixed states retain the dark inset background.
+- Updated the Inspector theme wiring documentation. Validation: Anvil build and offscreen control preview.
+
+- Codex
+
+## Changed: Compact Inspector component headers (2026-10-15)
+
+- Moved all 17 component Enabled toggles into the header, beside a left disclosure arrow, component icon and name. Components can be enabled while collapsed; clicking the checkbox and expanding the component work independently.
+- Added compact square checkboxes with the editor's blue accent throughout the main window, including checked, unchecked, indeterminate, hover, keyboard focus and disabled states. Script components now include a script icon.
+- Shared templates live in `Editor/Anvil/Themes/InspectorControls.axaml`; documented their wiring in `Docs/markdown/Engine_Wiring.md`.
+- Validation: the Anvil build passes with existing warnings. An offscreen Avalonia preview verifies rendering, two-way enablement while collapsed, independent title/disclosure toggles and arrow states.
+
+- Codex
+
 ## Fixed: OBJ model sources ignored by Git (2026-10-15)
 
 - Expanded `.gitignore`'s capsule-only exception to OBJ model sources under `Engine/Content`, including `Cloth/cloth.obj` and `Tree/tree.obj`, so they can be tracked without force-adding. Compiler object files elsewhere and generated build directories remain ignored.

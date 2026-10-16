@@ -1,0 +1,159 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:m="using:Anvil.Models">
+    <!-- Inset dark squares with a fine accent tick, matching the compact component reference. -->
+    <ControlTheme x:Key="InspectorCheckBox" TargetType="CheckBox">
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="6,0,0,0" />
+        <Setter Property="Foreground" Value="{DynamicResource AnvilTextPrimaryBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="Auto,*" Background="Transparent">
+                    <Border x:Name="CheckBorder" Width="12" Height="12" CornerRadius="1"
+                            VerticalAlignment="Center" Background="{DynamicResource AnvilInputBackgroundBrush}"
+                            BorderBrush="{DynamicResource AnvilBorderStrongBrush}" BorderThickness="1">
+                        <Panel>
+                            <Border x:Name="CheckTint" Background="{DynamicResource AnvilPrimaryBrush}"
+                                    Opacity="0.18" IsVisible="False" />
+                            <Path x:Name="CheckMark" Data="M 1.5,4 L 3.5,6 L 7.5,1.5"
+                                  Width="9" Height="8" Stroke="{DynamicResource AnvilSelectedBackgroundBrush}"
+                                  StrokeThickness="1.25" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  IsVisible="False" />
+                            <Border x:Name="IndeterminateMark" Width="6" Height="1"
+                                    Background="{DynamicResource AnvilSelectedBackgroundBrush}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+                        </Panel>
+                    </Border>
+                    <ContentPresenter Grid.Column="1" x:Name="PART_ContentPresenter"
+                                      Margin="{TemplateBinding Padding}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      RecognizesAccessKey="True" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover /template/ Border#CheckBorder">
+            <Setter Property="BorderBrush" Value="{DynamicResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+        <Style Selector="^:checked /template/ Border#CheckTint, ^:indeterminate /template/ Border#CheckTint">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:checked /template/ Path#CheckMark">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:indeterminate /template/ Border#IndeterminateMark">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#CheckBorder">
+            <Setter Property="BorderBrush" Value="{DynamicResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="ComponentHeaderToggle" TargetType="ToggleButton">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="HeaderBackground" Background="{TemplateBinding Background}"
+                        Padding="{TemplateBinding Padding}" CornerRadius="2">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover /template/ Border#HeaderBackground">
+            <Setter Property="Background" Value="{DynamicResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#HeaderBackground">
+            <Setter Property="BorderBrush" Value="{DynamicResource AnvilSelectedBackgroundBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="ComponentRemoveButton" TargetType="Button">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AnvilTextMutedBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="RemoveBackground" Background="{TemplateBinding Background}" CornerRadius="2">
+                    <Path Data="M 1,1 L 9,9 M 9,1 L 1,9" Width="10" Height="10"
+                          Stroke="{TemplateBinding Foreground}" StrokeThickness="1.4"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource AnvilTextPrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AnvilHoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource AnvilBorderStrongBrush}" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#RemoveBackground">
+            <Setter Property="BorderBrush" Value="{DynamicResource AnvilSelectedBackgroundBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+    </ControlTheme>
+
+    <!-- Keep enablement and removal outside both disclosure buttons. -->
+    <ControlTheme x:Key="InspectorComponent" TargetType="Expander">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                    <StackPanel>
+                        <Grid ColumnDefinitions="20,Auto,*,Auto" MinHeight="28" Margin="4,0"
+                              Background="{DynamicResource AnvilSubtleBandBrush}">
+                            <ToggleButton Theme="{StaticResource ComponentHeaderToggle}"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Background="Transparent" Padding="0" MinWidth="0" MinHeight="0"
+                                          HorizontalContentAlignment="Center" ToolTip.Tip="Expand or collapse component"
+                                          AutomationProperties.Name="Expand or collapse component">
+                                <Path Classes="disclosure" Data="M 1,0 L 6,4 L 1,8 Z" Width="8" Height="8"
+                                      Fill="{DynamicResource AnvilTextMutedBrush}" Stretch="Uniform"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </ToggleButton>
+                            <CheckBox Grid.Column="1" x:DataType="m:ComponentViewModel"
+                                      Theme="{StaticResource InspectorCheckBox}"
+                                      IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                      Padding="0" MinHeight="0" Margin="2,0,6,0" VerticalAlignment="Center"
+                                      ToolTip.Tip="Enable component" AutomationProperties.Name="Enable component" />
+                            <ToggleButton Grid.Column="2" Theme="{StaticResource ComponentHeaderToggle}"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Background="Transparent" Padding="0" MinWidth="0" MinHeight="0"
+                                          HorizontalContentAlignment="Left" FontSize="11.5" FontWeight="SemiBold"
+                                          Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" />
+                            <Button Grid.Column="3" x:DataType="m:ComponentViewModel"
+                                    Theme="{StaticResource ComponentRemoveButton}" Command="{Binding RemoveCommand}"
+                                    Margin="4,0,0,0" VerticalAlignment="Center"
+                                    ToolTip.Tip="Remove component" AutomationProperties.Name="Remove component" />
+                        </Grid>
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          IsVisible="{TemplateBinding IsExpanded}"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^ /template/ ToggleButton:checked Path.disclosure">
+            <Setter Property="Data" Value="M 0,1 L 8,1 L 4,6 Z" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

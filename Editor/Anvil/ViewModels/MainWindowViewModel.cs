@@ -19,6 +19,54 @@ namespace Anvil.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    public ObservableCollection<WorkspaceTabViewModel> WorkspaceTabs { get; } =
+        new() { new WorkspaceTabViewModel("Engine", "Engine") };
+
+    public IReadOnlyList<WorkspaceTabViewModel> AvailableWorkspacePanels { get; } = new[]
+    {
+        new WorkspaceTabViewModel("Environment", "Environment"),
+        new WorkspaceTabViewModel("World", "World"),
+        new WorkspaceTabViewModel("RenderPipeline", "Pipeline"),
+        new WorkspaceTabViewModel("PostProcessing", "Post Processing"),
+        new WorkspaceTabViewModel("Lighting", "Lighting"),
+        new WorkspaceTabViewModel("Input", "Input Devices"),
+        new WorkspaceTabViewModel("Steam", "Steam"),
+    };
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEngineWorkspaceSelected), nameof(IsWorkspaceEnvironmentView),
+        nameof(IsWorkspaceWorldView), nameof(IsWorkspaceRenderPipelineView), nameof(IsWorkspacePostProcessingView),
+        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView))]
+    private WorkspaceTabViewModel? _selectedWorkspaceTab;
+
+    public bool IsEngineWorkspaceSelected => SelectedWorkspaceTab?.IsEngine == true;
+    public bool IsWorkspaceEnvironmentView => SelectedWorkspaceTab?.Kind == "Environment";
+    public bool IsWorkspaceWorldView => SelectedWorkspaceTab?.Kind == "World";
+    public bool IsWorkspaceRenderPipelineView => SelectedWorkspaceTab?.Kind == "RenderPipeline";
+    public bool IsWorkspacePostProcessingView => SelectedWorkspaceTab?.Kind == "PostProcessing";
+    public bool IsWorkspaceLightingView => SelectedWorkspaceTab?.Kind == "Lighting";
+    public bool IsWorkspaceInputView => SelectedWorkspaceTab?.Kind == "Input";
+    public bool IsWorkspaceSteamView => SelectedWorkspaceTab?.Kind == "Steam";
+
+    partial void OnSelectedWorkspaceTabChanged(WorkspaceTabViewModel? value)
+    {
+        if (value?.Kind == "RenderPipeline") RenderPipeline.Refresh();
+    }
+
+    [RelayCommand]
+    private void OpenWorkspaceTab(string kind)
+    {
+        var tab = WorkspaceTabs.FirstOrDefault(t => t.Kind == kind);
+        if (tab == null)
+        {
+            tab = AvailableWorkspacePanels.FirstOrDefault(t => t.Kind == kind);
+            if (tab == null) return;
+            WorkspaceTabs.Add(tab);
+        }
+        if (ReferenceEquals(SelectedWorkspaceTab, tab) && kind == "RenderPipeline") RenderPipeline.Refresh();
+        SelectedWorkspaceTab = tab;
+    }
+
     // Mirrors the game's window name (Game Settings) in the title bar.
     [ObservableProperty] private string _projectName = Engine.Recources.GameInfo.Read().WindowTitle;
     [ObservableProperty] private string _sceneName = "SampleScene";
@@ -122,15 +170,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<AddableObjectType> AddableObjects { get; } = new();
 
     /// <summary>
-    /// View model for the global post-processing / render settings panel.
-    /// Shown inside the Inspector when <see cref="InspectorView"/> ==
-    /// "PostProcessing". Replaces the legacy HelperSuite right-side panel.
+    /// View model for the Post Processing workspace panel.
     /// </summary>
     public PostProcessingViewModel PostProcessing { get; } = new();
 
     /// <summary>
-    /// Baked lighting (probe volume) settings + bake controls for the active scene. Shown inside
-    /// the Inspector when <see cref="InspectorView"/> == "Lighting".
+    /// Baked lighting settings and bake controls for the Lighting workspace panel.
     /// </summary>
     public LightingViewModel Lighting { get; } = new();
     public EnvironmentViewModel Environment { get; } = new();
@@ -138,33 +183,19 @@ public partial class MainWindowViewModel : ViewModelBase
     public InputDevicesViewModel InputDevices { get; } = new();
 
     /// <summary>
-    /// The render pipeline and the project's render features (user shader passes). Shown inside the
-    /// Inspector when <see cref="InspectorView"/> == "RenderPipeline" (viewport toolbar > Pipeline).
+    /// The engine's passes and user render features, shown in the Pipeline workspace panel.
     /// </summary>
     public RenderPipelineViewModel RenderPipeline { get; } = new();
 
     /// <summary>
-    /// Inspector content switch: "Selection" (default) shows the selected
-    /// object; "PostProcessing" shows <see cref="PostProcessing"/>. Driven by
-    /// the segmented control in the inspector header and by
-    /// Window &gt; Post Processing.
+    /// Right-hand Inspector content: object selection or a selected material asset.
+    /// Settings commands are routed to workspace tabs by SetInspectorView.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView),
-        nameof(IsInspectorPostProcessingView), nameof(IsInspectorLightingView), nameof(IsInspectorEnvironmentView),
-        nameof(IsInspectorWorldView), nameof(IsInspectorSteamView), nameof(IsInspectorInputView),
-        nameof(IsInspectorRenderPipelineView), nameof(IsInspectorMaterialAssetView))]
+    [NotifyPropertyChangedFor(nameof(IsInspectorSelectionView), nameof(IsInspectorMaterialAssetView))]
     private string _inspectorView = "Selection";
 
     public bool IsInspectorSelectionView => InspectorView == "Selection";
-    public bool IsInspectorPostProcessingView => InspectorView == "PostProcessing";
-    public bool IsInspectorLightingView => InspectorView == "Lighting";
-    public bool IsInspectorEnvironmentView => InspectorView == "Environment";
-    /// <summary>World generation (voxel world); its settings live on <see cref="Environment"/>.</summary>
-    public bool IsInspectorWorldView => InspectorView == "World";
-    public bool IsInspectorSteamView => InspectorView == "Steam";
-    public bool IsInspectorInputView => InspectorView == "Input";
-    public bool IsInspectorRenderPipelineView => InspectorView == "RenderPipeline";
     /// <summary>A material asset (.mat) clicked in Assets; see <see cref="MaterialAsset"/>.</summary>
     public bool IsInspectorMaterialAssetView => InspectorView == "MaterialAsset" && MaterialAsset != null;
 
@@ -172,9 +203,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SetInspectorView(string view)
     {
         if (view != "MaterialAsset") MaterialAsset?.Flush();
+        if (AvailableWorkspacePanels.Any(panel => panel.Kind == view))
+        {
+            OpenWorkspaceTab(view);
+            return;
+        }
         InspectorView = view;
-        // The built-in passes' on/off state follows the render settings, which don't notify.
-        if (view == "RenderPipeline") RenderPipeline.Refresh();
     }
 
     [ObservableProperty]
@@ -261,6 +295,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        SelectedWorkspaceTab = WorkspaceTabs[0];
         BuildConsole();
     }
 
