@@ -1,5 +1,23 @@
 # Changelog
 
+## Changed: Full-height workspace tabs and consistent section buttons (2026-10-17)
+
+- Removed the tab strip's inset and stretched tabs and the + button through the toolbar height. Tabs now have a 100 px minimum width and 12 px labels.
+- Gave Environment and World the same icon-and-label layout as Pipeline, using CloudSun and Globe icons with matching spacing and sizing.
+- Updated the toolbar wiring documentation.
+- Validation: Anvil builds successfully with existing warnings; both new icons are present in the installed icon library; `git diff --check` passes.
+
+- Codex
+
+## Changed: Workspace toolbar layout and closable tabs (2026-10-17)
+
+- Moved workspace tabs to the left and Environment, World and Pipeline beside the right-hand toolbar icons.
+- Added an X close button with a tooltip and accessible name to every tab. Closing a selected tab activates a neighbor; closing an inactive tab keeps the current workspace. The + menu can reopen every panel, including Engine, while preserving panel state and the engine host.
+- Updated workspace lifecycle checks and the wiring documentation.
+- Validation: Anvil builds successfully with existing warnings; all component checks pass, including tab closing and reopening; `git diff --check` passes.
+
+- Codex
+
 ## Added: Real workspace panel tabs and add-panel menu (2026-10-16)
 
 - Removed the three example tabs. The editor starts with Engine; the adjacent + menu opens Environment, World, Pipeline, Post Processing, Lighting, Input Devices or Steam as real workspace tabs.

@@ -24,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public IReadOnlyList<WorkspaceTabViewModel> AvailableWorkspacePanels { get; } = new[]
     {
+        new WorkspaceTabViewModel("Engine", "Engine"),
         new WorkspaceTabViewModel("Environment", "Environment"),
         new WorkspaceTabViewModel("World", "World"),
         new WorkspaceTabViewModel("RenderPipeline", "Pipeline"),
@@ -65,6 +66,20 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         if (ReferenceEquals(SelectedWorkspaceTab, tab) && kind == "RenderPipeline") RenderPipeline.Refresh();
         SelectedWorkspaceTab = tab;
+    }
+
+    [RelayCommand]
+    private void CloseWorkspaceTab(WorkspaceTabViewModel? tab)
+    {
+        if (tab == null) return;
+        int index = WorkspaceTabs.IndexOf(tab);
+        if (index < 0) return;
+
+        // Pick a neighbor before removal so the TabStrip keeps the intended selection.
+        if (ReferenceEquals(SelectedWorkspaceTab, tab))
+            SelectedWorkspaceTab = index + 1 < WorkspaceTabs.Count ? WorkspaceTabs[index + 1]
+                : index > 0 ? WorkspaceTabs[index - 1] : null;
+        WorkspaceTabs.RemoveAt(index);
     }
 
     // Mirrors the game's window name (Game Settings) in the title bar.

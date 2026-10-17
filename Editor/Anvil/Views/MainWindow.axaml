@@ -347,9 +347,9 @@
             </Setter>
         </Style>
         <Style Selector="TabStrip.viewportTabs TabStripItem">
-            <Setter Property="MinWidth" Value="0" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="MinWidth" Value="100" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="Padding" Value="12,0" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="{DynamicResource AnvilTextMutedBrush}" />
@@ -786,18 +786,30 @@
                         Background="{StaticResource AnvilPanelBackgroundBrush}"
                         BorderBrush="{StaticResource AnvilBorderBrush}"
                         BorderThickness="0,0,0,1"
-                        Padding="12,6">
-                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+                        Padding="0,0,12,0">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto">
 
-                        <Button Grid.Column="0" Content="Environment" Classes="environmentButton"
+                        <Button Grid.Column="2" Classes="environmentButton"
                                 Command="{Binding SetInspectorViewCommand}" CommandParameter="Environment"
                                 Classes.active="{Binding IsWorkspaceEnvironmentView}"
-                                ToolTip.Tip="Skybox and day / night cycle" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="World" Classes="environmentButton" Margin="4,0,0,0"
+                                AutomationProperties.Name="Environment"
+                                ToolTip.Tip="Skybox and day / night cycle" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <controls:LucideIcon Icon="CloudSun" Width="12" Height="12" />
+                                <TextBlock Text="Environment" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="3" Classes="environmentButton" Margin="4,0,0,0"
                                 Command="{Binding SetInspectorViewCommand}" CommandParameter="World"
                                 Classes.active="{Binding IsWorkspaceWorldView}"
-                                ToolTip.Tip="World generation (voxel world)" VerticalAlignment="Center" />
-                        <Button Grid.Column="2" Classes="environmentButton" Margin="4,0,0,0"
+                                AutomationProperties.Name="World"
+                                ToolTip.Tip="World generation (voxel world)" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <controls:LucideIcon Icon="Globe" Width="12" Height="12" />
+                                <TextBlock Text="World" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="4" Classes="environmentButton" Margin="4,0,8,0"
                                 Command="{Binding SetInspectorViewCommand}" CommandParameter="RenderPipeline"
                                 Classes.active="{Binding IsWorkspaceRenderPipelineView}"
                                 ToolTip.Tip="Render pipeline: the engine's passes and your render features (custom shader passes)"
@@ -809,27 +821,38 @@
                             </StackPanel>
                         </Button>
 
-                        <Rectangle Grid.Column="3" Width="1" Margin="10,4"
+                        <Rectangle Grid.Column="1" Width="1" Margin="10,4"
                                    Fill="{StaticResource AnvilBorderBrush}" />
 
-                        <!-- The engine and empty workspace pages share one content area. -->
-                        <DockPanel Grid.Column="4" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        <!-- Tabs stay on the left; section shortcuts sit beside the right-hand tools. -->
+                        <DockPanel Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Stretch"
                                    Margin="0,0,10,0" LastChildFill="True">
-                            <Button DockPanel.Dock="Right" Classes="iconButton" Width="22" Height="20"
+                            <Button DockPanel.Dock="Right" Classes="iconButton" Width="28"
                                     MinWidth="0" MinHeight="0" Margin="4,0,0,0"
                                     Click="WorkspaceTabAdd_Click" ToolTip.Tip="Add panel tab"
                                     AutomationProperties.Name="Add workspace panel tab">
                                 <controls:LucideIcon Icon="Plus" />
                             </Button>
-                            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                                          VerticalContentAlignment="Stretch">
                                 <TabStrip x:Name="ViewportTabs" Classes="viewportTabs"
                                           ItemsSource="{Binding WorkspaceTabs}"
                                           SelectedItem="{Binding SelectedWorkspaceTab, Mode=TwoWay}"
                                           AutoScrollToSelectedItem="True" AutomationProperties.Name="Workspace tabs">
                                     <TabStrip.ItemTemplate>
                                         <DataTemplate x:DataType="m:WorkspaceTabViewModel">
-                                            <TextBlock Text="{Binding Title}" FontSize="11" VerticalAlignment="Center"
-                                                       Foreground="{Binding $parent[TabStripItem].Foreground}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Title}" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{Binding $parent[TabStripItem].Foreground}" />
+                                                <Button Classes="iconButton" Width="16" Height="16" Padding="3"
+                                                        MinWidth="0" MinHeight="0" VerticalAlignment="Center"
+                                                        Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).CloseWorkspaceTabCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{Binding Title, StringFormat='Close {0} tab'}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='Close {0} tab'}">
+                                                    <controls:LucideIcon Icon="X" Width="10" Height="10" />
+                                                </Button>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </TabStrip.ItemTemplate>
                                 </TabStrip>

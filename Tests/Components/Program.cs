@@ -63,7 +63,7 @@ Check(mainVm.WorkspaceTabs.Count == 1 && mainVm.IsEngineWorkspaceSelected,
 var engineTab = mainVm.SelectedWorkspaceTab;
 var environmentEditor = mainVm.Environment;
 foreach (var panel in mainVm.AvailableWorkspacePanels) mainVm.OpenWorkspaceTabCommand.Execute(panel.Kind);
-Check(mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count + 1 &&
+Check(mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count &&
       mainVm.WorkspaceTabs.Select(t => t.Kind).Distinct().Count() == mainVm.WorkspaceTabs.Count,
     "every add-panel menu choice opens one real panel tab");
 mainVm.OpenWorkspaceTabCommand.Execute("Environment");
@@ -71,13 +71,33 @@ var environmentTab = mainVm.SelectedWorkspaceTab;
 mainVm.OpenWorkspaceTabCommand.Execute("World");
 mainVm.SetInspectorViewCommand.Execute("Environment");
 Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, environmentTab) && ReferenceEquals(mainVm.Environment, environmentEditor) &&
-      mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count + 1,
+      mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count,
     "reopening a panel selects its existing tab and keeps its editor state");
 Check(mainVm.IsInspectorSelectionView && bridge.SelectedId == entity.Id,
     "opening workspace panels preserves the object Inspector and scene selection");
 mainVm.OpenWorkspaceTabCommand.Execute("Engine");
 Check(mainVm.IsEngineWorkspaceSelected && ReferenceEquals(mainVm.SelectedWorkspaceTab, engineTab),
     "returning to Engine selects the original persistent workspace");
+mainVm.CloseWorkspaceTabCommand.Execute(environmentTab);
+Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, engineTab) && !mainVm.WorkspaceTabs.Contains(environmentTab!),
+    "closing an inactive tab keeps the selected workspace");
+mainVm.OpenWorkspaceTabCommand.Execute("Environment");
+Check(mainVm.IsWorkspaceEnvironmentView && ReferenceEquals(mainVm.Environment, environmentEditor),
+    "reopening a closed panel preserves its editor state");
+mainVm.CloseWorkspaceTabCommand.Execute(mainVm.SelectedWorkspaceTab);
+Check(mainVm.IsWorkspaceSteamView, "closing the last selected tab selects its left neighbor");
+mainVm.OpenWorkspaceTabCommand.Execute("Engine");
+var nextTab = mainVm.WorkspaceTabs[1];
+mainVm.CloseWorkspaceTabCommand.Execute(engineTab);
+Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, nextTab), "closing Engine selects its right neighbor");
+foreach (var tab in mainVm.WorkspaceTabs.ToArray()) mainVm.CloseWorkspaceTabCommand.Execute(tab);
+Check(mainVm.WorkspaceTabs.Count == 0 && mainVm.SelectedWorkspaceTab == null && !mainVm.IsEngineWorkspaceSelected,
+    "closing all tabs clears the workspace selection");
+mainVm.CloseWorkspaceTabCommand.Execute(engineTab);
+Check(mainVm.WorkspaceTabs.Count == 0, "closing an already closed tab is harmless");
+mainVm.OpenWorkspaceTabCommand.Execute("Engine");
+Check(mainVm.WorkspaceTabs.Count == 1 && mainVm.IsEngineWorkspaceSelected,
+    "the add menu can reopen Engine after all tabs are closed");
 mainVm.SetAssetDragActive(true);
 Check(bridge.IsHostDragDropActive, "asset drag guard reaches the engine synchronously");
 Input.mouseLastState = Mouse(20, ButtonState.Released);
