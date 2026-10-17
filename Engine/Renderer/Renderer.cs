@@ -454,7 +454,7 @@ namespace Engine.Renderer
             meshMaterialLibrary.FlagMovedObjects(entities);
 
             //Reflection Probe components (their box meshes are hidden before any pass draws)
-            _reflectionProbes.Update(entities);
+            _reflectionProbes.Update(entities, scene, _graphicsDevice);
 
             //LOD components: pick each gameobject's level for this camera before any pass draws
             meshMaterialLibrary.SelectLevelsOfDetail(entities, camera.Position);
@@ -485,7 +485,11 @@ namespace Engine.Renderer
             if (GameSettings.g_environmentmapping && _prefilteredGlobal != null)
             {
                 ReflectionProbes.Probe next = _reflectionProbes.NextCapture(camera.Position);
-                if (next != null) CaptureReflectionProbe(next, meshMaterialLibrary, entities, pointLights, directionalLights, gameTime, camera);
+                if (next != null)
+                {
+                    CaptureReflectionProbe(next, meshMaterialLibrary, entities, pointLights, directionalLights, gameTime, camera);
+                    _reflectionProbes.StoreCapture(next, scene);
+                }
             }
 
             //Update our view projection matrices if the camera moved (the view culls by screen size; the size test needs
@@ -494,6 +498,10 @@ namespace Engine.Renderer
             if (_lastSizeCull != MeshMaterialLibrary.SizeCullThreshold) { _lastSizeCull = MeshMaterialLibrary.SizeCullThreshold; camera.HasChanged = true; }
             UpdateViewProjection(camera, meshMaterialLibrary, entities);
             MeshMaterialLibrary.SizeCullThreshold = 0;
+
+            //Rebuild cookie textures before the frame targets contain scene colour or reconstructed depth.
+            if (GameSettings.g_forwardenable)
+                _forwardRenderModule.PrepareCookies(_graphicsDevice, camera, _boundingFrustum, pointLights);
 
             //What render features read: camera, G-buffer, time
             _renderFeatureContext = new RenderFeatureRenderModule.Context
@@ -1668,6 +1676,7 @@ namespace Engine.Renderer
                 Frustum = _boundingFrustum,
                 PointLights = pointLights,
                 DirectionalLights = _frameDirectionalLights,
+                ShadowAtlas = _shadowMapRenderModule.Atlas?.Target,
                 GlobalProbe = _prefilteredGlobal,
                 BrdfLut = _environmentPrefilter.BrdfLut(_graphicsDevice),
                 LocalProbes = _reflectionProbes.Visible,

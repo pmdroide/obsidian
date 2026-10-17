@@ -11,8 +11,8 @@ namespace Engine.Components;
 /// scale; the mesh is never drawn). Reflections are box projected (they line up with the walls) and fade in over
 /// Blend Distance from the box faces; where probes overlap the higher Priority wins. With baked lighting, each probe
 /// is normalised by the baked light here vs. at its capture point, so it never glows in the dark.
-/// Captured when the scene loads, when the probe moves or changes, and on <see cref="RequestCapture"/>; one probe
-/// per frame (Renderer.Lighting.ReflectionProbes).
+/// Filtered cubemaps are saved with the scene and restored on load. Missing captures, moved or changed probes,
+/// and <see cref="RequestCapture"/> trigger a capture; one probe per frame (Renderer.Lighting.ReflectionProbes).
 /// </summary>
 public sealed class ReflectionProbeComponent : GameComponent
 {

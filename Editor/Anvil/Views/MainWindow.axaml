@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Anvil.ViewModels"
+        xmlns:views="using:Anvil.Views"
         xmlns:m="using:Anvil.Models"
         xmlns:input="using:Engine.InputDevices"
         xmlns:scripting="using:Engine.Scripting"
@@ -171,7 +172,13 @@
                         </ItemsControl>
                     </StackPanel>
                 </Expander>
-                <Expander Header="Shader" IsExpanded="True">
+                <Expander IsExpanded="True">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Shader" VerticalAlignment="Center" />
+                            <controls:HelpButton Description="Darkens and glosses the surface and pools mirror-like puddles on faces that look up. Puddles fill the dark parts of the Base Color first, or the low parts of the Displacement texture when one is set (used as height, no parallax). Puddle placement is world space, so it does not repeat with Tiling.&#10;&#10;Apply to a flat mesh on the XY plane; it is subdivided so the swell moves the surface. Waves animate in Edit and Play mode; shore foam and depth colour appear where geometry sits below or through the surface. Give the gameobject the Water role to float Buoyancy bodies on it." />
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel Spacing="8" Margin="0,8,0,0">
                         <Grid ColumnDefinitions="60,*" ColumnSpacing="8">
                             <TextBlock Grid.Column="0" Text="Shader"
@@ -202,7 +209,6 @@
                             <NumericUpDown Classes="field" Minimum="0.1" Maximum="50" Increment="0.5" Value="{Binding PuddleSize, Mode=TwoWay}" FormatString="0.0" />
                             <CheckBox Content="Wet in Rain" IsChecked="{Binding WeatherWetness, Mode=TwoWay}" FontSize="11"
                                       ToolTip.Tip="Rain soaks the surface beyond Wetness, fills its puddles and ripples them; it dries after the rain" />
-                            <TextBlock Text="Darkens and glosses the surface and pools mirror-like puddles on faces that look up. Puddles fill the dark parts of the Base Color first, or the low parts of the Displacement texture when one is set (used as height, no parallax). Puddle placement is world space, so it does not repeat with Tiling." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Spacing="8" IsVisible="{Binding IsWater}">
                             <TextBlock Text="Wave Scale" Classes="muted" FontSize="11" />
@@ -217,7 +223,6 @@
                             <NumericUpDown Classes="field" Minimum="0.05" Maximum="50" Increment="0.5" Value="{Binding Clarity, Mode=TwoWay}" FormatString="0.00" />
                             <TextBlock Text="Foam" Classes="muted" FontSize="11" />
                             <Slider Minimum="0" Maximum="1" Value="{Binding Foam, Mode=TwoWay}" />
-                            <TextBlock Text="Apply to a flat mesh on the XY plane; it is subdivided so the swell moves the surface. Waves animate in Edit and Play mode; shore foam and depth colour appear where geometry sits below or through the surface. Give the gameobject the Water role to float Buoyancy bodies on it." Classes="muted" FontSize="10" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Expander>            </StackPanel>
@@ -866,10 +871,10 @@
                                     AutomationProperties.Name="Game audio">
                                 <controls:LucideIcon Icon="{Binding AudioIcon}" />
                             </Button>
-                            <Button Classes="iconButton" ToolTip.Tip="Lighting">
-                                <controls:LucideIcon Icon="Sun" />
-                            </Button>
-                            <Button Classes="iconButton" ToolTip.Tip="Layers">
+                            <Button Classes="iconButton" ToolTip.Tip="Manage layers, tags and roles"
+                                    Command="{Binding OpenWorkspaceTabCommand}" CommandParameter="Classifications"
+                                    Classes.active="{Binding IsWorkspaceClassificationsView}"
+                                    AutomationProperties.Name="Manage layers, tags and roles">
                                 <controls:LucideIcon Icon="Layers" />
                             </Button>
                             <Button Classes="iconButton" Classes.active="{Binding IsGridVisible}"
@@ -946,6 +951,9 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                    <Border x:Name="WorkspaceClassificationsPanel" IsVisible="{Binding IsWorkspaceClassificationsView}">
+                        <views:ClassificationsView DataContext="{Binding Classifications}" />
+                    </Border>
                     <ScrollViewer x:Name="WorkspaceInputPanel" IsVisible="{Binding IsWorkspaceInputView}"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="12" Margin="14,12">
@@ -2364,33 +2372,25 @@
                                                  IsReadOnly="{Binding IsBone}" />
                                         <Grid ColumnDefinitions="*,*" ColumnSpacing="6"
                                               RowDefinitions="Auto,Auto" RowSpacing="3"
-                                              IsVisible="{Binding IsNotBone}">
+                                              IsVisible="{Binding HasRole}">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Tag"
                                                        Classes="muted" FontSize="10" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Text="Layer"
                                                        Classes="muted" FontSize="10" />
                                             <ComboBox Grid.Row="1" Grid.Column="0" Classes="field"
                                                       HorizontalAlignment="Stretch"
-                                                      SelectedItem="{Binding Tag, Mode=TwoWay}">
-                                                <ComboBoxItem>Untagged</ComboBoxItem>
-                                                <ComboBoxItem>Player</ComboBoxItem>
-                                                <ComboBoxItem>Enemy</ComboBoxItem>
-                                                <ComboBoxItem>static</ComboBoxItem>
-                                                <ComboBoxItem>renderable</ComboBoxItem>
-                                            </ComboBox>
+                                                      ItemsSource="{Binding AvailableTags}"
+                                                      SelectedItem="{Binding Tag, Mode=TwoWay}" />
                                             <ComboBox Grid.Row="1" Grid.Column="1" Classes="field"
                                                       HorizontalAlignment="Stretch"
-                                                      SelectedItem="{Binding Layer, Mode=TwoWay}">
-                                                <ComboBoxItem>Default</ComboBoxItem>
-                                                <ComboBoxItem>UI</ComboBoxItem>
-                                                <ComboBoxItem>IgnoreRaycast</ComboBoxItem>
-                                            </ComboBox>
+                                                      ItemsSource="{Binding AvailableLayers}"
+                                                      SelectedItem="{Binding Layer, Mode=TwoWay}" />
                                         </Grid>
                                         <Grid ColumnDefinitions="60,*" ColumnSpacing="8" IsVisible="{Binding HasRole}">
                                             <TextBlock Grid.Column="0" Text="Role" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
-                                                      ItemsSource="{x:Static m:SceneObjectViewModel.Roles}"
-                                                      SelectedItem="{Binding Role, Mode=TwoWay}" />
+                                                      ItemsSource="{Binding AvailableRoles}"
+                                                      SelectedItem="{Binding RoleName, Mode=TwoWay}" />
                                         </Grid>
                                         <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsWaterRole}"
                                                    Text="Water volume: bodies with Buoyancy float below its top surface, riding its waves. It builds no collider." />
@@ -2754,6 +2754,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Atom" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Collider box in model units (before Scale), shown in green on the selected gameobject. The collider shape is stretched to fill it; Default Size fits it to the model again.&#10;&#10;Overlaps instead of colliding: scripts get OnTriggerEnter/Stay/Exit, nothing is pushed and raycasts pass through. A Static trigger is the model's convex hull.&#10;&#10;Floats in gameobjects with the Water role. Float is the push when fully under water relative to weight: 2 floats half-submerged, below 1 sinks. Drag slows motion and spin in water." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -2784,11 +2785,7 @@
                                                         </Grid>
                                                     </Grid>
                                                     <Button Content="Default Size" Command="{Binding ResetColliderSizeCommand}" HorizontalAlignment="Stretch" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Collider box in model units (before Scale), shown in green on the selected gameobject. The collider shape is stretched to fill it; Default Size fits it to the model again." />
                                                     <CheckBox Content="Is Trigger" IsChecked="{Binding IsTrigger, Mode=TwoWay}" FontSize="11" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" IsVisible="{Binding IsTrigger}"
-                                                               Text="Overlaps instead of colliding: scripts get OnTriggerEnter/Stay/Exit, nothing is pushed and raycasts pass through. A Static trigger is the model's convex hull." />
                                                     <CheckBox Content="Freeze Rotation" IsChecked="{Binding FreezeRotation, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <CheckBox Content="Buoyancy" IsChecked="{Binding Buoyancy, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <StackPanel Spacing="8" IsVisible="{Binding IsDynamic}">
@@ -2803,8 +2800,6 @@
                                                                 <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WaterDrag, Mode=TwoWay}"
                                                                                Minimum="0" Maximum="20" Increment="0.1" FormatString="0.##" />
                                                             </Grid>
-                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                                       Text="Floats in gameobjects with the Water role. Float is the push when fully under water relative to weight: 2 floats half-submerged, below 1 sinks. Drag slows motion and spin in water." />
                                                         </StackPanel>
                                                     </StackPanel>
                                                 </StackPanel>
@@ -2816,6 +2811,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="PersonStanding" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Plays a skeletal clip in Play mode (the bind pose shows while editing). Source is the content path of another skinned model with the same bone names, e.g. GameObjects/Player/Walking; empty uses this model's own clips. In Place removes the clip's forward travel.&#10;&#10;Actions are named clips scripts switch between: Animator.Play(&quot;Walk&quot;) crossfades to one (again for the one already playing does nothing, so call it every frame), PlayOnce(&quot;Jump&quot;) plays one through and returns, Stop/Play, Pause/Resume and Restart control playback." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -2836,8 +2832,6 @@
                                                     </Grid>
                                                     <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
                                                     <CheckBox Content="In Place" IsChecked="{Binding InPlace, Mode=TwoWay}" FontSize="11" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Plays a skeletal clip in Play mode (the bind pose shows while editing). Source is the content path of another skinned model with the same bone names, e.g. GameObjects/Player/Walking; empty uses this model's own clips. In Place removes the clip's forward travel." />
                                                     <TextBlock Text="Actions" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
                                                     <ItemsControl ItemsSource="{Binding Actions}">
                                                         <ItemsControl.ItemTemplate>
@@ -2886,8 +2880,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FadeTime, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="5" Increment="0.05" FormatString="0.##" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Actions are named clips scripts switch between: Animator.Play(&quot;Walk&quot;) crossfades to one (again for the one already playing does nothing, so call it every frame), PlayOnce(&quot;Jump&quot;) plays one through and returns, Stop/Play, Pause/Resume and Restart control playback." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -2897,6 +2889,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Bone" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Rigid bodies for the bones of a skinned model. In Play they follow the animation (other bodies bounce off them) until the ragdoll goes limp: on start, when a body hits it faster than Impact m/s (0 = never), or from a script (GetComponent&lt;RagdollComponent&gt;().Activate()). Skeleton shapes the joints: Humanoid (knees and elbows hinge), Quadruped (four legs with hinged elbows, knees, wrists and hocks; tails curl), Generic (any creature: cones from the bone tree) or Auto. Mass is the whole body's, in kg; Friction stiffens the joints." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -2922,8 +2915,6 @@
                                                                        Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
                                                     </Grid>
                                                     <CheckBox Content="Active on Start" IsChecked="{Binding ActiveOnStart, Mode=TwoWay}" FontSize="11" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Rigid bodies for the bones of a skinned model. In Play they follow the animation (other bodies bounce off them) until the ragdoll goes limp: on start, when a body hits it faster than Impact m/s (0 = never), or from a script (GetComponent&lt;RagdollComponent&gt;().Activate()). Skeleton shapes the joints: Humanoid (knees and elbows hinge), Quadruped (four legs with hinged elbows, knees, wrists and hocks; tails curl), Generic (any creature: cones from the bone tree) or Auto. Mass is the whole body's, in kg; Friction stiffens the joints." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -2933,6 +2924,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="CloudFog" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Adds fog inside a box: this gameobject's position, rotation and scale (like a Cube). It ignores the scene fog's distance ramp, so a dusty room shows light shafts up close. The mesh is hidden while enabled; select it in the hierarchy. Density uses the scene fog's units (Environment &gt; Volumetric Fog, default 0.03). At most 8 volumes draw." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -2946,8 +2938,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EdgeFade, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Adds fog inside a box: this gameobject's position, rotation and scale (like a Cube). It ignores the scene fog's distance ramp, so a dusty room shows light shafts up close. The mesh is hidden while enabled; select it in the hierarchy. Density uses the scene fog's units (Environment > Volumetric Fog, default 0.03). At most 8 volumes draw." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -2957,6 +2947,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="TreeDeciduous" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Sways the gameobject in the scene wind (Environment &gt; Wind Speed / Direction), in the editor too: the trunk bends with gusts, branches bob and leaves flutter. Only materials with Shader Foliage flutter (the Tree model's leaves). Height 0 = the model's height; the model's base must be at its origin, Z up. Visual only: colliders stay still." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -2995,8 +2986,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Height, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Sways the gameobject in the scene wind (Environment > Wind Speed / Direction), in the editor too: the trunk bends with gusts, branches bob and leaves flutter. Only materials with Shader Foliage flutter (the Tree model's leaves). Height 0 = the model's height; the model's base must be at its origin, Z up. Visual only: colliders stay still." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3006,6 +2995,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Aperture" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="A local cubemap for the box of this gameobject (position, rotation and scale, like a Cube). Surfaces inside it reflect the captured room instead of the sky; the mesh is hidden while enabled. Saved with the scene and restored on load. Missing captures and probe changes trigger a new capture; at most 4 draw at once." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3026,8 +3016,6 @@
                                                                        Minimum="64" Maximum="512" Increment="64" FormatString="0" />
                                                     </Grid>
                                                     <Button Content="Capture" Command="{Binding CaptureCommand}" HorizontalAlignment="Stretch" ToolTip.Tip="Capture the cubemap again (after the room changed)" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="A local cubemap for the box of this gameobject (position, rotation and scale, like a Cube). Surfaces inside it reflect the captured room instead of the sky; the mesh is hidden while enabled. Captured at scene load and when the probe moves; at most 4 draw at once." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3037,6 +3025,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Grid3x3" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="A detail probe volume: a denser grid of baked indirect light inside this gameobject's box (rooms, corridors). Bake lighting again after changing it. The mesh is hidden while enabled; at most 4 volumes (including the scene's) are baked." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3055,8 +3044,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BlendMargin, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="20" Increment="0.25" FormatString="0.##" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="A detail probe volume: a denser grid of baked indirect light inside this gameobject's box (rooms, corridors). Bake lighting again after changing it. The mesh is hidden while enabled; at most 4 volumes (including the scene's) are baked." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3066,6 +3053,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Palette" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Changes the post processing (tonemapping, exposure, grading, bloom, fog density) inside this gameobject's box, blended by distance, weight and priority over the scene's Post Processing. Tick a row to override it; editing a value ticks it. The mesh is hidden while enabled." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3116,8 +3104,6 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Changes the post processing (tonemapping, exposure, grading, bloom, fog density) inside this gameobject's box, blended by distance, weight and priority over the scene's Post Processing. Tick a row to override it; editing a value ticks it. The mesh is hidden while enabled." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3127,6 +3113,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Circle" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Soft contact shadow under a moving object (characters, props) on the indirect light, like Source 2's AO proxies. Auto picks Bones for skinned models (a capsule per limb) and an ellipsoid from the bounds otherwise. At most 16 draw." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3156,8 +3143,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CullDistance, Mode=TwoWay}"
                                                                        Minimum="1" Maximum="1000" Increment="5" FormatString="0" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Soft contact shadow under a moving object (characters, props) on the indirect light, like Source 2's AO proxies. Auto picks Bones for skinned models (a capsule per limb) and an ellipsoid from the bounds otherwise. At most 16 draw." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3167,6 +3152,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Hand" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Scripts aim at it with FindInteractable(CameraRay, ...) and use it with Interact(hit), which runs OnInteract on this gameobject's scripts. Rays only hit colliders, so add a Physics component too. Range is in metres from the camera." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3180,8 +3166,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Range, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Scripts aim at it with FindInteractable(CameraRay, ...) and use it with Interact(hit), which runs OnInteract on this gameobject's scripts. Rays only hit colliders, so add a Physics component too. Range is in metres from the camera." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3191,6 +3175,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Flag" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Simulates this mesh as cloth in Play (use the Cloth model: a subdivided double-sided plane). Pin holds the top row (model Z), its two ends or the outline in place, following the gameobject. With Collisions it stays out of every Physics collider around it, bodies push it but it doesn't push back. Stiffness keeps its size, Bend resists folding, Thickness is the gap it keeps (m), Wind scales the scene's wind." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3236,8 +3221,6 @@
                                                                        Minimum="0" Maximum="10" Increment="0.1" FormatString="0.##" />
                                                     </Grid>
                                                     <CheckBox Content="Collisions" IsChecked="{Binding Collisions, Mode=TwoWay}" FontSize="11" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Simulates this mesh as cloth in Play (use the Cloth model: a subdivided double-sided plane). Pin holds the top row (model Z), its two ends or the outline in place, following the gameobject. With Collisions it stays out of every Physics collider around it, bodies push it but it doesn't push back. Stiffness keeps its size, Bend resists folding, Thickness is the gap it keeps (m), Wind scales the scene's wind." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3247,6 +3230,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Footprints" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="A computer-controlled character for Play. It walks a navigation grid built from the scene's Static colliders (A* around walls, up ramps, never off ledges), idles (stand, wander or patrol), and watches for its Target with a view cone and line-of-sight rays. On sight: Chase runs after it and shoves it within Attack Range, Follow keeps Follow Distance, Flee runs away, Watch turns to face it. Use a Dynamic capsule with Freeze Rotation; its +Y is its forward. Its scripts get OnTargetSpotted, OnTargetLost, OnNpcStateChanged and OnNpcAttack." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3372,8 +3356,6 @@
                                                                        Minimum="0" Maximum="60" Increment="0.5" FormatString="0.##" />
                                                     </Grid>
                                                     <CheckBox Content="Show Debug (path, view cone)" IsChecked="{Binding ShowDebug, Mode=TwoWay}" FontSize="11" />
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="A computer-controlled character for Play. It walks a navigation grid built from the scene's Static colliders (A* around walls, up ramps, never off ledges), idles (stand, wander or patrol), and watches for its Target with a view cone and line-of-sight rays. On sight: Chase runs after it and shoves it within Attack Range, Follow keeps Follow Distance, Flee runs away, Watch turns to face it. Use a Dynamic capsule with Freeze Rotation; its +Y is its forward. Its scripts get OnTargetSpotted, OnTargetLost, OnNpcStateChanged and OnNpcAttack." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3383,6 +3365,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Layers" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Level of detail: up close the gameobject draws its own model; from each level's distance on (camera to the centre of its bounds) it draws that level's simpler model instead, and from Cull Distance nothing. Works in the editor and in Play, shadows included; physics and picking bounds keep the gameobject's own model. LOD models draw unposed, so animated gameobjects should only use Cull Distance." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3411,8 +3394,6 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CullDistance, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="100000" Increment="10" FormatString="0.#" />
                                                     </Grid>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Level of detail: up close the gameobject draws its own model; from each level's distance on (camera to the centre of its bounds) it draws that level's simpler model instead, and from Cull Distance nothing. Works in the editor and in Play, shadows included; physics and picking bounds keep the gameobject's own model. LOD models draw unposed, so animated gameobjects should only use Cull Distance." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3422,6 +3403,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Sparkles" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Unity-style particle system. Particles start from the Shape at this gameobject and change over their lifetime through the modules. Play On Awake systems also play while editing. Scripts: GetComponent&lt;ParticleSystemComponent&gt;().Play() / Stop() / Emit(n) / EmitAt(position, n)." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="6" Margin="12,8,12,12">
@@ -3562,7 +3544,13 @@
                                                             <Button Content="Add Burst" Command="{Binding AddBurstCommand}" HorizontalAlignment="Stretch" />
                                                         </StackPanel>
                                                     </Expander>
-                                                    <Expander IsExpanded="True" Header="Shape">
+                                                    <Expander IsExpanded="True">
+                                                        <Expander.Header>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock Text="Shape" VerticalAlignment="Center" />
+                                                                <controls:HelpButton Description="Local axes, Z up: Cone, Box and Edge emit along +Z, Circle and Sphere outwards. The gameobject's rotation turns the shape; its scale is ignored." />
+                                                            </StackPanel>
+                                                        </Expander.Header>
                                                         <StackPanel Spacing="6" Margin="8,6,8,8">
                                                             <CheckBox Content="Enabled" IsChecked="{Binding ShapeEnabled, Mode=TwoWay}" FontSize="11" />
                                                             <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
@@ -3623,8 +3611,6 @@
                                                                 <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RandomizeDirection, Mode=TwoWay}"
                                                                                Minimum="0" Maximum="1" Increment="0.1" FormatString="0.##" />
                                                             </Grid>
-                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                                       Text="Local axes, Z up: Cone, Box and Edge emit along +Z, Circle and Sphere outwards. The gameobject's rotation turns the shape; its scale is ignored." />
                                                         </StackPanel>
                                                     </Expander>
                                                     <Expander IsExpanded="False" Header="Velocity over Lifetime">
@@ -3890,7 +3876,13 @@
                                                                        Text="Frames are read left to right, top to bottom. The built-in Smoke Sheet texture is 4 x 4." />
                                                         </StackPanel>
                                                     </Expander>
-                                                    <Expander IsExpanded="False" Header="Sub Emitters">
+                                                    <Expander IsExpanded="False">
+                                                        <Expander.Header>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock Text="Sub Emitters" VerticalAlignment="Center" />
+                                                                <controls:HelpButton Description="Each target is another gameobject with a Particle System (Play On Awake off, Rate 0, World space). It emits from its own shape where this system's particles are born, trail, collide or die." />
+                                                            </StackPanel>
+                                                        </Expander.Header>
                                                         <StackPanel Spacing="6" Margin="8,6,8,8">
                                                             <CheckBox Content="Enabled" IsChecked="{Binding SubEmittersEnabled, Mode=TwoWay}" FontSize="11" />
                                                             <Grid ColumnDefinitions="*" ColumnSpacing="4">
@@ -3922,8 +3914,6 @@
                                                                 </ItemsControl.ItemTemplate>
                                                             </ItemsControl>
                                                             <Button Content="Add Sub Emitter" Command="{Binding AddSubEmitterCommand}" HorizontalAlignment="Stretch" />
-                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                                       Text="Each target is another gameobject with a Particle System (Play On Awake off, Rate 0, World space). It emits from its own shape where this system's particles are born, trail, collide or die." />
                                                         </StackPanel>
                                                     </Expander>
                                                     <Expander IsExpanded="True" Header="Renderer">
@@ -3984,7 +3974,13 @@
                                                             </Grid>
                                                         </StackPanel>
                                                     </Expander>
-                                                    <Expander IsExpanded="False" Header="Lights">
+                                                    <Expander IsExpanded="False">
+                                                        <Expander.Header>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock Text="Lights" VerticalAlignment="Center" />
+                                                                <controls:HelpButton Description="Particle lights join the scene's point lights for lighting, forward materials, volumetric fog and Lit particles (the volumetric fog uses the first 8 lights). They play in the editor preview too." />
+                                                            </StackPanel>
+                                                        </Expander.Header>
                                                         <StackPanel Spacing="6" Margin="8,6,8,8">
                                                             <CheckBox Content="Enabled" IsChecked="{Binding LightsEnabled, Mode=TwoWay}" FontSize="11"
                                                                       ToolTip.Tip="The particles light the scene (point lights that follow them and die with them)" />
@@ -4059,11 +4055,15 @@
                                                                 <CheckBox Content="Size Affects Range" IsChecked="{Binding LightSizeAffectsRange, Mode=TwoWay}" FontSize="11"
                                                                           ToolTip.Tip="The range grows and shrinks with the particle (relative to its start size)" />
                                                             </StackPanel>
-                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                                       Text="Particle lights join the scene's point lights for lighting, forward materials, volumetric fog and Lit particles (the volumetric fog uses the first 8 lights). They play in the editor preview too." />
                                                         </StackPanel>
                                                     </Expander>
-                                                    <Expander IsExpanded="False" Header="Volumetric">
+                                                    <Expander IsExpanded="False">
+                                                        <Expander.Header>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock Text="Volumetric" VerticalAlignment="Center" />
+                                                                <controls:HelpButton Description="Renderer Lit, Brightness and Blend apply to the volume. Voxels use Start Color and flood while the system emits (Duration), then fade. Scripts: CarveTunnel(from, to) for bullets, CarveHole(center, radius) for blasts, Opacity(from, to) for line of sight." />
+                                                            </StackPanel>
+                                                        </Expander.Header>
                                                         <StackPanel Spacing="6" Margin="8,6,8,8">
                                                             <CheckBox Content="Enabled" IsChecked="{Binding VolumetricEnabled, Mode=TwoWay}" FontSize="11"
                                                                       ToolTip.Tip="Draw the system as a lit, raymarched volume instead of billboards" />
@@ -4142,12 +4142,8 @@
                                                                                    Minimum="0.1" Maximum="10" Increment="0.1" FormatString="0.##" />
                                                                 </Grid>
                                                             </StackPanel>
-                                                            <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                                       Text="Renderer Lit, Brightness and Blend apply to the volume. Voxels use Start Color and flood while the system emits (Duration), then fade. Scripts: CarveTunnel(from, to) for bullets, CarveHole(center, radius) for blasts, Opacity(from, to) for line of sight." />
                                                         </StackPanel>
                                                     </Expander>
-                                                    <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap"
-                                                               Text="Unity-style particle system. Particles start from the Shape at this gameobject and change over their lifetime through the modules. Play On Awake systems also play while editing. Scripts: GetComponent&lt;ParticleSystemComponent&gt;().Play() / Stop() / Emit(n) / EmitAt(position, n)." />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>

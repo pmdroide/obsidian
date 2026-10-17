@@ -1,5 +1,42 @@
 # Changelog
 
+## Changed: Compact component help buttons (2026-10-17)
+
+- Moved 23 long component and subsection descriptions into 19 question-mark buttons beside their headings, including physics, animation, probes, volumes, cloth, NPCs, LOD, particles and material shader guidance.
+- Added a reusable help button with wrapped tooltip text on hover or click, keyboard activation, Escape/focus dismissal and accessible help text. Help clicks are handled separately from Expander header toggling; dynamic status and error messages remain visible.
+- Updated the reflection probe help to describe saved cubemaps and updated the engine wiring documentation.
+- Validation: Anvil builds with existing warnings; the updated XAML parses with all 19 help buttons; `git diff --check` passes.
+
+- Codex
+
+## Added: Project layers, tags and roles manager (2026-10-17)
+
+- Connected the Layers toolbar button to a reusable **Layers, Tags & Roles** workspace panel with Add, Rename and Remove for custom entries, validation messages and locked system defaults. Existing built-in layers/tags and the Default/Water roles cannot be renamed, removed or unlocked through project JSON.
+- Added an atomically saved project catalog in `Content/System/Classifications.json`, included in standalone output/publish and cleared on project reset. Inspector dropdowns now use this catalog, and tag/layer assignments are saved with gameobjects.
+- Added stable classification IDs to scenes, prefabs and copies. Renaming keeps assignments across saved assets; deleting a custom entry returns its assignments to the category default. Preserved the built-in role API and Water behavior alongside custom role names.
+- Added integration checks for management commands, protected defaults, validation, assignments, save/load, rename/delete, restart, prefabs, copies and failed writes. Updated usage and engine wiring documentation.
+- Validation: component project builds, the full component suite passes, and `git diff --check` passes.
+
+- Codex
+
+## Fixed: Local shadows and cookies on forward materials (2026-10-17)
+
+- Glass and other Forward Shaded materials now receive point/spot shadows from the shared shadow atlas, including PCF filtering, cube-face edge traversal, missing-tile fallback and distance fade.
+- Added a cached atlas for multiple spotlight cookies, with world-space projection following each light's cone and rotation. Cookies and shadows affect both diffuse lighting and specular highlights, including fully clear glass. Cookie cells are capped at 512 texels, shared by duplicate textures, and rebuilt before scene rendering to preserve composed colour and depth.
+- Added rendered GPU checks for all six point shadow faces, spot shadows, fade, disabled/unavailable shadows, multiple cookies, cache reuse, projection, rotation and clear-glass highlights. Added `--forward-graphics` for focused validation and updated forward rendering documentation.
+- Validation: the component project and forward shader build; all 23 focused forward GPU checks, the full component suite, and `git diff --check` pass.
+
+- Codex
+
+## Fixed: Persist reflection probe cubemaps with scenes (2026-10-17)
+
+- Scene Save and Save As now write filtered HDR reflection cubemaps, including all six faces and every mip, to a sibling `.reflections` file keyed by component instance ID. Standalone output and publish include these files.
+- Restored probes upload their saved cubemaps before capture selection. New, moved, changed or manually refreshed probes still capture one per frame; missing or corrupt sidecars fall back to capture. Quaternion rounding during scene loading does not invalidate rotated probes.
+- Added checks for scene round-trips, Save As, stale/removed/runtime probes, disabled probes, missing/corrupt data, cancellation, and GPU upload/readback without recapture. Updated reflection usage and engine wiring documentation.
+- Validation: component project builds, the full component suite and reflection GPU checks pass, and `git diff --check` passes. The broader graphics suite reaches an unrelated pause-menu settings assertion in `PauseChecks.RunGraphics`.
+
+- Codex
+
 ## Changed: Full-height workspace tabs and consistent section buttons (2026-10-17)
 
 - Removed the tab strip's inset and stretched tabs and the + button through the toolbar height. Tabs now have a 100 px minimum width and 12 px labels.

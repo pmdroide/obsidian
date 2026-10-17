@@ -136,6 +136,7 @@ namespace Engine.Editor
         public readonly IReadOnlyList<ComponentRecord> Components;
         // BasicEntity only.
         public readonly GameObjectRole Role;
+        public readonly string Tag, Layer, RoleName;
         // BasicEntity only: the saved Persistent flag (not a script's DontDestroyOnLoad).
         public readonly bool IsPersistent;
         // Decal only: Content-relative texture path (Decal.TexturePath); null = the built-in Assets.DefaultDecal.
@@ -150,8 +151,12 @@ namespace Engine.Editor
         public readonly IReadOnlyList<BoneSnapshot> Bones;
 
         public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false, string decalTexture = null,
-            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null)
+            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null,
+            string tag = "Untagged", string layer = "Default", string roleName = null)
         {
+            Tag = tag;
+            Layer = layer;
+            RoleName = roleName ?? role.ToString();
             Bones = bones;
             PrefabPath = prefabPath;
             PrefabOverrides = prefabOverrides;
@@ -236,6 +241,9 @@ namespace Engine.Editor
         void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null);
         /// <summary>Set a gameobject's <see cref="GameObjectRole"/> and mark the scene dirty.</summary>
         void EnqueueSetRole(int entityId, GameObjectRole role);
+        IReadOnlyList<ClassificationDefinition> Classifications { get; }
+        void EnqueueSetClassification(int entityId, ClassificationKind kind, string definitionId);
+        void EnqueueEditClassification(ClassificationEdit edit, ClassificationKind kind, string definitionId, string name, Action<string> completed);
         /// <summary>Set a gameobject's saved Persistent flag (kept across scene loads during Play) and mark the scene dirty.</summary>
         void EnqueueSetPersistent(int entityId, bool persistent);
         void EnqueuePlayAudio(int entityId, bool play);

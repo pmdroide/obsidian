@@ -365,11 +365,45 @@ namespace Engine.Editor
             _pendingOps.Enqueue(() =>
             {
                 var entity = LookupEntityById(entityId);
-                if (entity == null || entity.Role == role) return;
+                if (entity == null || entity.RoleId == role.ToString()) return;
                 entity.Role = role;
                 _scene.ActiveScene.IsDirty = true;
             });
         }
+
+        public IReadOnlyList<ClassificationDefinition> Classifications => ClassificationCatalog.Project.Entries;
+
+        public void EnqueueSetClassification(int entityId, ClassificationKind kind, string definitionId) => _pendingOps.Enqueue(() =>
+        {
+            if (ClassificationCatalog.Project.Find(kind, definitionId) == null) return;
+            var entity = LookupEntityById(entityId);
+            if (entity == null) return;
+            switch (kind)
+            {
+                case ClassificationKind.Layer: entity.LayerId = definitionId; break;
+                case ClassificationKind.Tag: entity.TagId = definitionId; break;
+                case ClassificationKind.Role: entity.RoleId = definitionId; break;
+                default: return;
+            }
+            _scene.ActiveScene.IsDirty = true;
+        });
+
+        public void EnqueueEditClassification(ClassificationEdit edit, ClassificationKind kind, string definitionId, string name, Action<string> completed) => _pendingOps.Enqueue(() =>
+        {
+            var catalog = ClassificationCatalog.Project;
+            string error;
+            bool success;
+            switch (edit)
+            {
+                case ClassificationEdit.Add: success = catalog.Add(kind, name, out error); break;
+                case ClassificationEdit.Rename: success = catalog.Rename(kind, definitionId, name, out error); break;
+                case ClassificationEdit.Remove: success = catalog.Remove(kind, definitionId, out error); break;
+                default: success = false; error = "Choose a valid operation."; break;
+            }
+            // Deleted IDs resolve to the category default, including in unloaded scenes and prefabs.
+            if (success && edit == ClassificationEdit.Remove && _scene?.ActiveScene != null) _scene.ActiveScene.IsDirty = true;
+            completed?.Invoke(success ? null : error);
+        });
 
         public void EnqueueSetPersistent(int entityId, bool persistent)
         {
@@ -969,6 +1003,7 @@ namespace Engine.Editor
                     options.DeleteSource = deleteSource;
                     result = ProjectReset.Run(options);
                     SceneList.Load();
+                    ClassificationCatalog.LoadProject();
                     // RenderFeatures.json and the RenderFeatures folder are gone: no render features.
                     Renderer.Features.RenderFeatures.Load(null);
 
@@ -1173,7 +1208,7 @@ namespace Engine.Editor
                     prefabPath: be.PrefabPath,
                     prefabOverrides: overrides,
                     prefabMissing: prefabMissing,
-                    bones: BuildBones(be)));
+                    bones: BuildBones(be), tag: be.Tag, layer: be.Layer, roleName: be.RoleName));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)

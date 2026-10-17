@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Anvil.ViewModels"
+             x:Class="Anvil.Views.ClassificationsView"
+             x:DataType="vm:ClassificationsViewModel">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="20,16" Spacing="16" MaxWidth="900" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Layers, Tags &amp; Roles" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="Organize gameobjects across your project. Assign entries in the Inspector."
+                           Classes="muted" TextWrapping="Wrap" />
+                <TextBlock Text="System defaults are locked. Custom names can be changed without losing assignments. Removing a custom entry returns its assignments to the category default."
+                           Classes="muted" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClassificationGroupViewModel">
+                        <Border BorderBrush="#33363E" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,14">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" />
+                                <ItemsControl ItemsSource="{Binding Entries}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ClassificationEntryViewModel">
+                                            <Grid ColumnDefinitions="*,110,Auto,Auto" ColumnSpacing="8" Margin="0,0,0,6">
+                                                <TextBox Classes="field" Text="{Binding Name, Mode=TwoWay}"
+                                                         IsReadOnly="{Binding IsSystem}" MaxLength="64"
+                                                         AutomationProperties.Name="Classification name" />
+                                                <TextBlock Grid.Column="1" Text="{Binding KindLabel}" Classes="muted"
+                                                           FontSize="11" VerticalAlignment="Center" />
+                                                <Button Grid.Column="2" Content="Rename" Command="{Binding RenameCommand}"
+                                                        IsVisible="{Binding IsEditable}" ToolTip.Tip="Keep existing assignments with the new name" />
+                                                <Button Grid.Column="3" Content="Remove" Command="{Binding RemoveCommand}"
+                                                        IsVisible="{Binding IsEditable}" ToolTip.Tip="Return assignments to the category default" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsEnabled="{Binding !IsBusy}">
+                                    <TextBox Classes="field" Text="{Binding NewName, Mode=TwoWay}"
+                                             PlaceholderText="New name" MaxLength="64" AutomationProperties.Name="New classification name" />
+                                    <Button Grid.Column="1" Content="Add" Command="{Binding AddCommand}" MinWidth="70" />
+                                </Grid>
+                                <TextBlock Text="{Binding Error}" Foreground="#E98D81" TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

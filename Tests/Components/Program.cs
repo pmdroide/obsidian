@@ -19,6 +19,12 @@ using Microsoft.Xna.Framework.Input;
 using GameComponent = Engine.Components.GameComponent;
 
 // Integration checks without a graphics device or a test-framework dependency.
+if (args.Contains("--forward-graphics"))
+{
+    MaterialGraphicsChecks.Run(forwardOnly: true);
+    return;
+}
+
 var assets = new Assets { Cube = new ModelDefinition(null, new BoundingBox(-Vector3.One, Vector3.One)) };
 var entity = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One)
     { IsEnabled = true, Name = "Audio object" };
@@ -85,7 +91,7 @@ mainVm.OpenWorkspaceTabCommand.Execute("Environment");
 Check(mainVm.IsWorkspaceEnvironmentView && ReferenceEquals(mainVm.Environment, environmentEditor),
     "reopening a closed panel preserves its editor state");
 mainVm.CloseWorkspaceTabCommand.Execute(mainVm.SelectedWorkspaceTab);
-Check(mainVm.IsWorkspaceSteamView, "closing the last selected tab selects its left neighbor");
+Check(mainVm.IsWorkspaceClassificationsView, "closing the last selected tab selects its left neighbor");
 mainVm.OpenWorkspaceTabCommand.Execute("Engine");
 var nextTab = mainVm.WorkspaceTabs[1];
 mainVm.CloseWorkspaceTabCommand.Execute(engineTab);
@@ -609,6 +615,7 @@ RenderFeatureChecks.Run();
 SaveDataChecks.Run();
 PersistenceChecks.Run();
 PrefabChecks.Run();
+ClassificationChecks.Run();
 MaterialAssetChecks.Run();
 PauseChecks.Run();
 BuildChecks.Run();

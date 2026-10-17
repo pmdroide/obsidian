@@ -121,7 +121,19 @@ namespace Engine.Entities
         public override bool IsEnabled { get; set; } = true;
 
         /// <summary>What this gameobject is for (Inspector > Role); e.g. Water makes it a volume to float in.</summary>
-        public GameObjectRole Role { get; set; } = GameObjectRole.Default;
+        public GameObjectRole Role
+        {
+            get => Enum.TryParse<GameObjectRole>(RoleId, out var role) && Enum.IsDefined(role) ? role : GameObjectRole.Default;
+            set => _roleId = Enum.IsDefined(value) ? value.ToString() : "Default";
+        }
+
+        private string _roleId = "Default", _layerId = "Default", _tagId = "Untagged";
+        public string RoleId { get => ClassificationCatalog.Project.ResolveId(ClassificationKind.Role, _roleId); set => _roleId = value; }
+        public string LayerId { get => ClassificationCatalog.Project.ResolveId(ClassificationKind.Layer, _layerId); set => _layerId = value; }
+        public string TagId { get => ClassificationCatalog.Project.ResolveId(ClassificationKind.Tag, _tagId); set => _tagId = value; }
+        public string RoleName { get => ClassificationCatalog.Project.NameOf(ClassificationKind.Role, RoleId); set => RoleId = ClassificationCatalog.Project.FindName(ClassificationKind.Role, value)?.Id; }
+        public string Layer { get => ClassificationCatalog.Project.NameOf(ClassificationKind.Layer, LayerId); set => LayerId = ClassificationCatalog.Project.FindName(ClassificationKind.Layer, value)?.Id; }
+        public string Tag { get => ClassificationCatalog.Project.NameOf(ClassificationKind.Tag, TagId); set => TagId = ClassificationCatalog.Project.FindName(ClassificationKind.Tag, value)?.Id; }
 
         /// <summary>Created by a script during Play (<c>ScriptBehaviour.Spawn</c>); never saved with the scene.</summary>
         public bool IsRuntimeSpawned { get; internal set; }
@@ -160,7 +172,9 @@ namespace Engine.Entities
                 var copy = new BasicEntity(ModelDefinition, Material, Position, RotationMatrix, Scale)
                 {
                     Components = Components.Select(ComponentRegistry.Copy).ToList(),
-                    Role = Role,
+                    RoleId = RoleId,
+                    LayerId = LayerId,
+                    TagId = TagId,
                     Persistent = Persistent,
                     // A duplicate of a prefab instance is another instance of that prefab, like Unity.
                     PrefabPath = PrefabPath,

@@ -29,6 +29,7 @@ internal static class Source2LookChecks
         CheckBrdfLut();
         CheckProbeVolumes();
         CheckComponents();
+        ReflectionProbeChecks.Run();
         CheckLightSettings();
         CheckLookDevScene();
     }
@@ -442,6 +443,8 @@ internal static class Source2LookChecks
     /// <summary>The new and rewritten shaders compile into the content build with the techniques and parameters the renderer sets.</summary>
     public static void RunGraphics(Microsoft.Xna.Framework.Graphics.GraphicsDevice graphics, Microsoft.Xna.Framework.Content.ContentManager content)
     {
+        ForwardLightingChecks.RunGraphics(graphics, content);
+        ReflectionProbeChecks.RunGraphics(graphics);
         Microsoft.Xna.Framework.Graphics.Effect Load(string path) => content.Load<Microsoft.Xna.Framework.Graphics.Effect>(path);
         bool Has(Microsoft.Xna.Framework.Graphics.Effect effect, params string[] names) =>
             names.All(n => effect.Parameters[n] != null || effect.Techniques[n] != null);
@@ -453,7 +456,8 @@ internal static class Source2LookChecks
         Check(Has(Load("Shaders/Deferred/DeferredEnvironmentMap"), "ProbeData", "ReflectionCubeMap", "ProbeCube0", "BrdfLut", "AoProxyA"),
             "the environment shader blends probe volumes, local reflection probes, the BRDF LUT and AO proxies");
         Check(Has(Load("Shaders/Deferred/Froxel"), "CascadeViewProjection", "ProbeData"), "the fog shader samples the cascades and packed probes");
-        Check(Has(Load("Shaders/Forward/Forward"), "LightSourceRadius"), "the forward shader lights glass with sized sources");
+        Check(Has(Load("Shaders/Forward/Forward"), "LightSourceRadius", "PointShadowAtlas", "LightShadowTiles", "LightShadowSettings",
+            "CookieAtlas", "LightCookieRect", "LightCookieRight", "LightCookieUp"), "the forward shader lights glass with sized sources, local shadows and cookies");
         Check(Has(Load("Shaders/GBufferSetup/Gbuffer"), "PreviousWorldViewProj", "AoMap"), "the G-buffer writes velocity and material AO");
         Check(Has(Load("Shaders/TemporalAntiAliasing/TemporalAntiAliasing"), "VelocityMap", "Sharpness"), "TAA reprojects with velocity and sharpens");
         Check(Has(Load("Shaders/PostProcessing/PostProcessing"), "TonemapCurve"), "the final pass picks a tonemap curve");

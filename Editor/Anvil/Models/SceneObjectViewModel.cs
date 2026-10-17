@@ -355,6 +355,27 @@ public partial class SceneObjectViewModel : ObservableObject
 
     [ObservableProperty] private string _tag = "Untagged";
     [ObservableProperty] private string _layer = "Default";
+    [ObservableProperty] private string _roleName = "Default";
+    public ObservableCollection<string> AvailableTags { get; } = new();
+    public ObservableCollection<string> AvailableLayers { get; } = new();
+    public ObservableCollection<string> AvailableRoles { get; } = new();
+    private IReadOnlyList<Engine.Recources.ClassificationDefinition>? _classificationDefinitions;
+
+    public void ApplyClassifications(IReadOnlyList<Engine.Recources.ClassificationDefinition> definitions)
+    {
+        if (ReferenceEquals(_classificationDefinitions, definitions)) return;
+        _classificationDefinitions = definitions;
+        Replace(AvailableTags, Engine.Recources.ClassificationKind.Tag);
+        Replace(AvailableLayers, Engine.Recources.ClassificationKind.Layer);
+        Replace(AvailableRoles, Engine.Recources.ClassificationKind.Role);
+        void Replace(ObservableCollection<string> names, Engine.Recources.ClassificationKind kind)
+        {
+            var next = definitions.Where(e => e.Kind == kind).Select(e => e.Name).ToArray();
+            if (names.SequenceEqual(next)) return;
+            names.Clear();
+            foreach (string name in next) names.Add(name);
+        }
+    }
 
     public static GameObjectRole[] Roles { get; } = Enum.GetValues<GameObjectRole>();
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWaterRole))]
@@ -519,7 +540,28 @@ public partial class SceneObjectViewModel : ObservableObject
     partial void OnRoleChanged(GameObjectRole value)
     {
         if (SuppressPush || Bridge is not { } bridge || EngineId is not int id || !Enum.IsDefined(value)) return;
+        _roleName = value.ToString();
+        OnPropertyChanged(nameof(RoleName));
         bridge.EnqueueSetRole(id, value);
+    }
+
+    partial void OnTagChanged(string value) => PushClassification(Engine.Recources.ClassificationKind.Tag, value);
+    partial void OnLayerChanged(string value) => PushClassification(Engine.Recources.ClassificationKind.Layer, value);
+    partial void OnRoleNameChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        bool previous = SuppressPush;
+        SuppressPush = true;
+        try { Role = Enum.TryParse<GameObjectRole>(value, out var role) && role.ToString() == value ? role : GameObjectRole.Default; }
+        finally { SuppressPush = previous; }
+        PushClassification(Engine.Recources.ClassificationKind.Role, value);
+    }
+
+    private void PushClassification(Engine.Recources.ClassificationKind kind, string name)
+    {
+        if (SuppressPush || !HasRole || Bridge is not { } bridge || EngineId is not int id || string.IsNullOrWhiteSpace(name)) return;
+        var definition = bridge.Classifications.FirstOrDefault(e => e.Kind == kind && e.Name == name);
+        if (definition != null) bridge.EnqueueSetClassification(id, kind, definition.Id);
     }
 
     partial void OnPersistentChanged(bool value)

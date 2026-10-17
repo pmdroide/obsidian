@@ -15,7 +15,7 @@ namespace Engine.Renderer.RenderModules
     /// <summary>
     /// Forward shaded materials (glass, transparent plastics: MaterialTypes.ForwardShaded), lit like the deferred path
     /// (Source 2 look, Docs/Research/Source2Look phase 3.4): their own colour/texture, roughness and metalness, the sun
-    /// with cascaded shadows, the <see cref="MaxLights"/> most important point and spot lights, the probe volume and
+    /// with cascaded shadows, the <see cref="MaxLights"/> most important point and spot lights with atlas shadows and cookies, the probe volume and
     /// reflection probes, and the froxel fog. Drawn premultiplied over the composed image.
     /// </summary>
     public class ForwardRenderModule : IRenderModule, IDisposable
@@ -29,6 +29,7 @@ namespace Engine.Renderer.RenderModules
             public BoundingFrustum Frustum;
             public List<PointLight> PointLights;
             public List<DirectionalLight> DirectionalLights;
+            public Texture2D ShadowAtlas;
             public TextureCube GlobalProbe;
             public Texture2D BrdfLut;
             public IReadOnlyList<ReflectionProbes.Probe> LocalProbes;
@@ -55,6 +56,13 @@ namespace Engine.Renderer.RenderModules
         private readonly Vector3[] _lightSpotDirectionWS = new Vector3[MaxLights];
         private readonly Vector2[] _lightSpotCos = new Vector2[MaxLights];
         private readonly float[] _lightSourceRadius = new float[MaxLights];
+        private readonly Vector4[] _lightShadowSettings = new Vector4[MaxLights];
+        private readonly Vector4[] _lightShadowTiles = new Vector4[MaxLights * 6];
+        private readonly Vector4[] _lightCookieRect = new Vector4[MaxLights];
+        private readonly Vector4[] _lightCookieRight = new Vector4[MaxLights];
+        private readonly Vector3[] _lightCookieUp = new Vector3[MaxLights];
+        private readonly ForwardCookieAtlas _cookieAtlas = new();
+        private readonly List<Texture2D> _cookies = new();
         private readonly List<(PointLight Light, float Score)> _ranked = new List<(PointLight, float)>();
 
         public ForwardRenderModule(ContentManager content, string shaderPath)
@@ -99,8 +107,19 @@ namespace Engine.Renderer.RenderModules
             return output;
         }
 
-        /// <summary>Ranks the visible point/spot lights by brightness reaching the camera, keeps the first <see cref="MaxLights"/>.</summary>
-        private void SetupLights(Context context)
+        /// <summary>Prepares cookie textures before scene rendering; rebuilding the atlas switches render targets.</summary>
+        public void PrepareCookies(GraphicsDevice graphics, Camera camera, BoundingFrustum frustum, List<PointLight> lights)
+        {
+            RankLights(new Context { Camera = camera, Frustum = frustum, PointLights = lights });
+            _cookies.Clear();
+            for (int i = 0; i < Math.Min(_ranked.Count, MaxLights); i++)
+                if (_ranked[i].Light is SpotLight { Cookie: { IsDisposed: false } cookie } && !_cookies.Contains(cookie))
+                    _cookies.Add(cookie);
+            _cookieAtlas.Update(graphics, _cookies);
+        }
+
+        /// <summary>Ranks the visible point/spot lights by brightness reaching the camera.</summary>
+        private void RankLights(Context context)
         {
             _ranked.Clear();
             List<PointLight> lights = context.PointLights;
@@ -118,7 +137,11 @@ namespace Engine.Renderer.RenderModules
                 }
             }
             _ranked.Sort((a, b) => b.Score.CompareTo(a.Score));
+        }
 
+        private void SetupLights(Context context)
+        {
+            RankLights(context);
             int count = Math.Min(_ranked.Count, MaxLights);
             for (int i = 0; i < count; i++)
             {
@@ -132,6 +155,14 @@ namespace Engine.Renderer.RenderModules
                 SpotLight spot = light as SpotLight;
                 _lightSpotDirectionWS[i] = spot?.Direction ?? Vector3.UnitZ;
                 _lightSpotCos[i] = spot != null ? new Vector2(spot.CosOuter, spot.CosInner) : new Vector2(-2, -1);
+                bool shadowed = context.ShadowAtlas != null && light.HasShadowThisFrame;
+                _lightShadowSettings[i] = shadowed ? new Vector4(light.ShadowStrength, light.ShadowTileSize, light.ShadowMapRadius, 0.02f) : Vector4.Zero;
+                for (int face = 0; face < 6; face++)
+                    _lightShadowTiles[i * 6 + face] = shadowed ? light.ShadowTiles[face] : Vector4.Zero;
+                _lightCookieRect[i] = _cookieAtlas.Rect(spot?.Cookie);
+                _lightCookieRight[i] = spot != null ? new Vector4(spot.Right,
+                    (float)Math.Tan(MathHelper.ToRadians(Math.Min(spot.SpotAngle, 170) * 0.5f))) : Vector4.Zero;
+                _lightCookieUp[i] = spot?.Up ?? Vector3.Zero;
             }
 
             EffectParameterCollection p = _shader.Parameters;
@@ -143,6 +174,13 @@ namespace Engine.Renderer.RenderModules
             p["LightSpotDirectionWS"]?.SetValue(_lightSpotDirectionWS);
             p["LightSpotCos"]?.SetValue(_lightSpotCos);
             p["LightSourceRadius"]?.SetValue(_lightSourceRadius);
+            p["LightShadowSettings"]?.SetValue(_lightShadowSettings);
+            p["LightShadowTiles"]?.SetValue(_lightShadowTiles);
+            p["PointShadowAtlas"]?.SetValue(context.ShadowAtlas);
+            p["LightCookieRect"]?.SetValue(_lightCookieRect);
+            p["LightCookieRight"]?.SetValue(_lightCookieRight);
+            p["LightCookieUp"]?.SetValue(_lightCookieUp);
+            p["CookieAtlas"]?.SetValue(_cookieAtlas.Texture);
         }
 
         /// <summary>The first enabled sun, with its cascades when it casts shadows.</summary>
@@ -186,6 +224,7 @@ namespace Engine.Renderer.RenderModules
 
         public void Dispose()
         {
+            _cookieAtlas.Dispose();
             _shader?.Dispose();
         }
 

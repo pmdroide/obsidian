@@ -181,7 +181,11 @@ public static class BridgeReconciler
             var newObjectType = MapKindToType(snap.Kind);
             if (vm.Type != newObjectType) vm.Type = newObjectType;
             if (vm.Visible != snap.IsEnabled) vm.Visible = snap.IsEnabled;
+            vm.ApplyClassifications(bridge.Classifications);
+            if (vm.Tag != snap.Tag) vm.Tag = snap.Tag;
+            if (vm.Layer != snap.Layer) vm.Layer = snap.Layer;
             if (vm.Role != snap.Role) vm.Role = snap.Role;
+            if (vm.RoleName != snap.RoleName) vm.RoleName = snap.RoleName;
             if (vm.Persistent != snap.IsPersistent) vm.Persistent = snap.IsPersistent;
             if (vm.DecalTexture != snap.DecalTexture) vm.DecalTexture = snap.DecalTexture;
             if (vm.PrefabPath != snap.PrefabPath) vm.PrefabPath = snap.PrefabPath;

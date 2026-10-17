@@ -32,12 +32,13 @@ public partial class MainWindowViewModel : ViewModelBase
         new WorkspaceTabViewModel("Lighting", "Lighting"),
         new WorkspaceTabViewModel("Input", "Input Devices"),
         new WorkspaceTabViewModel("Steam", "Steam"),
+        new WorkspaceTabViewModel("Classifications", "Layers, Tags & Roles"),
     };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEngineWorkspaceSelected), nameof(IsWorkspaceEnvironmentView),
         nameof(IsWorkspaceWorldView), nameof(IsWorkspaceRenderPipelineView), nameof(IsWorkspacePostProcessingView),
-        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView))]
+        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView), nameof(IsWorkspaceClassificationsView))]
     private WorkspaceTabViewModel? _selectedWorkspaceTab;
 
     public bool IsEngineWorkspaceSelected => SelectedWorkspaceTab?.IsEngine == true;
@@ -48,6 +49,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsWorkspaceLightingView => SelectedWorkspaceTab?.Kind == "Lighting";
     public bool IsWorkspaceInputView => SelectedWorkspaceTab?.Kind == "Input";
     public bool IsWorkspaceSteamView => SelectedWorkspaceTab?.Kind == "Steam";
+    public bool IsWorkspaceClassificationsView => SelectedWorkspaceTab?.Kind == "Classifications";
+    public ClassificationsViewModel Classifications { get; } = new();
 
     partial void OnSelectedWorkspaceTabChanged(WorkspaceTabViewModel? value)
     {
@@ -355,6 +358,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Environment.AttachBridge(bridge);
         Steam.AttachBridge(bridge);
         InputDevices.AttachBridge(bridge);
+        Classifications.AttachBridge(bridge);
         RenderPipeline.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:RenderPipeline");
         RenderPipeline.AttachBridge(bridge, MoveToRecycleBin);
 
@@ -395,6 +399,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (_bridge == null) return;
             Steam.Refresh();
             InputDevices.Refresh();
+            Classifications.Refresh();
             ReconcilerActive = true;
             BridgeReconciler.SelectedEngineId = SelectedObject?.EngineId;
             try

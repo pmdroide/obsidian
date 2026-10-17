@@ -51,6 +51,7 @@ namespace Engine.Logic
             if (assets == null) throw new ArgumentNullException(nameof(assets));
 
             var doc = BuildDocument(scene, assets);
+            doc.ReflectionDataFile = SaveReflectionCaptures(scene, path, doc);
             doc.Lighting = new LightingRecord
             {
                 Settings = scene.Lighting,
@@ -74,7 +75,7 @@ namespace Engine.Logic
         }
 
         /// <summary>
-        /// Reads and parses a .obsc file and its baked probes without creating any engine object, so it can run
+        /// Reads and parses a .obsc file and its lighting sidecars without creating any engine object, so it can run
         /// on a worker thread (<see cref="SceneLoadOperation"/>). <paramref name="progress"/> gets (bytes read,
         /// total bytes) as the files stream in. <see cref="SceneBuilder"/> turns the result into a <see cref="Scene"/>.
         /// </summary>
@@ -85,7 +86,9 @@ namespace Engine.Logic
             long sceneBytes = new FileInfo(path).Length;
             // Bakes are saved as "<scene>.probes" (SaveBakedProbes), so the total is known before the JSON names it.
             string expectedProbes = Path.ChangeExtension(path, ".probes");
-            long expectedTotal = sceneBytes + (File.Exists(expectedProbes) ? new FileInfo(expectedProbes).Length : 0);
+            string expectedReflections = Path.ChangeExtension(path, ReflectionProbeData.Extension);
+            long expectedTotal = sceneBytes + (File.Exists(expectedProbes) ? new FileInfo(expectedProbes).Length : 0) +
+                (File.Exists(expectedReflections) ? new FileInfo(expectedReflections).Length : 0);
             byte[] json = ReadAllBytes(path, cancel, read => progress?.Invoke(read, expectedTotal));
             SceneDocument doc;
             try { doc = JsonSerializer.Deserialize<SceneDocument>(json, Options); }
@@ -103,6 +106,20 @@ namespace Engine.Logic
                 cancel.ThrowIfCancellationRequested();
                 file.BakedProbes = LoadBakedProbes(doc.Lighting.ProbeDataFile, path);
                 file.Bytes += probeBytes;
+            }
+            string reflectionPath = ProbePath(doc.ReflectionDataFile, path);
+            if (reflectionPath != null)
+            {
+                cancel.ThrowIfCancellationRequested();
+                try
+                {
+                    file.ReflectionCaptures = ReflectionProbeData.Load(reflectionPath, cancel);
+                    file.Bytes += new FileInfo(reflectionPath).Length;
+                }
+                catch (Exception ex) when (ex is IOException || ex is InvalidDataException || ex is UnauthorizedAccessException || ex is ArgumentException)
+                {
+                    EditorBridge.Log($"LoadScene: couldn't read reflection cubemaps '{reflectionPath}': {ex.Message}; probes will recapture");
+                }
             }
             progress?.Invoke(file.Bytes, file.Bytes);
             return file;
@@ -131,7 +148,8 @@ namespace Engine.Logic
             public string Path;
             public SceneDocument Document;
             public ProbeVolumeData BakedProbes;
-            /// <summary>Size of the .obsc plus its .probes file.</summary>
+            public Dictionary<Guid, ReflectionProbeData> ReflectionCaptures;
+            /// <summary>Size of the scene and its lighting sidecars.</summary>
             public long Bytes;
         }
 
@@ -316,6 +334,15 @@ namespace Engine.Logic
                     scene.BakedProbes = _file.BakedProbes;
                 }
 
+                if (_file.ReflectionCaptures != null)
+                    foreach (BasicEntity entity in scene.BasicEntities)
+                    {
+                        var probe = entity.GetComponent<ReflectionProbeComponent>();
+                        if (probe == null || !_file.ReflectionCaptures.TryGetValue(probe.InstanceId, out var capture)) continue;
+                        capture.CaptureRequest = probe.CaptureRequest;
+                        scene.ReflectionCaptures[probe.InstanceId] = capture;
+                    }
+
                 // Advance the global ID generator so newly-added objects can't collide.
                 IdGenerator.Reseed(_maxId);
                 // The probe is not saved with an ID, so its constructor ID may equal a loaded one.
@@ -350,6 +377,9 @@ namespace Engine.Logic
             // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
             be.IsEnabled = rec.IsEnabled || version < 2;
             be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
+            if (rec.RoleId != null) be.RoleId = rec.RoleId;
+            be.LayerId = rec.LayerId;
+            be.TagId = rec.TagId;
             be.Persistent = rec.Persistent;
             be.PrefabPath = string.IsNullOrEmpty(rec.Prefab) ? null : rec.Prefab;
             be.BonePose.Load(rec.BonePose);
@@ -381,6 +411,9 @@ namespace Engine.Logic
                 Name = be.Name,
                 IsEnabled = be.IsEnabled,
                 Role = be.Role,
+                RoleId = be.RoleId == be.Role.ToString() ? null : be.RoleId,
+                LayerId = be.LayerId == "Default" ? null : be.LayerId,
+                TagId = be.TagId == "Untagged" ? null : be.TagId,
                 Persistent = be.Persistent,
                 ModelKey = modelKey,
                 BonePose = be.BonePose.ToRecord(),
@@ -407,6 +440,27 @@ namespace Engine.Logic
                     MaskKey = LookupKey(textureReverse, be.Material.Mask),
                 },
             };
+        }
+
+        private static string SaveReflectionCaptures(Scene scene, string path, SceneDocument doc)
+        {
+            var savedIds = new HashSet<Guid>();
+            foreach (var entity in doc.Entities)
+                foreach (var component in entity.Components ?? new List<ComponentRecord>())
+                    if (component.Type == ReflectionProbeComponent.TypeId) savedIds.Add(component.InstanceId);
+            var captures = new Dictionary<Guid, ReflectionProbeData>();
+            foreach (BasicEntity entity in scene.BasicEntities)
+            {
+                var probe = entity.GetComponent<ReflectionProbeComponent>();
+                if (probe != null && savedIds.Contains(probe.InstanceId) &&
+                    scene.ReflectionCaptures.TryGetValue(probe.InstanceId, out var capture) && capture.Matches(entity, probe))
+                    captures[probe.InstanceId] = capture;
+            }
+            // Old unreferenced sidecars are harmless, just like cleared diffuse bakes.
+            if (captures.Count == 0) return null;
+            string capturePath = Path.ChangeExtension(path, ReflectionProbeData.Extension);
+            ReflectionProbeData.Save(capturePath, captures);
+            return Path.GetFileName(capturePath);
         }
 
         // Baked probes live in "<scene>.probes" next to the .obsc (binary, can be large).
@@ -633,6 +687,7 @@ namespace Engine.Logic
 
         public class SceneDocument
         {
+            public string ReflectionDataFile { get; set; }
             public int Version { get; set; } = CurrentVersion;
             public string Name { get; set; }
             public List<BasicEntityRecord> Entities { get; set; } = new();
@@ -663,6 +718,9 @@ namespace Engine.Logic
             // Missing in older scenes, which load as Default.
             [JsonConverter(typeof(JsonStringEnumConverter))]
             public GameObjectRole Role { get; set; } = GameObjectRole.Default;
+            public string RoleId { get; set; }
+            public string LayerId { get; set; }
+            public string TagId { get; set; }
             // Only written when true, so scenes without persistent gameobjects don't change.
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool Persistent { get; set; }

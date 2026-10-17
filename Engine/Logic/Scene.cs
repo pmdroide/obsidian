@@ -39,6 +39,9 @@ namespace Engine.Logic
         /// </summary>
         public ProbeVolumeData BakedProbes;
 
+        /// <summary>Filtered reflection captures by component instance ID; saved in a sibling .reflections file.</summary>
+        public readonly Dictionary<System.Guid, ReflectionProbeData> ReflectionCaptures = new();
+
         public void Clear()
         {
             BasicEntities.Clear();
@@ -48,6 +51,7 @@ namespace Engine.Logic
             EnvironmentSample = null;
             MainCamera = null;
             BakedProbes = null;
+            ReflectionCaptures.Clear();
         }
     }
 }

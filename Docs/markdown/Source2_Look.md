@@ -21,7 +21,7 @@ floor with AO proxies.
 | Local light shadows | Inspector of a point/spot light: Cast Shadows, Shadow Res., Static Shadows | the scene |
 | Light cookie | Inspector of a spot light: **Cookie** (a built Content texture) | the scene |
 | Light source size | Inspector of a point/spot light: **Source Radius**, **Tube Length** | the scene |
-| Local reflections | Add Component > **Reflection Probe** on a box gameobject | the scene (cubemaps are captured at runtime) |
+| Local reflections | Add Component > **Reflection Probe** on a box gameobject | the scene + `.reflections` sidecar |
 | Finer baked light in a room | Add Component > **Probe Volume** on a box gameobject, then Inspector > Lighting > Bake | the scene + `<scene>.probes` |
 | Contact shadows under moving objects | Add Component > **AO Proxy** | the scene |
 | Material ambient occlusion map | Material component > Textures > **Ambient Occlusion** | the scene / `.mat` |
@@ -128,8 +128,9 @@ fade out between `g_shadowfadestart` and `g_shadowfadeend` metres from the light
   m / (mips - 1). A split-sum **BRDF lookup texture** replaces the old `(1 - roughness) · fresnel` term.
 - **Reflection Probe** component: a cubemap captured at the gameobject's position that is used inside its box. Box
   Projection lines reflections up with the walls; Blend Distance fades it in from the faces; Priority wins where
-  boxes overlap; Resolution 64-512 per face. Probes are captured when the scene loads, when they move or change, and
-  with Inspector > **Capture**, one probe per frame; at most 4 are blended per view. Captures include the sun's
+  boxes overlap; Resolution 64-512 per face. Save the scene after capturing to retain the filtered HDR cubemaps in
+  its `.reflections` sidecar. Saved probes restore on load; missing captures, moved or changed probes, and
+  Inspector > **Capture** trigger capture, one probe per frame; at most 4 are blended per view. Captures include the sun's
   shadows only where the camera's cascades reach.
 - **Normalisation**: with baked probes, a reflection is scaled by the baked light at the pixel versus at the
   capture point (`g_cubemapnormalizationmax`, `g_cubemapnormalizationroughnessbegin`), so chrome in a dark room no
@@ -140,9 +141,11 @@ fade out between `g_shadowfadestart` and `g_shadowfadeend` metres from the light
 ## Forward pass (glass and other Forward Shaded materials)
 
 `Forward.fx` lights forward materials like the deferred ones: the sun with its cascades, up to 40 point/spot lights
-ranked by how much they light the object (sized sources, spot cones), the probe volume and reflection probes,
-volumetric fog at the fragment, and premultiplied alpha (Opacity). Not yet: point/spot shadows and cookies on
-forward surfaces.
+ranked by brightness reaching the camera (sized sources, spot cones), the probe volume and reflection probes,
+volumetric fog at the fragment, and premultiplied alpha (Opacity). Point/spot shadows use the shared shadow atlas,
+including filtering and distance fade. Spot cookies tint and shape both diffuse light and specular reflections,
+including those on clear glass. Multiple cookies share a cached atlas (up to 512 texels per cookie) prepared before
+scene rendering; projection follows each spotlight's position, cone and rotation.
 
 ## Baked probes
 
@@ -196,7 +199,7 @@ captures the standard LookDev views. Code: `Engine/Logic/LookDevCapture.cs`.
 - **Reference captures from Half-Life: Alyx** (plan 0.1) and the REA research follow-ups R1–R7: the defaults
   (Hejl curve, bloom start 1.5, bright target 0.18 for 2 %, cascade lambda 0.75, AO proxy falloff) are chosen by eye
   on the LookDev scene, not recovered from the game.
-- Reflection probe cubemaps are not saved; they are captured at runtime.
+- Scenes without a valid saved reflection capture generate it at runtime; save the scene to retain it for later loads.
 - An optional depth prepass with normals.
 
 ## Code map

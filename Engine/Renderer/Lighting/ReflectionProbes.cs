@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using Engine.Components;
 using Engine.Entities;
+using Engine.Editor;
+using Engine.Logic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -29,7 +31,7 @@ namespace Engine.Renderer.Lighting
 
             public bool NeedsCapture =>
                 Cube == null || CapturedRequest != Component.CaptureRequest || CapturedResolution != Component.ClampedResolution ||
-                CapturedBox != ReflectionProbeComponent.BoxWorld(Owner);
+                !ReflectionProbeData.SameBox(CapturedBox, ReflectionProbeComponent.BoxWorld(Owner));
         }
 
         private readonly Dictionary<ReflectionProbeComponent, Probe> _probes = new Dictionary<ReflectionProbeComponent, Probe>();
@@ -42,7 +44,7 @@ namespace Engine.Renderer.Lighting
         public IReadOnlyList<Probe> Active => _active;
 
         /// <summary>Finds the enabled probes of <paramref name="entities"/> and frees the cubes of removed ones.</summary>
-        public void Update(IReadOnlyList<BasicEntity> entities)
+        public void Update(IReadOnlyList<BasicEntity> entities, Scene scene = null, GraphicsDevice graphics = null)
         {
             foreach (Probe probe in _probes.Values) probe.Seen = false;
             _active.Clear();
@@ -61,6 +63,21 @@ namespace Engine.Renderer.Lighting
                     if (!_probes.TryGetValue(component, out Probe probe))
                         _probes[component] = probe = new Probe { Component = component };
                     probe.Owner = entity;
+                    if (probe.Cube == null && graphics != null &&
+                        scene?.ReflectionCaptures.TryGetValue(component.InstanceId, out var saved) == true && saved.Matches(entity, component))
+                    {
+                        try
+                        {
+                            probe.Cube = saved.Upload(graphics);
+                            probe.CapturedBox = saved.Box;
+                            probe.CapturedResolution = saved.Resolution;
+                            probe.CapturedRequest = component.CaptureRequest;
+                        }
+                        catch (Exception ex)
+                        {
+                            EditorBridge.Log("Reflection probe upload failed; recapturing: " + ex.Message);
+                        }
+                    }
                     probe.Seen = true;
                     _active.Add(probe);
                 }
@@ -75,6 +92,14 @@ namespace Engine.Renderer.Lighting
                     _probes[key].Cube?.Dispose();
                     _probes.Remove(key);
                 }
+        }
+
+        /// <summary>Retains a CPU copy for scene saves, including captures made before the first Save As.</summary>
+        public void StoreCapture(Probe probe, Scene scene)
+        {
+            if (scene == null || probe.Owner.IsRuntimeSpawned) return;
+            scene.ReflectionCaptures[probe.Component.InstanceId] = ReflectionProbeData.Capture(probe);
+            scene.IsDirty = true;
         }
 
         /// <summary>The probe to capture this frame: the nearest one that needs it, or null.</summary>

@@ -16,7 +16,7 @@ using DirectionalLight = Engine.Entities.DirectionalLight;
 internal static class MaterialGraphicsChecks
 {
     // A hidden native window lets WindowsDX render/read back without opening the editor.
-    public static void Run()
+    public static void Run(bool forwardOnly = false)
     {
         IntPtr window = CreateWindowEx(0, "STATIC", "Material checks", 0, 0, 0, 96, 96,
             IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
@@ -30,6 +30,11 @@ internal static class MaterialGraphicsChecks
             services.AddService<IGraphicsDeviceService>(new DeviceService(graphics));
             using var content = new ContentManager(services,
                 Path.Combine(AppContext.BaseDirectory, "Content"));
+            if (forwardOnly)
+            {
+                ForwardLightingChecks.RunGraphics(graphics, content);
+                return;
+            }
             FogChecks.RunGraphics(graphics, content);
             MaterialAssetChecks.RunGraphics(graphics, content);
             EnvironmentChecks.RunGraphics(graphics, content);

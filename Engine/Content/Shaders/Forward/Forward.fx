@@ -1,6 +1,6 @@
 // Forward shaded materials (MaterialEffect.MaterialTypes.ForwardShaded: glass, transparent plastics), lit like the
 // deferred path (Source 2 look, Docs/Research/Source2Look phase 3.4): the material's colour/texture, roughness and
-// metalness; the sun with its cascaded shadows; point and spot lights ranked by importance; image based light from the
+// metalness; the sun with its cascaded shadows; point and spot lights with atlas shadows and cookies; image based light from the
 // probe volume and the reflection probes; the froxel fog in front of it. Output is premultiplied: reflections stay
 // visible on clear glass. Light units match DeferredCompose's output (the light buffers' 1/10 scale).
 
@@ -46,6 +46,70 @@ float3 LightColor[MAXLIGHTS];
 float3 LightSpotDirectionWS[MAXLIGHTS];
 float2 LightSpotCos[MAXLIGHTS];
 float LightSourceRadius[MAXLIGHTS];
+
+// The same atlas faces and distance encoding as deferred point/spot shadows.
+Texture2D PointShadowAtlas;
+float4 LightShadowTiles[MAXLIGHTS * 6];
+float4 LightShadowSettings[MAXLIGHTS]; // strength, tile size, PCF radius setting, maximum bias
+Texture2D CookieAtlas;
+float4 LightCookieRect[MAXLIGHTS]; // xy = first texel centre, zw = span to last texel centre; x = 0 means none
+float4 LightCookieRight[MAXLIGHTS]; // world right, tan(outer half angle)
+float3 LightCookieUp[MAXLIGHTS];
+SamplerState CookieSampler
+{
+    AddressU = Clamp;
+    AddressV = Clamp;
+    Filter = Linear;
+};
+
+float3 LocalCookie(int i, float3 lightToSurface)
+{
+    float4 rect = LightCookieRect[i];
+    if (rect.x <= 0) return 1;
+    float forward = dot(lightToSurface, LightSpotDirectionWS[i]);
+    if (forward <= 0.001f) return 0;
+    float4 right = LightCookieRight[i];
+    float2 uv = float2(dot(lightToSurface, right.xyz), dot(lightToSurface, LightCookieUp[i])) / (forward * right.w);
+    uv = uv * 0.5f + 0.5f;
+    return CookieAtlas.SampleLevel(CookieSampler, rect.xy + saturate(float2(uv.x, 1 - uv.y)) * rect.zw, 0).rgb;
+}
+
+float LocalShadowDepth(int i, float2 coord)
+{
+    int face = clamp((int)floor(coord.y * 6), 0, 5);
+    float4 tile = LightShadowTiles[i * 6 + face];
+    if (tile.w <= 0) return 1; // Missing tiles and spot faces outside the cone are lit.
+    float2 local = saturate(float2(coord.x, coord.y * 6 - face));
+    int2 texel = int2(tile.xy) + min(int2(local * tile.z), (int)tile.z - 1);
+    return 1 - PointShadowAtlas.Load(int3(texel, 0)).r;
+}
+
+float LocalShadow(int i, float3 lightToSurface, float relativeDistance, float ndotl)
+{
+    float4 settings = LightShadowSettings[i];
+    if (settings.x <= 0) return 1;
+    // Same slope bias, kernel and face-edge traversal as DeferredPointLight.CalcShadowTermPCF.
+    float bias = clamp(0.005f * sqrt(saturate(1 - ndotl * ndotl)) / max(ndotl, 1e-5f), 0, settings.w);
+    float testDepth = relativeDistance - bias;
+    float2 coord = GetSampleCoordinate(lightToSurface);
+    float radius = settings.z - 1;
+    if (radius < 1) return lerp(1, (float)(testDepth < LocalShadowDepth(i, coord)), settings.x);
+    float2 fractions = frac(float2(settings.y * coord.x, settings.y * coord.y * 6));
+    float sum = 0;
+    [loop]
+    for (float y = -radius; y <= radius; y++)
+    {
+        [loop]
+        for (float x = -radius; x <= radius; x++)
+        {
+            float2 offsetCoord = GetSampleOffset(coord, float2(x, y) / settings.y);
+            float weightX = x == -radius ? 1 - fractions.x : x == radius ? fractions.x : 1;
+            float weightY = y == -radius ? 1 - fractions.y : y == radius ? fractions.y : 1;
+            sum += (testDepth < LocalShadowDepth(i, offsetCoord)) * weightX * weightY;
+        }
+    }
+    return lerp(1, sum / (radius * radius * 4), settings.x);
+}
 
 // ---- Sun with cascaded shadows (world space; DeferredDirectionalLight.fx works in view space) ----
 bool UseSun = false;
@@ -173,14 +237,17 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
         if (lightDistance >= lightRadius) continue;
 
         float attenuation = LightAttenuation(lightDistance, lightRadius, LightSourceRadius[i]);
-        float3 l = lightVector / lightDistance;
+        float3 l = lightVector / max(lightDistance, 1e-5f);
         float2 spotCos = LightSpotCos[i];
         float spotT = saturate((dot(-l, LightSpotDirectionWS[i]) - spotCos.x) / max(spotCos.y - spotCos.x, 0.0001f));
         attenuation *= spotT * spotT;
         if (attenuation <= 0) continue;
 
+        attenuation *= LocalShadow(i, -l, lightDistance / lightRadius, saturate(dot(normal, l)));
+        float3 radiance = LightColor[i] * LocalCookie(i, -l) * LightIntensity[i] * attenuation;
+
         float3 d, s;
-        EvaluateLight(normal, l, cameraDirection, LightColor[i] * LightIntensity[i] * attenuation, f0, roughness, 1, d, s);
+        EvaluateLight(normal, l, cameraDirection, radiance, f0, roughness, 1, d, s);
         diffuseLight += d * OUTPUTCONST;
         specularLight += s * OUTPUTCONST;
     }
