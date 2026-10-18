@@ -51,6 +51,7 @@ namespace Engine.Logic
             if (assets == null) throw new ArgumentNullException(nameof(assets));
 
             var doc = BuildDocument(scene, assets);
+            doc.ReflectionDataFile = SaveReflectionCaptures(scene, path, doc);
             doc.Lighting = new LightingRecord
             {
                 Settings = scene.Lighting,
@@ -74,7 +75,7 @@ namespace Engine.Logic
         }
 
         /// <summary>
-        /// Reads and parses a .obsc file and its baked probes without creating any engine object, so it can run
+        /// Reads and parses a .obsc file and its lighting sidecars without creating any engine object, so it can run
         /// on a worker thread (<see cref="SceneLoadOperation"/>). <paramref name="progress"/> gets (bytes read,
         /// total bytes) as the files stream in. <see cref="SceneBuilder"/> turns the result into a <see cref="Scene"/>.
         /// </summary>
@@ -85,7 +86,9 @@ namespace Engine.Logic
             long sceneBytes = new FileInfo(path).Length;
             // Bakes are saved as "<scene>.probes" (SaveBakedProbes), so the total is known before the JSON names it.
             string expectedProbes = Path.ChangeExtension(path, ".probes");
-            long expectedTotal = sceneBytes + (File.Exists(expectedProbes) ? new FileInfo(expectedProbes).Length : 0);
+            string expectedReflections = Path.ChangeExtension(path, ReflectionProbeData.Extension);
+            long expectedTotal = sceneBytes + (File.Exists(expectedProbes) ? new FileInfo(expectedProbes).Length : 0) +
+                (File.Exists(expectedReflections) ? new FileInfo(expectedReflections).Length : 0);
             byte[] json = ReadAllBytes(path, cancel, read => progress?.Invoke(read, expectedTotal));
             SceneDocument doc;
             try { doc = JsonSerializer.Deserialize<SceneDocument>(json, Options); }
@@ -103,6 +106,20 @@ namespace Engine.Logic
                 cancel.ThrowIfCancellationRequested();
                 file.BakedProbes = LoadBakedProbes(doc.Lighting.ProbeDataFile, path);
                 file.Bytes += probeBytes;
+            }
+            string reflectionPath = ProbePath(doc.ReflectionDataFile, path);
+            if (reflectionPath != null)
+            {
+                cancel.ThrowIfCancellationRequested();
+                try
+                {
+                    file.ReflectionCaptures = ReflectionProbeData.Load(reflectionPath, cancel);
+                    file.Bytes += new FileInfo(reflectionPath).Length;
+                }
+                catch (Exception ex) when (ex is IOException || ex is InvalidDataException || ex is UnauthorizedAccessException || ex is ArgumentException)
+                {
+                    EditorBridge.Log($"LoadScene: couldn't read reflection cubemaps '{reflectionPath}': {ex.Message}; probes will recapture");
+                }
             }
             progress?.Invoke(file.Bytes, file.Bytes);
             return file;
@@ -131,7 +148,8 @@ namespace Engine.Logic
             public string Path;
             public SceneDocument Document;
             public ProbeVolumeData BakedProbes;
-            /// <summary>Size of the .obsc plus its .probes file.</summary>
+            public Dictionary<Guid, ReflectionProbeData> ReflectionCaptures;
+            /// <summary>Size of the scene and its lighting sidecars.</summary>
             public long Bytes;
         }
 
@@ -223,6 +241,9 @@ namespace Engine.Logic
                     castShadows: rec.CastShadows, isVolumetric: rec.IsVolumetric,
                     shadowResolution: rec.ShadowResolution, softShadowBlurAmount: rec.SoftShadowBlurAmount,
                     staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
+                pl.SourceRadius = rec.SourceRadius;
+                pl.SourceLength = rec.SourceLength;
+                if (rec.Rotation != Quaternion.Identity) pl.RotationMatrix = Matrix.CreateFromQuaternion(rec.Rotation);
                 pl.Name = rec.Name ?? pl.Name;
                 pl.IsEnabled = rec.IsEnabled;
                 ClaimId(pl, rec.Id);
@@ -236,6 +257,9 @@ namespace Engine.Logic
                     castShadows: rec.CastShadows, isVolumetric: rec.IsVolumetric,
                     shadowResolution: rec.ShadowResolution, softShadowBlurAmount: rec.SoftShadowBlurAmount,
                     staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
+                sl.SourceRadius = rec.SourceRadius;
+                sl.SourceLength = rec.SourceLength;
+                sl.CookiePath = rec.CookiePath;
                 sl.Name = rec.Name ?? sl.Name;
                 sl.IsEnabled = rec.IsEnabled;
                 ClaimId(sl, rec.Id);
@@ -249,6 +273,9 @@ namespace Engine.Logic
                     shadowResolution: rec.ShadowResolution,
                     shadowFiltering: (DirectionalLight.ShadowFilteringTypes)rec.ShadowFiltering,
                     screenspaceshadowblur: rec.ScreenSpaceShadowBlur);
+                dl.CascadeCount = rec.CascadeCount;
+                dl.ShadowDistance = rec.ShadowDistance;
+                dl.SplitLambda = rec.SplitLambda;
                 dl.Name = rec.Name ?? dl.Name;
                 dl.IsEnabled = rec.IsEnabled;
                 ClaimId(dl, rec.Id);
@@ -307,6 +334,15 @@ namespace Engine.Logic
                     scene.BakedProbes = _file.BakedProbes;
                 }
 
+                if (_file.ReflectionCaptures != null)
+                    foreach (BasicEntity entity in scene.BasicEntities)
+                    {
+                        var probe = entity.GetComponent<ReflectionProbeComponent>();
+                        if (probe == null || !_file.ReflectionCaptures.TryGetValue(probe.InstanceId, out var capture)) continue;
+                        capture.CaptureRequest = probe.CaptureRequest;
+                        scene.ReflectionCaptures[probe.InstanceId] = capture;
+                    }
+
                 // Advance the global ID generator so newly-added objects can't collide.
                 IdGenerator.Reseed(_maxId);
                 // The probe is not saved with an ID, so its constructor ID may equal a loaded one.
@@ -341,6 +377,9 @@ namespace Engine.Logic
             // Version 1 entities were never enabled (and the flag hid nothing), so enable them.
             be.IsEnabled = rec.IsEnabled || version < 2;
             be.Role = Enum.IsDefined(rec.Role) ? rec.Role : GameObjectRole.Default;
+            if (rec.RoleId != null) be.RoleId = rec.RoleId;
+            be.LayerId = rec.LayerId;
+            be.TagId = rec.TagId;
             be.Persistent = rec.Persistent;
             be.PrefabPath = string.IsNullOrEmpty(rec.Prefab) ? null : rec.Prefab;
             be.BonePose.Load(rec.BonePose);
@@ -372,6 +411,9 @@ namespace Engine.Logic
                 Name = be.Name,
                 IsEnabled = be.IsEnabled,
                 Role = be.Role,
+                RoleId = be.RoleId == be.Role.ToString() ? null : be.RoleId,
+                LayerId = be.LayerId == "Default" ? null : be.LayerId,
+                TagId = be.TagId == "Untagged" ? null : be.TagId,
                 Persistent = be.Persistent,
                 ModelKey = modelKey,
                 BonePose = be.BonePose.ToRecord(),
@@ -398,6 +440,27 @@ namespace Engine.Logic
                     MaskKey = LookupKey(textureReverse, be.Material.Mask),
                 },
             };
+        }
+
+        private static string SaveReflectionCaptures(Scene scene, string path, SceneDocument doc)
+        {
+            var savedIds = new HashSet<Guid>();
+            foreach (var entity in doc.Entities)
+                foreach (var component in entity.Components ?? new List<ComponentRecord>())
+                    if (component.Type == ReflectionProbeComponent.TypeId) savedIds.Add(component.InstanceId);
+            var captures = new Dictionary<Guid, ReflectionProbeData>();
+            foreach (BasicEntity entity in scene.BasicEntities)
+            {
+                var probe = entity.GetComponent<ReflectionProbeComponent>();
+                if (probe != null && savedIds.Contains(probe.InstanceId) &&
+                    scene.ReflectionCaptures.TryGetValue(probe.InstanceId, out var capture) && capture.Matches(entity, probe))
+                    captures[probe.InstanceId] = capture;
+            }
+            // Old unreferenced sidecars are harmless, just like cleared diffuse bakes.
+            if (captures.Count == 0) return null;
+            string capturePath = Path.ChangeExtension(path, ReflectionProbeData.Extension);
+            ReflectionProbeData.Save(capturePath, captures);
+            return Path.GetFileName(capturePath);
         }
 
         // Baked probes live in "<scene>.probes" next to the .obsc (binary, can be large).
@@ -473,6 +536,7 @@ namespace Engine.Logic
                         StaticShadow = sl.StaticShadows, VolumetricDensity = sl.LightVolumeDensity,
                         Rotation = Quaternion.CreateFromRotationMatrix(sl.RotationMatrix),
                         SpotAngle = sl.SpotAngle, InnerSpotAngle = sl.InnerSpotAngle,
+                        SourceRadius = sl.SourceRadius, SourceLength = sl.SourceLength, CookiePath = sl.CookiePath,
                     });
                     continue;
                 }
@@ -483,6 +547,9 @@ namespace Engine.Logic
                     CastShadows = pl.CastShadows, IsVolumetric = pl.IsVolumetric,
                     ShadowResolution = pl.ShadowResolution, SoftShadowBlurAmount = pl.SoftShadowBlurAmount,
                     StaticShadow = pl.StaticShadows, VolumetricDensity = pl.LightVolumeDensity,
+                    SourceRadius = pl.SourceRadius, SourceLength = pl.SourceLength,
+                    // Point lights only rotate to aim a tube light
+                    Rotation = pl.SourceLength > 0 ? Quaternion.CreateFromRotationMatrix(pl.RotationMatrix) : Quaternion.Identity,
                 });
             }
 
@@ -496,6 +563,7 @@ namespace Engine.Logic
                     CastShadows = dl.CastShadows, ShadowSize = dl.ShadowSize,
                     ShadowDepth = dl.ShadowDepth, ShadowResolution = dl.ShadowResolution,
                     ShadowFiltering = (int)dl.ShadowFiltering, ScreenSpaceShadowBlur = dl.ScreenSpaceShadowBlur,
+                    CascadeCount = dl.CascadeCount, ShadowDistance = dl.ShadowDistance, SplitLambda = dl.SplitLambda,
                 });
             }
 
@@ -619,6 +687,7 @@ namespace Engine.Logic
 
         public class SceneDocument
         {
+            public string ReflectionDataFile { get; set; }
             public int Version { get; set; } = CurrentVersion;
             public string Name { get; set; }
             public List<BasicEntityRecord> Entities { get; set; } = new();
@@ -649,6 +718,9 @@ namespace Engine.Logic
             // Missing in older scenes, which load as Default.
             [JsonConverter(typeof(JsonStringEnumConverter))]
             public GameObjectRole Role { get; set; } = GameObjectRole.Default;
+            public string RoleId { get; set; }
+            public string LayerId { get; set; }
+            public string TagId { get; set; }
             // Only written when true, so scenes without persistent gameobjects don't change.
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool Persistent { get; set; }
@@ -715,11 +787,17 @@ namespace Engine.Logic
             public int SoftShadowBlurAmount { get; set; }
             public bool StaticShadow { get; set; }
             public float VolumetricDensity { get; set; } = 1f;
+            // Light source shape (Source 2 look, phase 2.4): sphere radius and tube length in metres, 0 = a point.
+            public float SourceRadius { get; set; }
+            public float SourceLength { get; set; }
+            // The tube's axis (local X) for point lights; spot lights' cone.
+            public Quaternion Rotation { get; set; } = Quaternion.Identity;
         }
 
         public class SpotLightRecord : PointLightRecord
         {
-            public Quaternion Rotation { get; set; } = Quaternion.Identity;
+            // Light cookie, a Content texture path (phase 2.3); null = a plain cone.
+            public string CookiePath { get; set; }
             public float SpotAngle { get; set; } = 60f;
             public float InnerSpotAngle { get; set; } = 40f;
         }
@@ -739,6 +817,10 @@ namespace Engine.Logic
             public int ShadowResolution { get; set; } = 512;
             public int ShadowFiltering { get; set; }
             public bool ScreenSpaceShadowBlur { get; set; }
+            // Cascaded shadows (Source 2 look, phase 2.1). Missing in older scenes: the defaults.
+            public int CascadeCount { get; set; } = DirectionalLight.MaxCascades;
+            public float ShadowDistance { get; set; } = 150f;
+            public float SplitLambda { get; set; } = 0.75f;
         }
 
         public class DecalRecord

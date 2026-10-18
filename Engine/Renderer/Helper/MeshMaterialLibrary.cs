@@ -365,9 +365,35 @@ namespace Engine.Renderer.Helper
                 MaterialLibrary matLib = GameSettings.g_cpusort ? MaterialLib[MaterialLibPointer[index1]] : MaterialLib[index1];
 
                 matLib.HasChangedThisFrame = false;
+
+                //Motion vectors of the next frame start from where everything is now
+                for (int i = 0; i < matLib.Index; i++)
+                {
+                    MeshLibrary meshLib = matLib.GetMeshLibrary()[i];
+                    TransformMatrix[] transforms = meshLib.GetWorldMatrices();
+                    for (int j = 0; j < meshLib.Index; j++)
+                    {
+                        TransformMatrix transform = transforms[j];
+                        if (transform == null) continue;
+                        transform.PreviousWorld = transform.World;
+                        transform.HasPrevious = true;
+                    }
+                }
             }
 
         }
+
+        /// <summary>Set by passes that cleared their shadow target themselves (the sun's cascade atlas).</summary>
+        public bool SkipShadowClear;
+
+        /// <summary>
+        /// Screen-size culling for the next FrustumCulling calls: instances whose bounding sphere radius is below this
+        /// fraction of their distance are skipped (0 = off). The renderer sets it per pass (view / shadows).
+        /// </summary>
+        public static float SizeCullThreshold;
+
+        /// <summary>Whether the G-buffer and forward passes skip instances OcclusionCulling found hidden (main view only).</summary>
+        public bool SkipOccluded;
 
         public enum RenderType
         {
@@ -502,8 +528,11 @@ namespace Engine.Renderer.Helper
                         TransformMatrix transform = meshLib.GetWorldMatrices()[index];
                         // LOD component: only the gameobject's current level draws (-1 = culled by distance).
                         if (meshLib.LodLevels[index] != transform.LodLevel || transform.Hidden) continue;
+                        // Occlusion culling: hidden behind the scene last frame (main view passes only)
+                        if (meshLib.Occluded[index] && (renderType == RenderType.Opaque || renderType == RenderType.Forward) && SkipOccluded) continue;
                         Matrix localWorldMatrix = transform.World;
                         wind?.SetInstance(transform.Wind);
+                        (renderModule as IVelocityModule)?.SetPreviousWorld(transform.HasPrevious ? transform.PreviousWorld : transform.World);
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,
                                 outlineId, outlined)) continue;
@@ -573,9 +602,12 @@ namespace Engine.Renderer.Helper
 
                 if (discardFrame) return false;
 
-                graphicsDevice.DepthStencilState = _depthWrite;
-                ClearFrame(graphicsDevice);
-                graphicsDevice.DepthStencilState = DepthStencilState.Default;
+                if (!SkipShadowClear)
+                {
+                    graphicsDevice.DepthStencilState = _depthWrite;
+                    ClearFrame(graphicsDevice);
+                    graphicsDevice.DepthStencilState = DepthStencilState.Default;
+                }
 
             }
 
@@ -610,8 +642,9 @@ namespace Engine.Renderer.Helper
             }
             else //if (renderType == RenderType.alpha)
             {
-                graphicsDevice.BlendState = BlendState.NonPremultiplied;
-                graphicsDevice.DepthStencilState = DepthStencilState.Default;
+                //Forward.fx writes premultiplied colour (reflections stay on clear glass); transparents don't hide each other
+                graphicsDevice.BlendState = BlendState.AlphaBlend;
+                graphicsDevice.DepthStencilState = DepthStencilState.DepthRead;
                 graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
             }
         }
@@ -701,6 +734,19 @@ namespace Engine.Renderer.Helper
             {
                 ((GBufferRenderModule) renderModule).SetMaterialSettings(material);
             }
+            else if (renderType == RenderType.Forward)
+            {
+                ((ForwardRenderModule)renderModule).SetMaterialSettings(material);
+            }
+        }
+
+        /// <summary>Clears the current viewport of a shadow target (colour 0 = far, depth 1).</summary>
+        public void ClearShadowViewport()
+        {
+            graphicsDevice.DepthStencilState = _depthWrite;
+            graphicsDevice.BlendState = BlendState.Opaque;
+            ClearFrame(graphicsDevice);
+            graphicsDevice.DepthStencilState = DepthStencilState.Default;
         }
 
         private void ClearFrame(GraphicsDevice graphicsDevice)
@@ -996,8 +1042,19 @@ namespace Engine.Renderer.Helper
         public bool[] Rendered = new bool[InitialLibrarySize];
         //the level of detail each instance draws at (TransformMatrix.LodLevel), 0 = the gameobject's own model
         public int[] LodLevels = new int[InitialLibrarySize];
+        //Occlusion culling (OcclusionCulling): the instance's bounding box was hidden last frame
+        public bool[] Occluded = new bool[InitialLibrarySize];
 
         public int Index;
+
+        /// <summary>World bounding sphere of an instance (as of the last culling pass).</summary>
+        public BoundingSphere WorldSphere(int index)
+        {
+            Matrix w = _worldMatrices[index].World;
+            float maxScaleSq = Math.Max(new Vector3(w.M11, w.M12, w.M13).LengthSquared(),
+                Math.Max(new Vector3(w.M21, w.M22, w.M23).LengthSquared(), new Vector3(w.M31, w.M32, w.M33).LengthSquared()));
+            return new BoundingSphere(_worldBoundingCenters[index], MeshBoundingSphere.Radius * (float)Math.Sqrt(maxScaleSq));
+        }
 
         public void SetMesh(ModelMeshPart mesh)
         {
@@ -1052,7 +1109,10 @@ namespace Engine.Renderer.Helper
                     float maxScaleSq = Math.Max(new Vector3(w.M11, w.M12, w.M13).LengthSquared(),
                         Math.Max(new Vector3(w.M21, w.M22, w.M23).LengthSquared(), new Vector3(w.M31, w.M32, w.M33).LengthSquared()));
                     sphere.Radius = MeshBoundingSphere.Radius * (float)Math.Sqrt(maxScaleSq);
-                    if (viewFrustumEx.Contains(sphere) == ContainmentType.Disjoint)
+                    //Too small to matter from here (Source 2: r_size_cull_threshold): radius over distance
+                    float sizeCull = MeshMaterialLibrary.SizeCullThreshold;
+                    if (viewFrustumEx.Contains(sphere) == ContainmentType.Disjoint ||
+                        sizeCull > 0 && sphere.Radius < sizeCull * Vector3.Distance(cameraPosition, sphere.Center))
                     {
                         Rendered[i] = false;
                     }
@@ -1110,6 +1170,10 @@ namespace Engine.Renderer.Helper
                 int[] tempLevels = new int[Index + 1];
                 LodLevels.CopyTo(tempLevels, 0);
                 LodLevels = tempLevels;
+
+                bool[] tempOccluded = new bool[Index + 1];
+                Occluded.CopyTo(tempOccluded, 0);
+                Occluded = tempOccluded;
             }
         }
 
@@ -1128,6 +1192,7 @@ namespace Engine.Renderer.Helper
                         _worldMatrices[j] = _worldMatrices[j + 1];
                         Rendered[j] = Rendered[j + 1];
                         LodLevels[j] = LodLevels[j + 1];
+                        Occluded[j] = Occluded[j + 1];
                         _worldBoundingCenters[j] = _worldBoundingCenters[j + 1];
                     }
                     Index--;

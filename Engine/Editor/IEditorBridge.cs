@@ -64,9 +64,31 @@ namespace Engine.Editor
         public readonly bool IsSpot;
         public readonly float SpotAngle;
         public readonly float InnerSpotAngle;
+        // Shadows: per-face / per-cascade resolution; point/spot: never redrawn once drawn
+        public readonly int ShadowResolution;
+        public readonly bool StaticShadows;
+        // Point/spot light source shape (Source 2 look, phase 2.4): sphere radius and tube length in metres
+        public readonly float SourceRadius;
+        public readonly float SourceLength;
+        // Spot lights: cookie texture (Content path), null = none (phase 2.3)
+        public readonly string CookiePath;
+        // Directional lights: cascaded shadows (phase 2.1)
+        public readonly int CascadeCount;
+        public readonly float ShadowDistance;
+        public readonly float SplitLambda;
 
-        public LightSnapshot(Color color, float intensity, float radius, bool castShadows, bool isDirectional, Vector3 direction, bool isSpot = false, float spotAngle = 0f, float innerSpotAngle = 0f)
+        public LightSnapshot(Color color, float intensity, float radius, bool castShadows, bool isDirectional, Vector3 direction, bool isSpot = false, float spotAngle = 0f, float innerSpotAngle = 0f,
+            int shadowResolution = 0, bool staticShadows = false, float sourceRadius = 0, float sourceLength = 0, string cookiePath = null,
+            int cascadeCount = 0, float shadowDistance = 0, float splitLambda = 0)
         {
+            ShadowResolution = shadowResolution;
+            StaticShadows = staticShadows;
+            SourceRadius = sourceRadius;
+            SourceLength = sourceLength;
+            CookiePath = cookiePath;
+            CascadeCount = cascadeCount;
+            ShadowDistance = shadowDistance;
+            SplitLambda = splitLambda;
             IsSpot = isSpot;
             SpotAngle = spotAngle;
             InnerSpotAngle = innerSpotAngle;
@@ -114,6 +136,7 @@ namespace Engine.Editor
         public readonly IReadOnlyList<ComponentRecord> Components;
         // BasicEntity only.
         public readonly GameObjectRole Role;
+        public readonly string Tag, Layer, RoleName;
         // BasicEntity only: the saved Persistent flag (not a script's DontDestroyOnLoad).
         public readonly bool IsPersistent;
         // Decal only: Content-relative texture path (Decal.TexturePath); null = the built-in Assets.DefaultDecal.
@@ -128,8 +151,12 @@ namespace Engine.Editor
         public readonly IReadOnlyList<BoneSnapshot> Bones;
 
         public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false, string decalTexture = null,
-            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null)
+            string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null,
+            string tag = "Untagged", string layer = "Default", string roleName = null)
         {
+            Tag = tag;
+            Layer = layer;
+            RoleName = roleName ?? role.ToString();
             Bones = bones;
             PrefabPath = prefabPath;
             PrefabOverrides = prefabOverrides;
@@ -175,11 +202,10 @@ namespace Engine.Editor
         void SetHostKeyState(int xnaKeyCode, bool down);
 
         /// <summary>
-        /// True while the host pointer is hovering over the viewport. Defaults to
-        /// true (standalone engine has no host). When hosted in Anvil and the
-        /// cursor is over the Inspector / Hierarchy / Console, this is false and
-        /// the engine input layer treats the mouse as idle so picking and camera
-        /// drag don't leak across Avalonia panels.
+        /// True while the host permits viewport input. Defaults to true
+        /// (standalone engine has no host). Anvil sets this false while the Engine
+        /// tab is hidden, suppressing input regardless of cursor coordinates.
+        /// Viewport bounds separately gate pointer input over surrounding panels.
         /// </summary>
         bool IsHostPointerOverViewport { get; }
         void SetHostPointerOverViewport(bool inside);
@@ -215,6 +241,9 @@ namespace Engine.Editor
         void EnqueueMutateComponent(int entityId, string componentType, Action<GameComponent> mutate, Guid? instanceId = null);
         /// <summary>Set a gameobject's <see cref="GameObjectRole"/> and mark the scene dirty.</summary>
         void EnqueueSetRole(int entityId, GameObjectRole role);
+        IReadOnlyList<ClassificationDefinition> Classifications { get; }
+        void EnqueueSetClassification(int entityId, ClassificationKind kind, string definitionId);
+        void EnqueueEditClassification(ClassificationEdit edit, ClassificationKind kind, string definitionId, string name, Action<string> completed);
         /// <summary>Set a gameobject's saved Persistent flag (kept across scene loads during Play) and mark the scene dirty.</summary>
         void EnqueueSetPersistent(int entityId, bool persistent);
         void EnqueuePlayAudio(int entityId, bool play);
@@ -291,6 +320,11 @@ namespace Engine.Editor
 
         Logic.EnvironmentSettings GetEnvironmentSettings();
         void EnqueueMutateEnvironment(Action<Logic.EnvironmentSettings> mutate);
+        /// <summary>
+        /// Queue an edit of the active scene's post processing (EnvironmentSettings.Post: tonemapping, grading, eye
+        /// adaptation, bloom). Marks the scene dirty; unlike environment edits it doesn't recapture the reflections.
+        /// </summary>
+        void EnqueueMutatePost(Action<Logic.PostProcessSettings> mutate);
         /// <summary>Import a PNG/JPEG panorama. Callback returns an error, or null on success.</summary>
         void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted);
 

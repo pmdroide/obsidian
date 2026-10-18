@@ -102,7 +102,7 @@ internal static class RenderFeatureChecks
             var main = new MainWindowViewModel();
             typeof(MainWindowViewModel).GetField("_bridge", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(main, bridge);
             main.SetInspectorViewCommand.Execute("RenderPipeline");
-            Check(main.IsInspectorRenderPipelineView && !main.IsInspectorSelectionView, "the Pipeline button opens the Render Pipeline view");
+            Check(main.IsWorkspaceRenderPipelineView && main.IsInspectorSelectionView, "the Pipeline button opens its workspace tab while keeping the object Inspector");
 
             var deleted = new List<string>();
             RenderPipelineViewModel vm = main.RenderPipeline;

@@ -1,7 +1,8 @@
 // Eye adaptation / auto exposure
 // 1. MeterLuminance: HDR frame -> 256x256 center-weighted log2 luminance (R = w * log2(L), G = w)
 // 2. Downsample:     4x4 box reduction, 256 -> 64 -> 16 -> 4 -> 1, so the last texel is the weighted average
-// 3. Adapt:          moves last frame's exposure (EV, 1x1) toward the metered target over time
+// 3. Histogram:      (bright-pixel metering) for 64 log2 luminance levels, the weighted share of the 256x256 meter above it
+// 4. Adapt:          moves last frame's exposure (EV, 1x1) toward the metered target over time
 // PostProcessing.fx multiplies its exposure by exp2 of the adapted EV.
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,6 +43,25 @@ float DeltaTime = 0.016f;
 
 // 1 snaps to the target (first frame / after re-enabling), 0 adapts over time.
 float Reset = 1;
+
+// Metering: 0 = bright pixels (Source's tonemap controller, Docs/Research/Source2Look phase 1.4), 1 = average.
+float Metering = 0;
+// Share of the frame (0..1) that counts as its highlights, and the linear brightness they are exposed to.
+float BrightShare = 0.02f;
+float BrightTarget = 0.18f;
+// The exposed average never drops below this (0 = no floor).
+float MinAverage = 0.03f;
+
+// Histogram of the meter: texel i = share of the weight with log2 luminance >= HistogramLevel(i)
+#define HISTOGRAM_BINS 64
+static const float HistogramMin = -16;
+static const float HistogramMax = 6;
+Texture2D HistogramTexture;
+
+float HistogramLevel(float i)
+{
+	return HistogramMin + i * (HistogramMax - HistogramMin) / (HISTOGRAM_BINS - 1);
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
@@ -119,12 +139,61 @@ float2 DownsamplePixelShader(float4 pos : SV_POSITION) : SV_TARGET0
 	return sum * (1.0f / 16.0f);
 }
 
+// Input = the 256x256 meter (R = w * log2 L, G = w). Every second texel in x and y is plenty for the share.
+float HistogramPixelShader(float4 pos : SV_POSITION) : SV_TARGET0
+{
+	float level = HistogramLevel(floor(pos.x));
+	float above = 0;
+	float total = 0;
+
+	[loop]
+	for (int y = 0; y < 256; y += 2)
+	{
+		[loop]
+		for (int x = 0; x < 256; x += 2)
+		{
+			float2 m = InputTexture.Load(int3(x, y, 0)).rg;
+			float w = max(m.g, 1e-6f);
+			float logL = m.r / w;
+			above += logL >= level ? w : 0;
+			total += w;
+		}
+	}
+	return above / max(total, 1e-6f);
+}
+
+// log2 luminance that the brightest BrightShare of the frame is above, read off the histogram
+float BrightLogLuminance()
+{
+	float result = HistogramMin;
+	float previous = HistogramTexture.Load(int3(0, 0, 0)).r;
+	[loop]
+	for (int i = 1; i < HISTOGRAM_BINS; i++)
+	{
+		float share = HistogramTexture.Load(int3(i, 0, 0)).r;
+		if (previous >= BrightShare && share < BrightShare)
+			result = lerp(HistogramLevel(i - 1), HistogramLevel(i), saturate((previous - BrightShare) / max(previous - share, 1e-6f)));
+		previous = share;
+	}
+	if (previous >= BrightShare) result = HistogramMax;
+	return result;
+}
+
 float AdaptPixelShader(float4 pos : SV_POSITION) : SV_TARGET0
 {
 	float2 metered = InputTexture.Load(int3(0, 0, 0)).rg;
 	float averageLogLuminance = metered.r / max(metered.g, 0.000001f);
 
-	float target = clamp(log2(KeyValue) - averageLogLuminance, MinExposure, MaxExposure);
+	float target = log2(KeyValue) - averageLogLuminance;
+	[branch]
+	if (Metering < 0.5f)
+	{
+		// Highlights to the target brightness, but never leave the average darker than MinAverage
+		target = log2(BrightTarget) - BrightLogLuminance();
+		if (MinAverage > 0)
+			target = max(target, log2(MinAverage) - averageLogLuminance);
+	}
+	target = clamp(target, MinExposure, MaxExposure);
 	float previous = PreviousExposureTexture.Load(int3(0, 0, 0)).r;
 
 	// Exposure going down means the scene got brighter; eyes adapt to light faster than to darkness.
@@ -155,6 +224,15 @@ technique Downsample
 	{
 		VertexShader = compile vs_4_0 VertexShaderFunction();
 		PixelShader = compile ps_5_0 DownsamplePixelShader();
+	}
+}
+
+technique Histogram
+{
+	pass Pass1
+	{
+		VertexShader = compile vs_4_0 VertexShaderFunction();
+		PixelShader = compile ps_5_0 HistogramPixelShader();
 	}
 }
 

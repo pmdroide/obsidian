@@ -192,6 +192,7 @@ namespace Engine.Recources
             WriteJson(contentRoot, GameInfo.FileName, new GameInfo.Data(), json);
             WriteJson(contentRoot, IntroVideoList.FileName, new IntroVideoList.Data(), json);
             WriteJson(contentRoot, SceneList.FileName, new SceneList.Data { Scenes = { FirstScene } }, json);
+            WriteJson(contentRoot, ClassificationCatalog.FileName, new List<ClassificationDefinition>(), json);
             File.WriteAllText(ToAbsolute(contentRoot, Logic.InputActionList.FileName), Logic.InputActionList.ToJson(Logic.InputActionList.Defaults()));
             new SteamSettingsStore(ToAbsolute(contentRoot, "System/SteamSettings.json")).Save(new SteamSettings());
             foreach (string rel in DeletedSettings)

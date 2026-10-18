@@ -291,6 +291,7 @@ namespace Engine.Recources
             settings.MetallicTexture ??= TexturePathOf(shown?.MetallicMap);
             settings.MaskTexture ??= TexturePathOf(shown?.Mask);
             settings.DisplacementTexture ??= TexturePathOf(shown?.DisplacementMap);
+            settings.AmbientOcclusionTexture ??= TexturePathOf(shown?.AmbientOcclusionMap);
             return settings;
         }
 

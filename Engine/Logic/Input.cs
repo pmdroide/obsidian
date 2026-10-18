@@ -45,7 +45,8 @@ namespace Engine.Logic
             keyboardLastState = keyboardState;
 
             mouseState = FilterHostMouse(Mouse.GetState());
-            keyboardState = Keyboard.GetState();
+            keyboardState = HostBridge != null && HostBridge.IsHostedByEditor && !HostBridge.IsHostPointerOverViewport
+                ? default : Keyboard.GetState();
 
             // Editor camera gets the full DCC-style control set (RMB orbit, MMB pan,
             // scroll zoom, WASD only while RMB is held). The legacy free-flight code
@@ -83,7 +84,7 @@ namespace Engine.Logic
                 raw.RightButton == ButtonState.Pressed ||
                 raw.MiddleButton == ButtonState.Pressed;
 
-            if (gateActive && HostBridge.IsHostDragDropActive)
+            if (gateActive && (HostBridge.IsHostDragDropActive || !HostBridge.IsHostPointerOverViewport))
             {
                 _suppressMouseUntilRelease = true;
                 _dragOwnedByViewport = false;
@@ -149,6 +150,7 @@ namespace Engine.Logic
 
         private static void EditorCameraEvents(GameTime gameTime, EditorCamera camera)
         {
+            if (HostBridge != null && HostBridge.IsHostedByEditor && !HostBridge.IsHostPointerOverViewport) return;
             float deltaX = mouseState.X - mouseLastState.X;
             float deltaY = mouseState.Y - mouseLastState.Y;
             float scrollDelta = mouseState.ScrollWheelValue - mouseLastState.ScrollWheelValue;

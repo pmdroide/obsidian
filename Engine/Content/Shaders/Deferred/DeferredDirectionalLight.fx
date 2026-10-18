@@ -1,4 +1,5 @@
-﻿//Lightshader TheKosmonaut 2016
+//Lightshader TheKosmonaut 2016
+//Cascaded sun shadows: Source 2 look, Docs/Research/Source2Look phase 2.1
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  VARIABLES
@@ -8,15 +9,12 @@
 
 float4x4 ViewProjection;
 
-//color of the light 
+//color of the light
 float3 lightColor;
 //position of the camera, for specular light
 float3 cameraPosition = float3(0,0,0);
 //this is used to compute the world-position
 float4x4 InvertViewProjection;
-float4x4 LightViewProjection;
-float4x4 LightView;
-float LightFarClip;
 
 float3 LightVector;
 //control the brightness of the light
@@ -26,30 +24,42 @@ float lightIntensity = 1.0f;
 Texture2D AlbedoMap;
 // normals, and specularPower in the alpha channel
 Texture2D NormalMap;
-      
+
 //depth
 Texture2D DepthMap;
 
+//Cascade atlas: cascade i sits in tile (i % 2, i / 2), ShadowMapSize texels each. Stores light view Z / -far clip.
 Texture2D ShadowMap;
-Texture2D SSShadowMap;
 
-int ShadowFiltering = 0; //PCF, PCF(3), PCF(7), Poisson, VSM
+#define MAX_CASCADES 4
+//View space -> light clip / light view space of each cascade
+float4x4 CascadeViewProjection[MAX_CASCADES];
+float4x4 CascadeView[MAX_CASCADES];
+//View distance where each cascade ends, the light view far clip of each, world size of one of its texels
+float4 CascadeEnds = float4(10, 30, 80, 150);
+float4 CascadeFarClip = float4(100, 100, 100, 100);
+float4 CascadeTexelSize = float4(0.05, 0.1, 0.2, 0.4);
+float CascadeCount = 4;
+//Share of each cascade's depth range at its far end that blends into the next one
+float CascadeBlend = 0.15f;
+//Receivers are moved along their normal by this many shadow texels before the lookup (no acne on slopes)
+float NormalBias = 1.25f;
+//... and towards the camera (Source 2: csm_viewdir_shadow_bias), in texels
+float ViewDirectionBias = 0.5f;
+
+int ShadowFiltering = 0; //PCF, PCF(3), PCF(7), Poisson
 
 float ShadowMapSize = 2048;
-float ShadowSize = 100; //World width of the orthographic shadow box
-float DepthBias = 0.02;
-
-       
 
 SamplerState pointSampler
 {
     AddressU = CLAMP;
-    AddressV = CLAMP; 
+    AddressV = CLAMP;
     MagFilter = POINT;
     MinFilter = POINT;
     Mipfilter = POINT;
 };
-  
+
 SamplerState linearSampler
 {
     AddressU = CLAMP;
@@ -57,16 +67,6 @@ SamplerState linearSampler
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     Mipfilter = LINEAR;
-};
-
-SamplerState ShadowSampler
-{
-	Texture = (ShadowMap);
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    MagFilter = POINT;
-    MinFilter = POINT;
-    Mipfilter = POINT;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ float3 FoliageTransmission(float3 normal, float3 cameraDirection)
     float back = saturate(dot(normal, LightVector));
     float towardsSun = saturate(dot(cameraDirection, LightVector));
     towardsSun *= towardsSun;
-    return lightColor * lightIntensity * back * (0.2f + 0.8f * towardsSun * towardsSun) * 0.45f;
+    return lightColor * lightIntensity * back * (0.2f + 0.8f * towardsSun * towardsSun) * 0.45f / PBR_PI;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,14 +110,8 @@ struct PixelShaderOutput
     float4 Specular : COLOR1;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//  FUNCTIONS
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//  VERTEX SHADER
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  VERTEX SHADER
 
 VertexShaderOutput VertexShaderFunction(VertexShaderInput input, uint id:SV_VERTEXID)
 {
@@ -130,117 +124,8 @@ VertexShaderOutput VertexShaderFunction(VertexShaderInput input, uint id:SV_VERT
 	return output;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//  PIXEL SHADER
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//  HELPER FUNCTIONS
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-float GetVariableBias(float nDotL)
-{
-	//return /*(1 - abs(nDotL)) * DepthBias;*/clamp(0.001 * tan(acos(nDotL)), 0, DepthBias);
-	return clamp(0.001 * sqrt(1 - nDotL * nDotL) / nDotL, 0, DepthBias);
-}
-
-// Receiver bias for a kernel reaching `texels` shadow texels: a surface tilted from the light changes depth by
-// tan(angle) per unit across the map. The shadow map's own bias is ~0 for surfaces facing the light, so without
-// this an overhead sun makes flat ground shadow itself in a noisy pattern that TAA jitter turns into flicker.
-float GetSlopeBias(float ndotl, float texels)
-{
-	float texelDepth = ShadowSize / ShadowMapSize / LightFarClip;
-	float tanAngle = min(sqrt(saturate(1 - ndotl * ndotl)) / max(ndotl, 1e-3), 4);
-	return texelDepth * (0.5 + texels * tanAngle);
-}
-
-// Calculates the shadow term using PCF with edge tap smoothing
-float CalcShadowTermSoftPCF(float fLightDepth, float ndotl, float2 vTexCoord, int iSqrtSamples)
-{
-	float fShadowTerm = 0.0f;
-
-	//float variableBias = GetVariableBias(ndotl);
-/*
-	float variableBias = (-cos(ndotl) + 1)*0.02;*/
-	//variableBias = DepthBias;
-
-	float shadowMapSize = ShadowMapSize;
-
-	float2 fractionals = frac(ShadowMapSize * vTexCoord);
-	float2 complFractionals = float2(1, 1) - fractionals;
-
-	float fRadius = iSqrtSamples - 1;
-	fLightDepth -= GetSlopeBias(ndotl, fRadius + 1);
-
-	[unroll]
-	for (float y = -fRadius; y <= fRadius; y++)
-	{
-		[unroll]
-		for (float x = -fRadius; x <= fRadius; x++)
-		{
-			float2 vOffset = 0;
-			vOffset = float2(x, y);
-
-			int3 vSamplePoint = int3(vTexCoord * ShadowMapSize + vOffset, 0);
-			float fDepth = ShadowMap.Load(vSamplePoint).x;
-			float fSample = (fLightDepth <= fDepth /*+ variableBias*(x+y)*/);
-
-			// Edge tap smoothing
-			float xWeight = 1;
-			float yWeight = 1;
-
-			if (x == -fRadius)
-				xWeight = complFractionals.x;
-			else if (x == fRadius)
-				xWeight = fractionals.x;
-
-			if (y == -fRadius)
-				yWeight = complFractionals.y;
-			else if (y == fRadius)
-				yWeight = fractionals.y;
-
-			fShadowTerm += fSample * xWeight * yWeight;
-		}
-	}
-
-	fShadowTerm /= (fRadius * fRadius * 4);
-
-	return fShadowTerm;
-}
-
-float CalcShadowTermPCF(float linearDepthLV, float ndotl, float2 shadowTexCoord)
-{
-	float lightTerm = 0;
-
-	float2 fractionals = frac(ShadowMapSize * shadowTexCoord);
-
-	//safe to assume it's a square
-	float size = 1.0f / ShadowMapSize;
-
-	float variableBias = GetVariableBias(ndotl);
-
-	float testDepth = linearDepthLV - variableBias;
-	//Center
-	lightTerm = (linearDepthLV < ShadowMap.SampleLevel(ShadowSampler, shadowTexCoord, 0).r);
-
-	//Right
-	lightTerm += (testDepth < ShadowMap.SampleLevel(ShadowSampler, shadowTexCoord + float2(size, 0), 0).r) * fractionals.x;
-
-	//Left
-	lightTerm += (testDepth < ShadowMap.SampleLevel(ShadowSampler, shadowTexCoord + float2(-size, 0), 0).r) * (1- fractionals.x);
-
-	//Top
-	lightTerm += (testDepth < ShadowMap.SampleLevel(ShadowSampler, shadowTexCoord + float2(0, size), 0).r) * fractionals.y;
-
-	//Bot
-	lightTerm += (testDepth < ShadowMap.SampleLevel(ShadowSampler, shadowTexCoord + float2(0, -size), 0).r) * (1 - fractionals.y);
-
-	//samples[1] = (light_space_depth - variableBias < ShadowMap.SampleLevel(pointSampler, shadow_coord + float2(size, 0), 0).r) * fractionals;
-	
-	lightTerm /= 3;
-
-	return lightTerm;
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  SHADOWS
 
 float random(float4 seed4)
 {
@@ -248,88 +133,123 @@ float random(float4 seed4)
 	return frac(sin(dot_product) * 43758.5453);
 }
 
-float CalcShadowPoisson(float light_space_depth, float ndotl, float2 shadow_coord, float2 texCoord)
+//Depth test of one atlas texel, clamped into the cascade's tile so filters never read a neighbouring cascade
+float ShadowTest(int2 texel, int2 tileMin, float depth)
 {
-	float shadow_term = 0;
+	texel = clamp(texel, tileMin, tileMin + (int)ShadowMapSize - 1);
+	return depth <= ShadowMap.Load(int3(texel, 0)).r;
+}
 
-	const float2 poissonDisk[] =
+//Bilinear-weighted box PCF over (2 * radius + 1)^2 texels around the sample point
+float FilterPCF(float2 texelPos, int2 tileMin, float depth, int radius)
+{
+	float2 fractionals = frac(texelPos - 0.5f);
+	float2 complement = 1 - fractionals;
+	int2 base = int2(floor(texelPos - 0.5f));
+	float sum = 0;
+
+	[loop]
+	for (int y = -radius; y <= radius + 1; y++)
 	{
-		float2(0.1908291f, 0.1823764f),
-		float2(0.4236465f, 0.76107f),
-		float2(-0.3056469f, 0.5557697f),
-		float2(-0.4979181f, 0.1770361f),
-		float2(0.4962559f, -0.2154941f),
-		float2(0.6897131f, 0.4324413f),
-		float2(-0.3782056f, -0.3405231f),
-		float2(0.04382932f, -0.2403435f),
-		float2(0.886423f, -0.05176726f),
-		float2(0.4599024f, -0.6679791f),
-		float2(-0.8389286f, -0.4176486f),
-		float2(-0.9797052f, -0.0152119f),
-		float2(-0.2747172f, -0.7914276f),
-		float2(-0.7316247f, 0.6114004f),
-		float2(-0.220655f, 0.9378002f),
-		float2(0.1389218f, -0.8920172f) };
-
-	//float2 v_lerps = frac(ShadowMapSize * shadow_coord);
-
-	float variableBias = GetVariableBias(ndotl);
-
-	//safe to assume it's a square
-	float size = 1 / ShadowMapSize;
-
-	const uint j = 16;
-	[unroll]
-	for (uint i = 0; i < 4; i++)
-	{
-		int index = int(16.0 * random(float4(texCoord.xyy, i))) % j;
-
-		float2 texCoords = shadow_coord + poissonDisk[index] * size;
-
-		shadow_term += (light_space_depth - variableBias < ShadowMap.SampleLevel(pointSampler, texCoords, 0).r);
+		[loop]
+		for (int x = -radius; x <= radius + 1; x++)
+		{
+			float wx = x == -radius ? complement.x : x == radius + 1 ? fractionals.x : 1;
+			float wy = y == -radius ? complement.y : y == radius + 1 ? fractionals.y : 1;
+			sum += ShadowTest(base + int2(x, y), tileMin, depth) * wx * wy;
+		}
 	}
-
-	shadow_term /= 4.0f;
-
-	return shadow_term;
+	float size = 2 * radius + 1;
+	return sum / (size * size);
 }
 
-//ChebyshevUpperBound
-float CalcShadowVSM(float distance, float2 texCoord)
+float FilterPoisson(float2 texelPos, int2 tileMin, float depth, float2 screenSeed)
 {
-	// We retrive the two moments previously stored (depth and depth*depth)
-	float2 moments = 1 - ShadowMap.SampleLevel(linearSampler, texCoord, 0).rg;
-
-	// Surface is fully lit. as the current fragment is before the light occluder
-	//if (distance <= moments.x)
-	//    return 1.0;
-
-	// The fragment is either in shadow or penumbra. We now use chebyshev's upperBound to check
-	// How likely this pixel is to be lit (p_max)
-	float variance = moments.y - (moments.x * moments.x);
-	variance = max(variance, 0.0002);
-
-	float d = distance - moments.x;
-	float p_max = variance / (variance + d * d);
-
-	return p_max;
+	const float2 poissonDisk[16] =
+	{
+		float2(0.1908291f, 0.1823764f), float2(0.4236465f, 0.76107f), float2(-0.3056469f, 0.5557697f),
+		float2(-0.4979181f, 0.1770361f), float2(0.4962559f, -0.2154941f), float2(0.6897131f, 0.4324413f),
+		float2(-0.3782056f, -0.3405231f), float2(0.04382932f, -0.2403435f), float2(0.886423f, -0.05176726f),
+		float2(0.4599024f, -0.6679791f), float2(-0.8389286f, -0.4176486f), float2(-0.9797052f, -0.0152119f),
+		float2(-0.2747172f, -0.7914276f), float2(-0.7316247f, 0.6114004f), float2(-0.220655f, 0.9378002f),
+		float2(0.1389218f, -0.8920172f)
+	};
+	float sum = 0;
+	[unroll]
+	for (uint i = 0; i < 8; i++)
+	{
+		int index = int(16.0 * random(float4(screenSeed.xyy, i))) % 16;
+		sum += ShadowTest(int2(texelPos + poissonDisk[index] * 1.5f), tileMin, depth);
+	}
+	return sum / 8.0f;
 }
 
+//1 = lit. positionVS / normalVS: the receiver in view space.
+float SampleCascade(int cascade, float3 positionVS, float3 normalVS, float ndotl, float2 screenSeed)
+{
+	float texel = CascadeTexelSize[cascade];
+	float3 toCamera = normalize(-positionVS);
+	float3 p = positionVS + normalVS * texel * NormalBias + toCamera * texel * ViewDirectionBias;
 
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//  MAIN FUNCTIONS
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	float4 positionLVP = mul(float4(p, 1), CascadeViewProjection[cascade]);
+	float4 positionLV = mul(float4(p, 1), CascadeView[cascade]);
+	float depth = positionLV.z / -CascadeFarClip[cascade];
 
+	float2 uv = mad(positionLVP.xy / positionLVP.w, 0.5f, float2(0.5f, 0.5f));
+	uv.y = 1 - uv.y;
+	if (any(uv < 0) || any(uv > 1)) return 1;
+
+	//Slope bias: a tilted receiver changes depth by tan(angle) per texel across the filter
+	int kernel = ShadowFiltering == 0 ? 0 : ShadowFiltering == 2 ? 2 : 1;
+	float tanAngle = min(sqrt(saturate(1 - ndotl * ndotl)) / max(ndotl, 1e-3), 4);
+	depth -= texel / CascadeFarClip[cascade] * (0.5f + (kernel + 1) * tanAngle * 0.5f);
+
+	int2 tileMin = int2(cascade % 2, cascade / 2) * (int)ShadowMapSize;
+	float2 texelPos = tileMin + uv * ShadowMapSize;
+
+	[branch]
+	if (ShadowFiltering == 3)
+		return FilterPoisson(texelPos, tileMin, depth, screenSeed);
+	return FilterPCF(texelPos, tileMin, depth, kernel);
+}
+
+//Sun shadow at a view space point: the cascade covering its distance, blended into the next near its far end
+//(after the last one: lit, so the shadows fade out at the Shadow Distance)
+float SunShadow(float3 positionVS, float3 normalVS, float ndotl, float2 screenSeed)
+{
+	float viewZ = -positionVS.z;
+	int count = (int)CascadeCount;
+	int cascade = count;
+	[unroll]
+	for (int i = MAX_CASCADES - 1; i >= 0; i--)
+		if (i < count && viewZ < CascadeEnds[i]) cascade = i;
+	if (cascade >= count) return 1;
+
+	float shadow = SampleCascade(cascade, positionVS, normalVS, ndotl, screenSeed);
+
+	float start = cascade == 0 ? 0 : CascadeEnds[cascade - 1];
+	float end = CascadeEnds[cascade];
+	float blendStart = end - (end - start) * CascadeBlend;
+	[branch]
+	if (viewZ > blendStart)
+	{
+		float t = saturate((viewZ - blendStart) / max(end - blendStart, 1e-3f));
+		float next = cascade + 1 < count ? SampleCascade(cascade + 1, positionVS, normalVS, ndotl, screenSeed) : 1;
+		shadow = lerp(shadow, next, t);
+	}
+	return shadow;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  PIXEL SHADERS
 
 PixelShaderOutput PixelShaderUnshadowedFunction(VertexShaderOutput input)
 {
     PixelShaderOutput output;
     float2 texCoord = float2(input.TexCoord);
-    
-    //get normal data from the NormalMap
+
     float4 normalData = NormalMap.Sample(pointSampler, texCoord);
-    //tranform normal back into [-1,1] range
-    float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
+    float3 normal = decode(normalData.xyz);
 
     [branch]
     if (normalData.x + normalData.y <= 0.001f) //Out of range
@@ -340,113 +260,32 @@ PixelShaderOutput PixelShaderUnshadowedFunction(VertexShaderOutput input)
     }
     else
     {
-		//get metalness
         float roughness = normalData.a;
-		//get specular intensity from the AlbedoMap
         float4 color = AlbedoMap.Sample(pointSampler, texCoord);
-
         float metalness = decodeMetalness(normalData.b);
-    
-        float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
+        float3 f0 = GetF0(AlbedoToLinear(color.rgb), metalness);
 
         float3 cameraDirection = -normalize(input.ViewDir);
 
-        float NdL = saturate(dot(normal, -LightVector));
-
-        float3 diffuse = DiffuseOrenNayar(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, roughness); //NdL * lightColor.rgb;
-    
-        float3 specular = SpecularCookTorrance(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
+        float3 diffuse, specular;
+        EvaluateLight(normal, -LightVector, cameraDirection, lightColor * lightIntensity, f0, roughness, 1, diffuse, specular);
 
         float3 transmission = IsFoliage(normalData.b) ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
 
-        output.Diffuse = float4(diffuse * (1 - f0) + transmission, 0) * 0.1f;
+        output.Diffuse = float4(diffuse + transmission, 0) * 0.1f;
         output.Specular = float4(specular, 0) * 0.1f;
 
         return output;
     }
 }
 
-
-
-float4 PixelShaderScreenSpaceShadowFunction(VertexShaderOutput input) : SV_Target
-{
-    float2 texCoord = float2(input.TexCoord);
-    
-    //get normal data from the NormalMap
-    float4 normalData = NormalMap.Sample(pointSampler, texCoord);
-    //tranform normal back into [-1,1] range
-    float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
-
-    if (normalData.x + normalData.y <= 0.001f) //Out of range
-    {
-        return float4(0, 1, 0, 0);
-    }
-    else
-    {
-		float NdL = saturate(dot(normal, -LightVector));
-		// Foliage lets light through its back, so it needs the shadow there too
-		[flatten]
-		if (IsFoliage(normalData.b))
-			NdL = max(NdL, saturate(dot(normal, LightVector)));
-
-		//Get our current Position in viewspace
-		float linearDepth = DepthMap.Sample(pointSampler, texCoord).r;
-		float3 positionVS = input.ViewDir * linearDepth;
-
-		float4 positionInLS = mul(float4(positionVS, 1), LightViewProjection);
-		float depthInLS = (positionInLS.z / positionInLS.w);
-
-		float2 ShadowTexCoord = mad(positionInLS.xy / positionInLS.w, 0.5f, float2(0.5f, 0.5f));
-		ShadowTexCoord.y = 1 - ShadowTexCoord.y;
-		//float depthInSM = 1-ShadowMap.Sample(pointSampler, ShadowTexCoord);
-		float shadowContribution = 1;
-
-		[branch]
-		if (NdL > 0)
-		{
-			[branch]
-			if (ShadowFiltering == 0)
-			{
-				shadowContribution = CalcShadowTermPCF(depthInLS, NdL, ShadowTexCoord);
-			}
-			else if (ShadowFiltering == 1)
-			{
-				shadowContribution = CalcShadowTermSoftPCF(depthInLS, NdL, ShadowTexCoord, 3);
-			}
-			else if (ShadowFiltering == 2)
-			{
-				shadowContribution = CalcShadowTermSoftPCF(depthInLS, NdL, ShadowTexCoord, 5);
-			}
-			else if (ShadowFiltering == 3)
-			{
-				shadowContribution = CalcShadowPoisson(depthInLS, NdL, ShadowTexCoord, texCoord);
-			}
-			else
-			{
-				float3 lightVector = LightVector;
-				lightVector.z = -LightVector.z;
-				shadowContribution = CalcShadowVSM(depthInLS, ShadowTexCoord);
-			}
-		}
-		else
-		{
-			shadowContribution = 0;
-		}
-
-        return float4(0, shadowContribution, 0, 0);
-    }
-}
-
-//No screen space shadows - we need to calculate them together with the lighting
 PixelShaderOutput PixelShaderShadowedFunction(VertexShaderOutput input)
 {
     PixelShaderOutput output;
     float2 texCoord = float2(input.TexCoord);
-    
-    //get normal data from the NormalMap
+
     float4 normalData = NormalMap.Sample(pointSampler, texCoord);
-    //tranform normal back into [-1,1] range
-    float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
+    float3 normal = decode(normalData.xyz);
 
     if (normalData.x + normalData.y <= 0.001f) //Out of range
     {
@@ -454,154 +293,42 @@ PixelShaderOutput PixelShaderShadowedFunction(VertexShaderOutput input)
         output.Specular = float4(0, 0, 0, 0);
         return output;
     }
-    else
+
+    float NdL = saturate(dot(normal, -LightVector));
+    bool foliage = IsFoliage(normalData.b);
+    // Foliage lets light through its back, so it needs the shadow there too
+    float shadowNdL = foliage ? max(NdL, saturate(dot(normal, LightVector))) : NdL;
+
+	float linearDepth = DepthMap.Sample(pointSampler, texCoord).r;
+	float3 positionVS = input.ViewDir * linearDepth;
+
+	float shadowContribution = 0;
+    [branch]
+    if (shadowNdL > 0)
+        shadowContribution = SunShadow(positionVS, normal, shadowNdL, texCoord);
+
+    float roughness = normalData.a;
+    float4 color = AlbedoMap.Sample(pointSampler, texCoord);
+	float metalness = decodeMetalness(normalData.b);
+    float3 f0 = GetF0(AlbedoToLinear(color.rgb), metalness);
+
+    float3 cameraDirection = -normalize(input.ViewDir);
+
+    float3 diffuse = float3(0,0,0);
+    float3 specular = float3(0, 0, 0);
+
+    [branch]
+    if(shadowContribution > 0)
     {
-        float NdL = saturate(dot(normal, -LightVector));
-        bool foliage = IsFoliage(normalData.b);
-        // Foliage lets light through its back, so it needs the shadow there too
-        float shadowNdL = foliage ? max(NdL, saturate(dot(normal, LightVector))) : NdL;
-
-		//Get our current Position in viewspace
-		float linearDepth = DepthMap.Sample(pointSampler, texCoord).r;
-		float3 positionVS = input.ViewDir * linearDepth; 
-
-        float4 positionInLVP = mul(float4(positionVS,1), LightViewProjection);
-		float4 positionInLV = mul(float4(positionVS, 1), LightView);
-		float4 depthInLV = positionInLV.z / positionInLV.w / -LightFarClip;
-
-        float2 ShadowTexCoord = mad(positionInLVP.xy / positionInLVP.w, 0.5f, float2(0.5f, 0.5f));
-        ShadowTexCoord.y = 1 - ShadowTexCoord.y;
-
-		float shadowContribution = 1;
-
-
-        [branch]
-        if (shadowNdL > 0)
-        {
-            [branch]
-            if (ShadowFiltering == 0)
-            {
-                shadowContribution = CalcShadowTermPCF(depthInLV, shadowNdL, ShadowTexCoord);
-            }
-            else if (ShadowFiltering == 1)
-            {
-                shadowContribution = CalcShadowTermSoftPCF(depthInLV, shadowNdL, ShadowTexCoord, 3);
-            }
-            else if (ShadowFiltering == 2)
-            {
-                shadowContribution = CalcShadowTermSoftPCF(depthInLV, shadowNdL, ShadowTexCoord, 5);
-            }
-            else if (ShadowFiltering == 3)
-            {
-                shadowContribution = CalcShadowPoisson(depthInLV, shadowNdL, ShadowTexCoord, texCoord);
-            }
-            else
-            {
-                float3 lightVector = LightVector;
-                lightVector.z = -LightVector.z;
-                shadowContribution = CalcShadowVSM(depthInLV, ShadowTexCoord);
-            }
-        }
-        else
-        {
-            shadowContribution = 0;
-        }
-
-    //get metalness
-        float roughness = normalData.a;
-    //get specular intensity from the AlbedoMap
-        float4 color = AlbedoMap.Sample(pointSampler, texCoord);
-
-		float metalness = decodeMetalness(normalData.b);
-    
-        float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
-
-        float3 cameraDirection = -normalize(input.ViewDir);
-
-        float3 diffuse = float3(0,0,0);
-        float3 specular = float3(0, 0, 0);
-
-        [branch]
-        if(shadowContribution > 0)
-        {
-            diffuse = DiffuseOrenNayar(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, roughness); //NdL * lightColor.rgb;
-    
-            specular = SpecularCookTorrance(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
-        }
-
-        float3 transmission = foliage ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
-
-        output.Diffuse = float4(diffuse * (1 - f0) + transmission, 0) * 0.1f * shadowContribution;
-        output.Specular = float4(specular, 0) * 0.1f * shadowContribution;
-
-        return output;
+        EvaluateLight(normal, -LightVector, cameraDirection, lightColor * lightIntensity, f0, roughness, 1, diffuse, specular);
     }
-}
-            
-//This one is used when we have screen space shadows already
-PixelShaderOutput PixelShaderSSShadowedFunction(VertexShaderOutput input)
-{
-    PixelShaderOutput output;
-    float2 texCoord = float2(input.TexCoord);
-    
-    //get normal data from the NormalMap
-    float4 normalData = NormalMap.Sample(pointSampler, texCoord);
-    //tranform normal back into [-1,1] range
-    float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
 
-    if (normalData.x + normalData.y <= 0.001f) //Out of range
-    {
-        output.Diffuse = float4(0, 0, 0, 0);
-        output.Specular = float4(0, 0, 0, 0);
-        return output;
-    }
-    else
-    {     
-        float NdL = saturate(dot(normal, -LightVector));
+    float3 transmission = foliage ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
 
-        float shadowContribution = SSShadowMap.Sample(ShadowSampler, texCoord).g;
+    output.Diffuse = float4(diffuse + transmission, 0) * 0.1f * shadowContribution;
+    output.Specular = float4(specular, 0) * 0.1f * shadowContribution;
 
-        //get metalness
-        float roughness = normalData.a;
-        //get specular intensity from the AlbedoMap
-        float4 color = AlbedoMap.Sample(pointSampler, texCoord);
-
-		float metalness = decodeMetalness(normalData.b);
-    
-        float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
-
-        float3 cameraDirection = -normalize(input.ViewDir);
-
-
-        float3 diffuse = float3(0, 0, 0);
-        float3 specular = float3(0, 0, 0);
-
-        [branch]
-        if (shadowContribution > 0)
-        {
-            diffuse = DiffuseOrenNayar(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, roughness); //NdL * lightColor.rgb;
-    
-            specular = SpecularCookTorrance(NdL, normal, -LightVector, cameraDirection, lightIntensity, lightColor, f0, roughness);
-        }
-
-        float3 transmission = IsFoliage(normalData.b) ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
-
-        output.Diffuse = float4(diffuse * (1 - f0) + transmission, 0) * 0.1f * shadowContribution;
-        output.Specular = float4(specular, 0) * 0.1f * shadowContribution;
-
-        return output;
-    }
-}
-
-
-
-technique ShadowOnly
-{
-    pass Pass1
-    {
-        VertexShader = compile vs_5_0 VertexShaderFunction();
-        PixelShader = compile ps_5_0 PixelShaderScreenSpaceShadowFunction();
-    }
+    return output;
 }
 
 technique Unshadowed
@@ -619,14 +346,5 @@ technique Shadowed
     {
         VertexShader = compile vs_5_0 VertexShaderFunction();
         PixelShader = compile ps_5_0 PixelShaderShadowedFunction();
-    }
-}
-
-technique SSShadowed
-{
-    pass Pass1
-    {
-        VertexShader = compile vs_5_0 VertexShaderFunction();
-        PixelShader = compile ps_5_0 PixelShaderSSShadowedFunction();
     }
 }

@@ -61,8 +61,8 @@ monodroid*.msi
 *.dll
 !Engine/thirdparty/steam/Steamworks.NET.dll
 !Engine/thirdparty/steam/steam_api64.dll
-# Model source, not a compiler object file (*.obj is ignored above).
-!Engine/Content/GameObjects/Default/capsule.obj
+# Wavefront model sources used by the content pipeline.
+!Engine/Content/**/*.[Oo]bj
 *.VC.db
 *.VC.opendb
 
@@ -73,3 +73,6 @@ artifacts/
 Art/
 # Game builds from Anvil (File > Build)
 Builds/
+
+# Other
+Docs/Research/Source2Look/screenshots

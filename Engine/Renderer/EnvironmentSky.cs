@@ -147,24 +147,17 @@ namespace Engine.Renderer
             return _lights;
         }
 
-        /// <summary>Shadow settings are read-only on a light, so rebuild the cycle light when the template's change.</summary>
+        /// <summary>The cycle light takes the scene sun's shadow settings (cascades, resolution, distance).</summary>
         private void EnsureCycleLight(DirectionalLight template)
         {
-            bool shadows = template?.CastShadows ?? true;
-            float size = template?.ShadowSize ?? 450;
-            float depth = template?.ShadowDepth ?? 180;
-            int resolution = template?.ShadowResolution ?? 1024;
-            var filtering = template?.ShadowFiltering ?? DirectionalLight.ShadowFilteringTypes.SoftPCF3x;
-            bool blur = template?.ScreenSpaceShadowBlur ?? false;
             Vector3 position = template?.Position ?? Vector3.UnitZ * 2;
-
-            if (_sun == null || _sun.CastShadows != shadows || _sun.ShadowSize != size || _sun.ShadowDepth != depth ||
-                _sun.ShadowResolution != resolution || _sun.ShadowFiltering != filtering || _sun.ScreenSpaceShadowBlur != blur)
+            if (_sun == null)
             {
-                _sun?.ShadowMap?.Dispose();
-                _sun = new DirectionalLight(Color.White, 0, -Vector3.UnitZ, position, shadows, size, depth, resolution,
-                    filtering, blur) { Name = "Environment Sun" };
+                _sun = new DirectionalLight(Color.White, 0, -Vector3.UnitZ, position, template?.CastShadows ?? true,
+                    template?.ShadowSize ?? 450, template?.ShadowDepth ?? 180, template?.ShadowResolution ?? 1024,
+                    template?.ShadowFiltering ?? DirectionalLight.ShadowFilteringTypes.SoftPCF3x) { Name = "Environment Sun" };
             }
+            if (template != null) _sun.CopyShadowSettings(template);
             if (_sun.Position != position) _sun.Position = position;
         }
 

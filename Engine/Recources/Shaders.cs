@@ -163,6 +163,12 @@ namespace Engine.Recources
         public static readonly EffectParameter DeferredComposeEffectParameter_FroxelAccumulationTexture =
             DeferredCompose.Parameters["FroxelAccumulationTexture"];
 
+        public static readonly EffectParameter DeferredComposeEffectParameter_FroxelInjectionTexture =
+            DeferredCompose.Parameters["FroxelInjectionTexture"];
+
+        public static readonly EffectParameter DeferredComposeEffectParameter_InverseProjection =
+            DeferredCompose.Parameters["InverseProjection"];
+
         public static readonly EffectParameter DeferredComposeEffectParameter_DepthMap =
             DeferredCompose.Parameters["DepthMap"];
 
@@ -198,30 +204,30 @@ namespace Engine.Recources
         public static readonly Effect deferredDirectionalLight = Globals.content.Load<Effect>("Shaders/Deferred/DeferredDirectionalLight");
 
         public static readonly EffectTechnique deferredDirectionalLightUnshadowed = deferredDirectionalLight.Techniques["Unshadowed"];
-        public static readonly EffectTechnique deferredDirectionalLightSSShadowed = deferredDirectionalLight.Techniques["SSShadowed"];
         public static readonly EffectTechnique deferredDirectionalLightShadowed = deferredDirectionalLight.Techniques["Shadowed"];
-        public static readonly EffectTechnique deferredDirectionalLightShadowOnly = deferredDirectionalLight.Techniques["ShadowOnly"];
 
         public static readonly EffectParameter deferredDirectionalLightParameterViewProjection = deferredDirectionalLight.Parameters["ViewProjection"];
         public static readonly EffectParameter deferredDirectionalLightParameterFrustumCorners = deferredDirectionalLight.Parameters["FrustumCorners"];
         public static readonly EffectParameter deferredDirectionalLightParameterCameraPosition = deferredDirectionalLight.Parameters["cameraPosition"];
         public static readonly EffectParameter deferredDirectionalLightParameterInverseViewProjection = deferredDirectionalLight.Parameters["InvertViewProjection"];
-        public static readonly EffectParameter deferredDirectionalLightParameterLightViewProjection = deferredDirectionalLight.Parameters["LightViewProjection"];
-        public static readonly EffectParameter deferredDirectionalLightParameterLightView = deferredDirectionalLight.Parameters["LightView"];
-        public static readonly EffectParameter deferredDirectionalLightParameterLightFarClip = deferredDirectionalLight.Parameters["LightFarClip"];
+        // Cascaded sun shadows (Source 2 look, phase 2.1)
+        public static readonly EffectParameter deferredDirectionalLightParameter_CascadeViewProjection = deferredDirectionalLight.Parameters["CascadeViewProjection"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_CascadeView = deferredDirectionalLight.Parameters["CascadeView"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_CascadeEnds = deferredDirectionalLight.Parameters["CascadeEnds"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_CascadeFarClip = deferredDirectionalLight.Parameters["CascadeFarClip"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_CascadeTexelSize = deferredDirectionalLight.Parameters["CascadeTexelSize"];
+        public static readonly EffectParameter deferredDirectionalLightParameter_CascadeCount = deferredDirectionalLight.Parameters["CascadeCount"];
 
         public static readonly EffectParameter deferredDirectionalLightParameter_LightColor = deferredDirectionalLight.Parameters["lightColor"];
         public static readonly EffectParameter deferredDirectionalLightParameter_LightIntensity = deferredDirectionalLight.Parameters["lightIntensity"];
         public static readonly EffectParameter deferredDirectionalLightParameter_LightDirection = deferredDirectionalLight.Parameters["LightVector"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowFiltering = deferredDirectionalLight.Parameters["ShadowFiltering"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowMapSize = deferredDirectionalLight.Parameters["ShadowMapSize"];
-        public static readonly EffectParameter deferredDirectionalLightParameter_ShadowSize = deferredDirectionalLight.Parameters["ShadowSize"];
 
         public static readonly EffectParameter deferredDirectionalLightParameter_AlbedoMap = deferredDirectionalLight.Parameters["AlbedoMap"];
         public static readonly EffectParameter deferredDirectionalLightParameter_NormalMap = deferredDirectionalLight.Parameters["NormalMap"];
         public static readonly EffectParameter deferredDirectionalLightParameter_DepthMap = deferredDirectionalLight.Parameters["DepthMap"];
         public static readonly EffectParameter deferredDirectionalLightParameter_ShadowMap = deferredDirectionalLight.Parameters["ShadowMap"];
-        public static readonly EffectParameter deferredDirectionalLightParameter_SSShadowMap = deferredDirectionalLight.Parameters["SSShadowMap"];
 
 
         //Point Light

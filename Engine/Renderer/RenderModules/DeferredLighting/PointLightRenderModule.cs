@@ -56,6 +56,9 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         public EffectParameter deferredPointLightParameter_NormalMap;
         public EffectParameter deferredPointLightParameter_DepthMap;
 
+        /// <summary>The point/spot light shadow atlas (ShadowMapRenderModule.Atlas), set by the Renderer each frame.</summary>
+        public Texture2D ShadowAtlas;
+
         private int _shaderIndex;
         private ShaderManager _shaderManagerReference;
 
@@ -271,6 +274,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             deferredPointLightParameter_LightRadius.SetValue(light.Radius);
             deferredPointLightParameter_LightIntensity.SetValue(light.Intensity);
             ApplySpotCone(light as SpotLight, _view);
+            ApplyLightShape(light, _view);
 
             //Compute whether we are inside or outside and use 
             float cameraToCenter = Vector3.Distance(cameraOrigin, light.Position);
@@ -328,6 +332,27 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             }
         }
 
+        // Sphere / tube light source (Source 2: LightSourceShape_t) and the spot cookie, in view space.
+        private void ApplyLightShape(PointLight light, Matrix view)
+        {
+            var parameters = _pointLightShader.Parameters;
+            parameters["lightSourceRadius"]?.SetValue(light.SourceRadius);
+            parameters["lightSourceLength"]?.SetValue(light.SourceLength * 0.5f);
+            parameters["lightAxis"]?.SetValue(Vector3.Normalize(Vector3.TransformNormal(light.TubeAxis, view)));
+
+            SpotLight spot = light as SpotLight;
+            bool cookie = spot?.Cookie != null;
+            parameters["UseCookie"]?.SetValue(cookie);
+            if (cookie)
+            {
+                parameters["CookieTexture"]?.SetValue(spot.Cookie);
+                parameters["spotRight"]?.SetValue(Vector3.Normalize(Vector3.TransformNormal(spot.Right, view)));
+                parameters["spotUp"]?.SetValue(Vector3.Normalize(Vector3.TransformNormal(spot.Up, view)));
+                float halfAngle = MathHelper.ToRadians(Math.Min(spot.SpotAngle, 170) * 0.5f);
+                parameters["spotTanOuter"]?.SetValue((float)Math.Tan(halfAngle));
+            }
+        }
+
         // Returns true when a technique was applied and the sphere should be drawn; false when the
         // selected technique is missing from the compiled shader (logged once, draw skipped).
         private bool ApplyShader(PointLight light)
@@ -337,11 +362,13 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
             {
                 return ApplyTechnique(deferredPointLightShadowedSDF, "ShadowedSDF");
             }
-            else if (light.ShadowMap != null && light.CastShadows)
+            else if (light.HasShadowThisFrame && ShadowAtlas != null)
             {
-                deferredPointLightParameterShadowMap.SetValue(light.ShadowMap);
+                deferredPointLightParameterShadowMap.SetValue(ShadowAtlas);
+                _pointLightShader.Parameters["ShadowTiles"]?.SetValue(light.ShadowTiles);
+                _pointLightShader.Parameters["ShadowStrength"]?.SetValue(light.ShadowStrength);
                 deferredPointLightParameter_ShadowMapRadius.SetValue((float)light.ShadowMapRadius);
-                deferredPointLightParameter_ShadowMapSize.SetValue((float)light.ShadowResolution);
+                deferredPointLightParameter_ShadowMapSize.SetValue((float)light.ShadowTileSize);
 
                 if (light.IsVolumetric && GameSettings.g_VolumetricLights)
                 {

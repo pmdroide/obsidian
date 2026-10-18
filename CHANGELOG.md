@@ -1,5 +1,199 @@
 # Changelog
 
+## Changed: Compact component help buttons (2026-10-17)
+
+- Moved 23 long component and subsection descriptions into 19 question-mark buttons beside their headings, including physics, animation, probes, volumes, cloth, NPCs, LOD, particles and material shader guidance.
+- Added a reusable help button with wrapped tooltip text on hover or click, keyboard activation, Escape/focus dismissal and accessible help text. Help clicks are handled separately from Expander header toggling; dynamic status and error messages remain visible.
+- Updated the reflection probe help to describe saved cubemaps and updated the engine wiring documentation.
+- Validation: Anvil builds with existing warnings; the updated XAML parses with all 19 help buttons; `git diff --check` passes.
+
+- Codex
+
+## Added: Project layers, tags and roles manager (2026-10-17)
+
+- Connected the Layers toolbar button to a reusable **Layers, Tags & Roles** workspace panel with Add, Rename and Remove for custom entries, validation messages and locked system defaults. Existing built-in layers/tags and the Default/Water roles cannot be renamed, removed or unlocked through project JSON.
+- Added an atomically saved project catalog in `Content/System/Classifications.json`, included in standalone output/publish and cleared on project reset. Inspector dropdowns now use this catalog, and tag/layer assignments are saved with gameobjects.
+- Added stable classification IDs to scenes, prefabs and copies. Renaming keeps assignments across saved assets; deleting a custom entry returns its assignments to the category default. Preserved the built-in role API and Water behavior alongside custom role names.
+- Added integration checks for management commands, protected defaults, validation, assignments, save/load, rename/delete, restart, prefabs, copies and failed writes. Updated usage and engine wiring documentation.
+- Validation: component project builds, the full component suite passes, and `git diff --check` passes.
+
+- Codex
+
+## Fixed: Local shadows and cookies on forward materials (2026-10-17)
+
+- Glass and other Forward Shaded materials now receive point/spot shadows from the shared shadow atlas, including PCF filtering, cube-face edge traversal, missing-tile fallback and distance fade.
+- Added a cached atlas for multiple spotlight cookies, with world-space projection following each light's cone and rotation. Cookies and shadows affect both diffuse lighting and specular highlights, including fully clear glass. Cookie cells are capped at 512 texels, shared by duplicate textures, and rebuilt before scene rendering to preserve composed colour and depth.
+- Added rendered GPU checks for all six point shadow faces, spot shadows, fade, disabled/unavailable shadows, multiple cookies, cache reuse, projection, rotation and clear-glass highlights. Added `--forward-graphics` for focused validation and updated forward rendering documentation.
+- Validation: the component project and forward shader build; all 23 focused forward GPU checks, the full component suite, and `git diff --check` pass.
+
+- Codex
+
+## Fixed: Persist reflection probe cubemaps with scenes (2026-10-17)
+
+- Scene Save and Save As now write filtered HDR reflection cubemaps, including all six faces and every mip, to a sibling `.reflections` file keyed by component instance ID. Standalone output and publish include these files.
+- Restored probes upload their saved cubemaps before capture selection. New, moved, changed or manually refreshed probes still capture one per frame; missing or corrupt sidecars fall back to capture. Quaternion rounding during scene loading does not invalidate rotated probes.
+- Added checks for scene round-trips, Save As, stale/removed/runtime probes, disabled probes, missing/corrupt data, cancellation, and GPU upload/readback without recapture. Updated reflection usage and engine wiring documentation.
+- Validation: component project builds, the full component suite and reflection GPU checks pass, and `git diff --check` passes. The broader graphics suite reaches an unrelated pause-menu settings assertion in `PauseChecks.RunGraphics`.
+
+- Codex
+
+## Changed: Full-height workspace tabs and consistent section buttons (2026-10-17)
+
+- Removed the tab strip's inset and stretched tabs and the + button through the toolbar height. Tabs now have a 100 px minimum width and 12 px labels.
+- Gave Environment and World the same icon-and-label layout as Pipeline, using CloudSun and Globe icons with matching spacing and sizing.
+- Updated the toolbar wiring documentation.
+- Validation: Anvil builds successfully with existing warnings; both new icons are present in the installed icon library; `git diff --check` passes.
+
+- Codex
+
+## Changed: Workspace toolbar layout and closable tabs (2026-10-17)
+
+- Moved workspace tabs to the left and Environment, World and Pipeline beside the right-hand toolbar icons.
+- Added an X close button with a tooltip and accessible name to every tab. Closing a selected tab activates a neighbor; closing an inactive tab keeps the current workspace. The + menu can reopen every panel, including Engine, while preserving panel state and the engine host.
+- Updated workspace lifecycle checks and the wiring documentation.
+- Validation: Anvil builds successfully with existing warnings; all component checks pass, including tab closing and reopening; `git diff --check` passes.
+
+- Codex
+
+## Added: Real workspace panel tabs and add-panel menu (2026-10-16)
+
+- Removed the three example tabs. The editor starts with Engine; the adjacent + menu opens Environment, World, Pipeline, Post Processing, Lighting, Input Devices or Steam as real workspace tabs.
+- Reopening a panel selects its existing tab and preserves its controls and editor state. Tabs scroll horizontally as more panels are opened, with + remaining accessible.
+- Moved the existing settings views into the shared workspace area and routed their toolbar, Inspector-header and Window-menu shortcuts to the same tab-opening command. The right-hand Inspector continues showing object selection or a material asset.
+- Added the workspace tab model and panel catalog; updated panel-routing checks and the wiring documentation.
+- Validation: Anvil builds successfully with existing warnings. All component checks pass, including opening every panel, reusing existing tabs, preserving the Inspector and scene selection, and returning to Engine. `git diff --check` passes.
+
+- Codex
+
+## Changed: Engine included in the workspace tabs (2026-10-16)
+
+- Added Engine as the default tab beside Tab 1, Tab 2 and Tab 3. All four pages now share the full center content area; removed the workspace/game split and divider.
+- Kept the native engine host attached while hidden so switching tabs preserves the running engine and scene. Hidden engine tabs stop forwarding key presses, release held host keys, suppress mouse/scroll input and skip keyboard-focus restoration.
+- Updated the workspace layout and input wiring documentation.
+- Validation: Anvil builds successfully with existing warnings. `dotnet run --project Tests/Components/Components.csproj --no-restore` passes all component checks, including the new hidden-viewport input and selection checks; `git diff --check` passes.
+
+- Codex
+
+## Changed: Workspace tabs docked above the game viewport (2026-10-16)
+
+- Replaced separate tab windows with an embedded workspace panel between the viewport toolbar and the game. Each tab selects its own empty page, with Tab 1 visible initially.
+- Added a draggable horizontal divider to resize the workspace and game areas; the game remains visible below the tabs.
+- Removed `WorkspaceWindow` and its window-opening handlers. Updated the layout wiring documentation.
+- Validation: Anvil builds successfully with existing warnings; `git diff --check` passes.
+
+- Codex
+
+## Added: Empty windows for workspace tabs (2026-10-16)
+
+- Each toolbar tab now opens a separate empty, resizable, non-modal window using the editor theme. Selecting an already-open tab activates its window and restores it if minimized; closing a window allows it to be reopened from its tab.
+- Windows belong to the main editor and close with it. No windows open automatically at startup. Keyboard tab selection and Enter/Space activation are supported.
+- Added the shared `WorkspaceWindow` view and documented its tab/window lifecycle in `Docs/markdown/Engine_Wiring.md`.
+- Validation: Anvil builds successfully with existing warnings; `git diff --check` passes.
+
+- Codex
+
+## Added: Empty viewport toolbar tabs (2026-10-16)
+
+- Added three selectable placeholder tabs (Tab 1, Tab 2 and Tab 3) in the toolbar space between Pipeline and the viewport tool icons. The first tab is selected by default; tabs have an accent underline, hover and keyboard-focus states, with no content attached yet.
+- Documented `ViewportTabs` and its local styles in `Docs/markdown/Engine_Wiring.md`.
+- Validation: `dotnet build Editor/Anvil/Anvil.csproj --no-restore -v quiet` passes with existing warnings; `git diff --check` passes.
+
+- Codex
+
+## Changed: White debug stats and component header removal (2026-10-15)
+
+- Changed the detailed viewport debug stats from orange to white, retaining the black text shadow.
+- Replaced all 17 Remove Component body buttons with a compact X at the far right of the component header. The X uses the existing attachment-specific removal command, includes a tooltip and accessible name, and works while collapsed.
+- Updated `Docs/markdown/Engine_Wiring.md` with the stats color and shared header button wiring.
+- Validation: Engine and Anvil builds pass with existing warnings. An offscreen preview verifies the X button's header placement, attachment-specific command binding and independence from expansion and enablement while collapsed.
+
+- Codex
+
+## Changed: Subtle accent checkbox backgrounds (2026-10-15)
+
+- Added an 18% opacity editor-accent background to checked and mixed checkboxes, keeping the fine accent mark and dark inset base. The fill follows the existing accent brush.
+- Updated the wiring documentation. Validation: Anvil compilation and an isolated offscreen control preview pass. Output copying was disabled because the running editor locks the normal build output.
+
+- Codex
+
+## Changed: Reference-style Inspector checkboxes (2026-10-15)
+
+- Refined main-window checkboxes to match the second reference: 12 px dark squares, nearly square corners, a subtle border and a fine blue accent tick. Checked and mixed states retain the dark inset background.
+- Updated the Inspector theme wiring documentation. Validation: Anvil build and offscreen control preview.
+
+- Codex
+
+## Changed: Compact Inspector component headers (2026-10-15)
+
+- Moved all 17 component Enabled toggles into the header, beside a left disclosure arrow, component icon and name. Components can be enabled while collapsed; clicking the checkbox and expanding the component work independently.
+- Added compact square checkboxes with the editor's blue accent throughout the main window, including checked, unchecked, indeterminate, hover, keyboard focus and disabled states. Script components now include a script icon.
+- Shared templates live in `Editor/Anvil/Themes/InspectorControls.axaml`; documented their wiring in `Docs/markdown/Engine_Wiring.md`.
+- Validation: the Anvil build passes with existing warnings. An offscreen Avalonia preview verifies rendering, two-way enablement while collapsed, independent title/disclosure toggles and arrow states.
+
+- Codex
+
+## Fixed: OBJ model sources ignored by Git (2026-10-15)
+
+- Expanded `.gitignore`'s capsule-only exception to OBJ model sources under `Engine/Content`, including `Cloth/cloth.obj` and `Tree/tree.obj`, so they can be tracked without force-adding. Compiler object files elsewhere and generated build directories remain ignored.
+- Updated `Docs/markdown/Engine_Wiring.md` with the content source ignore rule.
+
+- Codex
+
+## Added: Source 2 (Half-Life: Alyx) look, phases 0–7 of the plan (2026-10-15)
+
+Implements `Docs/Research/Source2Look/README.md` except lightmaps (4.2), the HLA reference captures (0.1) and the REA follow-ups R1–R7. Usage is in the new `Docs/markdown/Source2_Look.md`; the plan's README now has a status table.
+
+- **Look-dev (phase 0):** new `Content/Scenes/LookDev.obsc` + baked `LookDev.probes`, generated by `Docs/Research/Source2Look/lookdev/generate_lookdev.py`: plastic roughness row, gold/copper/chrome/iron, colour checker, a dark room with a doorway, flashlight cookie, tube light, reflection probe, detail probe volume and emissive panel, a glass pane, Y Bot and the Dragon with AO proxies. Standalone capture mode `Engine.exe --scene ... --shot out.png [--camera] [--frames] [--size] [--rendermode] [--play] [--bake [--save]] [--set g_x=v]` (`Engine/Logic/LookDevCapture.cs`) and `.claude/skills/run-obsidian/lookdev.sh` / `lookdev_views.sh`. Post settings are saved per scene (`EnvironmentSettings.Post`, `Engine/Logic/PostProcessSettings.cs`). New debug views `IndirectDiffuse`, `AmbientOcclusion`, `ShadowCascades` (`Shaders/Editor/DebugView.fx`).
+- **Shading (phase 1):** one PBR block in `Common/helper.fx` used by every light shader: F0 tinted by albedo for metals, Lambert diffuse × (1 - F), GGX specular, specular occlusion. AO (SSAO, a new material **Ambient Occlusion** map in albedo alpha, AO proxies) now only darkens indirect light: the environment pass writes indirect diffuse into a new `_renderTargetIndirect`, and compose no longer multiplies the whole frame by SSAO. The Wet Surface flag moved to material type 7.
+- **Post (phases 1, 5):** tonemap curves (Hejl, ACES, Hable, Reinhard, Linear), exact sRGB, saturation/contrast/colour filter/vignette; bright-pixel eye adaptation (64-bin GPU histogram, Bright Pixel %/Target, Min Average Luminance; Average metering kept); bloom start/knee/scale in exposed units (replaces `g_BloomThreshold`); retina burn; LUT cross-fading. **Post Process Volume** component (`post-volume`) with per-setting overrides, blend distance, weight, priority, Infinite and `.post` profiles (`Content/PostProfiles`, `PostProfile`, `PostProcessVolumes`).
+- **Anti-aliasing (1.6):** G-buffer velocity target (4th MRT), TAA with velocity, Catmull-Rom history and a contrast-adaptive sharpen (`g_taa_sharpness`; also fixes the sharpen reading the previous history), -0.5 texture mip bias, FXAA when TAA is off (`g_fxaa`).
+- **Shadows and lights (phase 2):** sun cascades (up to 4, stable texel-snapped, practical splits; Inspector Cascades / Shadow Dist. / Split Lambda; fog, forward and foliage use them). The screen-space sun shadow path that threw `NotImplementedException` is removed. Point/spot shadows share one `ShadowAtlas` (quadtree tiles per face, cached, time-sliced `g_shadowupdatesperframe`, size cull, distance fade). Spot light cookies (`CookiePath`, built-in `System/Cookies/flashlight.png`). Sphere/tube light sources (`SourceRadius`, `SourceLength`) with representative-point specular. New falloff: windowed inverse square around a core of max(radius/5, source radius); point lights look brighter up close than before.
+- **Reflections (phase 3):** GGX-prefiltered cubemaps + split-sum BRDF LUT (`EnvironmentPrefilter`); **Reflection Probe** component (`reflection-probe`: box projection, blend distance, priority, resolution, Capture), normalised by baked light (`g_cubemapnormalization*`); the forward pass now gets the sun with cascades, ranked lights, probes, reflection probes and fog (premultiplied alpha).
+- **Bake (4.1):** per-texel albedo (and Material components are no longer ignored by the bake), emissive surfaces as lights, **Probe Volume** component (`probe-volume`) for up to 3 detail volumes (`.probes` format v3), ground below the horizon instead of sky colour. Volumes are packed into one `Texture3D` (the environment shader had hit MonoGame's 16 texture slots).
+- **AO proxies (6.1):** **AO Proxy** component (`ao-proxy`): ellipsoids/capsules or one capsule per bone, on indirect light only.
+- **Culling (7):** screen-size culling for the view and shadows (`g_sizecullthreshold*`), optional hardware occlusion queries (`g_occlusionculling`, `GameStats.OccludedMeshes`).
+- **Anvil:** Post Processing panel rebuilt (scene sections, debug views, AA/shadow/reflection settings); light Inspector rows for shadow resolution, static shadows, source radius, tube length, cookie, cascades; Inspector editors for the four new components. The Post Process Volume's rows ignore `NumericUpDown`'s decimal round-trip, which ticked five rows on a fresh volume during the UI test.
+- **Scenes:** GodRayTest's sun uses Shadow Distance 420 m, lambda 0.85.
+- **Tests:** new `Tests/Components/Source2LookChecks.cs` (post settings/volumes/profiles, shadow atlas, cascade splits, falloff, BRDF LUT, detail probe files, the four components through the bridge and Inspector, light settings save/load, the LookDev scene; `--graphics`: the new shaders' techniques and parameters). Updated `AutoExposureChecks` (Average metering pinned, bright-pixel checks added), `WetSurfaceChecks` (wet flag in the material type), `FoliageChecks` (cascade shadow map, `Shadowed` technique). All component checks pass; `--graphics` passes up to the known `PauseChecks` failure, and the checks after it pass when it is skipped.
+- **Docs:** `Source2_Look.md` (new), `Engine_Wiring.md` (components, modules, pass table, G-buffer layout, ownership, sharp edges, where to start), `Scene_Lighting_and_Fog.md` (cascades replace the fixed sun shadow box; post saved per scene), `Material_Component.md` (wet flag, AO map), `CLAUDE.md`, the plan's status.
+- Not done: lightmaps, HLA reference captures, R1–R7 (defaults chosen by eye on LookDev), saved reflection probe cubemaps, point/spot shadows and cookies on forward surfaces, a depth prepass.
+- Note: `.gitignore`'s `*.[Oo]bj` also ignores `Content/GameObjects/Cloth/cloth.obj` and `Tree/tree.obj`, which `Content.mgcb` needs, so a fresh clone can't build the content until they are added with `git add -f`.
+
+- Claude
+
+## Added: Source 2 look plan from the Half-Life: Alyx binaries (2026-10-14)
+
+- Added `Docs/Research/Source2Look/README.md`: what HLA's renderer does (from REA/Ghidra on `scenesystem.dll` and `engine2.dll`, plus string scans of `client.dll` and the shader VPK directories), Obsidian's verified gaps, and a phased plan to match the Source 2 look. Phases: reference/look-dev scene and per-scene post settings; tinted metal F0, indirect-only AO, bloom start value, bright-pixel exposure, sharp TAA; cascaded sun shadows, shadow atlas, cookies, light size; GGX-prefiltered normalised reflection probes and forward-pass parity; probe and lightmap baking; post-processing volumes; AO proxies; optional culling. Also lists the REA follow-ups needed for exact values.
+- Added `evidence/` string lists (scenesystem, engine2, client render strings, core/hlvr shader names) and a `.gitignore` for future HLA reference captures.
+- No engine code changed.
+
+- Claude
+
+## Changed: Volumetric fog rebuilt from the Alyx research draft (2026-10-14)
+
+- Froxel slices are now logarithmic in view-space Z, the depth the G-buffer stores, so fog matches the geometry behind it across the whole screen (it used radial distance for slicing and view Z for lookup, which disagreed away from the centre).
+- The injection stores the scattering source and extinction per metre; each slice is integrated exactly along its view ray and a 7-pass prefix scan replaces the per-froxel loop over every nearer slice. Prefixes keep optical depth instead of transmittance so thin slices survive half-float precision.
+- `DeferredCompose.fx` (`SampleFroxelFog`) takes the prefix up to a pixel's slice and integrates only the part of the slice in front of it.
+- Temporal history now filters the medium, reprojected into last frame's grid and clamped to this frame's neighbours, instead of blending the integrated fog at the same texel (which smeared when the camera moved and started from black). It is dropped on scene swaps, camera jumps over 10 m, FOV/projection changes, fog setting changes, probe re-bakes, fog toggles and shader hot reloads.
+- Baked bounce light: with a probe volume, the fog scatters the probes' mean radiance (visibility-tested, nothing where no probe sees the point). New per-scene setting **Environment > Volumetric Fog > Indirect** (`EnvironmentSettings.FogIndirectScatter`, default 0.1, `GameSettings.g_FroxelIndirectScatter`).
+- The 8 fog lights are now ranked (`FroxelRenderModule.RankPointLights`): enabled lights reaching into the view, brightest at the camera first, instead of the first 8 in the list.
+- Environment cubemap captures no longer compose the main camera's fog atlas into their faces (it was sampled with the wrong frustum; at startup the old empty history even read as transmittance 0).
+- `Froxel.fx` hot reloads are picked up by the froxel module. Removed the unused `ComposeFroxels`/`AccumulateFroxels` techniques. Fog memory: 4 half-float atlases (~56 MiB, was 3 / ~42 MiB).
+- Tests: `FogChecks` covers the Indirect setting, light ranking, and on the GPU (`--graphics`) the transport against the exact solution of a uniform sunlit medium (centre and corners, before/after camera turns and an FOV change; worst error 0.35%) plus the history lifetime rules. `FogChecks.RunGraphics` runs first among the graphics checks, because `PauseChecks.RunGraphics` currently fails on its settings-row count (unrelated to this change).
+- Docs: `Scene_Lighting_and_Fog.md` (how the fog is computed, Indirect, light ranking, transparents not fogged), `Engine_Wiring.md`, `CLAUDE.md`, research README status.
+
+- Claude
+
+## Added: Alyx volumetric lighting research and implementation draft (2026-10-14)
+
+- Added `Docs/Research/AlyxVolumetric/README.md` with installed-artifact evidence, confidence limits, the existing Obsidian fog wiring, and a concrete integration proposal.
+- Added reproducible read-only PE/string/FGD/VPK inspection and saved file hashes, offsets, shader-member integrity checks, REA observations and provider diagnostics.
+- Added an original standalone SM4 shader draft for exact segment transport, atlas prefix accumulation, partial-slice sampling and previous-frustum coordinate mapping. It is outside the engine content pipeline.
+- Validation: five shader entry points compile with Windows D3DCompiler; 3,945 analytic CPU comparisons pass. MonoGame effect packaging, GPU rendering and performance remain unverified.
+- Updated `Docs/markdown/Engine_Wiring.md` to link the proposal and describe its integration boundary.
+
+- Codex
+
 ## Changed: Neutral documentation website theme (2026-10-14)
 
 - Replaced purple and blue palettes with gray, white, and black in both light and dark modes across the homepage and documentation reader, including navigation, links, buttons, cards, code blocks, and focus indicators.

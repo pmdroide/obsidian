@@ -18,6 +18,20 @@ namespace Anvil.Views;
 
 public partial class MainWindow : Window
 {
+    private void WorkspaceTabAdd_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || DataContext is not MainWindowViewModel vm) return;
+        var menu = new MenuFlyout();
+        foreach (var panel in vm.AvailableWorkspacePanels)
+            menu.Items.Add(new MenuItem
+            {
+                Header = panel.Title,
+                Command = vm.OpenWorkspaceTabCommand,
+                CommandParameter = panel.Kind,
+            });
+        menu.ShowAt(button);
+    }
+
     private async void ChooseSkybox_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm || !vm.Environment.CanChooseSkybox) return;

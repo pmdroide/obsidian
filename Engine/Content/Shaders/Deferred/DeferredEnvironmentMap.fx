@@ -7,6 +7,9 @@
 #include "../Common/helper.fx"
 #include "../Common/sdf.fx"
 #include "../Common/clouds.fx"
+#include "../Common/ProbeVolume.fx"
+#include "../Common/Reflections.fx"
+#include "../Common/AoProxies.fx"
 
 //We want to get from VS to WS. Usually this would mean an inverted VS. To get to 3x3 it's useful to use TI on this one.
 //So it's T I I = T
@@ -25,23 +28,26 @@ float2 Resolution = { 1280, 800 };
 float3 SkyColor = float3(0.1385, 0.3735f, 0.9805f);
 float3 CameraPositionWS;
 
+//Screen space ambient occlusion (half resolution, bilateral upsampled). It darkens indirect light only.
+Texture2D SSAOMap;
+bool UseSSAO = true;
+
+SamplerState LinearClampSampler
+{
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    Mipfilter = POINT;
+};
+
+
 bool FireflyReduction;
 float FireflyThreshold = 0.1f;
 
 float EnvironmentMapSpecularStrength = 1.0f;
 float EnvironmentMapSpecularStrengthRcp = 1.0f;
 float EnvironmentMapDiffuseStrength = 0.2f;
-
-TextureCube ReflectionCubeMap;
-SamplerState ReflectionCubeMapSampler
-{
-    texture = <ReflectionCubeMap>;
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    Mipfilter = LINEAR;
-};
 
 TextureCube SkyCubeMap;
 SamplerState SkyCubeMapSampler
@@ -80,53 +86,6 @@ float SunBrightness = 1;
 float MoonBrightness = 1;
 float StarBrightness = 1;
 
-//Baked probe volume (Engine/Renderer/Lighting). Each probe stores cosine-convolved L1 SH per colour
-//channel as (c0, cx, cy, cz): irradiance E(n) = c0 + dot(c.yzw, n), in deferred light units.
-//Probes sit on the corners of a regular grid spanning [ProbeVolumeMin, ProbeVolumeMin + 1/ExtentRcp].
-bool UseProbeVolume = false;
-float ProbeVolumeIntensity = 1.0f;
-float3 ProbeVolumeMin;
-float3 ProbeVolumeExtentRcp;
-float3 ProbeVolumeCells; //probes per axis - 1
-//Probe SH at the reflection cubemap's capture point (EnvironmentSample position), same layout as a probe
-float4 CaptureSHR;
-float4 CaptureSHG;
-float4 CaptureSHB;
-
-Texture3D ProbeSHR;
-SamplerState ProbeSHRSampler
-{
-    texture = <ProbeSHR>;
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    AddressW = CLAMP;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    Mipfilter = POINT;
-};
-Texture3D ProbeSHG;
-SamplerState ProbeSHGSampler
-{
-    texture = <ProbeSHG>;
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    AddressW = CLAMP;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    Mipfilter = POINT;
-};
-Texture3D ProbeSHB;
-SamplerState ProbeSHBSampler
-{
-    texture = <ProbeSHB>;
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    AddressW = CLAMP;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    Mipfilter = POINT;
-};
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +105,14 @@ struct PixelShaderOutput
 {
     float4 Diffuse : COLOR0;
     float4 Specular : COLOR1;
+};
+
+//The main view's environment pass also keeps its indirect diffuse (rgb) and ambient occlusion (a) for the debug views
+struct PixelShaderOutputIndirect
+{
+    float4 Diffuse : COLOR0;
+    float4 Specular : COLOR1;
+    float4 Indirect : COLOR2;
 };
 
 
@@ -301,216 +268,120 @@ float4 GetSSR(float2 TexCoord)
 //    return variance/SAMPLE_COUNT;
 //}
 
-//Mean free distance from each probe along +X/+Y/+Z and -X/-Y/-Z (ProbeVolumeData.DistPos/DistNeg)
-Texture3D ProbeDistPos;
-Texture3D ProbeDistNeg;
 
-//1 while the shaded point is within the probe's free distance in that direction, falling off
-//steeply beyond it, i.e. once a wall is in the way. Same as ProbeVolumeData.Visibility.
-float ProbeVisibility(float3 toPoint, float3 distPos, float3 distNeg)
-{
-	float d = length(toPoint);
-	if (d < 0.0001f) return 1;
-	float3 dir = toPoint / d;
-	//Harmonic blend of the three axis distances facing dir, so the nearest blocker dominates
-	float3 axisDistance = max(dir >= 0 ? distPos : distNeg, 0.0001f);
-	float free = 1.0f / max(dot(dir * dir, 1.0f / axisDistance), 0.000001f);
-	if (d <= free) return 1;
-	float ratio = free / d;
-	ratio *= ratio;
-	return ratio * ratio;
-}
 
-//Down-weights probes behind the surface (DDGI's smooth backface term). Same as ProbeVolumeData.BackfaceWeight.
-float ProbeBackfaceWeight(float3 toPoint, float3 normalWS)
-{
-	float d = length(toPoint);
-	if (d < 0.0001f) return 1;
-	float facing = (dot(-toPoint / d, normalWS) + 1) * 0.5f;
-	return facing * facing + 0.2f;
-}
-
-//rgb = baked irradiance for a world-space normal, a = blend weight (fades to 0 at the volume's border).
-//Blends the 8 surrounding probes by hand so probes that can't see the point (behind a wall, ceiling
-//or floor thinner than the probe spacing) are left out instead of leaking their light through it.
-float4 SampleProbeVolume(float3 positionWS, float3 normalWS)
-{
-	float3 uvw = (positionWS - ProbeVolumeMin) * ProbeVolumeExtentRcp;
-
-	//Distance to the nearest face in probe cells; full weight half a cell inside
-	float3 edge = min(uvw, 1 - uvw) * ProbeVolumeCells;
-	float borderWeight = saturate(min(edge.x, min(edge.y, edge.z)) * 2);
-	if (borderWeight <= 0) return float4(0, 0, 0, 0);
-
-	float3 cells = max(ProbeVolumeCells, 1);
-	float3 cellSize = 1.0f / (ProbeVolumeExtentRcp * cells);
-	float3 grid = saturate(uvw) * cells;
-	float3 base = min(floor(grid), cells - 1);
-	float3 f = grid - base;
-
-	float4 r = 0, g = 0, b = 0;
-	float4 plainR = 0, plainG = 0, plainB = 0;
-	float total = 0;
-
-	[unroll]
-	for (int i = 0; i < 8; i++)
-	{
-		float3 corner = float3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-		float3 t = lerp(1 - f, f, corner);
-		float trilinear = t.x * t.y * t.z;
-		int4 index = int4(base + corner, 0);
-
-		float3 toPoint = positionWS - (ProbeVolumeMin + (base + corner) * cellSize);
-		float w = trilinear
-			* ProbeVisibility(toPoint, ProbeDistPos.Load(index).xyz, ProbeDistNeg.Load(index).xyz)
-			* ProbeBackfaceWeight(toPoint, normalWS);
-
-		float4 sr = ProbeSHR.Load(index);
-		float4 sg = ProbeSHG.Load(index);
-		float4 sb = ProbeSHB.Load(index);
-		r += sr * w; g += sg * w; b += sb * w;
-		total += w;
-		plainR += sr * trilinear; plainG += sg * trilinear; plainB += sb * trilinear;
-	}
-
-	//Every neighbour blocked (e.g. a point inside geometry): fall back to plain trilinear
-	if (total > 0.00001f) { r /= total; g /= total; b /= total; }
-	else { r = plainR; g = plainG; b = plainB; }
-
-	float3 irradiance = float3(r.x + dot(r.yzw, normalWS),
-	                           g.x + dot(g.yzw, normalWS),
-	                           b.x + dot(b.yzw, normalWS));
-	return float4(max(irradiance, 0), borderWeight);
-}
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//  BASE FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PixelShaderOutput PixelShaderFunctionBasic(VertexShaderOutput input)
+PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 {
-    PixelShaderOutput output;
+    PixelShaderOutputIndirect output;
 	int3 texCoordInt = int3(input.Position.xy, 0);
-    
-    //get normal data from the NormalMap
-    float4 normalData = NormalMap.Load(texCoordInt);
-    //tranform normal back into [-1,1] range
-    float3 normal = decode(normalData.xyz); //2.0f * normalData.xyz - 1.0f;    //could do mad
+    output.Indirect = float4(0, 0, 0, 1);
 
-	//We use this to fake a sky color in the specular component
+    float4 normalData = NormalMap.Load(texCoordInt);
+    float3 normal = decode(normalData.xyz);
+
+	//Sky: show it in the specular buffer (DeferredCompose adds it unlit). Captures drew it already.
     if (normalData.x + normalData.y <= 0.001f)
     {
-			float3 skyColor = SampleSky(input.ViewDir);
             output.Diffuse = float4(0, 0, 0, 0);
-			output.Specular = float4(skyColor, 0) * 0.5f;
+			output.Specular = CaptureMode ? float4(0, 0, 0, 0) : float4(SampleSky(input.ViewDir), 0) * 0.5f;
             return output;
     }
 
-    //get metalness
     float roughness = normalData.a;
-    //get specular intensity from the AlbedoMap
     float4 color = AlbedoMap.Load(texCoordInt);
-
     float metalness = decodeMetalness(normalData.b);
+    float3 f0 = GetF0(AlbedoToLinear(color.rgb), metalness);
 
-    float f0 = lerp(0.04f, color.g * 0.25 + 0.75, metalness);
+    //Wet Surface pixels (material type 7): puddle reflections are kept above the probe's unlit ground below
+    bool wetSurface = abs(decodeMattype(normalData.b) - 7) < 0.1f;
 
-    //float materialType = decodeMattype(color.a);
+	//View ray from the camera, world space (ViewDir is relative to the camera)
+    float3 incident = normalize(input.ViewDir);
+	float linearDepth = DepthMap.Load(texCoordInt).r;
+	float3 positionWS = CameraPositionWS + linearDepth * input.ViewDir;
 
-    //Wet Surface pixels (albedo alpha) use a view-dependent fresnel: their puddles mirror the
-    //surroundings at grazing angles and show the wet ground beneath when seen from above
-    bool wetSurface = color.a > 0.5f;
+	//View space -> world space
+	normal = normalize(mul(normal, TransposeView));
 
-	//The incoming vector from the camera //EDIT: In world space now
-	//(ViewDir is already relative to the camera; wet surfaces use it as is)
-    float3 incident = wetSurface ? normalize(input.ViewDir) : normalize(input.ViewDir - CameraPositionWS);
-
-	//Transform the reflectionVector from VS to WS
-	normal = mul(normal, TransposeView);
-
-	//The reflected vector which points to our cube map
     float3 reflectionVector = reflect(incident, normal);
+    float NdotV = saturate(dot(normal, -incident));
 
-	//Fresnel
-    float VdotH = saturate(dot(normal, wetSurface ? -incident : incident));
-    float fresnel = pow(1.0 - VdotH, 5.0);
-    fresnel *= (1.0 - f0);
-    fresnel += f0;
-
-    //The probe's own ground is unlit, so grazing puddle reflections would pick up a dark horizon:
-    //keep them a little above it, where the probe sees the sky and the tops of its surroundings
     [flatten]
     if (wetSurface)
         reflectionVector = normalize(float3(reflectionVector.xy, max(reflectionVector.z, 0.2f)));
 
-    reflectionVector.z = -reflectionVector.z;
+    //Split sum: F0 scale and bias of the GGX BRDF integrated over the hemisphere
+    float2 envBRDF = UseBrdfLut ? BrdfLut.SampleLevel(BrdfSampler, float2(NdotV, roughness), 0).rg : EnvBRDFApprox(NdotV, roughness);
+    float3 specularWeight = f0 * envBRDF.x + envBRDF.y;
 
-    //roughness from 0.05 to 0.5, coarsest of approximations
-    float mip = roughness / 0.04f;
-
-	float4 specularReflection = ReflectionCubeMap.SampleLevel(ReflectionCubeMapSampler, reflectionVector, mip);
-
-	specularReflection *= (1 - roughness) * fresnel; //* NdotC * NdotC * NdotC;
-
-	float4 diffuseReflection = ReflectionCubeMap.SampleLevel(ReflectionCubeMapSampler, reflectionVector, 9);
-
-	diffuseReflection *= wetSurface ? 0.9f * (1 - fresnel) : (roughness) * fresnel; //* NdotC * NdotC * NdotC;
+    //Diffuse: the global probe's roughest mip around the normal stands in for the irradiance.
+    //Diffuse Strength 0.2 (EnvironmentSample's default) is the surroundings' full irradiance
+    float3 diffuseAmbient = ReflectionCubeMap.SampleLevel(ReflectionCubeMapSampler, float3(normal.xy, -normal.z), GlobalMaxMip).rgb * (EnvironmentMapDiffuseStrength * 5);
+    //Light reflected at the surface does not enter it
+    float3 diffuseWeight = 1 - FresnelSchlickRoughness(f0, NdotV, roughness);
+    diffuseAmbient *= diffuseWeight;
 
 	float ao = 1;
 
 	[branch]
-	if (UseSDFAO)
+	if (UseSDFAO && !CaptureMode)
 	{
-		//Compute WS position 
-		float linearDepth = DepthMap.Load(texCoordInt).r;
-		float3 PositionWS = CameraPositionWS + linearDepth * input.ViewDir;
-
-		float3 aoDirection = normal;
-
 		float3 random = randomNormal2(input.Position.xy / 2000.0f);
-
 		if (dot(random, normal) < 0) random = -random;
 
-		aoDirection = random;
-
-		ao = RaymarchAO(PositionWS, PositionWS + normalize(aoDirection) * 10, 10);
-
+		ao = RaymarchAO(positionWS, positionWS + normalize(random) * 10, 10);
 		ao = smoothstep(0, 1, ao);
 	}
-	
-	float3 diffuseAmbient = diffuseReflection.xyz * EnvironmentMapDiffuseStrength;
+
+	[branch]
+	if (UseSSAO && !CaptureMode)
+		ao *= SSAOMap.SampleLevel(LinearClampSampler, input.TexCoord, 0).r;
+
+	//The material's own AO map (albedo alpha) and the AO proxies of dynamic objects: indirect light only
+	ao *= saturate(color.a);
+	[branch]
+	if (!CaptureMode)
+		ao *= AoProxyOcclusion(positionWS, normal);
 
 	//Baked GI: inside the probe volume the probes' irradiance replaces the cubemap's diffuse term
+	float3 pixelIrradiance = 0;
+	float irradianceWeight = 0;
 	[branch]
 	if (UseProbeVolume)
 	{
-		float probeDepth = DepthMap.Load(texCoordInt).r;
-		float3 probePositionWS = CameraPositionWS + probeDepth * input.ViewDir;
-		float3 probeNormal = normalize(normal);
 		//Sample half a cell out along the normal, so a wall's inner face reads the probes in the
 		//room it faces rather than blending in the ones on the far side of the wall.
 		float3 probeCell = 1.0f / (ProbeVolumeExtentRcp * max(ProbeVolumeCells, 1));
-		probePositionWS += probeNormal * probeCell * 0.5f;
-		float4 probe = SampleProbeVolume(probePositionWS, probeNormal);
-		diffuseAmbient = lerp(diffuseAmbient, probe.rgb * ProbeVolumeIntensity, probe.a);
-
-		//The cubemap shows the surroundings of its capture point. Scale its reflections by how much
-		//light the probes see here compared with there, so a closed room doesn't reflect the sunny outdoors.
-		float4 n = float4(1, probeNormal);
-		float3 captureIrradiance = max(float3(dot(CaptureSHR, n), dot(CaptureSHG, n), dot(CaptureSHB, n)), 0);
-		const float3 lumaWeights = float3(0.2126f, 0.7152f, 0.0722f);
-		float specularOcclusion = saturate(dot(probe.rgb, lumaWeights) / max(dot(captureIrradiance, lumaWeights), 0.0001f));
-		specularReflection.rgb *= lerp(1, specularOcclusion, probe.a);
+		float4 probe = SampleProbeVolume(positionWS + normal * probeCell * 0.5f, normal);
+		diffuseAmbient = lerp(diffuseAmbient, probe.rgb * ProbeVolumeIntensity * diffuseWeight, probe.a);
+		pixelIrradiance = probe.rgb;
+		irradianceWeight = probe.a;
 	}
 
-	//Sample our screen space reflection map and use the environment map only as fallback
-	//Blend in by coverage, weighted like the cubemap reflection so a hit and a miss differ only in what is reflected
-	float4 ssreflectionMap = GetSSR(input.TexCoord);
-	float specularWeight = (1 - roughness) * fresnel;
-	specularReflection.rgb = lerp(specularReflection.rgb, ssreflectionMap.rgb * specularWeight * EnvironmentMapSpecularStrengthRcp, ssreflectionMap.a);
+	output.Diffuse = float4(diffuseAmbient * ao, 0);
+    output.Indirect = float4(diffuseAmbient * ao, ao);
 
-    output.Diffuse = float4(diffuseAmbient, 0) * ao;
-    output.Specular = float4(specularReflection.xyz, 0) *EnvironmentMapSpecularStrength * (ao * 0.5f + 0.5f);
+	[branch]
+	if (CaptureMode)
+	{
+		output.Specular = 0;
+		return output;
+	}
+
+	float3 specularReflection = SampleReflections(positionWS, reflectionVector, normal, roughness, UseProbeVolume,
+		pixelIrradiance, irradianceWeight) * specularWeight;
+
+	//Screen space reflections where the ray hit, the cubemaps elsewhere; both weighted by the same BRDF
+	float4 ssreflectionMap = GetSSR(input.TexCoord);
+	specularReflection = lerp(specularReflection, ssreflectionMap.rgb * specularWeight * EnvironmentMapSpecularStrengthRcp, ssreflectionMap.a);
+
+    float specularOcclusion = SpecularOcclusion(NdotV, ao, roughness);
+    output.Specular = float4(specularReflection * EnvironmentMapSpecularStrength * specularOcclusion, 0);
 
     return output;
 }

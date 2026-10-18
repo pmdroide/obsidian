@@ -19,6 +19,33 @@ float Radius = 1.0f;
 float Strength = 1.0f;
 float StreakLength = 1;
 
+//Source 2 look (phase 1.3): bloom starts at an exposed brightness (mat_tonemap_bloom_start_value) with a soft knee.
+//The exposure is the one PostProcessing.fx applies: PowExposure times the adapted EV of auto exposure (last frame's).
+float BloomStart = 1.5f;
+float BloomKnee = 0.5f;
+float PowExposure = 1;
+float UseAutoExposure = 0;
+Texture2D ExposureTexture;
+
+float CurrentExposure()
+{
+	float ev = 0;
+	[branch]
+	if (UseAutoExposure > 0.5f)
+		ev = ExposureTexture.Load(int3(0, 0, 0)).r;
+	return PowExposure * exp2(ev);
+}
+
+//Share of a colour above the bloom start, with a quadratic knee below it
+float BloomContribution(float3 color)
+{
+	float brightness = max(color.r, max(color.g, color.b)) * CurrentExposure();
+	float knee = max(BloomKnee, 1e-4f);
+	float soft = clamp(brightness - BloomStart + knee, 0, 2 * knee);
+	soft = soft * soft / (4 * knee);
+	return max(soft, brightness - BloomStart) / max(brightness, 1e-4f);
+}
+
 struct VertexShaderInput
 {
 	float2 Position : POSITION0;
@@ -48,15 +75,7 @@ float4 Box4(float4 p0, float4 p1, float4 p2, float4 p3)
 float4 ExtractPS(float4 pos : SV_POSITION,  float2 texCoord : TEXCOORD0) : SV_TARGET0
 {
 	float4 color = ScreenTexture.Sample(u_texture, texCoord);
-
-	float avg = (color.r + color.g + color.b) / 3;
-
-	if (avg>Threshold)
-	{
-		return color /** (avg - Threshold) / (10 - Threshold)*/;// * (avg - Threshold);
-	}
-
-	return float4(0, 0, 0, 0);
+	return float4(color.rgb * BloomContribution(color.rgb), 0);
 }
 
 float GetLuma(float3 rgb)
@@ -67,16 +86,8 @@ float GetLuma(float3 rgb)
 float4 ExtractLuminancePS(float4 pos : SV_POSITION,  float2 texCoord : TEXCOORD0) : SV_TARGET0
 {
     float4 color = ScreenTexture.Sample(u_texture, texCoord);
-
-	float luminance = GetLuma(color.rgb);
-
-    if(luminance>Threshold)
-    {
-		return float4(color.rgb, luminance);// *(luminance - Threshold);
-        //return saturate((color - Threshold) / (1 - Threshold));
-    }
-
-    return float4(0, 0, 0, 0);
+	float3 bloom = max(color.rgb, 0) * BloomContribution(max(color.rgb, 0));
+	return float4(bloom, GetLuma(bloom));
 }
 
 float4 DownsamplePS(float4 pos : SV_POSITION,  float2 texCoord : TEXCOORD0) : SV_TARGET0

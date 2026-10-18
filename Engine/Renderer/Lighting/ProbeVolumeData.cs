@@ -18,8 +18,11 @@ namespace Engine.Renderer.Lighting
     public sealed class ProbeVolumeData
     {
         private const uint Magic = 0x3156504F; // "OPV1"
-        //2 added the per-probe free distances (DistPos/DistNeg)
-        private const int FormatVersion = 2;
+        //2 added the per-probe free distances (DistPos/DistNeg), 3 the detail volumes (Probe Volume components)
+        private const int FormatVersion = 3;
+
+        /// <summary>Most volumes a scene can blend: the main one and three detail volumes (MAX_PROBE_VOLUMES in ProbeVolume.fx).</summary>
+        public const int MaxVolumes = 4;
 
         //Free distance used for probes baked before distances were stored: never occludes
         public const float UnlimitedDistance = 10000f;
@@ -44,7 +47,47 @@ namespace Engine.Renderer.Lighting
         public DateTime BakedAtUtc;
         public double BakeSeconds;
 
+        /// <summary>Detail volumes (Probe Volume components, Source 2 look phase 4.1) baked with this, the scene's main volume.</summary>
+        public System.Collections.Generic.List<ProbeVolumeData> Detail = new System.Collections.Generic.List<ProbeVolumeData>();
+        /// <summary>Detail volumes: higher wins where they overlap; the main volume is below all of them.</summary>
+        public int Priority;
+        /// <summary>Detail volumes: metres inside the box over which it fades in over what lies below it.</summary>
+        public float BlendMargin = 1;
+
         public int ProbeCount => CountX * CountY * CountZ;
+
+        /// <summary>Whether a point lies in the volume, and how far inside it is (metres to the nearest face).</summary>
+        public float InsideDistance(Vector3 position)
+        {
+            Vector3 a = position - BoundsMin, b = BoundsMax - position;
+            return Math.Min(Math.Min(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y)), Math.Min(a.Z, b.Z));
+        }
+
+        /// <summary>The volume that answers at a point: the highest priority detail volume holding it, else this one.</summary>
+        public ProbeVolumeData VolumeAt(Vector3 position)
+        {
+            ProbeVolumeData best = this;
+            int bestPriority = int.MinValue;
+            if (Detail != null)
+                foreach (ProbeVolumeData detail in Detail)
+                    if (detail.InsideDistance(position) > 0 && detail.Priority > bestPriority)
+                    {
+                        best = detail;
+                        bestPriority = detail.Priority;
+                    }
+            return best;
+        }
+
+        /// <summary>The main volume and its detail volumes, highest priority first (the order the shaders blend them).</summary>
+        public System.Collections.Generic.List<ProbeVolumeData> VolumesByPriority()
+        {
+            var list = new System.Collections.Generic.List<ProbeVolumeData>();
+            if (Detail != null) list.AddRange(Detail);
+            list.Sort((x, y) => y.Priority.CompareTo(x.Priority));
+            if (list.Count > MaxVolumes - 1) list.RemoveRange(MaxVolumes - 1, list.Count - (MaxVolumes - 1));
+            list.Add(this);
+            return list;
+        }
 
         public int Index(int x, int y, int z) => x + CountX * (y + CountY * z);
 
@@ -195,6 +238,19 @@ namespace Engine.Renderer.Lighting
             using var w = new BinaryWriter(fs);
             w.Write(Magic);
             w.Write(FormatVersion);
+            WriteBody(w);
+            w.Write(Detail?.Count ?? 0);
+            if (Detail != null)
+                foreach (ProbeVolumeData detail in Detail)
+                {
+                    w.Write(detail.Priority);
+                    w.Write(detail.BlendMargin);
+                    detail.WriteBody(w);
+                }
+        }
+
+        private void WriteBody(BinaryWriter w)
+        {
             w.Write(CountX); w.Write(CountY); w.Write(CountZ);
             WriteVector3(w, BoundsMin); WriteVector3(w, BoundsMax);
             w.Write(SamplesPerProbe); w.Write(Bounces);
@@ -212,6 +268,26 @@ namespace Engine.Renderer.Lighting
             int version = r.ReadInt32();
             if (version < 1 || version > FormatVersion) throw new InvalidDataException($"Unsupported probe volume version {version}");
 
+            ProbeVolumeData main = ReadBody(r, version);
+            if (version >= 3)
+            {
+                int details = r.ReadInt32();
+                if (details < 0 || details > 64) throw new InvalidDataException($"Invalid detail volume count {details}");
+                for (int i = 0; i < details; i++)
+                {
+                    int priority = r.ReadInt32();
+                    float margin = r.ReadSingle();
+                    ProbeVolumeData detail = ReadBody(r, version);
+                    detail.Priority = priority;
+                    detail.BlendMargin = margin;
+                    main.Detail.Add(detail);
+                }
+            }
+            return main;
+        }
+
+        private static ProbeVolumeData ReadBody(BinaryReader r, int version)
+        {
             int cx = r.ReadInt32(), cy = r.ReadInt32(), cz = r.ReadInt32();
             if (cx <= 0 || cy <= 0 || cz <= 0 || (long)cx * cy * cz > 16_000_000)
                 throw new InvalidDataException($"Invalid probe grid {cx}x{cy}x{cz}");

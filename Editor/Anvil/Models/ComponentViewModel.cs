@@ -58,6 +58,10 @@ public static class ComponentEditorRegistry
         Register(ParticleSystemComponent.TypeId, owner => new ParticleSystemComponentViewModel(owner));
         Register(FogVolumeComponent.TypeId, owner => new FogVolumeComponentViewModel(owner));
         Register(FoliageWindComponent.TypeId, owner => new FoliageWindComponentViewModel(owner));
+        Register(ReflectionProbeComponent.TypeId, owner => new ReflectionProbeComponentViewModel(owner));
+        Register(ProbeVolumeComponent.TypeId, owner => new ProbeVolumeComponentViewModel(owner));
+        Register(PostProcessVolumeComponent.TypeId, owner => new PostProcessVolumeComponentViewModel(owner));
+        Register(AoProxyComponent.TypeId, owner => new AoProxyComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

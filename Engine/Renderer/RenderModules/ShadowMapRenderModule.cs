@@ -82,229 +82,245 @@ namespace Engine.Renderer.RenderModules
         public void Draw(GraphicsDevice graphicsDevice, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities, List<PointLight> pointLights, List<DirectionalLight> dirLights, Camera camera)
         {
             _pass = Passes.Omnidirectional;
-
-            //Go through all our point lights
-            for (int index = 0; index < pointLights.Count; index++)
-            {
-                PointLight light = pointLights[index];
-
-                if (!light.IsEnabled) continue;
-
-                //If we don't see the light we shouldn't update. This is actually wrong, can lead to mistakes,
-                //if we implement it like this we should rerender once we enter visible space again.
-                //if (_boundingFrustum.Contains(light.BoundingSphere) == ContainmentType.Disjoint)
-                //{
-                //    continue;
-                //}
-
-                if (light.CastShadows)
-                {
-                    //A poing light has 6 shadow maps, add that to our stat counter. These are total shadow maps, not updated ones
-                    GameStats.shadowMaps += 6;
-
-                    //Update if we didn't initialize yet or if we are dynamic
-                    if (!light.StaticShadows || light.ShadowMap == null)
-                    {
-                        CreateShadowCubeMap(graphicsDevice, light, light.ShadowResolution, meshMaterialLibrary, entities);
-
-                        light.HasChanged = false;
-                        camera.HasChanged = true;
-                    }
-                }
-            }
+            DrawLocalLightShadows(graphicsDevice, meshMaterialLibrary, entities, pointLights, camera);
 
             _pass = Passes.Directional;
 
-            int dirLightShadowedWithSSBlur = 0;
             for (int index = 0; index < dirLights.Count; index++)
             {
                 DirectionalLight light = dirLights[index];
-                if (!light.IsEnabled) continue;
-
-                if (light.CastShadows)
+                if (!light.IsEnabled || !light.CastShadows)
                 {
-                    GameStats.shadowMaps += 1;
+                    light.ActiveCascades = 0;
+                    continue;
+                }
 
-                    CreateShadowMapDirectionalLight(graphicsDevice, light, light.ShadowResolution, meshMaterialLibrary, entities);
-
+                GameStats.shadowMaps += light.CascadeCount;
+                if (DrawCascades(graphicsDevice, light, camera, meshMaterialLibrary, entities))
                     camera.HasChanged = true;
-                    light.HasChanged = false;
-
-                    if (light.ScreenSpaceShadowBlur) dirLightShadowedWithSSBlur++;
-                }
-
-                if (dirLightShadowedWithSSBlur > 1)
-                {
-                    throw new NotImplementedException(
-                        "Only one shadowed DirectionalLight with screen space blur is supported right now");
-                }
+                light.HasChanged = false;
             }
         }
 
-        /// <summary>
-        /// Create the shadow map for each cubemapside, then combine into one cubemap
-        /// </summary>
-        /// <param name="light"></param>
-        /// <param name="size"></param>
-        /// <param name="meshMaterialLibrary"></param>
-        /// <param name="entities"></param>
-        private void CreateShadowCubeMap(GraphicsDevice graphicsDevice, PointLight light, int size, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities)
+        // ---- Local light shadows: one atlas for every point and spot light (Source 2 look, phase 2.2) ----
+
+        private Lighting.ShadowAtlas _atlas;
+        //Lights holding atlas tiles, so tiles of removed lights can be given back
+        private readonly HashSet<PointLight> _tileOwners = new HashSet<PointLight>();
+        private readonly List<(PointLight Light, float Priority, int Size)> _shadowCandidates = new List<(PointLight, float, int)>();
+        private readonly HashSet<PointLight> _seen = new HashSet<PointLight>();
+
+        /// <summary>The shared shadow atlas of point and spot lights (null before the first shadowed light).</summary>
+        public Lighting.ShadowAtlas Atlas => _atlas;
+
+        private static Matrix FaceView(Vector3 position, CubeMapFace face)
         {
-            //For VSM we need 2 channels, -> Vector2
-            //todo: check if we need preserve contents
-            if (light.ShadowMap == null)
-                light.ShadowMap = new RenderTarget2D(graphicsDevice, size, size * 6, false, SurfaceFormat.HalfSingle, DepthFormat.Depth24, 0, RenderTargetUsage.PreserveContents);
-
-            Matrix lightViewProjection = new Matrix();
-            CubeMapFace cubeMapFace; // = CubeMapFace.NegativeX;
-
-            if (light.HasChanged)
+            switch (face)
             {
-                graphicsDevice.SetRenderTarget(light.ShadowMap);
+                case CubeMapFace.PositiveX: return Matrix.CreateLookAt(position, position + Vector3.UnitX, Vector3.UnitZ);
+                case CubeMapFace.NegativeX: return Matrix.CreateLookAt(position, position - Vector3.UnitX, Vector3.UnitZ);
+                case CubeMapFace.PositiveY: return Matrix.CreateLookAt(position, position + Vector3.UnitY, Vector3.UnitZ);
+                case CubeMapFace.NegativeY: return Matrix.CreateLookAt(position, position - Vector3.UnitY, Vector3.UnitZ);
+                case CubeMapFace.PositiveZ: return Matrix.CreateLookAt(position, position + Vector3.UnitZ, Vector3.UnitX);
+                default: return Matrix.CreateLookAt(position, position - Vector3.UnitZ, Vector3.UnitX);
+            }
+        }
 
-                Matrix lightProjection = Matrix.CreatePerspectiveFieldOfView((float)(Math.PI / 2), 1, 1, light.Radius);
-                Matrix lightView; // = identity
+        private void ReleaseTiles(PointLight light)
+        {
+            if (light.ShadowTileSize > 0 && _atlas != null)
+                for (int f = 0; f < 6; f++)
+                    if (light.ShadowTiles[f].W > 0)
+                        _atlas.Free(new Point((int)light.ShadowTiles[f].X, (int)light.ShadowTiles[f].Y), light.ShadowTileSize);
+            for (int f = 0; f < 6; f++) light.ShadowTiles[f] = Vector4.Zero;
+            light.ShadowTileSize = 0;
+            light.ShadowTilesDrawn = false;
+            _tileOwners.Remove(light);
+        }
 
-                //Reset the blur array
-                light.faceBlurCount = new int[6];
-                
-                graphicsDevice.SetRenderTarget(light.ShadowMap);
-                graphicsDevice.Clear(Color.Black);
+        /// <summary>
+        /// Shadows of point and spot lights. Lights are ranked by how big they look from the camera; each gets atlas tiles
+        /// sized by that (up to its Shadow Resolution), lights that look tiny or are beyond the fade distance get none,
+        /// and at most <see cref="GameSettings.g_shadowupdatesperframe"/> lights redraw per frame (time slicing), the
+        /// biggest first. Lights whose tiles hold their current shadows keep them (the cache); Static Shadows never redraw.
+        /// </summary>
+        private void DrawLocalLightShadows(GraphicsDevice graphicsDevice, MeshMaterialLibrary meshMaterialLibrary,
+            List<BasicEntity> entities, List<PointLight> pointLights, Camera camera)
+        {
+            int atlasSize = Math.Clamp(Lighting.ShadowAtlas.NextPowerOfTwo(GameSettings.g_shadowatlassize), 512, 8192);
+            if (_atlas != null && _atlas.Size != atlasSize)
+            {
+                foreach (PointLight owner in new List<PointLight>(_tileOwners)) ReleaseTiles(owner);
+                _atlas.Dispose();
+                _atlas = null;
+            }
 
-                for (int i = 0; i < 6; i++)
+            float fadeStart = Math.Max(GameSettings.g_shadowfadestart, 0);
+            float fadeEnd = Math.Max(GameSettings.g_shadowfadeend, fadeStart + 0.01f);
+
+            _shadowCandidates.Clear();
+            _seen.Clear();
+            for (int index = 0; index < pointLights.Count; index++)
+            {
+                PointLight light = pointLights[index];
+                _seen.Add(light);
+                light.ShadowStrength = 0;
+                if (!light.IsEnabled || !light.CastShadows || light.Radius <= 0) continue;
+
+                //Distance to the light's sphere: inside it the light fills the view
+                float distance = Math.Max(Vector3.Distance(camera.Position, light.Position) - light.Radius, 0);
+                float strength = 1 - MathHelper.Clamp((distance - fadeStart) / (fadeEnd - fadeStart), 0, 1);
+                //Angular size of the light's sphere (r / d): Source 2's r_size_cull_threshold_shadow
+                float coverage = light.Radius / Math.Max(Vector3.Distance(camera.Position, light.Position), 0.01f);
+                if (strength <= 0 || coverage < GameSettings.g_shadowsizecull) continue;
+
+                int size = Lighting.ShadowAtlas.NextPowerOfTwo(
+                    (int)(light.ShadowResolution * MathHelper.Clamp(coverage, 0.125f, 1)));
+                size = Math.Clamp(size, Lighting.ShadowAtlas.MinTileSize, Math.Min(light.ShadowResolution, atlasSize / 4));
+                light.ShadowStrength = strength;
+                _shadowCandidates.Add((light, coverage * (light.StaticShadows ? 1.5f : 1), size));
+            }
+
+            //Lights that left the scene or lost their shadows give their tiles back
+            foreach (PointLight owner in new List<PointLight>(_tileOwners))
+                if (!_seen.Contains(owner) || owner.ShadowStrength <= 0)
+                    ReleaseTiles(owner);
+            if (_shadowCandidates.Count == 0) return;
+
+            _atlas ??= new Lighting.ShadowAtlas(graphicsDevice, atlasSize);
+            _shadowCandidates.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+
+            //Tiles: keep the ones of the right size, then hand out new ones, biggest lights first
+            for (int i = 0; i < _shadowCandidates.Count; i++)
+            {
+                var (light, _, size) = _shadowCandidates[i];
+                //A turned spot light may need other cube faces
+                if (light.ShadowTileSize == size && !(light is SpotLight && light.HasChanged)) continue;
+                ReleaseTiles(light);
+            }
+            for (int i = 0; i < _shadowCandidates.Count; i++)
+            {
+                var (light, _, size) = _shadowCandidates[i];
+                if (light.ShadowTileSize > 0) continue;
+                for (int tile = size; tile >= Lighting.ShadowAtlas.MinTileSize && light.ShadowTileSize == 0; tile /= 2)
                 {
-                    // render the scene to all cubemap faces
-                    cubeMapFace = (CubeMapFace)i;
-                    switch (cubeMapFace)
-                    {
-                        case CubeMapFace.PositiveX:
-                            {
-                                lightView = Matrix.CreateLookAt(light.Position, light.Position + Vector3.UnitX, Vector3.UnitZ);
-                                lightViewProjection = lightView * lightProjection;
-                                light.LightViewProjectionPositiveX = lightViewProjection;
-                                break;
-                            }
-                        case CubeMapFace.NegativeX:
-                            {
-                                lightView = Matrix.CreateLookAt(light.Position, light.Position - Vector3.UnitX, Vector3.UnitZ);
-                                lightViewProjection = lightView * lightProjection;
-                                light.LightViewProjectionNegativeX = lightViewProjection;
-                                break;
-                            }
-                        case CubeMapFace.PositiveY:
-                            {
-                                lightView = Matrix.CreateLookAt(light.Position, light.Position + Vector3.UnitY, Vector3.UnitZ);
-                                lightViewProjection = lightView * lightProjection;
-                                light.LightViewProjectionPositiveY = lightViewProjection;
-                                break;
-                            }
-                        case CubeMapFace.NegativeY:
-                            {
-                                lightView = Matrix.CreateLookAt(light.Position, light.Position - Vector3.UnitY, Vector3.UnitZ);
-                                lightViewProjection = lightView * lightProjection;
-                                light.LightViewProjectionNegativeY = lightViewProjection;
-                                break;
-                            }
-                        case CubeMapFace.PositiveZ:
-                            {
-                                lightView = Matrix.CreateLookAt(light.Position, light.Position + Vector3.UnitZ, Vector3.UnitX);
-                                lightViewProjection = lightView * lightProjection;
-                                light.LightViewProjectionPositiveZ = lightViewProjection;
-                                break;
-                            }
-                        case CubeMapFace.NegativeZ:
-                            {
-                                lightView = Matrix.CreateLookAt(light.Position, light.Position - Vector3.UnitZ, Vector3.UnitX);
-                                lightViewProjection = lightView * lightProjection;
-                                light.LightViewProjectionNegativeZ = lightViewProjection;
-                                break;
-                            }
-                    }
-
-                    //Spot lights only render the faces their cone reaches; the others stay cleared (lit)
-                    if (!LightSeesFace(light, cubeMapFace)) continue;
-
-                    if (_boundingFrustumShadow != null) _boundingFrustumShadow.Matrix = lightViewProjection;
-                    else _boundingFrustumShadow = new BoundingFrustum(lightViewProjection);
-
-                    meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, true, light.Position);
-
-                    // Rendering!
-                    
-                    graphicsDevice.Viewport = new Viewport(0, light.ShadowResolution * (int)cubeMapFace, light.ShadowResolution, light.ShadowResolution);
-                    //_graphicsDevice.ScissorRectangle = new Rectangle(0, light.ShadowResolution* (int) cubeMapFace,  light.ShadowResolution, light.ShadowResolution);
-                    
-                    _FarClip.SetValue(light.Radius);
-                    _LightPositionWS.SetValue(light.Position);
-
-                    graphicsDevice.ScissorRectangle = new Rectangle(0, light.ShadowResolution * (int)cubeMapFace, light.ShadowResolution, light.ShadowResolution);
-
-                    meshMaterialLibrary.Draw(renderType: MeshMaterialLibrary.RenderType.ShadowOmnidirectional, 
-                        viewProjection: lightViewProjection, 
-                        lightViewPointChanged: true, 
-                        hasAnyObjectMoved: light.HasChanged, 
-                        renderModule: this);
-                    
+                    if (!AllocateFaces(light, tile)) continue;
                 }
             }
-            else
+
+            //Draw: new tiles and changed lights first, then lights something moved in front of, within the budget
+            int budget = Math.Max(GameSettings.g_shadowupdatesperframe, 1);
+            bool targetSet = false;
+            for (int i = 0; i < _shadowCandidates.Count; i++)
             {
-                bool draw = false;
+                PointLight light = _shadowCandidates[i].Light;
+                if (light.ShadowTileSize == 0) continue;
+                GameStats.shadowMaps += 6;
 
-                for (int i = 0; i < 6; i++)
+                bool redraw = !light.ShadowTilesDrawn || (light.HasChanged && !light.StaticShadows);
+                if (!redraw && !light.StaticShadows)
                 {
-                    // render the scene to all cubemap faces
-                    cubeMapFace = (CubeMapFace)i;
+                    redraw = AnyObjectMovedFor(light, meshMaterialLibrary, entities);
+                    //The check culled moved meshes against the light's faces: the view culls again
+                    if (redraw) camera.HasChanged = true;
+                }
+                if (!redraw) continue;
+                if (budget <= 0)
+                {
+                    //Out of budget this frame: lights without any shadows yet stay unshadowed, the rest keep their old ones
+                    continue;
+                }
+                budget--;
 
-                    switch (cubeMapFace)
-                    {
-                        case CubeMapFace.NegativeX:
-                            lightViewProjection = light.LightViewProjectionNegativeX;
-                            break;
-                        case CubeMapFace.NegativeY:
-                            lightViewProjection = light.LightViewProjectionNegativeY;
-                            break;
-                        case CubeMapFace.NegativeZ:
-                            lightViewProjection = light.LightViewProjectionNegativeZ;
-                            break;
-                        case CubeMapFace.PositiveX:
-                            lightViewProjection = light.LightViewProjectionPositiveX;
-                            break;
-                        case CubeMapFace.PositiveY:
-                            lightViewProjection = light.LightViewProjectionPositiveY;
-                            break;
-                        case CubeMapFace.PositiveZ:
-                            lightViewProjection = light.LightViewProjectionPositiveZ;
-                            break;
-                    }
+                if (!targetSet)
+                {
+                    graphicsDevice.SetRenderTarget(_atlas.Target);
+                    targetSet = true;
+                }
+                DrawLightTiles(graphicsDevice, light, meshMaterialLibrary, entities);
+                light.ShadowTilesDrawn = true;
+                light.HasChanged = false;
+                camera.HasChanged = true;
+            }
+        }
 
-                    if (!LightSeesFace(light, cubeMapFace)) continue;
+        private bool AllocateFaces(PointLight light, int size)
+        {
+            var allocated = new List<(int Face, Point Origin)>(6);
+            for (int f = 0; f < 6; f++)
+            {
+                if (!LightSeesFace(light, (CubeMapFace)f)) continue;
+                if (!_atlas.TryAllocate(size, out Point origin))
+                {
+                    foreach (var (_, o) in allocated) _atlas.Free(o, size);
+                    return false;
+                }
+                allocated.Add((f, origin));
+            }
+            for (int f = 0; f < 6; f++) light.ShadowTiles[f] = Vector4.Zero;
+            foreach (var (face, origin) in allocated) light.ShadowTiles[face] = new Vector4(origin.X, origin.Y, size, 1);
+            light.ShadowTileSize = size;
+            light.ShadowTilesDrawn = false;
+            _tileOwners.Add(light);
+            return true;
+        }
 
-                    if (_boundingFrustumShadow != null) _boundingFrustumShadow.Matrix = lightViewProjection;
-                    else _boundingFrustumShadow = new BoundingFrustum(lightViewProjection);
+        private bool AnyObjectMovedFor(PointLight light, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities)
+        {
+            Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver2, 1, 0.05f, light.Radius);
+            for (int f = 0; f < 6; f++)
+            {
+                if (light.ShadowTiles[f].W <= 0) continue;
+                Matrix viewProjection = FaceView(light.Position, (CubeMapFace)f) * projection;
+                if (_boundingFrustumShadow != null) _boundingFrustumShadow.Matrix = viewProjection;
+                else _boundingFrustumShadow = new BoundingFrustum(viewProjection);
+                if (meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, false, light.Position)) return true;
+            }
+            return false;
+        }
 
-                    bool hasAnyObjectMoved = meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, false, light.Position);
-                    
-                    if (!hasAnyObjectMoved) continue;
+        private void DrawLightTiles(GraphicsDevice graphicsDevice, PointLight light, MeshMaterialLibrary meshMaterialLibrary,
+            List<BasicEntity> entities)
+        {
+            Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver2, 1, 0.05f, light.Radius);
+            _FarClip.SetValue(light.Radius);
+            _LightPositionWS.SetValue(light.Position);
 
-                    if (!draw)
-                    {
+            for (int f = 0; f < 6; f++)
+            {
+                Vector4 tile = light.ShadowTiles[f];
+                if (tile.W <= 0) continue;
+                CubeMapFace face = (CubeMapFace)f;
+                Matrix viewProjection = FaceView(light.Position, face) * projection;
+                switch (face)
+                {
+                    case CubeMapFace.PositiveX: light.LightViewProjectionPositiveX = viewProjection; break;
+                    case CubeMapFace.NegativeX: light.LightViewProjectionNegativeX = viewProjection; break;
+                    case CubeMapFace.PositiveY: light.LightViewProjectionPositiveY = viewProjection; break;
+                    case CubeMapFace.NegativeY: light.LightViewProjectionNegativeY = viewProjection; break;
+                    case CubeMapFace.PositiveZ: light.LightViewProjectionPositiveZ = viewProjection; break;
+                    default: light.LightViewProjectionNegativeZ = viewProjection; break;
+                }
 
-                        graphicsDevice.SetRenderTarget(light.ShadowMap);
-                        draw = true;
-                    }
+                var viewport = new Viewport((int)tile.X, (int)tile.Y, (int)tile.Z, (int)tile.Z);
+                graphicsDevice.Viewport = viewport;
+                graphicsDevice.ScissorRectangle = viewport.Bounds;
+                //The tile may hold another light's old shadows: clear it to far (0) even if nothing is drawn into it
+                meshMaterialLibrary.ClearShadowViewport();
 
-                    graphicsDevice.Viewport = new Viewport(0, light.ShadowResolution * (int)cubeMapFace, light.ShadowResolution, light.ShadowResolution);
-                    
-                    //_graphicsDevice.Clear(Color.TransparentBlack);
-                    //_graphicsDevice.Clear(ClearOptions.DepthBuffer, Color.White, 0, 0);
-                    graphicsDevice.ScissorRectangle = new Rectangle(0, light.ShadowResolution * (int)cubeMapFace, light.ShadowResolution, light.ShadowResolution);
+                if (_boundingFrustumShadow != null) _boundingFrustumShadow.Matrix = viewProjection;
+                else _boundingFrustumShadow = new BoundingFrustum(viewProjection);
+                meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, true, light.Position);
 
+                meshMaterialLibrary.SkipShadowClear = true;
+                try
+                {
                     meshMaterialLibrary.Draw(renderType: MeshMaterialLibrary.RenderType.ShadowOmnidirectional,
-                        viewProjection: lightViewProjection,
-                        lightViewPointChanged: light.HasChanged,
-                        hasAnyObjectMoved: true,
-                        renderModule: this);
+                        viewProjection: viewProjection, lightViewPointChanged: true, hasAnyObjectMoved: true, renderModule: this);
+                }
+                finally
+                {
+                    meshMaterialLibrary.SkipShadowClear = false;
                 }
             }
         }
@@ -324,82 +340,166 @@ namespace Engine.Renderer.RenderModules
             }
         }
 
+        private readonly Vector3[] _sliceCorners = new Vector3[8];
+
         /// <summary>
-        /// Only one shadow map needed for a directional light
+        /// Cascade split distances (practical scheme: <paramref name="lambda"/> 0 = uniform, 1 = logarithmic) from
+        /// <paramref name="near"/> to <paramref name="far"/>. ends[i] = where cascade i ends.
         /// </summary>
-        /// <param name="light"></param>
-        /// <param name="shadowResolution"></param>
-        /// <param name="meshMaterialLibrary"></param>
-        /// <param name="entities"></param>
-        private void CreateShadowMapDirectionalLight(GraphicsDevice graphicsDevice, DirectionalLight light, int shadowResolution, MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities)
+        public static void SplitCascades(float near, float far, int count, float lambda, float[] ends)
         {
-            //Create a renderTarget if we don't have one yet
-            if (light.ShadowMap == null)
+            for (int i = 1; i <= count; i++)
             {
-                //if (lightSource.ShadowFiltering != DirectionalLightSource.ShadowFilteringTypes.VSM)
-                //{
-                    light.ShadowMap = new RenderTarget2D(graphicsDevice, shadowResolution, shadowResolution, false,
-                        SurfaceFormat.Single, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
-                //}
-                //else //For a VSM shadowMap we need 2 components
-                //{
-                //    lightSource.ShadowMap = new RenderTarget2D(_graphicsDevice, shadowResolution, shadowResolution, false,
-                //       SurfaceFormat.Vector2, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
-                //}
+                float t = i / (float)count;
+                float logarithmic = near * MathF.Pow(far / near, t);
+                float uniform = near + (far - near) * t;
+                ends[i - 1] = MathHelper.Lerp(uniform, logarithmic, lambda);
             }
-            
-            if (light.HasChanged)
-            {
-                Matrix lightProjection = Matrix.CreateOrthographic(light.ShadowSize, light.ShadowSize,
-                    -light.ShadowDepth, light.ShadowDepth);
-                Matrix lightView = Matrix.CreateLookAt(light.Position, light.Position + light.Direction, Vector3.Down);
-
-                light.LightView = lightView;
-                light.LightViewProjection = lightView * lightProjection;
-
-                _boundingFrustumShadow = new BoundingFrustum(light.LightViewProjection);
-
-                graphicsDevice.SetRenderTarget(light.ShadowMap);
-                graphicsDevice.Clear(ClearOptions.DepthBuffer, Color.White, 1, 0);
-
-                meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, true, light.Position);
-
-                // Rendering!
-                _FarClip.SetValue(light.ShadowDepth);
-                _SizeBias.SetValue(GameSettings.ShadowBias * 2048 / light.ShadowResolution);
-
-                meshMaterialLibrary.Draw(MeshMaterialLibrary.RenderType.ShadowLinear,
-                    light.LightViewProjection, light.HasChanged, false, false, 0, light.LightView, renderModule: this);
-            }
-            else
-            {
-                _boundingFrustumShadow = new BoundingFrustum(light.LightViewProjection);
-
-                bool hasAnyObjectMoved = meshMaterialLibrary.FrustumCulling(entities: entities, boundingFrustrum: _boundingFrustumShadow, hasCameraChanged: false, cameraPosition: light.Position);
-
-                if (!hasAnyObjectMoved) return;
-
-                meshMaterialLibrary.FrustumCulling(entities: entities, boundingFrustrum: _boundingFrustumShadow, hasCameraChanged: true, cameraPosition: light.Position);
-
-                graphicsDevice.SetRenderTarget(light.ShadowMap);
-                graphicsDevice.Clear(ClearOptions.DepthBuffer, Color.White, 1, 0);
-
-                _FarClip.SetValue(light.ShadowDepth);
-                _SizeBias.SetValue(GameSettings.ShadowBias * 2048 / light.ShadowResolution);
-
-                meshMaterialLibrary.Draw(MeshMaterialLibrary.RenderType.ShadowLinear,
-                    light.LightViewProjection, false, true, false, 0, light.LightView, renderModule: this);
-            }
-
-            //Blur!
-            //if (lightSource.ShadowFiltering == DirectionalLightSource.ShadowFilteringTypes.VSM)
-            //{
-            //    lightSource.ShadowMap = _gaussianBlur.DrawGaussianBlur(lightSource.ShadowMap);
-            //}
-
         }
 
+        private readonly float[] _ends = new float[DirectionalLight.MaxCascades];
 
+        /// <summary>
+        /// Fits the light's cascades to the camera (stable: bounding spheres of each frustum slice, snapped to whole shadow
+        /// texels so they don't shimmer when the camera moves or turns) and renders them into the atlas.
+        /// Returns whether anything was drawn.
+        /// </summary>
+        private bool DrawCascades(GraphicsDevice graphicsDevice, DirectionalLight light, Camera camera,
+            MeshMaterialLibrary meshMaterialLibrary, List<BasicEntity> entities)
+        {
+            int count = light.CascadeCount;
+            int resolution = light.CascadeResolution;
+            int columns = count > 1 ? 2 : 1;
+            int rows = count > 2 ? 2 : 1;
+            if (light.ShadowMap == null || light.ShadowMap.Width != resolution * columns || light.ShadowMap.Height != resolution * rows)
+            {
+                light.ShadowMap?.Dispose();
+                light.ShadowMap = new RenderTarget2D(graphicsDevice, resolution * columns, resolution * rows, false,
+                    SurfaceFormat.Single, DepthFormat.Depth24, 0, RenderTargetUsage.PreserveContents);
+                light.HasChanged = true;
+            }
+
+            Vector3 dir = Vector3.Normalize(light.Direction);
+            Vector3 up = Math.Abs(dir.Y) > 0.99f ? Vector3.UnitZ : -Vector3.UnitY;
+            Matrix lightRotation = Matrix.CreateLookAt(Vector3.Zero, dir, up);
+            Matrix inverseRotation = Matrix.Invert(lightRotation);
+
+            const float near = 0.1f;
+            float far = Math.Min(light.ShadowDistance, GameSettings.g_farplane);
+            SplitCascades(near, far, count, light.SplitLambda, _ends);
+
+            float aspect = GameSettings.g_screenwidth / (float)Math.Max(GameSettings.g_screenheight, 1);
+            float tanY = MathF.Tan(camera.FieldOfView * 0.5f);
+            float tanX = tanY * aspect;
+            Vector3 forward = Vector3.Normalize(camera.Forward);
+            Vector3 right = Vector3.Normalize(Vector3.Cross(forward, camera.Up));
+            Vector3 camUp = Vector3.Cross(right, forward);
+
+            bool moved = light.HasChanged;
+            float depthExtension = Math.Max(light.ShadowDepth, 10);
+            for (int i = 0; i < count; i++)
+            {
+                float sliceNear = i == 0 ? near : _ends[i - 1];
+                float sliceFar = _ends[i];
+                //Corners of this slice of the camera frustum
+                for (int c = 0; c < 8; c++)
+                {
+                    float d = c < 4 ? sliceNear : sliceFar;
+                    float sx = (c & 1) == 0 ? -1 : 1;
+                    float sy = (c & 2) == 0 ? -1 : 1;
+                    _sliceCorners[c] = camera.Position + forward * d + right * (sx * tanX * d) + camUp * (sy * tanY * d);
+                }
+                Vector3 center = Vector3.Zero;
+                foreach (Vector3 corner in _sliceCorners) center += corner;
+                center /= 8;
+                float radius = 0;
+                foreach (Vector3 corner in _sliceCorners) radius = Math.Max(radius, Vector3.Distance(corner, center));
+                //Quantized so the box size, and with it the texel size, only changes in steps
+                radius = MathF.Ceiling(radius * 4) / 4;
+
+                //Snap the centre to whole texels in light space
+                float texel = 2 * radius / resolution;
+                Vector3 lightSpaceCenter = Vector3.Transform(center, lightRotation);
+                lightSpaceCenter.X = MathF.Floor(lightSpaceCenter.X / texel) * texel;
+                lightSpaceCenter.Y = MathF.Floor(lightSpaceCenter.Y / texel) * texel;
+                center = Vector3.Transform(lightSpaceCenter, inverseRotation);
+
+                Vector3 eye = center - dir * (radius + depthExtension);
+                Matrix view = Matrix.CreateLookAt(eye, center, up);
+                float farClip = 2 * radius + depthExtension;
+                Matrix projection = Matrix.CreateOrthographic(2 * radius, 2 * radius, 0, farClip);
+
+                //Cascades are redrawn only when they moved or something inside them did
+                Matrix viewProjection = view * projection;
+                if (viewProjection != light.CascadeViewProjection[i] || light.ActiveCascades != count) moved = true;
+                light.CascadeView[i] = view;
+                light.CascadeViewProjection[i] = viewProjection;
+                SetComponent(ref light.CascadeEnds, i, sliceFar);
+                SetComponent(ref light.CascadeFarClip, i, farClip);
+                SetComponent(ref light.CascadeTexelSize, i, texel);
+            }
+            for (int i = count; i < DirectionalLight.MaxCascades; i++)
+            {
+                SetComponent(ref light.CascadeEnds, i, float.MaxValue);
+                SetComponent(ref light.CascadeFarClip, i, 1);
+                SetComponent(ref light.CascadeTexelSize, i, 1);
+            }
+            light.ActiveCascades = count;
+            light.LightView = light.CascadeView[count - 1];
+            light.LightViewProjection = light.CascadeViewProjection[count - 1];
+
+            //Something moved inside one of the cascades?
+            if (!moved)
+            {
+                for (int i = 0; i < count && !moved; i++)
+                {
+                    _boundingFrustumShadow ??= new BoundingFrustum(light.CascadeViewProjection[i]);
+                    _boundingFrustumShadow.Matrix = light.CascadeViewProjection[i];
+                    moved = meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, false, light.Position);
+                }
+            }
+            if (!moved) return false;
+
+            graphicsDevice.SetRenderTarget(light.ShadowMap);
+            //1 = the far end of every cascade: texels nothing covers are lit
+            graphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.White, 1, 0);
+
+            for (int i = 0; i < count; i++)
+            {
+                _boundingFrustumShadow ??= new BoundingFrustum(light.CascadeViewProjection[i]);
+                _boundingFrustumShadow.Matrix = light.CascadeViewProjection[i];
+                meshMaterialLibrary.FrustumCulling(entities, _boundingFrustumShadow, true, light.Position);
+
+                graphicsDevice.Viewport = new Viewport((i % 2) * resolution, (i / 2) * resolution, resolution, resolution);
+                _FarClip.SetValue(GetComponent(light.CascadeFarClip, i));
+                _SizeBias.SetValue(GameSettings.ShadowBias * 2048 / resolution);
+
+                meshMaterialLibrary.SkipShadowClear = true;
+                try
+                {
+                    meshMaterialLibrary.Draw(MeshMaterialLibrary.RenderType.ShadowLinear,
+                        light.CascadeViewProjection[i], true, true, false, 0, light.CascadeView[i], renderModule: this);
+                }
+                finally
+                {
+                    meshMaterialLibrary.SkipShadowClear = false;
+                }
+            }
+            return true;
+        }
+
+        private static void SetComponent(ref Vector4 v, int i, float value)
+        {
+            switch (i)
+            {
+                case 0: v.X = value; break;
+                case 1: v.Y = value; break;
+                case 2: v.Z = value; break;
+                default: v.W = value; break;
+            }
+        }
+
+        private static float GetComponent(Vector4 v, int i) => i == 0 ? v.X : i == 1 ? v.Y : i == 2 ? v.Z : v.W;
 
         public void Apply(Matrix localWorldMatrix, Matrix? view, Matrix viewProjection)
         {

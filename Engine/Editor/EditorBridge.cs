@@ -111,8 +111,8 @@ namespace Engine.Editor
 
         // Pointer-over-viewport gate. Defaults to true so standalone Engine.exe
         // (where no host pushes pointer-enter/leave events) is unaffected. The
-        // host flips it false when the pointer leaves the viewport so the engine
-        // ignores Win32's globally-visible mouse state during that interval.
+        // host can disable this while the Engine tab is hidden so the engine
+        // ignores Win32's globally-visible mouse state over another workspace.
         private volatile bool _hostPointerOverViewport = true;
         private volatile bool _hostDragDropActive;
         public bool IsHostDragDropActive => _hostDragDropActive;
@@ -365,11 +365,45 @@ namespace Engine.Editor
             _pendingOps.Enqueue(() =>
             {
                 var entity = LookupEntityById(entityId);
-                if (entity == null || entity.Role == role) return;
+                if (entity == null || entity.RoleId == role.ToString()) return;
                 entity.Role = role;
                 _scene.ActiveScene.IsDirty = true;
             });
         }
+
+        public IReadOnlyList<ClassificationDefinition> Classifications => ClassificationCatalog.Project.Entries;
+
+        public void EnqueueSetClassification(int entityId, ClassificationKind kind, string definitionId) => _pendingOps.Enqueue(() =>
+        {
+            if (ClassificationCatalog.Project.Find(kind, definitionId) == null) return;
+            var entity = LookupEntityById(entityId);
+            if (entity == null) return;
+            switch (kind)
+            {
+                case ClassificationKind.Layer: entity.LayerId = definitionId; break;
+                case ClassificationKind.Tag: entity.TagId = definitionId; break;
+                case ClassificationKind.Role: entity.RoleId = definitionId; break;
+                default: return;
+            }
+            _scene.ActiveScene.IsDirty = true;
+        });
+
+        public void EnqueueEditClassification(ClassificationEdit edit, ClassificationKind kind, string definitionId, string name, Action<string> completed) => _pendingOps.Enqueue(() =>
+        {
+            var catalog = ClassificationCatalog.Project;
+            string error;
+            bool success;
+            switch (edit)
+            {
+                case ClassificationEdit.Add: success = catalog.Add(kind, name, out error); break;
+                case ClassificationEdit.Rename: success = catalog.Rename(kind, definitionId, name, out error); break;
+                case ClassificationEdit.Remove: success = catalog.Remove(kind, definitionId, out error); break;
+                default: success = false; error = "Choose a valid operation."; break;
+            }
+            // Deleted IDs resolve to the category default, including in unloaded scenes and prefabs.
+            if (success && edit == ClassificationEdit.Remove && _scene?.ActiveScene != null) _scene.ActiveScene.IsDirty = true;
+            completed?.Invoke(success ? null : error);
+        });
 
         public void EnqueueSetPersistent(int entityId, bool persistent)
         {
@@ -841,6 +875,22 @@ namespace Engine.Editor
             });
         }
 
+        public void EnqueueMutatePost(Action<PostProcessSettings> mutate)
+        {
+            if (mutate == null) return;
+            _pendingOps.Enqueue(() =>
+            {
+                var active = _scene?.ActiveScene;
+                if (active == null) return;
+                var settings = active.Environment.Clone();
+                settings.Post ??= new PostProcessSettings();
+                mutate(settings.Post);
+                settings.Normalize();
+                active.Environment = settings;
+                active.IsDirty = true;
+            });
+        }
+
         public void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted)
         {
             var requestedScene = _scene?.ActiveScene;
@@ -953,6 +1003,7 @@ namespace Engine.Editor
                     options.DeleteSource = deleteSource;
                     result = ProjectReset.Run(options);
                     SceneList.Load();
+                    ClassificationCatalog.LoadProject();
                     // RenderFeatures.json and the RenderFeatures folder are gone: no render features.
                     Renderer.Features.RenderFeatures.Load(null);
 
@@ -1157,7 +1208,7 @@ namespace Engine.Editor
                     prefabPath: be.PrefabPath,
                     prefabOverrides: overrides,
                     prefabMissing: prefabMissing,
-                    bones: BuildBones(be)));
+                    bones: BuildBones(be), tag: be.Tag, layer: be.Layer, roleName: be.RoleName));
             }
 
             for (int i = 0; i < _scene.PointLights.Count; i++)
@@ -1173,13 +1224,18 @@ namespace Engine.Editor
                     direction: spot?.Direction ?? Vector3.Zero,
                     isSpot: spot != null,
                     spotAngle: spot?.SpotAngle ?? 0f,
-                    innerSpotAngle: spot?.InnerSpotAngle ?? 0f);
+                    innerSpotAngle: spot?.InnerSpotAngle ?? 0f,
+                    shadowResolution: p.ShadowResolution,
+                    staticShadows: p.StaticShadows,
+                    sourceRadius: p.SourceRadius,
+                    sourceLength: p.SourceLength,
+                    cookiePath: spot?.CookiePath);
                 list.Add(new EditorObjectSnapshot(
                     id: p.Id,
                     name: p.Name ?? (p.GetType().Name + " " + p.Id),
                     kind: spot != null ? EditorObjectKind.SpotLight : EditorObjectKind.PointLight,
                     position: p.Position,
-                    rotation: spot?.RotationMatrix ?? Matrix.Identity,
+                    rotation: p.RotationMatrix == default ? Matrix.Identity : p.RotationMatrix,
                     scale: Vector3.One,
                     isEnabled: p.IsEnabled,
                     light: ls,
@@ -1195,7 +1251,11 @@ namespace Engine.Editor
                     radius: 0f,
                     castShadows: d.CastShadows,
                     isDirectional: true,
-                    direction: d.Direction);
+                    direction: d.Direction,
+                    shadowResolution: d.ShadowResolution,
+                    cascadeCount: d.CascadeCount,
+                    shadowDistance: d.ShadowDistance,
+                    splitLambda: d.SplitLambda);
                 list.Add(new EditorObjectSnapshot(
                     id: d.Id,
                     name: d.Name ?? ("DirectionalLight " + d.Id),

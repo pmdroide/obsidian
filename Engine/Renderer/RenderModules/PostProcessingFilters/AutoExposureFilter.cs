@@ -10,8 +10,11 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
     /// <summary>
     /// Eye adaptation / auto exposure.
     ///
-    /// Meters the HDR image (center-weighted average of log2 luminance), then moves a 1x1 exposure value
-    /// (in EV) toward the target that maps that average to <see cref="GameSettings.g_AutoExposureKey"/>.
+    /// Meters the HDR image, then moves a 1x1 exposure value (in EV) toward its target: with bright-pixel metering
+    /// (Source's tonemap controller, the default) the brightest <see cref="GameSettings.g_BrightPixelPercent"/> % of the
+    /// frame lands on <see cref="GameSettings.g_BrightPixelTarget"/>, read off a 64-level histogram built on the GPU
+    /// (no read back); with average metering the center-weighted average of log2 luminance lands on
+    /// <see cref="GameSettings.g_AutoExposureKey"/>.
     /// The adapted EV stays on the GPU; PostProcessing.fx reads it and multiplies it into its exposure,
     /// so the manual Exposure setting and the day/night offset act as compensation on top.
     ///
@@ -38,6 +41,10 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
         private readonly EffectPass _meterPass;
         private readonly EffectPass _downsamplePass;
         private readonly EffectPass _adaptPass;
+        private readonly EffectPass _histogramPass;
+        //Bright-pixel metering: share of the frame above each of 64 log luminance levels
+        private const int HistogramBins = 64;
+        private RenderTarget2D _histogram;
 
         private FullScreenTriangle _fullScreenTriangle;
         private RenderTarget2D[] _luminanceChain;
@@ -67,6 +74,7 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             _meterPass = _effect.Techniques["MeterLuminance"].Passes[0];
             _downsamplePass = _effect.Techniques["Downsample"].Passes[0];
             _adaptPass = _effect.Techniques["Adapt"].Passes[0];
+            _histogramPass = _effect.Techniques["Histogram"].Passes[0];
         }
 
         public void Initialize(GraphicsDevice graphics, FullScreenTriangle fullScreenTriangle)
@@ -79,6 +87,7 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
 
             _exposure1 = new RenderTarget2D(graphics, 1, 1, false, SurfaceFormat.Single, DepthFormat.None);
             _exposure2 = new RenderTarget2D(graphics, 1, 1, false, SurfaceFormat.Single, DepthFormat.None);
+            _histogram = new RenderTarget2D(graphics, HistogramBins, 1, false, SurfaceFormat.Single, DepthFormat.None);
         }
 
         /// <summary>Snap to the metered exposure on the next Draw instead of adapting from the old value.</summary>
@@ -111,6 +120,11 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             // A long hitch (loading, breakpoint) should not count as seconds of adaptation.
             _deltaTimeParam.SetValue(MathHelper.Clamp(deltaSeconds, 0, 0.25f));
             _resetParam.SetValue(_hasHistory ? 0f : 1f);
+            bool bright = GameSettings.g_ExposureMetering == Logic.ExposureMetering.BrightPixels;
+            _effect.Parameters["Metering"]?.SetValue(bright ? 0f : 1f);
+            _effect.Parameters["BrightShare"]?.SetValue(MathHelper.Clamp(GameSettings.g_BrightPixelPercent / 100f, 0.0001f, 0.5f));
+            _effect.Parameters["BrightTarget"]?.SetValue(Math.Max(GameSettings.g_BrightPixelTarget, 0.001f));
+            _effect.Parameters["MinAverage"]?.SetValue(Math.Max(GameSettings.g_MinAverageLuminance, 0));
 
             // Meter
             graphics.SetRenderTarget(_luminanceChain[0]);
@@ -118,6 +132,15 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             _outputSizeParam.SetValue(new Vector2(MeterSize, MeterSize));
             _meterPass.Apply();
             _fullScreenTriangle.Draw(graphics);
+
+            // Bright-pixel metering: the share of the frame above each luminance level
+            if (bright)
+            {
+                graphics.SetRenderTarget(_histogram);
+                _inputTextureParam.SetValue(_luminanceChain[0]);
+                _histogramPass.Apply();
+                _fullScreenTriangle.Draw(graphics);
+            }
 
             // Reduce to 1x1
             for (int i = 1; i < ChainLength; i++)
@@ -136,12 +159,14 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             graphics.SetRenderTarget(output);
             _inputTextureParam.SetValue(_luminanceChain[ChainLength - 1]);
             _previousExposureParam.SetValue(previous);
+            _effect.Parameters["HistogramTexture"]?.SetValue(_histogram);
             _adaptPass.Apply();
             _fullScreenTriangle.Draw(graphics);
 
             // Unbind so the next frame can render into these targets.
             _inputTextureParam.SetValue((Texture2D)null);
             _previousExposureParam.SetValue((Texture2D)null);
+            _effect.Parameters["HistogramTexture"]?.SetValue((Texture2D)null);
 
             _hasHistory = true;
             CurrentExposure = output;
@@ -156,6 +181,7 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
                     target?.Dispose();
             _exposure1?.Dispose();
             _exposure2?.Dispose();
+            _histogram?.Dispose();
         }
     }
 }

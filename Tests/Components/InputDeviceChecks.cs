@@ -70,8 +70,8 @@ internal static class InputDeviceChecks
 
         var main = new MainWindowViewModel();
         main.SetInspectorViewCommand.Execute("Input");
-        Check(main.IsInspectorInputView && !main.IsInspectorSteamView && !main.IsInspectorSelectionView,
-            "Window Input opens the Input inspector section");
+        Check(main.IsWorkspaceInputView && !main.IsWorkspaceSteamView && main.IsInspectorSelectionView,
+            "Window Input opens the Input Devices workspace tab");
         Console.WriteLine("Input device discovery and editor checks passed.");
     }
 

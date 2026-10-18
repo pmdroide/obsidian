@@ -84,8 +84,8 @@ internal static class SteamChecks
 
         var main = new MainWindowViewModel();
         main.SetInspectorViewCommand.Execute("Steam");
-        Check(main.IsInspectorSteamView && !main.IsInspectorSelectionView && !main.IsInspectorEnvironmentView,
-            "Window Steam command selects the Steam inspector section");
+        Check(main.IsWorkspaceSteamView && main.IsInspectorSelectionView && !main.IsWorkspaceEnvironmentView,
+            "Window Steam opens the Steam workspace tab");
         CheckSettingsPersistence();
         Console.WriteLine("Steam lifecycle, settings persistence and editor checks passed.");
     }

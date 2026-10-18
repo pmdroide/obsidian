@@ -12,7 +12,7 @@
         <ResourceDictionary>
             <FontFamily x:Key="AnvilFontFamily">avares://Avalonia.Fonts.Inter/Assets#Inter, Segoe UI, system-ui, sans-serif</FontFamily>
 
-            <!-- Neutral dark greys (no hue); the brand purple is kept, muted, as the accent only. -->
+            <!-- Neutral dark greys with a blue editor accent. -->
             <SolidColorBrush x:Key="AnvilWindowBackgroundBrush"   Color="#1B1B1B" />
             <SolidColorBrush x:Key="AnvilTitleBarBackgroundBrush" Color="#151515" />
             <SolidColorBrush x:Key="AnvilPanelBackgroundBrush"    Color="#232323" />
@@ -24,9 +24,9 @@
             <SolidColorBrush x:Key="AnvilInputBackgroundBrush"    Color="#161616" />
             <SolidColorBrush x:Key="AnvilSubtleBandBrush"         Color="#1E1E1E" />
             <SolidColorBrush x:Key="AnvilHoverBackgroundBrush"    Color="#2D2D2D" />
-            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#0076FC" />
-            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#005EC9" />
-            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#003E85" />
+            <SolidColorBrush x:Key="AnvilSelectedBackgroundBrush" Color="#3273eb" />
+            <SolidColorBrush x:Key="AnvilPrimaryBrush"            Color="#3273eb" />
+            <SolidColorBrush x:Key="AnvilPrimaryAltBrush"         Color="#1452C4" />
             <SolidColorBrush x:Key="AnvilPlayBrush"               Color="#E06C5A" />
             <SolidColorBrush x:Key="AnvilTextPrimaryBrush"        Color="#E8E8E8" />
             <SolidColorBrush x:Key="AnvilTextSecondaryBrush"      Color="#C6C6C6" />
@@ -47,6 +47,7 @@
             <SolidColorBrush x:Key="AnvilPrefabBrush"  Color="#6FB8FF" />
 
             <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Anvil/Themes/InspectorControls.axaml" />
                 <ResourceInclude Source="avares://LucideAvalonia/Lucide/ResourcesIcons.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

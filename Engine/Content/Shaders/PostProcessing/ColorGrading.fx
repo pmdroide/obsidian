@@ -215,6 +215,26 @@ float4 PixelShaderApplyLUT(VertexShaderFSQOutput input) : COLOR0
 //  TECHNIQUES
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//Two lookup tables blended into one (Source 2's combine_colorcorrection_lut_cs, as a pixel pass): Post Process
+//Volumes crossing between two LUTs (Source 2 look, Docs/Research/Source2Look phase 5.2)
+Texture2D LUT2;
+float LutBlend = 0;
+
+float4 PixelShaderCombineLUT(VertexShaderFSQOutput input) : COLOR0
+{
+	int3 texel = int3(input.Position.xy, 0);
+	return lerp(LUT.Load(texel), LUT2.Load(texel), LutBlend);
+}
+
+technique CombineLUT
+{
+	pass Pass1
+	{
+		VertexShader = compile vs_4_0 VertexShaderFSQFunction();
+		PixelShader = compile ps_4_0 PixelShaderCombineLUT();
+	}
+}
+
 technique ApplyLUT
 {
 	pass Pass1

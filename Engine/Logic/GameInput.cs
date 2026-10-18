@@ -144,7 +144,8 @@ namespace Engine.Logic
         /// </summary>
         public static Vector2 MouseDelta { get; private set; }
         /// <summary>Scroll wheel notches this frame (positive = up).</summary>
-        public static int MouseScroll => (Input.mouseState.ScrollWheelValue - Input.mouseLastState.ScrollWheelValue) / 120;
+        public static int MouseScroll => Input.HostBridge != null && Input.HostBridge.IsHostedByEditor && !Input.HostBridge.IsHostPointerOverViewport
+            ? 0 : (Input.mouseState.ScrollWheelValue - Input.mouseLastState.ScrollWheelValue) / 120;
 
         public static void Update(float deltaSeconds)
         {
@@ -191,6 +192,7 @@ namespace Engine.Logic
         private static bool MouseInViewport(MouseState m)
         {
             if (Input.HostBridge == null || !Input.HostBridge.IsHostedByEditor) return true;
+            if (!Input.HostBridge.IsHostPointerOverViewport) return false;
             if (m.LeftButton == ButtonState.Pressed || m.RightButton == ButtonState.Pressed || m.MiddleButton == ButtonState.Pressed)
                 return true;
             return m.X >= 0 && m.Y >= 0 && m.X < Recources.GameSettings.g_screenwidth && m.Y < Recources.GameSettings.g_screenheight;

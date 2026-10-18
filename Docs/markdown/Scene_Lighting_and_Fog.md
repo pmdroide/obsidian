@@ -152,8 +152,8 @@ interior in `AutoExposureTest` is about 3 stops, and the offset swings from abou
 
 ## Volumetric fog
 
-A froxel grid of 160 × 90 × 128 over the view frustum, with logarithmic depth slices
-from 1 m to the far plane (`FroxelRenderModule`, `Froxel.fx`). The fog is **saved with
+A froxel grid of 160 × 90 × 128 over the view frustum, with logarithmic slices of
+view-space depth from 1 m to the far plane (`FroxelRenderModule`, `Froxel.fx`). The fog is **saved with
 the scene**: **Inspector > Environment > Volumetric Fog** (`EnvironmentSettings.Fog*`).
 The renderer copies it into `GameSettings.g_Froxel*` every frame
 (`Renderer.ApplySceneFog`), so scripts change it through `SceneEnvironment`. Only
@@ -165,13 +165,14 @@ The renderer copies it into `GameSettings.g_Froxel*` every frame
 | Absorption | 0.1 | How much the fog darkens what is behind it. |
 | Sun Scatter | 0.1 | In-scattering strength for the sun. |
 | Light Scatter | 1.5 | In-scattering strength for point and spot lights. Higher than the sun's because of 1/r² falloff. |
+| Indirect | 0.1 | In-scattering strength for baked bounce light (the probe volume, **Window > Lighting**). Does nothing without a bake. |
 | Anisotropy | 0.45 | Henyey-Greenstein *g*. Above 0, light scatters forwards: looking towards the sun glows. |
 | Start Dist. / Full Dist. | 30 m / 400 m | Density ramps linearly from Near Density at Start to full at Full. |
 | Near Density | 0 | Fraction of the density kept before Start. 0 = clear near the camera, 1 = no ramp. |
 | Sky Fog | 0.1 | How much of the fog beyond Sky Shafts covers sky pixels. |
 | Sky Shafts | 200 m | Fog in front of the sky up to this distance stays whole, so shafts still show when you look towards the sun through an opening. |
 | Max Auto Exp. | 3 EV | Caps how far eye adaptation brightens dark views (it can only lower Post Processing's **Max EV**). Lower it to keep a dark room dark around a bright opening. |
-| History *(Post Processing)* | 0.7 | Temporal blend. Higher is smoother but laggier. |
+| History *(Post Processing)* | 0.7 | Weight of last frame's reprojected fog. Higher is smoother, lower reacts faster. 0 turns it off. |
 
 The defaults are an outdoor haze: thin near the camera, thicker with distance. Fog dense
 enough for shafts indoors would haze the whole outdoors, so put it in a **Fog Volume**
@@ -191,7 +192,7 @@ fog skips the Start/Full ramp, so a dusty room shows shafts right in front of th
 - While the component is enabled, the gameobject's mesh isn't drawn and can't be picked
   in the viewport; select it in the hierarchy.
 - At most 8 volumes draw (`FogVolumeComponent.MaxVolumes`, `MAX_FOG_VOLUMES` in `Froxel.fx`).
-- Shafts need the light's shadows: keep the box inside the sun's shadow box.
+- Shafts need the light's shadows: keep the box within the sun's **Shadow Dist.** of the camera (its cascades).
 - `FogVolumeComponent.DensityAt(owner, point)` matches the shader, for scripts and checks.
 
 The sun's scattering uses its shadow map, so shafts form wherever the sun reaches,
@@ -201,6 +202,54 @@ shadows. Spot lights only scatter inside their cone.
 Each froxel tests the sun's shadow map at 6 points spread through its depth
 (`ComputeShadowAlongSlice`). Distant slices are about 10 m deep, so a single test aliased
 against the 12 m roof-slat spacing in `GodRayTest` and turned the shafts into blotches.
+
+The fog takes at most 8 point and spot lights (`MAX_FROXEL_POINT_LIGHTS`). Each frame
+`FroxelRenderModule.RankPointLights` keeps the enabled ones whose range reaches into
+the view, brightest at the camera first (brightness × (radius / distance)², 1 inside the
+radius). Particle System lights compete with the scene's lights.
+
+**Bounce light.** With a baked probe volume, the fog also scatters the probes' mean
+radiance (the SH L0 band; fog has no normal), scaled by **Indirect** and by the bake's
+Intensity (dimmed at night like the surfaces). Probes are blended with the same
+visibility test as surfaces, and a point no probe can see gets none, so a closed room
+doesn't glow with the light outside it. Outside the probe volume there is no bounce
+light in the fog.
+
+### How the fog is computed
+
+Each frame (`FroxelRenderModule.RenderFroxelFog`):
+
+1. **Injection** (`BuildFroxels`): per froxel, at a jittered point inside it, the
+   scattering source per metre (sun, point lights, bounce light) and the extinction per
+   metre (`density × Absorption`).
+2. **Temporal resolve** (`ResolveFroxels`): the froxel's centre is projected into last
+   frame's grid, last frame's medium is read there (blending the two nearest slices),
+   clamped to this frame's neighbours (so moving lights and fog volumes don't smear) and
+   blended by **History**. Outside last frame's view it isn't used.
+3. **Transport** (`SeedTransport` + 7 × `ScanTransport`): each froxel's slice becomes a
+   segment along its view ray, integrated exactly for a constant medium (light
+   scattered towards the camera, optical depth); a prefix scan then sums the segments
+   from the camera outwards, 7 passes for 128 slices instead of one loop over every
+   nearer slice per froxel.
+4. **Compose** (`DeferredCompose.fx`, `SampleFroxelFog`): a pixel at view depth *z*
+   takes the prefix up to the start of its slice and integrates only the part of its
+   slice in front of it, so a wall inside a 10 m deep slice isn't fogged as if it were
+   at the slice's far end.
+
+The history is dropped (the next frame uses only its own samples) on a scene swap,
+while the froxels are off, on a camera jump over 10 m (`CameraCutDistance`), a new
+projection (FOV, aspect, far plane), any fog setting change, a new or removed probe
+bake, and a debug hot reload of `Froxel.fx`.
+
+The atlases are half floats: the injection (reused by the scan), two history atlases
+and a scan atlas, about 56 MiB together. The prefixes keep optical depth rather than
+transmittance, because a thin slice's transmittance (0.9992…) rounds away in a half
+float. `Tests/Components` (`--graphics`, `FogChecks.RunGraphics`) renders a uniform
+sunlit medium and compares the result with the exact solution at the centre and
+corners of the screen.
+
+Transparent materials drawn after composition (forward pass, water, particles) are not
+fogged.
 
 ## Image clarity
 
@@ -268,11 +317,15 @@ The brightest **enabled** directional light supplies:
 | Value | Used for |
 | --- | --- |
 | `Intensity` | The sun's peak brightness. |
-| `CastShadows`, `ShadowSize`, `ShadowDepth`, `ShadowResolution`, `ShadowFiltering` | The cycle light's shadow map. |
-| `Position` | The centre of the shadow box. |
+| `CastShadows`, `ShadowResolution`, `ShadowFiltering`, `CascadeCount`, `ShadowDistance`, `SplitLambda`, `ShadowDepth` | The cycle light's cascaded shadows. |
 
-Its `Direction` and colour are ignored. A scene without one gets intensity 100 and a
-450 m, 1024 px shadow box at (0, 0, 2).
+Its `Direction`, colour and `Position` are ignored. A scene without one gets intensity
+100 and four 1024 px cascades over 150 m.
+
+The sun's shadows are cascades that follow the camera (see
+[Source2_Look.md](Source2_Look.md#sun-shadows-cascades)): up to 4 slices of the view out
+to **Shadow Dist.**, split by **Split Lambda**. `ShadowSize` and `Position` are no longer
+used; `ShadowDepth` is how far towards the sun each cascade still catches casters.
 
 ### Recommended settings
 
@@ -284,10 +337,10 @@ engine defaults; the rest come from `GodRayTest`.
 | Template `Intensity` | Inspector | 100 | A sunny day; everything else is tuned against it. Use **Sun brightness** for look changes instead. |
 | `CastShadows` | Inspector | On | Without it there are no shadows and no light shafts in the fog. |
 | `ShadowFiltering` | `.obsc` | 1 (soft PCF 3×3) | Has the slope bias that stops flicker when the sun or moon is overhead. 2 (5×5) has it too. 0 and 3 have not been checked overhead. |
-| `ShadowSize` | `.obsc` | Smallest square that covers the area the player sees, plus anything that casts into it | Outside the box, surfaces and fog count as fully lit: shadows disappear and shafts turn into a uniform glow. |
-| `ShadowResolution` | `.obsc` | 2048 | Keep `ShadowSize / ShadowResolution` well below your thinnest occluder. `GodRayTest`: 260 m / 2048 ≈ 13 cm for 6 m slats. |
-| `ShadowDepth` | `.obsc` | At least the distance from `Position` to the farthest corner of the area | The box reaches ±`ShadowDepth` along the light. `GodRayTest`: 300. |
-| `Position` | `.obsc` | Centre of the area | Centres the shadow box. |
+| **Shadow Dist.** | Inspector | Farther than the farthest shadow or shaft you need to see | Beyond it, surfaces and fog count as fully lit: shadows disappear and shafts turn into a uniform glow. Default 150 m; `GodRayTest`: 420 m. |
+| **Cascades**, **Split Lambda** | Inspector | 4, 0.75 *(default)*; raise lambda towards 0.85 for long distances | More of the resolution goes to the near cascades as lambda rises. |
+| **Shadow Res.** | Inspector | 2048 | Per cascade (capped at 2048 with several cascades). The far cascade's texels must stay below your thinnest distant occluder. |
+| `ShadowDepth` | `.obsc` | The height of the tallest caster above the area | Casters up to this far towards the sun from each cascade are still caught. `GodRayTest`: 300. |
 | **Starting hour** | Environment | Whatever the scene should open on | Changing it, or the duration, restarts the cycle. |
 | **Full cycle duration** | Environment | 2–4 min while tuning; the game's real length for shipping | 1440 (the maximum) holds an hour almost still: one game hour per real hour. |
 | **Sun brightness** | Environment | 1 *(default)* | Multiplies the template's intensity and the sun disc. |
@@ -299,8 +352,8 @@ engine defaults; the rest come from `GodRayTest`.
 | `EnvironmentSample` | `.obsc` | Outdoors at eye height, `AutoUpdate: true` | The cycle recaptures it every 0.5 s, so it has to see the sky. |
 | Probe bake | **Window > Lighting** | Bake with the template's `Direction` set to a typical midday sun | The bake uses the scene's lights, not the cycle. The cycle only dims baked ambient at night. |
 
-Post Processing settings (exposure, eye adaptation) are **not saved** with the scene.
-Note the values you settle on. Fog and **Max Auto Exp.** are saved (Environment).
+The Post Processing panel's *scene* sections (tonemapping, grading, eye adaptation, bloom)
+are saved with the scene (`EnvironmentSettings.Post`), like the fog and **Max Auto Exp.**.
 
 ### Checking a scene
 
@@ -310,12 +363,12 @@ Note the values you settle on. Fog and **Max Auto Exp.** are saved (Environment)
 
    | Hour | What to look for |
    | --- | --- |
-   | 07:00 and 17:30 | Low warm light through openings along X; long shadows that must stay inside the shadow box. |
+   | 07:00 and 17:30 | Low warm light through openings along X; long shadows that must stay within Shadow Dist. |
    | 12:00 and 00:00 | Overhead sun or moon: flat ground and roofs must not shimmer. |
    | 19:00 and 05:00 | The darkest time: is the scene still readable? |
    | 21:00–03:00 | Moonlight and moon shafts, about a third of daytime brightness in `GodRayTest`. |
-3. If shadows or shafts cut off at a straight edge, the area is outside the shadow box.
-   Raise `ShadowSize`, or move `Position`.
+3. If shadows or shafts end at a distance, they are beyond the sun's **Shadow Dist.**
+   Raise it (and lambda), or use the **ShadowCascades** debug view to see the cascades.
 4. If nights look too bright or too flat, lower **Night (EV)** or eye adaptation's
    **Max EV**. If they look too dark, raise **Moon brightness**.
 
@@ -347,10 +400,10 @@ Environment panel to check shafts over the day (starts at 07:00, 4 minutes).
   a beam. Rafters, a couch and a crate give the shafts something to cross. The
   **Attic Dust** gameobject is a Fog Volume (density 0.15) filling the room. Stand at
   about (-111, -10, 2) and look up towards the skylight.
-- **The `Sun` light:** direction (-0.6, 0.1, -0.8), intensity 100, and a 260 m shadow
-  box around the hall and the attic. Fog outside the shadow box counts as lit, so
-  keep new geometry inside it. With the cycle on it is only a template (peak
-  intensity and the shadow box).
+- **The `Sun` light:** direction (-0.6, 0.1, -0.8), intensity 100, four cascades out to
+  420 m (Split Lambda 0.85), so the hall stays shadowed from the far camera spots. Fog
+  beyond Shadow Dist. counts as lit. With the cycle on it is only a template (peak
+  intensity and the shadow settings).
 - **Exposure:** **Max Auto Exp.** is 0 EV, so eye adaptation doesn't lift the dark
   attic to grey (it went near-white at the default 3 EV).
 - Freecam is on the main camera.
@@ -371,19 +424,22 @@ up with the line of sight, so you see bright gaps instead.
 
 ## Current issues
 
-- **Post Processing settings are not saved.** Exposure, eye adaptation, SSAO and SSR
-  are session-wide `GameSettings` values. They reset when Anvil restarts and are the
-  same for every scene. (Fog is per scene now.)
+- **SSAO, SSR and anti-aliasing are project-wide.** They are `GameSettings` values and
+  reset when Anvil restarts; the tonemapping/exposure/bloom/grading values are per
+  scene.
 - **Fog Volumes have no viewport outline.** Their mesh is hidden, so the box can only
   be seen through its fog; select it in the hierarchy.
-- **The sun's shadow box is fixed.** It doesn't follow the camera, so shafts (and
-  shadows) only exist inside `ShadowSize` around the light's `Position`.
+- **Shafts and shadows end at the sun's Shadow Dist.** from the camera (the last
+  cascade fades out there).
 - **Fog sparkles at high density.** White speckles appear on walls when density is
   raised a lot. This comes from the froxel jitter, temporal history and bilateral
   upsampling.
 - **Fog beams are soft.** At 160 × 90 cells (about 8 px per froxel) plus the
   temporal filter, beam edges blur. The blotches inside the beams are fixed (see
   **Volumetric fog**). A faint ripple of about 1/255 remains along the beams.
+- **Transparent surfaces aren't fogged.** The forward pass, water and particles draw
+  after the fog is composed and don't sample it, so glass or water far away stays
+  clear in thick fog.
 - **Scenes without a bake look wrong indoors.** The outdoor cubemap lights and
   reflects inside every room, giving a pale haze and almost no difference between
   inside and outside for eye adaptation.

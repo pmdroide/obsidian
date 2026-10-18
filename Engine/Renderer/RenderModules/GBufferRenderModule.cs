@@ -9,8 +9,17 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Engine.Renderer.RenderModules
 {
     //Just a template
-    public class GBufferRenderModule : IRenderModule, IFoliageWindModule, IDisposable
+    public class GBufferRenderModule : IRenderModule, IVelocityModule, IFoliageWindModule, IDisposable
     {
+        //Motion vectors (TAA): unjittered view projection of this frame and the last one; set by the Renderer per view
+        public Matrix StaticViewProjection = Matrix.Identity;
+        public Matrix PreviousStaticViewProjection = Matrix.Identity;
+        private Matrix _previousWorld;
+        private EffectParameter _CurrentWorldViewProj;
+        private EffectParameter _PreviousWorldViewProj;
+
+        public void SetPreviousWorld(Matrix previousWorld) => _previousWorld = previousWorld;
+
         private Effect _clearShader;
         private Effect _gbufferShader;
         private EffectPass _clearGBufferPass;
@@ -115,6 +124,8 @@ namespace Engine.Renderer.RenderModules
             _WorldViewProj = _gbufferShader.Parameters["WorldViewProj"];
             _WorldViewIT = _gbufferShader.Parameters["WorldViewIT"];
             _ViewProjection = _gbufferShader.Parameters["ViewProjection"];
+            _CurrentWorldViewProj = _gbufferShader.Parameters["CurrentWorldViewProj"];
+            _PreviousWorldViewProj = _gbufferShader.Parameters["PreviousWorldViewProj"];
             Wind = new FoliageWindParameters(_gbufferShader);
             _Camera = _gbufferShader.Parameters["Camera"];
             _FarClip = _gbufferShader.Parameters["FarClip"];
@@ -194,6 +205,8 @@ namespace Engine.Renderer.RenderModules
             _WorldView.SetValue(worldView);
             _WorldViewProj.SetValue(localWorldMatrix * viewProjection);
             _ViewProjection.SetValue(viewProjection);
+            _CurrentWorldViewProj?.SetValue(localWorldMatrix * StaticViewProjection);
+            _PreviousWorldViewProj?.SetValue(_previousWorld * PreviousStaticViewProjection);
 
             worldView = Matrix.Invert(Matrix.Transpose(worldView));
             _WorldViewIT.SetValue(worldView);
@@ -219,6 +232,9 @@ namespace Engine.Renderer.RenderModules
                     ? Math.Clamp(material.EmissiveStrength / 8f, 0, 1) : material.Metallic));
             bool wet = material.Type == MaterialEffect.MaterialTypes.WetSurface && !GameSettings.d_defaultmaterial;
             _WetSurface.SetValue(wet);
+            bool ao = material.HasAmbientOcclusion && !GameSettings.d_defaultmaterial;
+            _gbufferShader.Parameters["UseAoMap"]?.SetValue(ao);
+            if (ao) _gbufferShader.Parameters["AoMap"]?.SetValue(material.AmbientOcclusionMap);
             _TextureTiling.SetValue(GameSettings.d_defaultmaterial ? Vector2.One : material.TextureTiling);
             if (wet)
             {
@@ -382,9 +398,10 @@ namespace Engine.Renderer.RenderModules
                     else
                         _Material_MaterialType.SetValue(0);
                 }
-                // Wet Surface bakes its look into the G-buffer and lights like a basic material.
+                // Wet Surface bakes its look into the G-buffer and lights like a basic material; type 7 flags it for
+                // the environment pass's view-dependent puddle reflections.
                 else if (wet)
-                    _Material_MaterialType.SetValue(0);
+                    _Material_MaterialType.SetValue((int)MaterialEffect.MaterialTypes.WetSurface);
                 else
                 _Material_MaterialType.SetValue(material.MaterialTypeNumber);
             }

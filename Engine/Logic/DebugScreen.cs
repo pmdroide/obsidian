@@ -363,7 +363,7 @@ namespace Engine.Logic
                 _spriteBatch.DrawString(_monospaceFont, _mngStringBuilder.StringBuilder,
                     new Vector2(11.0f, 11.0f), Color.Black);
                 _spriteBatch.DrawString(_monospaceFont, _mngStringBuilder.StringBuilder,
-                    new Vector2(10.0f, 10.0f), consoleColor);
+                    new Vector2(10.0f, 10.0f), Color.White);
 
                 _spriteBatch.End();
             }

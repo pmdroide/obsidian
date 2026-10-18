@@ -466,7 +466,9 @@
       "ShadowSize": 260,
       "ShadowDepth": 300,
       "ShadowResolution": 2048,
-      "ShadowFiltering": 1
+      "ShadowFiltering": 1,
+      "ShadowDistance": 420,
+      "SplitLambda": 0.85
     }
   ],
   "Decals": [],

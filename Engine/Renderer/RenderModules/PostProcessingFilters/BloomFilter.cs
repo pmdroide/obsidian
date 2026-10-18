@@ -355,6 +355,17 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
         /// The smaller this value the better performance and the worse our final image quality</param>
         /// <param name="height">see: width</param>
         /// <returns></returns>
+        /// <summary>
+        /// The exposure the tonemapper applies, so <see cref="GameSettings.g_BloomStart"/> is in exposed units:
+        /// <paramref name="powExposure"/> = 2^Exposure, <paramref name="autoExposure"/> = the adapted EV (1x1) or null.
+        /// </summary>
+        public void SetExposure(float powExposure, Texture2D autoExposure)
+        {
+            _bloomEffect.Parameters["PowExposure"]?.SetValue(powExposure);
+            _bloomEffect.Parameters["UseAutoExposure"]?.SetValue(autoExposure != null ? 1f : 0f);
+            if (autoExposure != null) _bloomEffect.Parameters["ExposureTexture"]?.SetValue(autoExposure);
+        }
+
         public Texture2D Draw(Texture2D inputTexture, int width, int height)
         { 
             //Check if we are initialized
@@ -540,7 +551,8 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             _bloomStrength4 = GameSettings.g_BloomStrength4;
             _bloomStrength5 = GameSettings.g_BloomStrength5;
 
-            BloomThreshold = GameSettings.g_BloomThreshold * 0.1f;
+            _bloomEffect.Parameters["BloomStart"]?.SetValue(GameSettings.g_BloomStart);
+            _bloomEffect.Parameters["BloomKnee"]?.SetValue(GameSettings.g_BloomKnee);
         }
 
         private void ChangeBlendState()

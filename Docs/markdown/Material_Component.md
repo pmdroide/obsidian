@@ -149,9 +149,11 @@ Cobblestone on the plaza.
 The G-buffer shader (`Shaders/GBufferSetup/Gbuffer.fx`, `ApplyWetSurface`) does the
 damp, puddle and ripple work; `GBufferRenderModule` passes the material settings
 and the weather (`SurfaceWetness` in `Engine/Logic/Weather.cs`, updated by the
-renderer). Wet pixels set the otherwise unused albedo alpha, which
-`Shaders/Deferred/DeferredEnvironmentMap.fx` reads to switch to the view-dependent
-Fresnel. Limits: puddles do not raise the surface or affect physics, and very
+renderer). Wet pixels write material type 7 into the G-buffer (the normal target's
+blue channel), which `Shaders/Deferred/DeferredEnvironmentMap.fx` reads to switch to the
+view-dependent Fresnel. (The albedo alpha now holds the material's **Ambient Occlusion**
+map, a seventh texture slot that darkens only indirect light; see
+[Source2_Look.md](Source2_Look.md).) Limits: puddles do not raise the surface or affect physics, and very
 close puddles can look dark when the scene's environment probe sees dark
 surroundings in that direction and screen-space reflections miss.
 

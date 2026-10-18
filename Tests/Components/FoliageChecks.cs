@@ -152,7 +152,7 @@ internal static class FoliageChecks
               content.Load<Effect>("Shaders/Shadow/ShadowMap") is var shadow && shadow.Techniques["DrawLinearDepthAlpha"] != null &&
               shadow.Parameters["WindEnabled"] != null && shadow.Parameters["View"] != null &&
               content.Load<Effect>("Shaders/Editor/IdRender").Parameters["ViewProjection"] != null &&
-              content.Load<Effect>("Shaders/Deferred/DeferredDirectionalLight").Techniques["SSShadowed"] != null,
+              content.Load<Effect>("Shaders/Deferred/DeferredDirectionalLight").Techniques["Shadowed"] != null,
             "the G-buffer, shadow, picking and sun shaders compile with the foliage wind and translucency");
 
         var previousContent = Globals.content;
@@ -264,7 +264,10 @@ internal static class FoliageChecks
         // Directional shadows: the leaves cast cut-out shadows that move with the wind.
         var shadows = new ShadowMapRenderModule(content, "Shaders/Shadow/ShadowMap");
         var sun = new DirectionalLight(Color.White, 10, Vector3.Normalize(new Vector3(0.2f, 0.1f, -1)), new Vector3(0, 0, 10),
-            castShadows: true, shadowSize: 12, shadowDepth: 40, shadowResolution: 256);
+            castShadows: true, shadowSize: 12, shadowDepth: 40, shadowResolution: 512);
+        // One cascade fitted to the 20 m in front of the camera (the sun's shadow map is a cascade atlas)
+        sun.CascadeCount = 1;
+        sun.ShadowDistance = 20;
         var camera = new Camera(cameraPosition, new Vector3(0, 0, 4.2f));
         float[] ShadowMap(float clock)
         {
@@ -273,7 +276,7 @@ internal static class FoliageChecks
             sun.HasChanged = true;
             shadows.Draw(graphics, meshes, entities, new List<PointLight>(), new List<DirectionalLight> { sun }, camera);
             graphics.SetRenderTarget(null);
-            var texels = new float[256 * 256];
+            var texels = new float[sun.ShadowMap.Width * sun.ShadowMap.Height];
             sun.ShadowMap.GetData(texels);
             return texels;
         }

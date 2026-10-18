@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Engine.Entities;
 using Engine.Logic;
 using Engine.Renderer.Helper;
@@ -74,9 +75,72 @@ namespace Engine.Renderer.RenderModules
             Initialize();
         }
 
-        public RenderTargetCube Cubemap
+        /// <summary>The scene's GGX-prefiltered global probe (Lighting.EnvironmentPrefilter): mip m = roughness m / (mips - 1).</summary>
+        public void SetGlobalProbe(TextureCube prefiltered)
         {
-            set { _paramReflectionCubeMap.SetValue(value); }
+            _paramReflectionCubeMap.SetValue(prefiltered);
+            if (prefiltered != null) _deferredEnvironmentShader.Parameters["GlobalMaxMip"]?.SetValue((float)Math.Max(prefiltered.LevelCount - 1, 0));
+        }
+
+        /// <summary>The split-sum BRDF lookup texture (Lighting.EnvironmentPrefilter.BrdfLut).</summary>
+        public Texture2D BrdfLut
+        {
+            set
+            {
+                _deferredEnvironmentShader.Parameters["BrdfLut"]?.SetValue(value);
+                _deferredEnvironmentShader.Parameters["UseBrdfLut"]?.SetValue(value != null);
+            }
+        }
+
+
+        /// <summary>
+        /// The local Reflection Probes this view blends (highest priority first). With <paramref name="bake"/> each
+        /// is normalised by the baked irradiance at its capture point (Source 2 look, phase 3.3).
+        /// </summary>
+        public void SetLocalProbes(IReadOnlyList<ReflectionProbes.Probe> probes, ProbeVolumeData bake) =>
+            ImageBasedLightingParameters.ApplyLocalProbes(_deferredEnvironmentShader.Parameters, probes, bake);
+
+        /// <summary>The AO Proxy shapes of this frame (Common/AoProxies.fx).</summary>
+        public void SetAoProxies(Components.AoProxyShapes proxies)
+        {
+            var p = _deferredEnvironmentShader.Parameters;
+            p["AoProxyCount"]?.SetValue(proxies?.Count ?? 0);
+            if (proxies == null || proxies.Count == 0) return;
+            p["AoProxyWorldToUnit"]?.SetValue(proxies.WorldToUnit);
+            p["AoProxyA"]?.SetValue(proxies.A);
+            p["AoProxyB"]?.SetValue(proxies.B);
+            p["AoProxySettings"]?.SetValue(proxies.Settings);
+        }
+
+        /// <summary>The capture pass of a cubemap face: only the baked diffuse light (probe volume or sky), added to the lights.</summary>
+        public void DrawCapture(GraphicsDevice graphicsDevice, Vector3 origin, Matrix view, FullScreenTriangle fullScreenTriangle)
+        {
+            var p = _deferredEnvironmentShader.Parameters;
+            p["CaptureMode"]?.SetValue(true);
+            CameraPositionWS = origin;
+            graphicsDevice.DepthStencilState = DepthStencilState.None;
+            graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+            _paramTransposeView.SetValue(Matrix.Transpose(view));
+            _passBasic.Apply();
+            fullScreenTriangle.Draw(graphicsDevice);
+            p["CaptureMode"]?.SetValue(false);
+        }
+
+        /// <summary>Bilateral-upsampled SSAO; it darkens the indirect light only (Source 2 look, phase 1.2).</summary>
+        public Texture2D SSAOMap
+        {
+            set { _deferredEnvironmentShader.Parameters["SSAOMap"]?.SetValue(value); }
+        }
+
+        private bool _useSSAO = true;
+        public bool UseSSAO
+        {
+            get { return _useSSAO; }
+            set
+            {
+                _useSSAO = value;
+                _deferredEnvironmentShader.Parameters["UseSSAO"]?.SetValue(value);
+            }
         }
 
         public TextureCube SkyCubemap
@@ -274,7 +338,7 @@ namespace Engine.Renderer.RenderModules
             _paramProbeVolumeMin = _deferredEnvironmentShader.Parameters["ProbeVolumeMin"];
             _paramProbeVolumeExtentRcp = _deferredEnvironmentShader.Parameters["ProbeVolumeExtentRcp"];
             _paramProbeVolumeCells = _deferredEnvironmentShader.Parameters["ProbeVolumeCells"];
-            _paramProbeSHR = _deferredEnvironmentShader.Parameters["ProbeSHR"];
+            _paramProbeSHR = _deferredEnvironmentShader.Parameters["ProbeData"];
             _paramProbeSHG = _deferredEnvironmentShader.Parameters["ProbeSHG"];
             _paramProbeSHB = _deferredEnvironmentShader.Parameters["ProbeSHB"];
             _paramProbeDistPos = _deferredEnvironmentShader.Parameters["ProbeDistPos"];
@@ -314,34 +378,8 @@ namespace Engine.Renderer.RenderModules
         /// <paramref name="capturePosition"/> is where the reflection cubemap was rendered: the shader
         /// darkens cubemap reflections where the probes see less light than they do there.
         /// </summary>
-        public void SetProbeVolume(LightingSystem lighting, float intensity, Vector3 capturePosition)
-        {
-            if (_paramUseProbeVolume == null) return;
-
-            ProbeVolumeData data = lighting?.GpuData;
-            if (data == null || lighting.ProbeSHR == null || _paramProbeSHR == null)
-            {
-                _paramUseProbeVolume.SetValue(false);
-                return;
-            }
-
-            Vector3 extent = data.BoundsMax - data.BoundsMin;
-            _paramUseProbeVolume.SetValue(true);
-            _paramProbeVolumeIntensity?.SetValue(intensity);
-            _paramProbeVolumeMin?.SetValue(data.BoundsMin);
-            _paramProbeVolumeExtentRcp?.SetValue(new Vector3(1f / extent.X, 1f / extent.Y, 1f / extent.Z));
-            _paramProbeVolumeCells?.SetValue(new Vector3(data.CountX - 1, data.CountY - 1, data.CountZ - 1));
-            _paramProbeSHR.SetValue(lighting.ProbeSHR);
-            _paramProbeSHG?.SetValue(lighting.ProbeSHG);
-            _paramProbeSHB?.SetValue(lighting.ProbeSHB);
-            _paramProbeDistPos?.SetValue(lighting.ProbeDistPos);
-            _paramProbeDistNeg?.SetValue(lighting.ProbeDistNeg);
-
-            data.SampleSH(capturePosition, out Vector4 captureR, out Vector4 captureG, out Vector4 captureB);
-            _paramCaptureSHR?.SetValue(captureR);
-            _paramCaptureSHG?.SetValue(captureG);
-            _paramCaptureSHB?.SetValue(captureB);
-        }
+        public void SetProbeVolume(LightingSystem lighting, float intensity, Vector3 capturePosition) =>
+            ImageBasedLightingParameters.ApplyProbeVolume(_deferredEnvironmentShader.Parameters, lighting, intensity, capturePosition);
 
         public void DrawEnvironmentMap(GraphicsDevice graphicsDevice, Camera camera, Matrix view, FullScreenTriangle fullScreenTriangle, EnvironmentSample envSample, GameTime gameTime, bool fireflyReduction, float ffThreshold)
         {

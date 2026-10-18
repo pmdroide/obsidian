@@ -54,6 +54,7 @@ public partial class EnvironmentViewModel : ObservableObject
     [ObservableProperty] private double _fogAbsorption = 0.1;
     [ObservableProperty] private double _fogSunScatter = 0.1;
     [ObservableProperty] private double _fogLightScatter = 1.5;
+    [ObservableProperty] private double _fogIndirectScatter = 0.1;
     [ObservableProperty] private double _fogAnisotropy = 0.45;
     [ObservableProperty] private double _fogStartDistance = 30;
     [ObservableProperty] private double _fogFullDistance = 400;
@@ -140,6 +141,7 @@ public partial class EnvironmentViewModel : ObservableObject
             FogAbsorption = settings.FogAbsorption;
             FogSunScatter = settings.FogSunScatter;
             FogLightScatter = settings.FogLightScatter;
+            FogIndirectScatter = settings.FogIndirectScatter;
             FogAnisotropy = settings.FogAnisotropy;
             FogStartDistance = settings.FogStartDistance;
             FogFullDistance = settings.FogFullDistance;
@@ -199,6 +201,7 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnFogAbsorptionChanged(double value) => Push(s => s.FogAbsorption = (float)value);
     partial void OnFogSunScatterChanged(double value) => Push(s => s.FogSunScatter = (float)value);
     partial void OnFogLightScatterChanged(double value) => Push(s => s.FogLightScatter = (float)value);
+    partial void OnFogIndirectScatterChanged(double value) => Push(s => s.FogIndirectScatter = (float)value);
     partial void OnFogAnisotropyChanged(double value) => Push(s => s.FogAnisotropy = (float)value);
     partial void OnFogStartDistanceChanged(double value) => Push(s => s.FogStartDistance = (float)value);
     partial void OnFogFullDistanceChanged(double value) => Push(s => s.FogFullDistance = (float)value);
@@ -229,7 +232,7 @@ public partial class EnvironmentViewModel : ObservableObject
     {
         var d = new EnvironmentSettings();
         FogDensity = d.FogDensity; FogAbsorption = d.FogAbsorption; FogSunScatter = d.FogSunScatter;
-        FogLightScatter = d.FogLightScatter; FogAnisotropy = d.FogAnisotropy; FogStartDistance = d.FogStartDistance;
+        FogLightScatter = d.FogLightScatter; FogIndirectScatter = d.FogIndirectScatter; FogAnisotropy = d.FogAnisotropy; FogStartDistance = d.FogStartDistance;
         FogFullDistance = d.FogFullDistance; FogNearDensity = d.FogNearDensity; FogSkyStrength = d.FogSkyStrength;
         FogSkyShaftDistance = d.FogSkyShaftDistance; MaxAutoExposure = d.MaxAutoExposure;
     }

@@ -4,6 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "../Common/helper.fx"
+#include "../Common/FroxelFog.fx"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TEXTURES
@@ -17,18 +18,9 @@ Texture2D SSAOMap;
 Texture2D DepthMap;
 Texture2D volumeLightMap;
 
-// FINAL accumulated froxel fog texture
-Texture2D FroxelAccumulationTexture;
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CAMERA / FROXELS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-float NearClip;
-float FarClip;
-
-float3 GridDimensions;
-float2 ScreenResolution;
 
 bool useSSAO = true;
 bool UseFroxelFog = true;
@@ -80,43 +72,6 @@ struct VertexShaderOutput
     float2 TexCoord : TEXCOORD0;
 };
 
-// Continuous-coord atlas UV. Within slice fz the V coord stays in [fz/nz, (fz+1)/nz] as long
-// as fyF is in [0, ny-1], so the hardware LINEAR sampler does bilinear XY interpolation
-// without bleeding across Z slices.
-float2 FroxelContinuousToAtlasUV(float fxF, float fyF, int fz)
-{
-    float nx = GridDimensions.x;
-    float ny = GridDimensions.y;
-    float nz = GridDimensions.z;
-    return float2((fxF + 0.5) / nx, ((float)fz * ny + fyF + 0.5) / (ny * nz));
-}
-
-float4 SampleFroxelAccumulationTexture(float2 screenUV, float depth)
-{
-    float nx = GridDimensions.x;
-    float ny = GridDimensions.y;
-    int nzI = (int)GridDimensions.z;
-
-    // Snap to texel centers (-0.5) then clamp - this is what feeds the LINEAR sampler so the
-    // ~8 screen-px per froxel get bilinearly smoothed instead of point-sampled (pixelated).
-    float fxF = clamp(screenUV.x * nx - 0.5, 0.0, nx - 1.0);
-    float fyF = clamp(screenUV.y * ny - 0.5, 0.0, ny - 1.0);
-
-    float normalizedDepth = max(depth, NearClip);
-    float slicePos = saturate(log(normalizedDepth / NearClip) / log(FarClip / NearClip)) * GridDimensions.z;
-    int fz0 = clamp((int)floor(slicePos), 0, nzI - 1);
-    int fz1 = min(fz0 + 1, nzI - 1);
-    float zFrac = frac(slicePos);
-
-    float2 uv0 = FroxelContinuousToAtlasUV(fxF, fyF, fz0);
-    float2 uv1 = FroxelContinuousToAtlasUV(fxF, fyF, fz1);
-
-    float4 sample0 = FroxelAccumulationTexture.Sample(linearSampler, uv0);
-    float4 sample1 = FroxelAccumulationTexture.Sample(linearSampler, uv1);
-
-    return lerp(sample0, sample1, zFrac);
-}
-
 // 5x5 bilateral, sampled at 2px stride so it spans ~10 screen px - roughly one full froxel
 // across (the atlas is 160x90 over a 1280x720 viewport, so ~8 px per froxel). Without this
 // stride a 3x3 kernel stays inside a single froxel block and the grid stays visible when still.
@@ -137,8 +92,8 @@ float4 SampleFroxelBilateral(float2 screenUV, float3 centerNormal, float centerD
         {
             float2 sampleUV = clamp(screenUV + float2(x, y) * texel * stride, 0.0, 1.0);
             float4 depthSample = DepthMap.SampleLevel(pointSampler, sampleUV, 0);
+            // G-buffer depth is view Z / FarClip (sky = 1, the far plane).
             float sampleDepth = saturate(depthSample.r) * FarClip;
-            sampleDepth = max(sampleDepth, NearClip);
 
             float4 normalSample = normalMap.SampleLevel(pointSampler, sampleUV, 0);
             float3 sampleNormal = decode(normalSample.xyz);
@@ -149,7 +104,7 @@ float4 SampleFroxelBilateral(float2 screenUV, float3 centerNormal, float centerD
             float normalWeight = pow(saturate(dot(centerNormal, sampleNormal)), 8.0);
             float spatialWeight = kernel5[x + 2] * kernel5[y + 2];
 
-            float4 fogSample = SampleFroxelAccumulationTexture(sampleUV, sampleDepth);
+            float4 fogSample = SampleFroxelFog(sampleUV, sampleDepth);
 
             float weight = spatialWeight * depthWeight * normalWeight + 5e-3;
             result += fogSample * weight;
@@ -219,23 +174,12 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
         decodeMetalness(normalInfo.b);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // SSAO
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    float ssaoContribution = 1.0;
-
-    if (useSSAO)
-    {
-        ssaoContribution =
-            SSAOMap.SampleLevel(
-                pointSampler,
-                input.TexCoord,
-                0).r;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
     // LIGHTING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Ambient occlusion is applied to the indirect light only, in DeferredEnvironmentMap (Source 2 never darkens
+    // direct light with it). Specular already carries its colour (F0 = albedo for metals, see helper.fx EvaluateLight),
+    // diffuse light is white and takes the albedo here; metals have no diffuse.
 
     float3 diffuseLight =
         diffuseLightMap.Load(texCoordInt).rgb;
@@ -243,18 +187,9 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
     float3 specularLight =
         specularLightMap.Load(texCoordInt).rgb;
 
-    float3 plasticFinal =
-        diffuseColor.rgb * diffuseLight +
-        specularLight;
-
-    float3 metalFinal =
-        diffuseColor.rgb * specularLight;
-
     float3 finalValue =
-        lerp(
-            plasticFinal,
-            metalFinal,
-            metalness);
+        diffuseColor.rgb * (1 - metalness) * diffuseLight +
+        specularLight;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
     // EMISSIVE
@@ -279,17 +214,14 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
         float depthSample =
             DepthMap.Load(texCoordInt).r;
 
-        // G-buffer stores view-space Z / (-FarClip); recover scene distance along forward axis.
+        // G-buffer stores view-space Z / (-FarClip): the positive view Z the froxel slices use.
         float dist =
             saturate(depthSample) *
             FarClip;
 
-        dist =
-            max(dist, NearClip);
-
         // Skip bilateral filtering for sky pixels - their cleared normal data breaks the normal weighting.
         float4 fog = isSky
-            ? SampleFroxelAccumulationTexture(input.TexCoord, dist)
+            ? SampleFroxelFog(input.TexCoord, dist)
             : SampleFroxelBilateral(input.TexCoord, centerNormal, dist);
 
         volumetrics =
@@ -303,7 +235,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
         // any surface at that distance. SkyFogStrength = 0 -> sky only gets the near fog.
         if (isSky)
         {
-            float4 nearFog = SampleFroxelAccumulationTexture(input.TexCoord, min(max(SkyShaftDistance, NearClip), dist));
+            float4 nearFog = SampleFroxelFog(input.TexCoord, min(max(SkyShaftDistance, NearClip), dist));
             volumetrics = nearFog.rgb + max(fog.rgb - nearFog.rgb, 0) * SkyFogStrength;
             transmittance = lerp(saturate(nearFog.a), transmittance, SkyFogStrength);
         }
@@ -315,7 +247,6 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
 
     float3 output =
         finalValue *
-        ssaoContribution *
         transmittance +
         volumetrics;
 

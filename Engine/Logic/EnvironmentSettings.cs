@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace Engine.Logic
 {
-    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather, volumetric fog and the voxel world.</summary>
+    /// <summary>Scene-owned sky selection, initial time, clouds for the animated sky, weather, volumetric fog, post processing and the voxel world.</summary>
     public sealed class EnvironmentSettings
     {
         public bool DayNightCycle { get; set; }
@@ -57,6 +57,8 @@ namespace Engine.Logic
         public float FogSunScatter { get; set; } = 0.1f;
         /// <summary>Brightness of point and spot lights in the fog.</summary>
         public float FogLightScatter { get; set; } = 1.5f;
+        /// <summary>Brightness of the baked bounce light (Lighting > probe volume) in the fog; none without a bake.</summary>
+        public float FogIndirectScatter { get; set; } = 0.1f;
         /// <summary>Henyey-Greenstein g: 0 scatters evenly, towards 1 the fog glows mostly when looking at the light.</summary>
         public float FogAnisotropy { get; set; } = 0.45f;
         /// <summary>Distance (m) where the density starts ramping up from Near Density.</summary>
@@ -72,6 +74,9 @@ namespace Engine.Logic
         /// <summary>Caps how far auto exposure brightens dark views, in EV (Post Processing's maximum still applies).
         /// Lower it to keep dark interiors dark around bright openings.</summary>
         public float MaxAutoExposure { get; set; } = 3;
+
+        /// <summary>Tonemapping, grading, eye adaptation and bloom of this scene (Source 2 look, phase 0.3).</summary>
+        public PostProcessSettings Post { get; set; } = new PostProcessSettings();
 
         // Voxel world: block terrain generated from these settings, drawn and collidable in both Edit and Play
         // (Engine/Voxels, VoxelSystem). Changing any of them regenerates the world.
@@ -95,7 +100,12 @@ namespace Engine.Logic
         /// <summary>Static colliders for the chunks (bodies, characters and raycasts hit the blocks).</summary>
         public bool VoxelCollision { get; set; } = true;
 
-        public EnvironmentSettings Clone() => (EnvironmentSettings)MemberwiseClone();
+        public EnvironmentSettings Clone()
+        {
+            var clone = (EnvironmentSettings)MemberwiseClone();
+            clone.Post = (Post ?? new PostProcessSettings()).Clone();
+            return clone;
+        }
 
         public void Normalize()
         {
@@ -120,6 +130,7 @@ namespace Engine.Logic
             FogAbsorption = Limit(FogAbsorption, 0, 1, 0.1f);
             FogSunScatter = Limit(FogSunScatter, 0, 4, 0.1f);
             FogLightScatter = Limit(FogLightScatter, 0, 16, 1.5f);
+            FogIndirectScatter = Limit(FogIndirectScatter, 0, 4, 0.1f);
             FogAnisotropy = Limit(FogAnisotropy, -0.95f, 0.95f, 0.45f);
             FogStartDistance = Limit(FogStartDistance, 0, 5000, 30);
             FogFullDistance = Limit(FogFullDistance, FogStartDistance + 1, 10000, Math.Max(400, FogStartDistance + 1));
@@ -127,6 +138,8 @@ namespace Engine.Logic
             FogSkyStrength = Limit(FogSkyStrength, 0, 1, 0.1f);
             FogSkyShaftDistance = Limit(FogSkyShaftDistance, 0, 10000, 200);
             MaxAutoExposure = Limit(MaxAutoExposure, -3, 3, 3);
+            Post ??= new PostProcessSettings();
+            Post.Normalize();
             if (!Enum.IsDefined(VoxelTerrain)) VoxelTerrain = VoxelTerrain.Hills;
             VoxelWorldSize = VoxelWorldSettings.ClampSize(VoxelWorldSize);
             VoxelWorldHeight = VoxelWorldSettings.ClampHeight(VoxelWorldHeight);

@@ -53,6 +53,12 @@ namespace Engine.Renderer.RenderModules
             }
         }
 
+        /// <summary>G-buffer motion vectors (UV units, this frame - last frame).</summary>
+        public RenderTarget2D VelocityMap
+        {
+            set { _taaShader.Parameters["VelocityMap"]?.SetValue(value); }
+        }
+
         public RenderTarget2D DepthMap
         {
             get { return _depthMap; }
@@ -104,6 +110,8 @@ namespace Engine.Renderer.RenderModules
         {
 
             UseTonemap = useTonemap;
+            _taaShader.Parameters["UseVelocity"]?.SetValue(Recources.GameSettings.g_taa_velocity);
+            _taaShader.Parameters["Sharpness"]?.SetValue(MathHelper.Clamp(Recources.GameSettings.g_taa_sharpness, 0, 1));
 
             _graphicsDevice.SetRenderTarget(output);
             _graphicsDevice.BlendState = BlendState.Opaque;

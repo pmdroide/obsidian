@@ -1,0 +1,45 @@
+%s(): Deprecated and unimplemented. Fix client code to use new postprocessing resources.
+.?AUPostProcessParameters_t@@
+.?AUTonemapParameters_t@@
+.?AV?$CSchemaUtlVectorManipulator@V?$CUtlVector@V?$CHandle@VC_PostProcessingVolume@@@@V?$CNetworkUtlVector_MemoryType@V?$CHandle@VC_PostProcessingVolume@@@@$0?0@@@@V?$CHandle@VC_PostProcessingVolume@@@@@@
+.?AVC_PostProcessController@@
+.?AVC_PostProcessingVolume@@
+CHandle< CPostProcessController>
+CHandle<C_PostProcessingVolume>
+CPostProcessController
+CPostProcessingVolume
+C_PostProcessController
+C_PostProcessingVolume
+FIELD_HPOSTPROCESSING
+HPostProcessing
+HPostProcessingStrong
+InfoForResourceTypeCPostProcessingResource
+PostProcessParameterNames_t
+PostProcessParameters_t
+PostProcessingSystem_001
+TonemapParameters_t
+When enabled, force the HMD brightness level to vr_hmd_brightness_force_level
+When vr_hmd_brightness_force is enabled, set the HMD brightness level. Valid numbers are -2 (dimmest) through 1 (brightest).
+When vr_hmd_brightness_force is enabled, set the HMD brightness level. Valid numbers are -2 (dimmest) through 2 (brightest).
+hlvr_dead_postprocess_fadein
+hlvr_option_graphics_audio
+hlvr_option_graphics_characters
+hlvr_option_graphics_fog
+hlvr_option_graphics_level
+hlvr_option_graphics_particles
+hlvr_option_graphics_rendering_api
+hlvr_option_graphics_shadows
+hlvr_option_graphics_textures
+hlvr_pause_postprocess_fadein
+lighting/postprocessing/dead_game.vpost
+lighting/postprocessing/paused_game.vpost
+lighting/postprocessing/startup_map.vpost
+m_PostProcessingVolumes
+m_hPostProcessCtrl
+postprocessing
+vr_hmd_brightness_adaptation_rate
+vr_hmd_brightness_debug
+vr_hmd_brightness_enable
+vr_hmd_brightness_force
+vr_hmd_brightness_force_brightness_level
+vr_hmd_brightness_force_level

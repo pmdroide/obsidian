@@ -19,6 +19,12 @@ using Microsoft.Xna.Framework.Input;
 using GameComponent = Engine.Components.GameComponent;
 
 // Integration checks without a graphics device or a test-framework dependency.
+if (args.Contains("--forward-graphics"))
+{
+    MaterialGraphicsChecks.Run(forwardOnly: true);
+    return;
+}
+
 var assets = new Assets { Cube = new ModelDefinition(null, new BoundingBox(-Vector3.One, Vector3.One)) };
 var entity = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One)
     { IsEnabled = true, Name = "Audio object" };
@@ -41,8 +47,63 @@ UpdateSceneEditor();
 Check(ReferenceEquals(sceneEditor.SelectedObject, entity), "panel drag keeps the selected gameobject");
 MouseFrame(Mouse(20, ButtonState.Released));
 
+bridge.SetHostPointerOverViewport(false);
+MouseFrame(new MouseState(40, 30, 120, ButtonState.Pressed, ButtonState.Released,
+    ButtonState.Pressed, ButtonState.Released, ButtonState.Released));
+GameInput.Update(1f / 60f);
+Check(!Input.WasLMBClicked() && !Input.IsLMBPressed() && Input.mouseState.RightButton == ButtonState.Released &&
+      GameInput.MouseScroll == 0 && GameInput.MouseDelta == Vector2.Zero,
+    "hidden engine tab suppresses clicks, camera drag, wheel and mouse delta");
+UpdateSceneEditor();
+Check(ReferenceEquals(sceneEditor.SelectedObject, entity), "clicking an empty workspace tab does not change scene selection");
+bridge.SetHostPointerOverViewport(true);
+MouseFrame(Mouse(20, ButtonState.Pressed));
+Check(!Input.WasLMBClicked() && !Input.IsLMBPressed(), "returning to Engine suppresses an already-held pointer button until release");
+MouseFrame(Mouse(20, ButtonState.Released));
+
 var mainVm = new MainWindowViewModel();
 typeof(MainWindowViewModel).GetField("_bridge", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(mainVm, bridge);
+Publish();
+Check(mainVm.WorkspaceTabs.Count == 1 && mainVm.IsEngineWorkspaceSelected,
+    "workspace starts with Engine and no example tabs");
+var engineTab = mainVm.SelectedWorkspaceTab;
+var environmentEditor = mainVm.Environment;
+foreach (var panel in mainVm.AvailableWorkspacePanels) mainVm.OpenWorkspaceTabCommand.Execute(panel.Kind);
+Check(mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count &&
+      mainVm.WorkspaceTabs.Select(t => t.Kind).Distinct().Count() == mainVm.WorkspaceTabs.Count,
+    "every add-panel menu choice opens one real panel tab");
+mainVm.OpenWorkspaceTabCommand.Execute("Environment");
+var environmentTab = mainVm.SelectedWorkspaceTab;
+mainVm.OpenWorkspaceTabCommand.Execute("World");
+mainVm.SetInspectorViewCommand.Execute("Environment");
+Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, environmentTab) && ReferenceEquals(mainVm.Environment, environmentEditor) &&
+      mainVm.WorkspaceTabs.Count == mainVm.AvailableWorkspacePanels.Count,
+    "reopening a panel selects its existing tab and keeps its editor state");
+Check(mainVm.IsInspectorSelectionView && bridge.SelectedId == entity.Id,
+    "opening workspace panels preserves the object Inspector and scene selection");
+mainVm.OpenWorkspaceTabCommand.Execute("Engine");
+Check(mainVm.IsEngineWorkspaceSelected && ReferenceEquals(mainVm.SelectedWorkspaceTab, engineTab),
+    "returning to Engine selects the original persistent workspace");
+mainVm.CloseWorkspaceTabCommand.Execute(environmentTab);
+Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, engineTab) && !mainVm.WorkspaceTabs.Contains(environmentTab!),
+    "closing an inactive tab keeps the selected workspace");
+mainVm.OpenWorkspaceTabCommand.Execute("Environment");
+Check(mainVm.IsWorkspaceEnvironmentView && ReferenceEquals(mainVm.Environment, environmentEditor),
+    "reopening a closed panel preserves its editor state");
+mainVm.CloseWorkspaceTabCommand.Execute(mainVm.SelectedWorkspaceTab);
+Check(mainVm.IsWorkspaceClassificationsView, "closing the last selected tab selects its left neighbor");
+mainVm.OpenWorkspaceTabCommand.Execute("Engine");
+var nextTab = mainVm.WorkspaceTabs[1];
+mainVm.CloseWorkspaceTabCommand.Execute(engineTab);
+Check(ReferenceEquals(mainVm.SelectedWorkspaceTab, nextTab), "closing Engine selects its right neighbor");
+foreach (var tab in mainVm.WorkspaceTabs.ToArray()) mainVm.CloseWorkspaceTabCommand.Execute(tab);
+Check(mainVm.WorkspaceTabs.Count == 0 && mainVm.SelectedWorkspaceTab == null && !mainVm.IsEngineWorkspaceSelected,
+    "closing all tabs clears the workspace selection");
+mainVm.CloseWorkspaceTabCommand.Execute(engineTab);
+Check(mainVm.WorkspaceTabs.Count == 0, "closing an already closed tab is harmless");
+mainVm.OpenWorkspaceTabCommand.Execute("Engine");
+Check(mainVm.WorkspaceTabs.Count == 1 && mainVm.IsEngineWorkspaceSelected,
+    "the add menu can reopen Engine after all tabs are closed");
 mainVm.SetAssetDragActive(true);
 Check(bridge.IsHostDragDropActive, "asset drag guard reaches the engine synchronously");
 Input.mouseLastState = Mouse(20, ButtonState.Released);
@@ -546,6 +607,7 @@ NpcChecks.Run();
 LodChecks.Run();
 FoliageChecks.Run();
 FogChecks.Run();
+Source2LookChecks.Run();
 ParticleChecks.Run();
 VoxelChecks.Run();
 GridChecks.Run();
@@ -553,6 +615,7 @@ RenderFeatureChecks.Run();
 SaveDataChecks.Run();
 PersistenceChecks.Run();
 PrefabChecks.Run();
+ClassificationChecks.Run();
 MaterialAssetChecks.Run();
 PauseChecks.Run();
 BuildChecks.Run();

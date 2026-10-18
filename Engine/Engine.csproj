@@ -58,12 +58,17 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <None Update="Content\Scenes\**\*.obsc;Content\Scenes\**\*.probes">
+    <None Update="Content\Scenes\**\*.obsc;Content\Scenes\**\*.probes;Content\**\*.reflections">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
     <!-- Prefabs (Logic.Prefab): saved from Anvil, placed by scenes and scripts' Instantiate. Any Content folder. -->
     <None Update="Content\**\*.prefab">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <!-- Post processing profiles (Logic.PostProfile): used by Post Process Volume components. Any Content folder. -->
+    <None Update="Content\**\*.post">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
@@ -112,6 +117,10 @@
     </None>
     <!-- Input actions (Anvil > Window > Input Actions): the named actions scripts read. -->
     <None Update="Content\System\InputActions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Update="Content\System\Classifications.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>

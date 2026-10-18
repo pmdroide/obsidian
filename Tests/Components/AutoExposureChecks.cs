@@ -19,6 +19,10 @@ internal static class AutoExposureChecks
         GameSettings.g_AutoExposureSpeedDarkToLight = 3;
         GameSettings.g_AutoExposureSpeedLightToDark = 1;
         GameSettings.g_AutoExposureCenterWeight = 0.5f;
+        var metering = GameSettings.g_ExposureMetering;
+        float brightPercent = GameSettings.g_BrightPixelPercent, brightTarget = GameSettings.g_BrightPixelTarget,
+            minAverage = GameSettings.g_MinAverageLuminance;
+        GameSettings.g_ExposureMetering = Engine.Logic.ExposureMetering.Average;
 
         var triangle = new FullScreenTriangle(device);
         using var filter = new AutoExposureFilter(content, "Shaders/PostProcessing/AutoExposure");
@@ -58,6 +62,36 @@ internal static class AutoExposureChecks
             filter.Reset();
             float withNaN = Draw(filter, device, frame, 0.016f);
             Check(!float.IsNaN(withNaN) && withNaN > -2.2f && withNaN < -1.8f, "invalid HDR pixels are ignored by the meter");
+
+            // Bright pixel metering (Source's tonemap controller): the brightest 2 % land on the 0.18 target.
+            GameSettings.g_ExposureMetering = Engine.Logic.ExposureMetering.BrightPixels;
+            GameSettings.g_BrightPixelPercent = 2;
+            GameSettings.g_BrightPixelTarget = 0.18f;
+            GameSettings.g_MinAverageLuminance = 0;
+            GameSettings.g_AutoExposureCenterWeight = 0;
+            GameSettings.g_AutoExposureMin = -8;
+            GameSettings.g_AutoExposureMax = 8;
+            Fill(frame, 0.72f);
+            filter.Reset();
+            Check(MathF.Abs(Draw(filter, device, frame, 0.016f) + 2) < 0.35f, "bright pixel metering exposes a flat frame like the average");
+            // A dim room (0.045) with a bright window on the top 3 rows (7.2, ~5 % of the frame)
+            var room = new Vector4[64 * 64];
+            for (int i = 0; i < room.Length; i++)
+            {
+                float l = i < 3 * 64 ? 7.2f : 0.045f;
+                room[i] = new Vector4(l, l, l, 1);
+            }
+            frame.SetData(room);
+            filter.Reset();
+            float highlights = Draw(filter, device, frame, 0.016f);
+            Check(MathF.Abs(highlights - MathF.Log2(0.18f / 7.2f)) < 0.4f,
+                "bright pixel metering exposes the window, not the dim room (no blown-out view out of a dark room)");
+            GameSettings.g_MinAverageLuminance = 0.03f;
+            filter.Reset();
+            float floor = Draw(filter, device, frame, 0.016f);
+            float averageLog = (3 * MathF.Log2(7.2f) + 61 * MathF.Log2(0.045f)) / 64;
+            Check(floor > highlights + 3 && MathF.Abs(floor - (MathF.Log2(0.03f) - averageLog)) < 0.4f,
+                "Min Average Luminance keeps the room from going black");
         }
         finally
         {
@@ -69,6 +103,10 @@ internal static class AutoExposureChecks
             GameSettings.g_AutoExposureSpeedDarkToLight = up;
             GameSettings.g_AutoExposureSpeedLightToDark = down;
             GameSettings.g_AutoExposureCenterWeight = center;
+            GameSettings.g_ExposureMetering = metering;
+            GameSettings.g_BrightPixelPercent = brightPercent;
+            GameSettings.g_BrightPixelTarget = brightTarget;
+            GameSettings.g_MinAverageLuminance = minAverage;
         }
     }
 

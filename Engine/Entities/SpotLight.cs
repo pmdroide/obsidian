@@ -26,6 +26,34 @@ namespace Engine.Entities
         /// <summary>World space cone axis, unit length.</summary>
         public Vector3 Direction { get; private set; } = LocalDirection;
 
+        /// <summary>The cone's sideways axes (local X and Y): the cookie's u and v.</summary>
+        public Vector3 Right { get; private set; } = Vector3.UnitX;
+        public Vector3 Up { get; private set; } = Vector3.UnitY;
+
+        /// <summary>
+        /// Content path of a light cookie ("System/Cookies/flashlight.png"): a texture projected along the cone that
+        /// shapes and tints the light (Source 2's lightcookie). Empty = a plain cone.
+        /// </summary>
+        public string CookiePath
+        {
+            get => _cookiePath;
+            set
+            {
+                string path = string.IsNullOrWhiteSpace(value) ? null : value.Trim().Replace('\\', '/');
+                if (path == _cookiePath && (path == null || Cookie != null)) return;
+                _cookiePath = path;
+                Cookie = path == null ? null : Decal.LoadTexture(path);
+                HasChanged = true;
+            }
+        }
+        private string _cookiePath;
+
+        /// <summary>The loaded cookie (null without one, or when the path didn't load; the path is kept for saving).</summary>
+        public Microsoft.Xna.Framework.Graphics.Texture2D Cookie { get; private set; }
+
+        /// <summary>The flashlight cookie shipped with the engine (look-dev scene).</summary>
+        public const string FlashlightCookie = "System/Cookies/flashlight.png";
+
         /// <summary>cos of the outer / inner half angles, what the shaders consume.</summary>
         public float CosOuter { get; private set; }
         public float CosInner { get; private set; }
@@ -56,6 +84,9 @@ namespace Engine.Entities
                 _rotationMatrix = value;
                 Vector3 direction = Vector3.TransformNormal(LocalDirection, value);
                 Direction = direction.LengthSquared() > 1e-8f ? Vector3.Normalize(direction) : LocalDirection;
+                Vector3 right = Vector3.TransformNormal(Vector3.UnitX, value);
+                Right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : Vector3.UnitX;
+                Up = Vector3.Normalize(Vector3.Cross(Direction, Right));
                 HasChanged = true;
             }
         }
@@ -128,7 +159,12 @@ namespace Engine.Entities
 
         public override TransformableObject Clone
         {
-            get { return new SpotLight(Position, Radius, Color, Intensity, RotationMatrix, SpotAngle, InnerSpotAngle, CastShadows, IsVolumetric, ShadowResolution, SoftShadowBlurAmount, StaticShadows, LightVolumeDensity, IsEnabled); }
+            get
+            {
+                var clone = CopyShape(new SpotLight(Position, Radius, Color, Intensity, RotationMatrix, SpotAngle, InnerSpotAngle, CastShadows, IsVolumetric, ShadowResolution, SoftShadowBlurAmount, StaticShadows, LightVolumeDensity, IsEnabled));
+                clone.CookiePath = CookiePath;
+                return clone;
+            }
         }
     }
 }

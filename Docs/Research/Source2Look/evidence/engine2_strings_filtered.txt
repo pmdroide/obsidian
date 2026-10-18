@@ -1,0 +1,695 @@
+        depth %6d has 
+      pass %d: size is %d, grp uses are 
+  * r_always_render_all_windows = %d\n
+  * r_vconsole_foregroundforcerender = %d\n
+ Tokenizer::ParseFloat() passed text that could not have been tokenized as a float: 
+ Tokenizer::ParseStringAppend() passed text that could not have been tokenized as a string: 
+!m_boolOpaque
+#var_
+#var_%s
+%6d unresolved strings\n
+%f Player [%s][%d][adr:%s] was sent a datagram %d bits (%8.3f bytes)\n
+%s -- pass %d
+%s string image, int src_corner_height, int src_corner_width, int draw_corner_height, int draw_corner_width
+%s, string image, string border, string fillcolor, bool scaleImage
+%s:  password failed.\n
+%s:  player entity %d out of range, maxclients is %d\n
+%s_vr_360.vcfg
+%s_vr_knuckles.vcfg
+%s_vr_vive.vcfg
+%s_vr_windowsmr.vcfg
+---------players--------\n
+-error_if_idle
+-favor_consistent_framerate
+-full_render_callback_clear
+-msaa
+-netconpassword
+-nopassiveasserts
+.?AUscheduler_interface@Concurrency@@
+.?AV?$CCallback@VCSteam3Client@@ULowBatteryPower_t@@$0A@@@
+.?AV?$CNetMessagePB@$0BM@VCCLCMsg_SplitPlayerConnect@@$09$00$0A@@@
+.?AV?$CNetMessagePB@$0BO@VCCLCMsg_SplitPlayerDisconnect@@$09$00$0A@@@
+.?AV?$RepeatedPtrField@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@protobuf@google@@
+.?AV?$RepeatedPtrFieldWrapper@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@internal@protobuf@google@@
+.?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@
+.?AVBlock4x4Encoding_RGB8A1_Opaque@Etc@@
+.?AVBlock4x4Encoding_RGBA8_Opaque@Etc@@
+.?AVCBoundedCvar_CmdRate@@
+.?AVCBoundedCvar_Rate@@
+.?AVCBoundedCvar_UpdateRate@@
+.?AVCBreakpadPassiveAssertionFailureListener@@
+.?AVCCLCMsg_SplitPlayerConnect@@
+.?AVCCLCMsg_SplitPlayerConnect_t@@
+.?AVCCLCMsg_SplitPlayerDisconnect@@
+.?AVCCLCMsg_SplitPlayerDisconnect_t@@
+.?AVCDemoPlayer@@
+.?AVCEmptyProceduralLayer@@
+.?AVCGameInfo_CDotaGameInfo_CPlayerInfo@@
+.?AVCGameUIRenderCallbackGroupLayer@@
+.?AVCGameUIRenderLayer@@
+.?AVCMsgPlayerInfo@@
+.?AVCMsgServerNetworkStats_Player@@
+.?AVCNETMsg_SetConVar_t@@
+.?AVCPanoramaProceduralLayer@@
+.?AVCProtobufBinding@?$CNetMessagePB@$0BM@VCCLCMsg_SplitPlayerConnect@@$09$00$0A@@@
+.?AVCProtobufBinding@?$CNetMessagePB@$0BO@VCCLCMsg_SplitPlayerDisconnect@@$09$00$0A@@@
+.?AVCSVCMsg_FlattenedSerializer_t@@
+.?AVCSVCMsg_GameEventList_descriptor_t@@
+.?AVCSource1InputHandler_Client@@
+.?AVCSource1InputHandler_VGUI_Escape@@
+.?AVCSource1InputHandler_VGUI_NoEscape@@
+.?AVCUGCAddonPathResolver@@
+.?AVConVar_ServerBounded@@
+.?AVIDemoPlayer@@
+.?AVIProceduralLayerRenderer@@
+.?AVIUGCAddonPathResolver@@
+.?AVProtoFlattenedSerializer_t@@
+.?AV_Future_error_category@std@@
+.?AV_Generic_error_category@std@@
+.?AVerror_category@std@@
+.?AVimproper_lock@Concurrency@@
+.?AVimproper_scheduler_attach@Concurrency@@
+.?AVimproper_scheduler_reference@Concurrency@@
+.?AVinvalid_scheduler_policy_key@Concurrency@@
+.?AVinvalid_scheduler_policy_thread_specification@Concurrency@@
+.?AVinvalid_scheduler_policy_value@Concurrency@@
+.?AVnested_scheduler_missing_detach@Concurrency@@
+.?AVscheduler_resource_allocation_error@Concurrency@@
+.?AVscheduler_worker_creation_error@Concurrency@@
+.PLACEHOLDER_VALUE
+0: Force z prepass off. 1: Force on. -1: Don't force
+0: Use normals reconstructed from depth. 1: Output correct normals in z prepass.
+>mesh_calculate_curvature_smooth_pass_count
+?V_stristr_fast@@YAPEBDPEBD0@Z
+AE_ACTION_SET_TURN_RATE_SCALE
+AE_DOTA_SUPPRESS_CONSTANT_LAYER
+AE_IK_SET_MASTER_BLEND_AMOUNT
+AE_PASSENGER_PHYSICS_PUSH
+AddLayer
+AnimAddLayer
+AnimAutoLayer
+AnimBlendLayer
+AnimBlendLayerBase
+AnimBlendLayerPoseParam
+AnimLayer
+AnimLayerBase
+AutoLayer
+BSR_ANYCRLF)
+BSR_UNICODE)
+Bad Password
+Bad password attempt from net console\n
+Bind a key for a particular splitscreen player.
+BlendLayer
+BlendLayerBase
+BlendLayerPoseParam
+Both ConVars must be marked FCVAR_REPLICATED for linkage to work (%s)\n
+Buffer passed to JPEG library is too small
+CDemoPlayer::FullPacketGoto
+CDemoPlayer::GetNetCmd
+CDemoPlayer::LoadSpawnGroups Preloading spawngroup %s\n
+CDemoPlayer::LoadSpawnGroups Premanifest update spawngroup %s\n
+CDemoPlayer::ReadPacket
+CDemoPlayer::RemoveMessagesForSkip
+CDemoPlayer::SkipToTick
+CDemoPlayer::StartPlayback
+CHECK failed: !descriptor_: 
+CHECK failed: (buffer_size) >= (0): 
+CHECK failed: (byte_size_before_serialization) == (byte_size_after_serialization): 
+CHECK failed: builder_: 
+CHECK failed: map_iter->iter_ != NULL: 
+CHECK failed: this == other_mutator: 
+CL:  Connection to %s failed, server requires a password\n
+CL:  FCVAR_CHEAT and FCVAR_REPLICATED cvars reverted to defaults (remote connection).\n
+COLLISION_MODE_PER_FRAME_PLANESET
+COLLISION_MODE_PER_PARTICLE_TRACE
+COrderedConstructor_Create<class COrderedInitShutdownRefWrapper<&void __cdecl EarlyInit_Common(bool,class COrderedConstructor_DependencyManagement<void> &)>,class CResolveOrderedFunc<class COrderedInitShutdownRefWrapper<&void __cdecl EarlyInit_Common(bool,class COrderedConstructor_DependencyManagement<void> &)>,&void __cdecl _ORDERED_INIT_SHUTDOWN_WRAPPER_RESOLVEFUNC<&void __cdecl EarlyInit_Common(bool,class COrderedConstructor_DependencyManagement<void> &)>(class COrderedConstructor_DependencyManagement<class COrderedInitShutdownRefWrapper<&void __cdecl EarlyInit_Common(bool,class COrderedConstructor_DependencyManagement<void> &)> > &)>,0>::AddRef
+CPU   In    Out   Uptime  Users   FPS    Players\n%s\n
+CPlayerSlot
+CServerSideClient::ActivatePlayer -end
+CServerSideClient::ActivatePlayer -start
+CServerSideClientBase::ActivatePlayer
+CServerSideClientBase::SpawnPlayer
+CSteam3Client::OnGameServerChangeRequested:  no password ConVar!!!\n
+CTSQueue<struct CNetworkMessageSignalQueue<class CEventIDManager_ProtobufBinding,struct BogusType_t>::QueuedMessage_t,0>::CTSQueue
+CTSQueue<struct CNetworkMessageSignalQueue<class CEventIDManager_ProtobufBinding,struct BogusType_t>::QueuedMessage_t,0>::Push
+CTSQueue<struct CThreadedLogger::Buffer_t *,0>::CTSQueue
+CTSQueue<struct CThreadedLogger::Buffer_t *,0>::Push
+CUtlRBTree<struct CUtlMap<char const *,struct CDemoPlayer::fullpacketstringtableinfo_t *,unsigned short,bool (__cdecl*)(char const * const &,char const * const &)>::Node_t,unsigned short,class CUtlMap<char const *,struct CDemoPlayer::fullpacketstringtableinfo_t *,unsigned short,bool (__cdecl*)(char const * const &,char const * const &)>::CKeyLess,class CUtlMemory<struct UtlRBTreeNode_t<struct CUtlMap<char const *,struct CDemoPlayer::fullpacketstringtableinfo_t *,unsigned short,bool (__cdecl*)(char const * const &,char const * const &)>::Node_t,unsigned short>,unsigned short> >::NewNode
+CUtlRBTree<struct CUtlMap<class CSchemaClassInfo const *,class CUtlVector<struct CEventDispatcher_Base::EventListenerInfo_t,class CUtlMemory<struct CEventDispatcher_Base::EventListenerInfo_t,int> >,unsigned int,bool (__cdecl*)(class CSchemaClassInfo const * const &,class CSchemaClassInfo const * const &)>::Node_t,unsigned int,class CUtlMap<class CSchemaClassInfo const *,class CUtlVector<struct CEventDispatcher_Base::EventListenerInfo_t,class CUtlMemory<struct CEventDispatcher_Base::EventListenerInfo_t,int> >,unsigned int,bool (__cdecl*)(class CSchemaClassInfo const * const &,class CSchemaClassInfo const * const &)>::CKeyLess,class CUtlMemory<struct UtlRBTreeNode_t<struct CUtlMap<class CSchemaClassInfo const *,class CUtlVector<struct CEventDispatcher_Base::EventListenerInfo_t,class CUtlMemory<struct CEventDispatcher_Base::EventListenerInfo_t,int> >,unsigned int,bool (__cdecl*)(class CSchemaClassInfo const * const &,class CSchemaClassInfo const * const &)>::Node_t,unsigned int>,unsigned int> >::NewNode
+CUtlRBTree<struct CUtlMap<class IProtobufBinding const *,class CUtlVector<struct CEventDispatcher_Base::EventListenerInfo_t,class CUtlMemory<struct CEventDispatcher_Base::EventListenerInfo_t,int> >,unsigned int,bool (__cdecl*)(class IProtobufBinding const * const &,class IProtobufBinding const * const &)>::Node_t,unsigned int,class CUtlMap<class IProtobufBinding const *,class CUtlVector<struct CEventDispatcher_Base::EventListenerInfo_t,class CUtlMemory<struct CEventDispatcher_Base::EventListenerInfo_t,int> >,unsigned int,bool (__cdecl*)(class IProtobufBinding const * const &,class IProtobufBinding const * const &)>::CKeyLess,class CUtlMemory<struct UtlRBTreeNode_t<struct CUtlMap<class IProtobufBinding const *,class CUtlVector<struct CEventDispatcher_Base::EventListenerInfo_t,class CUtlMemory<struct CEventDispatcher_Base::EventListenerInfo_t,int> >,unsigned int,bool (__cdecl*)(class IProtobufBinding const * const &,class IProtobufBinding const * const &)>::Node_t,unsigned int>,unsigned int> >::NewNode
+C_INIT_GlobalScale
+C_OP_SetControlPointFromObjectScale
+C_OP_SetControlPointToPlayer
+Can't %s, no more split screen player slots!\n
+Cheat code \
+ClearLayer
+Client %s(%d) tried to execute command \
+ClientPutInServer - no player in save game
+ConVar '%s' is visible to both server and client but is not marked FCVAR_REPLICATED\n
+Current server access password
+D16_SHADOW
+D24X8_SHADOW
+DCT scaled block size %dx%d not supported
+DebugShowZPrepassDepth
+DebugShowZPrepassNormals
+Decrement the timescale by one step
+DemoPlayer: Reached pause tick
+DemoPlayer: Reloading demo file '%s'
+DemoPlayer: SkipToTick
+DemoPlayer: SkipToTick done
+DepthPrepassNormalsTemp
+DepthPrepassTemp
+Draw the depth from the depth pre-pass
+Draw the normals from the depth pre-pass
+ENTITY_IO_TARGET_ENTITYNAME_OR_CLASSNAME
+Enable fog
+Enable rendering of translucent geometry
+Engine2/AllowSaveGamesInMultiplayer
+Engine2/RenderingPipeline/PostProcessingInMainPipeline
+Engine2/RenderingPipeline/RetinaBurnFx
+Engine2/RenderingPipeline/SkipPostProcessing
+FCVAR_CHEAT cvars reverted to defaults (sv_cheats disabled).\n
+FCVAR_NEVER_AS_STRING
+FCVAR_REPLICATED can't also be FCVAR_PROTECTED (%s)\n
+FCVAR_REPLICATED not valid on ConCommands (%s)\n
+FixupResourceName: Illegal full path passed in (\
+FixupResourceName: Illegal path, missing extension passed in (\
+FontManager_001
+For FCVAR_REPLICATED, ConVar must be defined in client and game .dlls (%s)\n
+Force user input to this split screen player.
+Game supporting (%d) split screen players\n
+GetClientConVarValue: player invalid index %i\n
+GetPlayerNetInfo
+GetPlayerNetworkIDString
+GetSplitScreenPlayerAttachToEdict
+GetSplitScreenPlayerForEdict
+HSR_GAME_REMOTE_CHANGELEVEL_RECONNECT
+HostStateRequest::Start(HSR_GAME):  loop(%s) id(%u) addons(%s) desc(%s)\n
+HostStateRequest::Start(HSR_IDLE):  loop(%s) id(%u) addons(%s) desc(%s)\n
+HostStateRequest::Start(HSR_QUIT)\n
+HostStateRequest::Start(HSR_SOURCETV_RELAY):  loop(%s) id(%u) addons(%s) desc(%s)\n
+If set, only members of Steam group will be able to join the server when it's empty, public people will be able to join the server only if it has players.
+If set, players may only join this server from matchmaking lobby, may not connect directly.
+Ignoring attempt to write 16-bit bKGD chunk when bit_depth is 8
+Ignoring attempt to write 16-bit tRNS chunk when bit_depth is 8
+Ignoring attempt to write bKGD chunk out-of-range for bit_depth
+Ignoring attempt to write tRNS chunk out-of-range for bit_depth
+Ignoring request to write a PLTE chunk in grayscale PNG
+Increment the timescale by one step
+Interval_per_tick %f out of range [%f to %f]\n
+Invalid bit depth for RGB image
+Invalid bit depth for RGBA image
+Invalid bit depth for grayscale image
+Invalid bit depth for grayscale+alpha image
+Invalid bit depth for paletted image
+Invalid bit depth in IHDR
+Invalid color type/bit depth combination in IHDR
+Invalid file descriptor data passed to EncodedDescriptorDatabase::Add().
+Invalid sBIT depth specified
+IsSplitScreenPlayer
+Kick a player by name.
+Kick a player by userid or uniqueid, with a message.
+Kick a previously connected player with the same steamID if a replacement comes along
+LAYEREDGAMEROOT
+LINEAR_ABGR8888
+LINEAR_ARGB8888
+LINEAR_BGR888
+LINEAR_BGRA8888
+LINEAR_BGRX5551
+LINEAR_BGRX8888
+LINEAR_D24S8
+LINEAR_I8
+LINEAR_RGB888
+LINEAR_RGBA16161616
+LINEAR_RGBA8888
+LayeredGameRoot
+LayeredOnMod
+Linear_B
+Local Player
+LodScale = %f\n
+MSAADefaultNonVR
+Malicious user attempted to connect with too many players from %s\n
+MinidumpUserStreamInfoGet
+Modifies the LOD scale
+MsaaOverrideType
+Other Players
+Override Fog color: %f %f %f\n
+Overrides the max players reported to prospective clients
+PARALLEL_PROCESS CHLTVServer::ExpandDeltaFrameToFullFrame(), c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\hltvserver.cpp:1852
+PARALLEL_PROCESS CNetworkGameServer::PackEntities_Normal(), c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\sv_packedentities.cpp:954
+PARALLEL_PROCESS CNetworkGameServer::PackEntities_Normal(), c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\sv_packedentities.cpp:973
+PARTICLE_DEPTH_FEATHERING_OFF
+PARTICLE_DEPTH_FEATHERING_ON_OPTIONAL
+PARTICLE_SET_SCALE_CURRENT_VALUE
+PARTICLE_SET_SCALE_INITIAL_VALUE
+PASS 
+PLACEHOLDER_VALUE
+PanoramaDebuggerLayer
+Path_SetCount failed, depth already == DEFAULT_MAX_PATH_DEPTH(%d)
+Perform a consistency check after this amount of time (seconds) has passed since the last.
+Plat_GetWindowContentsScale
+Player %d%s
+Player %s attempting reconnect, but prior connection still active\n
+Player %s reconnecting, disconnecting prior connection\n
+Prescale the clock by this amount.
+Pure server CRC check: client %s passed check for [%s]\\%s\n
+QueryDepthSList
+RENDER_SYSTEM_DLL_DX11
+RENDER_SYSTEM_DLL_DX9
+RENDER_SYSTEM_DLL_EMPTY
+RENDER_SYSTEM_DLL_GL
+RENDER_SYSTEM_DLL_MANTLE
+RENDER_SYSTEM_DLL_NONE
+RENDER_SYSTEM_DLL_VULKAN
+RENDER_SYSTEM_DLL_X360
+Reserve slots for reconnecting human players.
+Resource Manifest: \
+Route voice between splitscreen players on same system.
+SDL_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN
+SHADER_SOURCE
+SHADER_SOURCE_MOD
+SHADER_SOURCE_ROOT
+SV:  % 3d %40.40s not resolved\n
+SV:  %d/%s:  requested resolve all %d changes, actually resolved only %d changes\n
+SV:  %i player server started\n
+SV:  CSVCMsg_FlattenedSerializer_t overflow.\n
+SV:  maxplayers set to %i\n
+SV: Disconnecting due to unresolved k_EAuthSessionResponseAuthTicketCanceled for %s.\n
+Scale used when displaying cachemisses (0 = use default)
+Scale used when displaying load-hit-stores (0 = use default)
+Scale used when displaying time (0 = use default)
+ScrollBar_Horizontal
+ScrollBar_Vertical
+Sending voice from: %s - playerslot: %d [ xuid %llx ]\n
+Server password for entry into multiplayer games
+Set to render sun shadow render targets
+Set to render sun shadow split visibility debugger
+SetConVar: Can't set server cvar %s to %s, not marked as FCVAR_REPLICATED on client\n
+Sets the fog color override
+Show entity packing stats, pass 'clear' as argument to reset counts.
+Show user info for players on server.
+Sitting idle in the main menu for longer than 5 seconds with -error_if_idle or -buildcubemaps on the command line\n
+SourceTV password for all clients
+SourceTV password for relay proxies
+SteamGameServer_GetHSteamUser
+SteamGameServer_Init() OK, logging on to Steam\n
+SteamGameServer_Init()\n
+SteamGameServer_RunCallbacks
+SteamGameServer_Shutdown
+SteamInternal_GameServer_Init
+TestScriptMgr_CheckPoint(client_connected)
+TextMessageMgr_001
+This server is password protected for console access. Must send PASS command\n\r
+Threshold of sun shadow map size percentage below which objects get culled
+Tier0GenericMiniDumpHandler_SetOptions
+Tier0GenericMiniDumpHandler_SetPreHandlerCallback
+TranslucentDebugDraw
+U:\\dev\\source2\\main\\src\\thirdparty\\protobuf-3.5.1\\src\\google\\protobuf\\descriptor_database.cc
+U:\\dev\\source2\\main\\src\\thirdparty\\protobuf-3.5.1\\src\\google\\protobuf\\wire_format_lite.cc
+Unable to read default keybinding configuration (user_keys_default)!\n
+Unable to resolve rcon address %s\n
+Unresolved object reference '%s'
+Usage: r_incrementlodscale <delta>\n
+Use fog_override convars instead of world fog data
+VR_001
+V_strlower_fast
+V_strupper_fast
+Vector vPos( %.1f, %.1f, %.1f )\nout of bounds - LOS needs to pass through outside space, hint this in the level!\n
+VerifyTest() functor result = Pass\n
+VerifyTest() vanilla result = Pass\n
+VisBuilder_001
+VrMultiGpuImageTransfer_%d->0
+VrMultiGpuImageTransfer_1->0
+VrMultiGpuResolveSubrectOnly
+VrResolveMSAA
+Wider eye separation results in greater depth perception
+[%d] Changing player name to Steam name '%s'\n
+[Player %d] : \
+[Player 0] : \
+[player %d]: Key \
+\
+\nGame: \
+\nUsage: blink [convar] [blinkDuration=1.0] [offValue=0.0 onValue=1.0]\n       (no arguments stops current blinking convar)\n\nExample: blink r_ssao           - toggles between 0 and 1 every second\n         blink r_ssao 0.5       - toggles between 0 and 1 every 0.5 seconds\n         blink r_ssao 4 16      - toggles between 4 and 16 every second\n         blink r_ssao 2.0 4 16  - toggles between 4 and 16 every 2 seconds\n\n
+\n\t-1 = use default (parallel controller split)\n\t0 = single threaded combined (i.e., ReadFieldList and Decode combined into one call)\n\t1 = single threaded split (first pass ReadFieldList, second pass Decode)\n\t2 = worker thread for decode (main thread does ReadFieldList, worker thread does Decode)\n\t3 = parallel combined (threadpool does read/decode on work items in parallel)\n\t4 = parallel split\n\t5 = parallel controller combined (like parallel, but uses a parallelcontroller so each thread in pool can share a single SerializedEntity\n\t6 = parallel controller split\n
+__nofilter__
+__temp_unserialization_member__
+anchor_angles
+anchor_position
+angles[player %d]: %.3f,%.3f,%.3f\n
+armedBgColor_override
+armedFgColor_override
+backDepthBuffer
+bakelightindexscale
+banid:  Couldn't resolve uniqueid \
+bgcolor_override
+bind [player %d]: \
+binddefaults [splitscreen player] : bind all commands to default settings for a particular splitscreen player\n
+bindss <player> <key> [command] : attach a command/inputvalue to a key\n
+blinkFgColor_override
+bug_submitter_override
+burst_scale
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\appframework\\appsystemdict.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\bitmap\\ati_compress_loader.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\bitmap\\floatbitmap.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\bitmap\\ispc_compressor_loader.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\common\\console_logging.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\common\\protobuf_helpers.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\basespawngroup.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\cl_demo.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\cl_ents_parse.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\clockdriftmgr.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\downloadlistgenerator.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\engine2.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\enginegameui.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\enginegameui_vgui.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\engineservicemgr.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\ents_shared.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\gameeventsystem.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\gameuiservice.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\generated_proto\\connectionless_netmessages.pb.cc
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\generated_proto\\demo.pb.cc
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\generated_proto\\netmessages.pb.cc
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\generated_proto\\networkbasetypes.pb.cc
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\generated_proto\\networksystem_protomessages.pb.cc
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\hltvclientstate.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\hltvdemo.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\hltvserver.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\host.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\inputservice.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\loopmodeconsole.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\loopmodeingameui.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\loopmodelevelload.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\loopmodemainmenu.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\loopmoderemoteconnect.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\looptypebase.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\memtools.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkgameclient.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkgameclient_interface.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkgameclientbase.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkgameclientbase.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkgameserver_interface.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkgameserverbase.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkp2pservice.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkserverservice.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkstringtable.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\networkstringtableitem.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\pure_server.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\pvs.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\renderingworld.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\screenshot_service.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\serversideclientbase.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\soundservice.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\sv_ents_write.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\sv_framesnapshot.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\sv_packedentities.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\engine2\\xboxsystem.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\interfaces\\interfaces.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\kv3lib\\kv3format_manager.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\mathlib\\mathlib.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\appframework\\materialsystem2app.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\appframework\\tier1app.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\appframework\\tier2app.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\iprerequisite.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\ordered_constructor.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\scenesystem\\iscenesystem.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier0\\tslist.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\eventdispatcher.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlblockmemory.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlfixedmemory.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlleanvector.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utllinkedlist.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlrbtree.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlsignalslot.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlsortvector.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlsymbol.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utlsymbollarge.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier1\\utltshash.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\tier2\\fieldpath.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\public\\vstdlib\\jobthread.h
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier1\\configvalue.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier1\\mempool.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier1\\utlbuffer.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier1\\utlstring.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier2\\fieldpathpacker.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier2\\schemabindings.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\tier2\\threaded_logger.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\vgui2\\vgui_controls\\animationcontroller.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\vgui2\\vgui_controls\\buildfactoryhelper.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\vgui2\\vgui_controls\\consoledialog.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\vgui2\\vgui_controls\\controls.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\vgui2\\vgui_controls\\editablepanel.cpp
+c:\\buildslave\\hlvr_rel_win64\\build\\src\\vgui2\\vgui_controls\\panel.cpp
+castshadows
+cfg/user_%u_slot0
+cfg/user_keys_%u_slot0
+cfg/user_keys_dev_default.vcfg
+changelevel <mapname> :Multiplayer change level.
+cl_clock_correction_force_server_tick
+cl_spectator_cmdrate_factor
+cloth_collision_layer0
+cloth_collision_layer1
+cloth_collision_layer2
+cloth_collision_layer3
+cvar_name
+cvar_value
+defaultBgColor_override
+defaultFgColor_override
+defaultSelectionBG2Color_override
+demo_timescale
+depressedBgColor_override
+depressedFgColor_override
+disabledBgColor_override
+disabledFgColor_override
+draw_corner_height
+draw_corner_width
+drawcolor_override
+engine_render_only
+engine_vr_max_ticks_to_simulate
+entity_component_error_class_decl_says_contained_but_impl_is_referenced
+erroffset passed as NULL
+fgcolor_override
+fillcolor_override
+fog_enable
+fog_lighting
+fog_override_color
+fog_override_enable
+fog_override_end
+fog_override_exponent
+fog_override_max_density
+fog_override_start
+fogcontributionstrength
+freeze_frame_texture_player_%d.vtex
+freeze_render_target_split_%d
+game.DeferredDepth
+game.DepthPrePassNormals
+game.depthprepass
+host_timescale
+host_timescale %.2f\n
+host_timescale_dec
+host_timescale_inc
+info_player_start
+infocus_bgcolor_override
+input_filter_relative_analog_inputs
+instant_replay_timescale
+joy_axisr_deadzone
+joy_axisr_relative
+keyboardFocusColor_override
+m_ColorScale
+m_bCastShadows
+m_bDoNotDrawInFastShadowPath
+m_bOnlyDrawInFastShadowPath
+m_bScaleCurrent
+m_bScaleInitialRange
+m_bScaleInitialValue
+m_bScalePerParticle
+m_bUseShadowFastPath
+m_fLifespanScaleExp
+m_flBakeLightIndexScale
+m_flEmissionScale
+m_flFogContributionStength
+m_flOpStrengthMaxScale
+m_flOpStrengthMinScale
+m_flRadiusScale
+m_flRenderFrameTimeUnscaled
+m_flScalePerParentParticle
+m_flShadowCascadeDistance
+m_flTailAlphaScale
+m_nFogLightingMode
+m_nOpScaleCP
+m_nOpStrengthScaleSeed
+m_nScaleCP
+m_nScaleCPComponent
+m_nScaleCPField
+m_nScaleControlPoint
+m_nScaleControlPointField
+m_nShadowCascadeCount
+m_nShadowCascadeResolution
+m_nShadowHeight
+m_nShadowWidth
+m_vecColorScale
+m_vecTailColorScale
+master_morph_weight
+mat_disable_normal_mapping
+mat_drawTitleSafe
+mat_fullbright
+mat_lpv_luxels
+mat_luxels
+mat_no_renderable_passes
+mat_overdraw
+mat_shading_complexity
+mat_wireframe
+materials/dev/generalfilter_additive.vmat
+maxplayers
+mobile_fps_increase_during_hfr_animations
+multiplayer_break
+outoffocus_bgcolor_override
+output_color_back_buffer
+output_color_for_post
+output_color_ss0
+output_color_ss1
+output_color_stereo_rt
+output_color_texture
+output_color_vr_multigputransfer_rt
+output_color_vr_reconstruction_rt
+output_color_vr_rt
+output_color_vr_rt_dummy
+output_depth_back_buffer
+output_depth_stereo_rt
+output_depth_texture
+output_depth_vr_rt
+pass %u\n
+password
+pin_corner_to_sibling
+player
+player0_using_joystick
+playercount
+playerlist
+players  : %i humans, %i bots (%i max) (%s) (%s)\n
+pop_var_values
+pos [player %d]: %.3f,%.3f,%.3f\n
+pure_server_whitelist.txt
+push_var_values
+r_always_render_all_windows
+r_aspectratio
+r_camerapos
+r_cubemap_takesnapshot
+r_debug_draw_safe_area_insets
+r_debug_rendering_in_vr_headset
+r_directlighting
+r_drawblankworld
+r_drawdecals
+r_drawpanorama
+r_drawskybox
+r_drawvgui
+r_drawviewmodel
+r_entpos
+r_experimental_lag_limiter
+r_extra_render_frames
+r_force_engine_render_frame
+r_force_render_frame_count
+r_force_zprepass
+r_incrementlodscale
+r_indirectlighting
+r_occlusion_culling
+r_randomizememstacks
+r_render_coordination_state
+r_rendersun
+r_retinaburn_capture_next_frame
+r_screen_size_expansion
+r_setpos
+r_show_hipoly_draw_calls
+r_show_skymap
+r_show_ssao
+r_show_zprepass_depth
+r_show_zprepass_normals
+r_showdebugoverlays
+r_showdebugrendertarget
+r_showsceneobjectbounds
+r_showsunshadowdebugrendertargets
+r_showsunshadowdebugsplitvis
+r_size_cull_threshold
+r_size_cull_threshold_shadow
+r_skip_precache_validation_check
+r_ssao
+r_ssr
+r_stereo_convergence
+r_stereo_eye_separation
+r_stereo_mode_anaglyph
+r_stereo_mode_crossed
+r_stereo_mode_parallel
+r_toggleviewportsize
+r_translucent
+r_vconsole_foregroundforcerender
+r_viewport
+r_worldlod
+r_zprepass_normals
+rcon_password
+recenter_on_parent_bone
+remote console password.
+renderingpipelines
+savegame not allowed in multiplayer games
+savegame not allowed, player %d:'%s' is dead
+scaleAmount
+scaleImage
+sdr_port
+selectionColor_override
+selectionTextColor_override
+server_cvar: \
+server_query_info
+setting.mat_vsync
+shadowcascadecount
+shadowcascadedistance%d
+shadowcascaderesolution%d
+shadowtextureheight
+shadowtexturewidth
+src_corner_height
+src_corner_width
+steamvr_mirror
+sv_networkvar_perfieldtracking
+sv_networkvar_validate
+sv_password
+sv_pure:\n\nIf set to 1, the server will force all client files except the whitelisted ones (in pure_server_whitelist.txt) to match the server's files. \n\nIf set to 2, the server will force all client files to come from Steam (and it will not load pure_server_whitelist.txt).\n
+sv_reserve_slots_for_reconnecting_players
+sv_reserve_slots_for_reconnecting_players_kick_prior
+sv_temp_baseline_string_table_buffer_size
+sv_update_master_server
+sv_visiblemaxplayers
+texturescale
+titlebarbgcolor_override
+titlebardisabledbgcolor_override
+titlebardisabledfgcolor_override
+titlebarfgcolor_override
+tv_password
+tv_relay_quit_after_game
+tv_relaypassword
+unbind <key> [splitscreen player] : remove commands from a key\n
+unbindall [splitscreen player] : unbind all commands for a particular splitscreen player\n
+usage: key_findbinding <substring> [splitscreen player]\n
+usage: key_listboundkeys [splitscreen player]\n
+usage: r_viewport [width] [height]\n
+user_keys
+user_keys_default
+vprof_cachemiss_scale
+vprof_loadhitstore_scale
+vprof_time_scale
+vr_camera_decay_roll_halflife
+vr_camera_decay_yaw_pitch_halflife
+vr_carry_type
+vr_companion_window_brightnessmultiplier
+vr_companion_window_zoom
+vr_companion_window_zoom_level
+vr_depth_resolve
+vr_depth_submit
+vr_disable_view_override
+vr_fxaa
+vr_ghost_correction_editing_enable
+vr_ghost_correction_enable
+vr_msaa
+vr_msaa_submit
+vr_refract_rt
+vr_spectator_remove_roll
+vr_spectator_show_left_eye
+vr_spectator_show_steam_vr
+vr_warp
+vr_warp_using_mesh
+xMSAA\n
