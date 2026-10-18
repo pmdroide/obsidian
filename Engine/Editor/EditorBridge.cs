@@ -19,7 +19,7 @@ namespace Engine.Editor
     /// and the editor UI (Avalonia UI thread). All public surface is the IEditorBridge
     /// interface; the engine pokes the internal Bind/DrainAndPublish methods.
     /// </summary>
-    public sealed class EditorBridge : IEditorBridge
+    public sealed partial class EditorBridge : IEditorBridge
     {
         private readonly ConcurrentQueue<Action> _pendingOps = new ConcurrentQueue<Action>();
         private global::Engine.InputDevices.InputDeviceMonitor _inputDevices;
@@ -209,10 +209,12 @@ namespace Engine.Editor
             // the file does not appear at LogPath after a run, the bridge
             // never got bound (engine likely failed to boot).
             Log($"Bridge bound — scene={(scene != null)}, editor={(editor != null)}, assets={(assets != null)}, models={_modelKeyList.Count}");
+            _automationReady = scene != null && editor != null && assets != null;
         }
 
         private void OnSceneSwap(Logic.Scene oldScene, Logic.Scene newScene)
         {
+            _automationSceneGeneration = Guid.NewGuid().ToString("N");
             // Clear selection — the old SelectedObject reference is dead.
             if (_editor != null) _editor.SelectedObject = null;
             try { SceneChanged?.Invoke(); }
@@ -548,39 +550,33 @@ namespace Engine.Editor
                 }
                 try
                 {
-                    // Guard against a model whose geometry never loaded — show the error mesh
-                    // rather than crashing. Finalise geometry before choosing a material.
-                    if (md.Model == null && _assets.ErrorModel != null)
-                        md = _assets.ErrorModel;
-
-                    // Material selection:
-                    //  - The ERROR mesh uses its own texture set, or error.png if those failed.
-                    //  - A convention-bound import uses its bound material.
-                    //  - An import without bound textures falls back to the visible error.png.
-                    //  - A built-in uses its embedded per-mesh-part materials (null material),
-                    //    so Sponza/Helmets etc. keep their textures.
-                    MaterialEffect material;
-                    if (md == _assets.ErrorModel)
-                        material = (_assets.ErrorModelMaterial ?? _assets.ErrorMaterial)?.Clone();
-                    else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound))
-                        material = bound.Clone();
-                    else if (_assets.DynamicModels.ContainsKey(modelKey))
-                        material = (_assets.ErrorMaterial ?? _assets.BaseMaterial)?.Clone();
-                    else
-                        material = null;
-
-                    BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
-                    if (entity != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(name)) entity.Name = name;
-                        if (scale is { } size) entity.Scale = size;
-                        foreach (string type in componentTypes ?? Array.Empty<string>())
-                            if (ComponentRegistry.Find(type) is { } definition) entity.AddComponent(definition.Create(entity));
-                    }
+                    BasicEntity entity = AddBasicEntityNow(modelKey, md, position, name, scale, componentTypes);
                     Log($"AddBasicEntity ok: id={entity?.Id}");
                 }
                 catch (Exception ex) { Log("AddBasicEntity threw: " + ex); }
             });
+        }
+
+        // Shared by UI and typed automation commands, on the game thread. Exceptions reach the automation caller.
+        private BasicEntity AddBasicEntityNow(string modelKey, ModelDefinition md, Vector3 position, string name,
+            Vector3? scale, IReadOnlyList<string> componentTypes)
+        {
+            if (md.Model == null && _assets.ErrorModel != null) md = _assets.ErrorModel;
+            MaterialEffect material;
+            if (md == _assets.ErrorModel)
+                material = (_assets.ErrorModelMaterial ?? _assets.ErrorMaterial)?.Clone();
+            else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound)) material = bound.Clone();
+            else if (_assets.DynamicModels.ContainsKey(modelKey)) material = (_assets.ErrorMaterial ?? _assets.BaseMaterial)?.Clone();
+            else material = null; // Built-ins retain their embedded per-mesh-part materials.
+            BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
+            if (entity != null)
+            {
+                if (!string.IsNullOrWhiteSpace(name)) entity.Name = name;
+                if (scale is { } size) entity.Scale = size;
+                foreach (string type in componentTypes ?? Array.Empty<string>())
+                    if (ComponentRegistry.Find(type) is { } definition) entity.AddComponent(definition.Create(entity));
+            }
+            return entity;
         }
 
         public void EnqueueDelete(int id)
@@ -1113,6 +1109,8 @@ namespace Engine.Editor
                 try { op(); }
                 catch (Exception ex) { Log("op threw: " + ex); }
             }
+
+            DrainAutomation();
 
             // 2. Cache spawn point for "Add at camera focus".
             if (_scene.Camera != null)

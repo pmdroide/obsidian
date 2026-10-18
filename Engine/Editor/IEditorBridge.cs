@@ -179,6 +179,10 @@ namespace Engine.Editor
 
     public interface IEditorBridge
     {
+        /// <summary>Typed automation commands completed on the game thread, independent of UI snapshot throttling.</summary>
+        System.Threading.Tasks.Task<EditorAutomationResult> ExecuteAutomationAsync(EditorAutomationRequest request,
+            System.Threading.CancellationToken cancellationToken = default, Func<bool> allowWrite = null);
+
         InputDevices.InputDeviceSnapshot InputDevices { get; }
         Steam.SteamConnectionStatus SteamStatus { get; }
         void EnqueueSteamConnect();

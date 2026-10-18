@@ -37,6 +37,7 @@ const PAGE_METADATA: Record<string, PageMetadata> = {
   'Persistent_GameObjects.md': { topic: 'scene', slug: 'persistent-gameobjects', title: 'Persistent GameObjects' },
   'Script_Behaviours.md': { topic: 'code', slug: 'script-behaviours', title: 'Script Behaviours' },
   'Editor_Architecture.md': { topic: 'editor', slug: 'architecture', title: 'Anvil Editor Architecture' },
+  'Editor_MCP.md': { topic: 'editor', slug: 'mcp', title: 'Editor MCP Server' },
   'Importing Structure.md': { topic: 'assets', slug: 'importing', title: 'Importing Assets' },
   'Material_Component.md': { topic: 'rendering', slug: 'materials', title: 'Materials & Water' },
   'Scene_Lighting_and_Fog.md': { topic: 'rendering', slug: 'lighting-and-fog', title: 'Scene Lighting & Fog' },

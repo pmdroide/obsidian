@@ -675,6 +675,9 @@
                         <MenuItem Header="Steam"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="Steam" />
+                        <MenuItem Header="MCP"
+                                  Command="{Binding OpenWorkspaceTabCommand}"
+                                  CommandParameter="Mcp" />
                         <MenuItem Header="Hierarchy" />
                         <MenuItem Header="Inspector" />
                         <MenuItem Header="Console" />
@@ -1008,6 +1011,42 @@
                                        TextWrapping="Wrap" Classes="subtle" FontSize="11" />
                             <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontSize="11" />
                         </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="WorkspaceMcpPanel" IsVisible="{Binding IsWorkspaceMcpView}"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel DataContext="{Binding Mcp}" x:DataType="m:McpSettingsViewModel"
+                                    Spacing="12" Margin="14,12" MaxWidth="720" HorizontalAlignment="Left">
+                            <TextBlock Text="MCP" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="Connect an AI application to inspect and edit this running scene."
+                                       TextWrapping="Wrap" Classes="muted" />
+                            <CheckBox Content="Enable MCP" IsChecked="{Binding IsEnabled, Mode=TwoWay}" IsEnabled="{Binding !IsBusy}" />
+                            <CheckBox Content="Read-only" IsChecked="{Binding IsReadOnly, Mode=TwoWay}" />
+                            <TextBlock Text="Read-only takes effect immediately. Scene commands require Edit mode; Play and Stop are explicit tools."
+                                       TextWrapping="Wrap" Classes="muted" />
+                            <TextBlock Text="Port" />
+                            <NumericUpDown Value="{Binding Port, Mode=TwoWay}" Minimum="1024" Maximum="65535"
+                                           Increment="1" FormatString="0" IsEnabled="{Binding !IsBusy}" />
+                            <Button Content="Apply" Command="{Binding ApplyCommand}" IsEnabled="{Binding !IsBusy}" />
+                            <TextBlock Text="{Binding ServerStatus}" TextWrapping="Wrap" />
+                            <TextBlock Text="Streamable HTTP endpoint" Classes="muted" />
+                            <SelectableTextBlock Text="{Binding Endpoint}" />
+                            <TextBlock Text="Access token" Classes="muted" />
+                            <TextBox Text="{Binding Token, Mode=OneWay}" IsReadOnly="True" PasswordChar="●" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Copy token" Click="CopyMcpToken_Click" />
+                                <Button Content="Rotate token" Command="{Binding RotateTokenCommand}" IsEnabled="{Binding !IsBusy}" />
+                            </StackPanel>
+                            <TextBlock Text="Use Authorization: Bearer followed by the token in your client's HTTP headers. Apply saves settings and restarts the listener."
+                                       TextWrapping="Wrap" Classes="muted" />
+                            <TextBlock Text="Editor instance" Classes="muted" />
+                            <SelectableTextBlock Text="{Binding InstanceId}" />
+                            <TextBlock Text="User settings" Classes="muted" />
+                            <SelectableTextBlock Text="{Binding SettingsPath}" TextWrapping="Wrap" />
+                            <Separator />
+                            <TextBlock Text="Recent commands" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding RecentOperations}" TextWrapping="Wrap" Classes="muted" />
                         </StackPanel>
                     </ScrollViewer>
 

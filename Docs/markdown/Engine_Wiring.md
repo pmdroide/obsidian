@@ -5,6 +5,7 @@ This is a low-level map of the engine. It covers who creates what, in which orde
 It complements the topic docs instead of repeating them:
 
 - [Editor_Architecture.md](Editor_Architecture.md): Anvil in depth (MVVM, reconciler, XAML).
+- [Editor_MCP.md](Editor_MCP.md): local Anvil MCP server setup, Claude Code/Codex connection instructions, tool contracts, game-thread command completion and validation.
 - [Scenes_and_Game_Flow.md](Scenes_and_Game_Flow.md): scene list, `GameFlow`, `GameInput`, `GameUI` from a script's view.
 - [Input_Actions.md](Input_Actions.md): named input actions (Move, Jump...) and their bindings, Anvil's Input Actions window, rebinding.
 - [Gameobject_Components.md](Gameobject_Components.md) and [Script_Behaviours.md](Script_Behaviours.md): writing components and scripts.
@@ -25,6 +26,7 @@ The documentation website lives in `Docs/website`. Its shared neutral light/dark
 | `ContentPipeline/ContentPipeline.csproj` | `Obsidian.ContentPipeline.dll` (net8.0) | `SkinnedModelProcessor` for mgcb. It is built first, but Engine does **not** reference it (`ReferenceOutputAssembly="false"`). `Content.mgcb` loads it with `/reference:../../ContentPipeline/bin/...` |
 | `Editor/Anvil/Anvil.csproj` | `Anvil.exe` (Avalonia 12) | Editor. It references `Engine.csproj` and runs the engine **in-process** |
 | `Tests/Components` | console app | Integration checks (`InternalsVisibleTo Include="Components"` gives it engine internals) |
+| `Tools/McpInstaller/McpInstaller.csproj` | `anvil-mcp.exe` (.NET 10 Windows console) | Standalone harness configuration installer; Tomlyn parses Codex TOML. No Engine/Anvil assembly dependency. |
 
 How each kind of file reaches the running game (`Engine/Engine.csproj`):
 
@@ -42,6 +44,10 @@ NuGet dependencies that matter at runtime: `MonoGame.Framework.WindowsDX 3.8.4.1
 ---
 
 ## 2. Threads
+
+The separate harness installer (`Tools/McpInstaller`, launched by `install-mcp.ps1` or published with `build-mcp-installer.ps1`) registers the existing HTTP endpoint with Claude Code, Cursor, Codex and VS Code. Its menu/flags select user or project scope. It reads Anvil's saved user-local connection settings, plans every selected configuration, then applies per-file atomic updates with backups; it does not start the engine or listener. Project installs store environment references, and user installs default to the saved token. `Tests/McpInstaller` checks this filesystem behavior against temporary profiles without building the engine.
+
+Anvil's optional MCP host (`Editor/Anvil/Mcp/EditorMcpHost.cs`, C# SDK 2.2.0) runs HTTP handlers on worker threads. `MainWindowViewModel.AttachBridge` connects `McpSettingsViewModel` to the bridge; Window > MCP controls the application-owned listener, independent of tab visibility. Typed requests enter `IEditorBridge.ExecuteAutomationAsync`; `Engine/Editor/EditorAutomation.cs` drains up to four of its 64 queued commands per frame after ordinary UI edits in `DrainAndPublish`. Completion includes copied state captured on the game thread, separate from the six-frame UI snapshot throttle. Scene swaps replace the generation token and reject stale writes. Queued cancellations never run; started operations finish and remain queryable after caller timeouts. `MonoGameHost` stops automation before engine teardown. HTTP/MCP dependencies and user-local token settings stay in Anvil; standalone games have no listener. See [Editor_MCP.md](Editor_MCP.md) for tools, limits and the `--mcp` integration checks.
 
 ```
 STANDALONE (Engine.exe)                     ANVIL (Anvil.exe, one process)

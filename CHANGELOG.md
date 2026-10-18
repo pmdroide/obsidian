@@ -1,5 +1,40 @@
 # Changelog
 
+## Added: MCP harness installer CLI (2026-10-18)
+
+- Added `anvil-mcp`, an independent .NET 10 Windows console installer with an interactive multi-harness menu and flags for Claude Code, Cursor, Codex and VS Code. Added a source launcher and standalone executable publishing script.
+- Added user/project scopes, private saved-token or environment-reference authentication, custom profile/settings paths, dry-run previews, explicit conflict replacement, idempotent reruns, protected backups and atomic per-file updates.
+- Preserved unrelated JSONC/TOML settings and comments, rejected malformed configurations/concurrent changes, registered the tool in the solution, and documented installation and recovery in MCP/engine wiring docs.
+- Validation: installer builds without warnings; all 37 isolated installer checks pass; the published self-contained executable passes help/dry-run smoke checks; PowerShell syntax, Markdown and patch formatting checks pass. Live harness settings were not changed.
+
+- Codex
+
+## Added: Claude Code and Codex MCP setup instructions (2026-10-18)
+
+- Added PowerShell setup for Claude Code and Codex CLI, project JSON/user TOML examples, desktop/IDE token handling, connection checks, editing prompts and troubleshooting to `Docs/markdown/Editor_MCP.md`.
+- Documented private token references, token rotation and port changes, and linked the client instructions from engine wiring.
+- Validation: checked CLI options against installed Claude Code 2.1.220/Codex CLI 0.160.0 and official Anthropic/OpenAI documentation; checked Markdown structure and patch whitespace. Documentation only; client settings were not changed.
+
+- Codex
+
+## Added: Anvil editor MCP server (2026-10-18)
+
+- Added an application-owned Streamable HTTP MCP host using the official C# SDK 2.2.0, with twelve tools for scene inspection, object transforms/creation, components, selection, save, Play/Stop and operation recovery.
+- Added typed game-thread command completion, a bounded queue, scene generation checks, cancellation, retry deduplication and explicit errors. Shared object creation with existing editor commands and kept MCP dependencies outside standalone games.
+- Added Window > MCP with enable/port controls, immediate read-only policy, user-local token storage, token rotation and recent command outcomes. The host validates credentials, Host/Origin headers, scene paths and request/result limits.
+- Replaced the implementation plan with setup and usage guidance, registered it under the website's Editor topic, and updated engine wiring documentation.
+- Validation: Anvil/component builds, the full component integration suite, focused MCP checks with a real SDK HTTP client, and patch whitespace checks pass. Checks cover save/reload, stale IDs, failed saves, retries, queue limits, cancellation, timeout recovery, shutdown and HTTP access/result limits.
+
+- Codex
+
+## Added: Editor MCP implementation guide (2026-10-18)
+
+- Added `Docs/markdown/Editor_MCP.md` with a proposed local HTTP host, existing bridge integration points, command completion requirements, initial tool contracts, connection controls and an implementation/validation checklist.
+- Linked the guide from the engine wiring documentation and distinguished planned MCP features from existing editor behavior.
+- Validation: reviewed against editor/bridge source and official MCP documentation; checked local Markdown links and patch whitespace. Documentation only; no runtime changes.
+
+- Codex
+
 ## Changed: Compact component help buttons (2026-10-17)
 
 - Moved 23 long component and subsection descriptions into 19 question-mark buttons beside their headings, including physics, animation, probes, volumes, cloth, NPCs, LOD, particles and material shader guidance.

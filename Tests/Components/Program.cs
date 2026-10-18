@@ -19,6 +19,11 @@ using Microsoft.Xna.Framework.Input;
 using GameComponent = Engine.Components.GameComponent;
 
 // Integration checks without a graphics device or a test-framework dependency.
+if (args.Contains("--mcp"))
+{
+    McpChecks.Run();
+    return;
+}
 if (args.Contains("--forward-graphics"))
 {
     MaterialGraphicsChecks.Run(forwardOnly: true);
@@ -616,6 +621,7 @@ SaveDataChecks.Run();
 PersistenceChecks.Run();
 PrefabChecks.Run();
 ClassificationChecks.Run();
+McpChecks.Run();
 MaterialAssetChecks.Run();
 PauseChecks.Run();
 BuildChecks.Run();

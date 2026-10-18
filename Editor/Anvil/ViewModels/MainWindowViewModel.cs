@@ -32,13 +32,14 @@ public partial class MainWindowViewModel : ViewModelBase
         new WorkspaceTabViewModel("Lighting", "Lighting"),
         new WorkspaceTabViewModel("Input", "Input Devices"),
         new WorkspaceTabViewModel("Steam", "Steam"),
+        new WorkspaceTabViewModel("Mcp", "MCP"),
         new WorkspaceTabViewModel("Classifications", "Layers, Tags & Roles"),
     };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEngineWorkspaceSelected), nameof(IsWorkspaceEnvironmentView),
         nameof(IsWorkspaceWorldView), nameof(IsWorkspaceRenderPipelineView), nameof(IsWorkspacePostProcessingView),
-        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView), nameof(IsWorkspaceClassificationsView))]
+        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView), nameof(IsWorkspaceClassificationsView), nameof(IsWorkspaceMcpView))]
     private WorkspaceTabViewModel? _selectedWorkspaceTab;
 
     public bool IsEngineWorkspaceSelected => SelectedWorkspaceTab?.IsEngine == true;
@@ -49,6 +50,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsWorkspaceLightingView => SelectedWorkspaceTab?.Kind == "Lighting";
     public bool IsWorkspaceInputView => SelectedWorkspaceTab?.Kind == "Input";
     public bool IsWorkspaceSteamView => SelectedWorkspaceTab?.Kind == "Steam";
+    public bool IsWorkspaceMcpView => SelectedWorkspaceTab?.Kind == "Mcp";
+    public McpSettingsViewModel Mcp { get; } = new();
     public bool IsWorkspaceClassificationsView => SelectedWorkspaceTab?.Kind == "Classifications";
     public ClassificationsViewModel Classifications { get; } = new();
 
@@ -357,6 +360,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Lighting.AttachBridge(bridge);
         Environment.AttachBridge(bridge);
         Steam.AttachBridge(bridge);
+        Mcp.AttachBridge(bridge);
         InputDevices.AttachBridge(bridge);
         Classifications.AttachBridge(bridge);
         RenderPipeline.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:RenderPipeline");

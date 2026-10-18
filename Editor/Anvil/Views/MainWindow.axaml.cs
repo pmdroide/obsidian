@@ -8,6 +8,7 @@ using Anvil.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -18,6 +19,25 @@ namespace Anvil.Views;
 
 public partial class MainWindow : Window
 {
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (!e.Cancel && DataContext is MainWindowViewModel vm) vm.Mcp.BeginShutdown();
+    }
+
+    protected override async void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        try { if (DataContext is MainWindowViewModel vm) await vm.Mcp.ShutdownAsync(); }
+        catch (Exception ex) { Engine.Editor.EditorBridge.Log("MCP shutdown: " + ex.GetType().Name); }
+    }
+
+    private async void CopyMcpToken_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(vm.Mcp.Token);
+    }
+
     private void WorkspaceTabAdd_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button button || DataContext is not MainWindowViewModel vm) return;
