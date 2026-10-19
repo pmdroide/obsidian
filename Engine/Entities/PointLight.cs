@@ -25,6 +25,12 @@ namespace Engine.Entities
         /// <summary>Shadows drawn once and kept (the light and what it lights never move).</summary>
         public bool StaticShadows { get; set; }
 
+        /// <summary>
+        /// Lightmaps (Source 2 look, phase 4.2): on lightmapped surfaces this light's shadows come from the bake's shadow mask
+        /// (soft, and present even without Cast Shadows); dynamic objects keep using its shadow map. Off for lights that move.
+        /// </summary>
+        public bool BakedShadows { get; set; } = true;
+
         // ---- Shadow atlas (Renderer.Lighting.ShadowAtlas, ShadowMapRenderModule) ----
         /// <summary>Atlas tile of each cube face: x, y (texels), size, 1 = in use (spot lights skip faces outside the cone).</summary>
         public readonly Vector4[] ShadowTiles = new Vector4[6];
@@ -186,6 +192,7 @@ namespace Engine.Entities
         {
             clone.SourceRadius = SourceRadius;
             clone.SourceLength = SourceLength;
+            clone.BakedShadows = BakedShadows;
             clone.RotationMatrix = RotationMatrix;
             return clone;
         }

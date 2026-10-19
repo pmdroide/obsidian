@@ -406,6 +406,33 @@ namespace Engine.Renderer.Helper
             SubsurfaceScattering,
             Forward,
             Water,
+            /// <summary>The opaque scene mirrored about a Planar Reflection pane (ForwardRenderModule.DrawReflection),
+            /// culled by <see cref="ReflectionCull"/> instead of the main view.</summary>
+            Reflection,
+        }
+
+        /// <summary>What a <see cref="RenderType.Reflection"/> pass draws: inside the mirrored frustum, in front of the
+        /// plane, within the distance of the camera, never the reflecting gameobject itself.</summary>
+        public struct ReflectionCulling
+        {
+            public BoundingFrustum Frustum;
+            public Plane Plane;
+            public Vector3 Camera;
+            public float Distance;
+            public TransformMatrix Exclude;
+        }
+
+        public ReflectionCulling ReflectionCull;
+
+        private bool IsInReflection(MeshLibrary meshLib, int index, TransformMatrix transform)
+        {
+            ReflectionCulling cull = ReflectionCull;
+            if (transform == cull.Exclude) return false;
+            float radius = meshLib.WorldSphere(index).Radius;
+            var sphere = new BoundingSphere(transform.TransformMatrixSubModel(meshLib.MeshBoundingSphere.Center), radius);
+            if (cull.Plane.DotCoordinate(sphere.Center) < -radius) return false;
+            if (Vector3.Distance(cull.Camera, sphere.Center) - radius > cull.Distance) return false;
+            return cull.Frustum == null || cull.Frustum.Contains(sphere) != ContainmentType.Disjoint;
         }
 
         public void Draw(RenderType renderType, Matrix viewProjection, bool lightViewPointChanged = false, bool hasAnyObjectMoved = false, bool outlined = false, int outlineId = 0, Matrix? view = null, IRenderModule renderModule = null)
@@ -428,10 +455,10 @@ namespace Engine.Renderer.Helper
 
                 if (matLib.Index < 1) continue;
 
-                //if none of this materialtype is drawn continue too!
-                bool isUsed = false;
+                //if none of this materialtype is drawn continue too! (Reflections cull per instance below)
+                bool isUsed = renderType == RenderType.Reflection;
 
-                for (int i = 0; i < matLib.Index; i++)
+                for (int i = 0; i < matLib.Index && !isUsed; i++)
                 {
                     MeshLibrary meshLib = matLib.GetMeshLibrary()[i];
                     
@@ -473,6 +500,10 @@ namespace Engine.Renderer.Helper
 
                 if (renderType == RenderType.Forward &&
                     material.Type != MaterialEffect.MaterialTypes.ForwardShaded) continue;
+
+                //Mirror images hold what the G-buffer draws: no glass (other panes keep their probes)
+                if (renderType == RenderType.Reflection &&
+                    (material.IsTransparent || material.Type == MaterialEffect.MaterialTypes.ForwardShaded)) continue;
 
                 //Set the appropriate Shader for the material
                 if (renderType == RenderType.ShadowOmnidirectional || renderType == RenderType.ShadowLinear)
@@ -521,11 +552,10 @@ namespace Engine.Renderer.Helper
                     for (int index = 0; index < meshLib.Index; index++)
                     {
 
-                        //If it's set to "not rendered" skip
-                        //if (!meshLib.GetWorldMatrices()[index].Rendered) continue;
-                        if (!meshLib.Rendered[index]) continue;
-
                         TransformMatrix transform = meshLib.GetWorldMatrices()[index];
+
+                        //If it's set to "not rendered" skip
+                        if (renderType == RenderType.Reflection ? !IsInReflection(meshLib, index, transform) : !meshLib.Rendered[index]) continue;
                         // LOD component: only the gameobject's current level draws (-1 = culled by distance).
                         if (meshLib.LodLevels[index] != transform.LodLevel || transform.Hidden) continue;
                         // Occlusion culling: hidden behind the scene last frame (main view passes only)
@@ -533,6 +563,7 @@ namespace Engine.Renderer.Helper
                         Matrix localWorldMatrix = transform.World;
                         wind?.SetInstance(transform.Wind);
                         (renderModule as IVelocityModule)?.SetPreviousWorld(transform.HasPrevious ? transform.PreviousWorld : transform.World);
+                        if (renderType == RenderType.Forward) (renderModule as ForwardRenderModule)?.SetPlanarReflection(transform.PlanarReflection);
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,
                                 outlineId, outlined)) continue;
@@ -553,7 +584,7 @@ namespace Engine.Renderer.Helper
 
                 //Reset to 
                 if (material.RenderCClockwise && renderType != RenderType.Water)
-                    graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+                    graphicsDevice.RasterizerState = renderType == RenderType.Reflection ? RasterizerState.CullClockwise : RasterizerState.CullCounterClockwise;
             }
         }
 
@@ -625,6 +656,14 @@ namespace Engine.Renderer.Helper
                 graphicsDevice.RasterizerState = RasterizerState.CullNone;
                 return;
             }
+            //Mirrored: the reflection flips the winding of every triangle
+            if (renderType == RenderType.Reflection)
+            {
+                graphicsDevice.BlendState = BlendState.Opaque;
+                graphicsDevice.DepthStencilState = DepthStencilState.Default;
+                graphicsDevice.RasterizerState = RasterizerState.CullClockwise;
+                return;
+            }
             //Default, Opaque!
             if (renderType != RenderType.Forward)
             {
@@ -656,6 +695,7 @@ namespace Engine.Renderer.Helper
                 || renderType == RenderType.ShadowOmnidirectional 
                 || renderType == RenderType.SubsurfaceScattering 
                 || renderType == RenderType.Forward
+                || renderType == RenderType.Reflection
                 || renderType == RenderType.Water)
             {
                 renderModule.Apply(localWorldMatrix, view, viewProjection);
@@ -719,7 +759,7 @@ namespace Engine.Renderer.Helper
             }
             if (material.RenderCClockwise)
             {
-                graphicsDevice.RasterizerState = RasterizerState.CullClockwise;
+                graphicsDevice.RasterizerState = renderType == RenderType.Reflection ? RasterizerState.CullCounterClockwise : RasterizerState.CullClockwise;
             }
             if (renderType == RenderType.ShadowOmnidirectional || renderType == RenderType.ShadowLinear)
             {
@@ -734,7 +774,7 @@ namespace Engine.Renderer.Helper
             {
                 ((GBufferRenderModule) renderModule).SetMaterialSettings(material);
             }
-            else if (renderType == RenderType.Forward)
+            else if (renderType == RenderType.Forward || renderType == RenderType.Reflection)
             {
                 ((ForwardRenderModule)renderModule).SetMaterialSettings(material);
             }

@@ -2,14 +2,14 @@
 .SYNOPSIS
 Publish the standalone Anvil MCP harness installer for Windows x64.
 .EXAMPLE
-.\build-mcp-installer.ps1
-.\build-mcp-installer.ps1 -Output Builds\McpInstaller-Test
+.\Tools\Scripts\build-mcp-installer.ps1
+.\Tools\Scripts\build-mcp-installer.ps1 -Output Builds\McpInstaller-Test
 #>
 [CmdletBinding()]
 param([string]$Output = 'Builds\McpInstaller')
 
 $ErrorActionPreference = 'Stop'
-$installerRoot = [System.IO.Path]::GetFullPath($PSScriptRoot)
+$installerRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $installerProject = Join-Path $installerRoot 'Tools\McpInstaller\McpInstaller.csproj'
 $installerOutput = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($Output)) { $Output } else { Join-Path $installerRoot $Output }))
 if (-not $installerOutput.StartsWith($installerRoot.TrimEnd('\') + '\', [System.StringComparison]::OrdinalIgnoreCase)) {

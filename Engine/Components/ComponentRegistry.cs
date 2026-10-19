@@ -40,6 +40,7 @@ public static class ComponentRegistry
         Register<FogVolumeComponent>(FogVolumeComponent.TypeId, "Fog Volume");
         Register<FoliageWindComponent>(FoliageWindComponent.TypeId, "Foliage Wind");
         Register<ReflectionProbeComponent>(ReflectionProbeComponent.TypeId, "Reflection Probe");
+        Register<PlanarReflectionComponent>(PlanarReflectionComponent.TypeId, "Planar Reflection");
         Register<ProbeVolumeComponent>(ProbeVolumeComponent.TypeId, "Probe Volume");
         Register<PostProcessVolumeComponent>(PostProcessVolumeComponent.TypeId, "Post Process Volume");
         Register<AoProxyComponent>(AoProxyComponent.TypeId, "AO Proxy");

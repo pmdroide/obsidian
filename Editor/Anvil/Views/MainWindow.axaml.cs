@@ -30,6 +30,7 @@ public partial class MainWindow : Window
         base.OnClosed(e);
         try { if (DataContext is MainWindowViewModel vm) await vm.Mcp.ShutdownAsync(); }
         catch (Exception ex) { Engine.Editor.EditorBridge.Log("MCP shutdown: " + ex.GetType().Name); }
+        finally { if (DataContext is MainWindowViewModel vm) vm.StopConsoleLogging(); }
     }
 
     private async void CopyMcpToken_Click(object? sender, RoutedEventArgs e)

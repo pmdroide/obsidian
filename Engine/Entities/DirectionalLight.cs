@@ -29,6 +29,9 @@ namespace Engine.Entities
         public bool CastShadows { get => _castShadows; set { if (_castShadows != value) { _castShadows = value; HasChanged = true; } } }
         /// <summary>Legacy fixed shadow box width; kept for older scenes. Cascades follow the camera instead.</summary>
         public float ShadowSize { get; set; }
+
+        /// <summary>Lightmaps (phase 4.2): lightmapped surfaces take this light's shadows from the bake's shadow mask too.</summary>
+        public bool BakedShadows { get; set; } = true;
         /// <summary>How far (m) towards the light shadow casters outside the camera's view are still caught.</summary>
         public float ShadowDepth { get; set; }
         /// <summary>Resolution of one cascade (the atlas holds up to 2 x 2 of them).</summary>
@@ -221,6 +224,7 @@ namespace Engine.Entities
             {
                 var clone = new DirectionalLight(Color, Intensity, Direction, Position, CastShadows, ShadowSize, ShadowDepth, ShadowResolution, ShadowFiltering, false);
                 clone.CopyShadowSettings(this);
+                clone.BakedShadows = BakedShadows;
                 return clone;
             }
         }

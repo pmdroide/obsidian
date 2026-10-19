@@ -255,7 +255,7 @@ public sealed partial class EditorBridge
         if (relative.Split(System.IO.Path.DirectorySeparatorChar).Any(part =>
             part.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || part != part.TrimEnd(' ', '.')))
             throw Error("INVALID_ARGUMENT", "Scene paths cannot contain alternate data streams, wildcards or trailing dots/spaces.");
-        foreach (string candidate in new[] { full, System.IO.Path.ChangeExtension(full, ".probes"), System.IO.Path.ChangeExtension(full, ".reflections") })
+        foreach (string candidate in new[] { full, System.IO.Path.ChangeExtension(full, ".probes"), System.IO.Path.ChangeExtension(full, ".reflections"), System.IO.Path.ChangeExtension(full, ".lightmaps") })
             for (string current = candidate; current != null; current = System.IO.Path.GetDirectoryName(current))
             {
                 try

@@ -78,6 +78,10 @@ namespace Engine.Logic
             new StringBuilder( ((Renderer.Renderer.RenderModes)9).ToString() ),
             new StringBuilder( ((Renderer.Renderer.RenderModes)10).ToString() ),
             new StringBuilder( ((Renderer.Renderer.RenderModes)11).ToString() ),
+            new StringBuilder( ((Renderer.Renderer.RenderModes)12).ToString() ),
+            new StringBuilder( ((Renderer.Renderer.RenderModes)13).ToString() ),
+            new StringBuilder( ((Renderer.Renderer.RenderModes)14).ToString() ),
+            new StringBuilder( ((Renderer.Renderer.RenderModes)15).ToString() ),
         };
 
         // Console

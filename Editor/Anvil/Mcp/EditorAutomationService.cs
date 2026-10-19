@@ -26,6 +26,8 @@ public sealed class EditorAutomationService
 
     public string InstanceId { get; } = Guid.NewGuid().ToString("N");
     public bool ReadOnly { get => _readOnly; set => _readOnly = value; }
+    public bool IsActive => _enabled;
+    public bool HasBridge { get { lock (_gate) return _bridge != null; } }
     public string[] RecentOperations { get { lock (_gate) return _recent.ToArray(); } }
 
     public void AttachBridge(IEditorBridge bridge) { lock (_gate) _bridge = bridge; }

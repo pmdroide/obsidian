@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Engine.Editor;
+using Engine.Entities;
 using Engine.Logic;
 using Engine.Renderer.Helper.HelperGeometry;
 using Microsoft.Xna.Framework;
@@ -28,7 +29,16 @@ namespace Engine.Renderer.Lighting
 
         private volatile LightingBakeStatus _status = LightingBakeStatus.Idle;
         private CancellationTokenSource _cts;
-        private Task<ProbeVolumeData> _bakeTask;
+        private Task<BakeResult> _bakeTask;
+
+        /// <summary>What one bake produces: the probes always, lightmaps when Lightmap Static gameobjects were baked.</summary>
+        private sealed class BakeResult
+        {
+            public ProbeVolumeData Probes;
+            public LightmapData Lightmaps;
+            public bool BakedLightmaps;
+            public List<string> LightmapSkipped;
+        }
         private Scene _bakeScene;
         private long _lastProgressTicks;
 
@@ -53,6 +63,10 @@ namespace Engine.Renderer.Lighting
         /// <summary>Probe data currently on the GPU (null when nothing is baked).</summary>
         public ProbeVolumeData GpuData => _uploaded;
 
+        /// <summary>Lightmaps of the active scene on the GPU (Source 2 look, phase 4.2), or null.</summary>
+        public LightmapResources Lightmaps { get; private set; }
+        private LightmapData _uploadedLightmaps;
+
         public LightingBakeStatus Status => _status;
         public bool IsBaking => _bakeTask != null;
 
@@ -69,7 +83,7 @@ namespace Engine.Renderer.Lighting
             try
             {
                 Publish(new LightingBakeStatus(LightingBakeState.Baking, 0, "Gathering scene geometry", null));
-                input = LightingBakeInput.Gather(scene);
+                input = LightingBakeInput.Gather(scene, scene.Lighting.BakeLightmaps);
             }
             catch (Exception e)
             {
@@ -90,10 +104,29 @@ namespace Engine.Renderer.Lighting
             CancellationToken ct = _cts.Token;
 
             EditorBridge.Log($"LightingSystem: bake started — {input.EntityCount} entities, {input.TriangleCount} triangles, " +
-                             $"{input.DirectionalLights.Count} directional + {input.PointLights.Count} point lights");
+                             $"{input.DirectionalLights.Count} directional + {input.PointLights.Count} point lights, " +
+                             $"{input.LightmapInstances.Count} lightmapped");
+            foreach (string skipped in input.LightmapSkipped)
+                EditorBridge.Log("LightingSystem: no lightmap for " + skipped);
 
-            _bakeTask = Task.Run(() => ProbeVolumeBaker.Bake(input, settings, OnProgress, ct), ct);
+            bool lightmaps = settings.BakeLightmaps;
+            _bakeTask = Task.Run(() => Bake(input, settings, lightmaps, ct), ct);
             return true;
+        }
+
+        private BakeResult Bake(LightingBakeInput input, LightingSettings settings, bool lightmaps, CancellationToken ct)
+        {
+            //The probes come first: the lightmap gather lights its ray hits with them. Progress: probes, then lightmaps.
+            bool withLightmaps = lightmaps && input.LightmapInstances.Count > 0;
+            float probeShare = withLightmaps ? 0.35f : 1f;
+            OnProgress(0, $"Building BVH ({input.TriangleCount:N0} triangles)");
+            var bvh = new TriangleBvh(input.A, input.B, input.C);
+            var result = new BakeResult { BakedLightmaps = lightmaps, LightmapSkipped = input.LightmapSkipped };
+            result.Probes = ProbeVolumeBaker.Bake(input, settings, (p, stage) => OnProgress(p * probeShare, stage), ct, bvh);
+            if (withLightmaps)
+                result.Lightmaps = LightmapBaker.Bake(input, settings, bvh, result.Probes,
+                    (p, stage) => OnProgress(probeShare + p * (1 - probeShare), stage), ct);
+            return result;
         }
 
         public void Cancel()
@@ -104,8 +137,9 @@ namespace Engine.Renderer.Lighting
 
         public void ClearBake(Scene scene)
         {
-            if (scene?.BakedProbes == null) return;
+            if (scene?.BakedProbes == null && scene?.BakedLightmaps == null) return;
             scene.BakedProbes = null;
+            scene.BakedLightmaps = null;
             scene.IsDirty = true;
             Publish(new LightingBakeStatus(LightingBakeState.Idle, 0, "", "Baked lighting cleared."));
         }
@@ -137,11 +171,43 @@ namespace Engine.Renderer.Lighting
             ProbeVolumeData wanted = activeScene?.BakedProbes;
             if (!ReferenceEquals(wanted, _uploaded))
                 Upload(graphicsDevice, wanted);
+
+            LightmapData wantedLightmaps = activeScene?.BakedLightmaps;
+            if (!ReferenceEquals(wantedLightmaps, _uploadedLightmaps))
+                UploadLightmaps(graphicsDevice, wantedLightmaps);
+        }
+
+        private void UploadLightmaps(GraphicsDevice graphicsDevice, LightmapData data)
+        {
+            Lightmaps?.Dispose();
+            Lightmaps = null;
+            _uploadedLightmaps = data;
+            if (data == null || graphicsDevice == null) return;
+            try { Lightmaps = new LightmapResources(graphicsDevice, data); }
+            catch (Exception e) { EditorBridge.Log("LightingSystem: lightmap upload failed: " + e); }
+        }
+
+        /// <summary>
+        /// The lightmap shadow mask channel of a light (one-hot), or zero when it has none: no lightmaps, Baked Shadows off,
+        /// not given a channel, or moved since the bake.
+        /// </summary>
+        public Vector4 ShadowMaskChannel(PointLight light)
+        {
+            LightmapData data = Lightmaps?.Data;
+            if (data == null || light == null || !light.BakedShadows) return Vector4.Zero;
+            return data.ChannelOf(light.Id, light.Position, light.Radius);
+        }
+
+        public Vector4 ShadowMaskChannel(Entities.DirectionalLight light)
+        {
+            LightmapData data = Lightmaps?.Data;
+            if (data == null || light == null || !light.BakedShadows || light.Direction.LengthSquared() < 1e-8f) return Vector4.Zero;
+            return data.ChannelOf(light.Id, -Vector3.Normalize(light.Direction));
         }
 
         private void FinishBake()
         {
-            Task<ProbeVolumeData> task = _bakeTask;
+            Task<BakeResult> task = _bakeTask;
             Scene scene = _bakeScene;
             _bakeTask = null;
             _bakeScene = null;
@@ -161,14 +227,30 @@ namespace Engine.Renderer.Lighting
                 return;
             }
 
-            ProbeVolumeData data = task.Result;
+            BakeResult result = task.Result;
+            ProbeVolumeData data = result.Probes;
             scene.BakedProbes = data;
+            //A bake with lightmaps on replaces the old ones (none when nothing is Lightmap Static any more)
+            if (result.BakedLightmaps) scene.BakedLightmaps = result.Lightmaps;
             scene.IsDirty = true;
             int invalid = 0;
             foreach (byte v in data.Valid) if (v == 0) invalid++;
-            Publish(new LightingBakeStatus(LightingBakeState.Completed, 1, "",
-                $"Baked {data.CountX}×{data.CountY}×{data.CountZ} probes in {data.BakeSeconds:0.0} s" +
-                (invalid > 0 ? $" ({invalid} inside geometry, filled from neighbours)." : ".")));
+            string message = $"Baked {data.CountX}×{data.CountY}×{data.CountZ} probes in {data.BakeSeconds:0.0} s" +
+                             (invalid > 0 ? $" ({invalid} inside geometry, filled from neighbours)." : ".");
+            LightmapData lightmaps = result.Lightmaps;
+            if (lightmaps != null)
+            {
+                message += $" Lightmaps: {lightmaps.Instances.Count} gameobjects, {lightmaps.TexelCount:N0} texels on {lightmaps.Pages.Count} page" +
+                           (lightmaps.Pages.Count == 1 ? "" : "s") + $" in {lightmaps.BakeSeconds:0.0} s";
+                if (lightmaps.LightsWithoutChannel > 0)
+                    message += $" ({lightmaps.LightsWithoutChannel} overlapping static lights got no shadow mask channel)";
+                message += ".";
+            }
+            else if (result.BakedLightmaps && result.LightmapSkipped.Count == 0)
+                message += " No Lightmap Static gameobjects, so no lightmaps.";
+            if (result.LightmapSkipped.Count > 0)
+                message += $" {result.LightmapSkipped.Count} Lightmap Static gameobjects can't be lightmapped (see the console).";
+            Publish(new LightingBakeStatus(LightingBakeState.Completed, 1, "", message));
         }
 
         private void Upload(GraphicsDevice graphicsDevice, ProbeVolumeData data)
@@ -306,6 +388,9 @@ namespace Engine.Renderer.Lighting
             Cancel();
             DisposeTextures();
             _uploaded = null;
+            Lightmaps?.Dispose();
+            Lightmaps = null;
+            _uploadedLightmaps = null;
         }
     }
 }

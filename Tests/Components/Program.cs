@@ -613,6 +613,7 @@ LodChecks.Run();
 FoliageChecks.Run();
 FogChecks.Run();
 Source2LookChecks.Run();
+LightmapChecks.Run();
 ParticleChecks.Run();
 VoxelChecks.Run();
 GridChecks.Run();

@@ -187,6 +187,8 @@ public static class BridgeReconciler
             if (vm.Role != snap.Role) vm.Role = snap.Role;
             if (vm.RoleName != snap.RoleName) vm.RoleName = snap.RoleName;
             if (vm.Persistent != snap.IsPersistent) vm.Persistent = snap.IsPersistent;
+            if (vm.LightmapStatic != snap.LightmapStatic) vm.LightmapStatic = snap.LightmapStatic;
+            if (snap.Kind == EditorObjectKind.BasicEntity) SetIfChanged(v => vm.LightmapScale = v, vm.LightmapScale, snap.LightmapScale);
             if (vm.DecalTexture != snap.DecalTexture) vm.DecalTexture = snap.DecalTexture;
             if (vm.PrefabPath != snap.PrefabPath) vm.PrefabPath = snap.PrefabPath;
             if (vm.PrefabMissing != snap.PrefabMissing) vm.PrefabMissing = snap.PrefabMissing;
@@ -244,6 +246,7 @@ public static class BridgeReconciler
                     if (vm.Light.CastShadows != l.CastShadows) vm.Light.CastShadows = l.CastShadows;
                     SetIfChanged(v => vm.Light.ShadowResolution = v, vm.Light.ShadowResolution, l.ShadowResolution);
                     if (vm.Light.StaticShadows != l.StaticShadows) vm.Light.StaticShadows = l.StaticShadows;
+                    if (vm.Light.BakedShadows != l.BakedShadows) vm.Light.BakedShadows = l.BakedShadows;
                     SetIfChanged(v => vm.Light.SourceRadius = v, vm.Light.SourceRadius, l.SourceRadius);
                     SetIfChanged(v => vm.Light.SourceLength = v, vm.Light.SourceLength, l.SourceLength);
                     string cookie = l.CookiePath ?? "";

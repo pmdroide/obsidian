@@ -32,6 +32,12 @@ float3 CameraPositionWS;
 Texture2D SSAOMap;
 bool UseSSAO = true;
 
+//Lightmaps (Source 2 look, phase 4.2): the lightmap pass's target. rgb = baked indirect irradiance (probe units) for the
+//G-buffer normal, a = 1 + baked AO on Lightmap Static surfaces, 0 elsewhere.
+Texture2D LightmapMap;
+bool UseLightmaps = false;
+float LightmapIntensity = 1;
+
 SamplerState LinearClampSampler
 {
     AddressU = CLAMP;
@@ -326,10 +332,17 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
     float3 diffuseWeight = 1 - FresnelSchlickRoughness(f0, NdotV, roughness);
     diffuseAmbient *= diffuseWeight;
 
+	//Lightmapped pixel: its baked light already contains the occlusion around it, so no screen space AO on top
+	float4 lightmap = 0;
+	[branch]
+	if (UseLightmaps && !CaptureMode)
+		lightmap = LightmapMap.Load(texCoordInt);
+	bool lightmapped = lightmap.a > 0.5f;
+
 	float ao = 1;
 
 	[branch]
-	if (UseSDFAO && !CaptureMode)
+	if (UseSDFAO && !CaptureMode && !lightmapped)
 	{
 		float3 random = randomNormal2(input.Position.xy / 2000.0f);
 		if (dot(random, normal) < 0) random = -random;
@@ -339,7 +352,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	}
 
 	[branch]
-	if (UseSSAO && !CaptureMode)
+	if (UseSSAO && !CaptureMode && !lightmapped)
 		ao *= SSAOMap.SampleLevel(LinearClampSampler, input.TexCoord, 0).r;
 
 	//The material's own AO map (albedo alpha) and the AO proxies of dynamic objects: indirect light only
@@ -351,8 +364,18 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	//Baked GI: inside the probe volume the probes' irradiance replaces the cubemap's diffuse term
 	float3 pixelIrradiance = 0;
 	float irradianceWeight = 0;
+	//Baked AO of the lightmap: only for reflections (its irradiance is already occluded)
+	float specularAo = ao;
 	[branch]
-	if (UseProbeVolume)
+	if (lightmapped)
+	{
+		//Lightmap Static surface: the lightmap's irradiance replaces the probes (they are for dynamic objects)
+		diffuseAmbient = lightmap.rgb * LightmapIntensity * diffuseWeight;
+		pixelIrradiance = lightmap.rgb;
+		irradianceWeight = 1;
+		specularAo = ao * saturate(lightmap.a - 1);
+	}
+	else if (UseProbeVolume)
 	{
 		//Sample half a cell out along the normal, so a wall's inner face reads the probes in the
 		//room it faces rather than blending in the ones on the far side of the wall.
@@ -364,7 +387,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	}
 
 	output.Diffuse = float4(diffuseAmbient * ao, 0);
-    output.Indirect = float4(diffuseAmbient * ao, ao);
+    output.Indirect = float4(diffuseAmbient * ao, specularAo);
 
 	[branch]
 	if (CaptureMode)
@@ -380,7 +403,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	float4 ssreflectionMap = GetSSR(input.TexCoord);
 	specularReflection = lerp(specularReflection, ssreflectionMap.rgb * specularWeight * EnvironmentMapSpecularStrengthRcp, ssreflectionMap.a);
 
-    float specularOcclusion = SpecularOcclusion(NdotV, ao, roughness);
+    float specularOcclusion = SpecularOcclusion(NdotV, specularAo, roughness);
     output.Specular = float4(specularReflection * EnvironmentMapSpecularStrength * specularOcclusion, 0);
 
     return output;

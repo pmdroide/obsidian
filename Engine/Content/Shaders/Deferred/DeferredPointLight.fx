@@ -109,6 +109,18 @@ float4 ShadowTiles[6];
 //0..1: shadows fade out with distance from the camera (ShadowMapRenderModule)
 float ShadowStrength = 1;
 
+//Lightmaps (Source 2 look, phase 4.2): the lightmap pass's shadow mask (1 = lit off lightmapped surfaces) and this light's
+//channel in it, one-hot; zero = the light has no baked shadows
+Texture2D ShadowMaskMap;
+float4 ShadowMaskChannel = float4(0, 0, 0, 0);
+
+float BakedShadow(int3 texCoordInt)
+{
+	[branch]
+	if (!any(ShadowMaskChannel)) return 1;
+	return dot(ShadowMaskMap.Load(texCoordInt), ShadowMaskChannel);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +220,8 @@ float SpotConeFactor(float3 lightToSurface);
 		float attenuation = LightAttenuation(distanceToLight, lightRadius, lightSourceRadius);
 		float3 l = lightVector / distanceToLight;
 		attenuation *= SpotConeFactor(-l);
+		//Static geometry's shadows from the bake, on top of the shadow map's (dynamic objects)
+		attenuation *= BakedShadow(texCoordInt);
 		NdL = saturate(dot(normal, l));
 
 		//Sphere / tube lights: the highlight comes from the point of the light closest to the reflection ray

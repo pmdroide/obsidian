@@ -1,5 +1,105 @@
 # Changelog
 
+## Added: Ground mist in the weather and raindrops on surfaces (2026-10-19)
+
+- **Ground mist.** Rain now raises a low mist that lies on the ground and thins out with height. A sandstorm drags orange dust along the ground, and snow raises a thin pale mist. Wind-blown banks of noise break it into patches that drift with the wind.
+  - New `GroundFog` technique in `Weather.fx`. It marches each view ray (12 jittered steps) through the layer below 4.5 × the fog height, up to the G-buffer depth, and is lit like the haze. `WeatherRenderModule` draws it between the haze and the particles.
+  - The mist rises over about 12 s and clears over about 30 s after the weather stops (`SurfaceWetness.GroundFog`/`GroundFogColor`), so it is also drawn after the weather is set to None.
+  - The wind drift wraps every 2000 m, where the noise repeats exactly, so it never jumps.
+- **Raindrops on surfaces.** In the rain, every material gets a wet sheen, two sizes of beads that land, sit and evaporate, and drips that run down walls leaving a glossy trail. Undersides stay dry.
+  - New `ApplyRainDrops` in `Gbuffer.fx`. Drops are placed in world space and fade out below about 2 pixels so they don't shimmer.
+  - Strength is `SurfaceWetness.Drops`: about 4 s to build up, about 25 s to dry. Wet Surface keeps its puddles instead. Emissive and hologram materials are left alone.
+- Settings:
+  - `WeatherProfile.GroundFog`/`GroundFogColor`/`SurfaceDrops` per weather type.
+  - `EnvironmentSettings.GroundFog` (0.6), `GroundFogHeight` (1.2 m), `GroundFogBase` (Z 0) and `SurfaceDrops` (1), clamped on load.
+  - `MaterialComponent.RainDrops`/`MaterialEffect.RainDrops` (on by default; saved, cloned and part of material assets).
+- Anvil: Environment > Weather has new **Ground Fog**, **Fog Height**, **Fog Base Z** and **Rain Drops** controls. The Material component has a **Rain Drops** checkbox (hidden for Wet Surface).
+- Docs: `Weather.md` (Ground mist and Raindrops sections, settings, drawing, limitations, code map), `Material_Component.md` (Rain drops), `Engine_Wiring.md` (G-buffer and weather rows), the CLAUDE.md weather entry. README version 1.1.0.
+- Checks: `WetSurfaceChecks` covers the mist/drop targets per weather, easing and lingering, clamping, and saving Rain Drops. Component checks pass, and the `--graphics` weather and wet-surface checks pass.
+  - The `--graphics` run then stops at an unrelated pause menu check (see ISSUES.md).
+  - Checked visually with `Engine.exe --scene Scenes/WeatherTest.obsc --shot`. That found and fixed a horizontal seam at the horizon: the drift had been scaled by height.
+
+- Claude
+
+## Changed: Debug Console logging and MCP status logs (2026-10-19)
+
+- Connected the existing `ScriptBehaviour.Log(message)` and `EditorBridge.Log(message)` functions to Anvil's Console, retaining timestamps and a bounded, thread-safe history. Debug builds also write to the debugger; file logging remains available in standalone and Release builds.
+- Added automatic MCP startup, shutdown, failure and first authenticated client activity logs. Added **Log Status** in the MCP panel to report listener state, automation state, bridge attachment, access mode and endpoint without credentials.
+- Kept Console/history sizes bounded, prevented cleared pending logs from returning, and stopped Console polling on window close.
+- Added integration checks for script/Console logging, concurrent messages, bounded history, MCP lifecycle state and credential omission; documented logging in the script, MCP and engine wiring guides.
+- Validation: the MCP integration suite passes (`Tests/Components --mcp`), including the new logging checks; the run compiled Engine, Vista and Anvil using cached packages and the cached MGCB executable.
+
+- Codex
+
+## Added: Planar reflections for glass, and a camera body to test them (2026-10-19)
+
+- The LookDev glass pane reflected the global cubemap captured at the scene's centre. It showed spheres and a room edge that aren't in front of it, and never anything nearby or moving. That pane tests sun, shadows and fog on forward glass, so it is unchanged. A new **Mirror Glass Pane** reflects correctly.
+- New **Planar Reflection** component (`planar-reflection`, `Engine/Components/PlanarReflectionComponent.cs`; Inspector: Resolution, Render Dist.). It goes on a flat Forward Shaded gameobject, whose face across its thinnest side is the mirror.
+- `PlanarReflectionRenderModule` runs before Compose:
+  - Picks the nearest 2 visible panes.
+  - Draws the opaque scene mirrored about each one through `Forward.fx` (new `ReflectionPass`: lit like the forward pass and clipped to the camera's side of the pane) into a mip-mapped `HalfVector4` target.
+  - Fills the empty pixels with the background sky (new `PlanarSky` technique).
+- The glass uses that image as its specular reflection at its screen position, blurred by roughness, instead of the probes. Under the procedural day/night sky, empty pixels keep the probes.
+- `MeshMaterialLibrary` has a new `RenderType.Reflection`. It culls per instance (`ReflectionCull`) and flips the winding. `TransformMatrix.PlanarReflection` carries the image to the forward pass. `Renderer.ForwardContext` builds the forward context for both passes. `DeferredEnvironmentMapRenderModule.BackgroundSkyCube/BackgroundSkyMap` expose the sky.
+- Two bugs found while building it:
+  - Leaving a depth-writing state after the extra pass stopped `ReconstructDepth` from writing depth, so every forward pixel was rejected. The module now saves and restores the device state.
+  - A mirror image still bound as the forward effect's texture was wiped when drawn into. The texture is now unset around both passes.
+- New **Camera Body** script (`camera-body`, `Content/Scripts/CameraBodyScript.cs`). In Play, a character gameobject stands under the camera, turned the way it looks, and plays Idle/Walk/Run by speed.
+- LookDev: added Mirror Glass Wall, Mirror Glass Pane (Planar Reflection, no shadow) and an animated Player Body Y Bot (IDs 54-56; existing IDs and baked data unchanged), plus the Camera Body script on Main Camera. `generate_lookdev.py` writes the same objects. `lookdev_views.sh` captures `mirror` and `mirror_play`.
+- Anvil: `PlanarReflectionComponentViewModel` and its Inspector template.
+- Docs: `Source2_Look.md` (Planar reflections section, table, code map), `Engine_Wiring.md` (components, pass 14b, forward pass, render types, module list) and a CLAUDE.md recipe.
+- Validation:
+  - The solution builds.
+  - All component checks pass. The LookDev check now expects 56 gameobjects plus the mirror, body and camera script.
+  - The `--forward-graphics` checks pass, and the new forward-shader parameter check passes under `--graphics`. That run still stops at the pre-existing `PauseChecks` failure.
+  - Before/after captures confirmed the mirror in Edit and Play, and the original glass and overview are unchanged.
+- Not in mirror images: decals, SSAO, emissive glow, normal maps, fog, other glass and particles. Opaque deferred mirrors (non-glass) don't use it.
+
+- Claude
+
+## Changed: Repository script organization and folder guide (2026-10-19)
+
+- Moved all five root-level scripts into `Tools/Scripts/` and adjusted repository-root resolution so project paths and default build outputs keep working.
+- Fixed the bootstrap script's `necho`/`ndotnet` typos and made it restore/build `Engine.slnx` from the checkout root.
+- Added a README repository tree, folder descriptions and a script reference; updated setup, cleanup, MCP and engine wiring instructions to use the new locations.
+
+- Codex
+
+## Added: Lightmaps, Source 2 look phase 4.2 (2026-10-19)
+
+- Added **Lightmap Static** and **Lightmap Scale** per gameobject (Inspector, saved, cloned, sent through `IEditorBridge.EnqueueSetLightmap`).
+- Added **Baked Shadows** on point/spot/directional lights (saved, default on).
+- Added a Lighting > **Lightmaps** section: Use/Bake lightmaps, Denoise, Texels/m, Max Size, Rays/Texel, Shadow Rays, AO Distance, Sun Angle.
+- Bake Lighting now bakes the probes and then the lightmaps (`LightingSystem.Bake`):
+  - UV2: authored TEXCOORD1 when a model has it, otherwise a per-model chart unwrap at bake time (`LightmapUnwrap`: axis classes, connected charts, self-overlap split, vertex splitting).
+  - Packing: each gameobject packs its charts into a block, and the blocks go into pages.
+  - Per texel (`LightmapBaker`): a cosine-weighted gather (sky, albedo × (direct + probe irradiance) at hits, emissive area lights), baked AO, the dominant direction (directional lightmap), and a 4-channel shadow mask.
+  - The mask covers lights with Baked Shadows: the sun takes channel 0, point/spot lights are graph-coloured so overlapping lights never share a channel.
+  - Then invalid-texel fill, edge-aware denoise and gutter dilation.
+- Saved as `<scene>.lightmaps` (`LightmapData`, deflate-compressed), referenced by `LightingRecord.LightmapDataFile`, shipped by builds and listed by `EditorAutomation`.
+- Runtime:
+  - A new lightmap pass after the decals (`LightmapRenderModule`, `Shaders/Deferred/Lightmap.fx`) redraws lightmapped gameobjects with their UVs as a second vertex stream, depth-matched against the G-buffer in the shader. It writes `_renderTargetLightmap` and `_renderTargetShadowMask`.
+  - `DeferredEnvironmentMap.fx` uses the lightmap instead of the probes and SSAO/SDF AO on those pixels; baked AO goes into specular occlusion, and reflection normalisation uses the lightmap irradiance.
+  - `DeferredPointLight.fx` (`ShadeLight`) and `DeferredDirectionalLight.fx` multiply each light by its mask channel, on top of its shadow map. A light that moved since the bake loses its channel.
+- Added the `Lightmap` and `ShadowMask` debug views. `GameStats.LightmappedMeshes` counts what the pass drew. `DebugScreen` render mode labels now cover every mode (the 3 newest ones were missing).
+- LookDev: the floor (Scale 0.5), the checker, the dark room, the crate, the emissive panel and the glass wall are Lightmap Static. The scene was rebaked and saved: `LookDev.lightmaps` (~1 MB, 168k texels, 5.6 s bake) plus refreshed `.probes`, and the save also wrote `LookDev.reflections`. `generate_lookdev.py` sets the same flags.
+- Docs:
+  - New `Docs/markdown/Lightmaps.md`.
+  - Updated `Source2_Look.md`, the Source2Look research README (4.2 marked done, with the differences from the plan), `Engine_Wiring.md` (module list, pass 9b, light and environment steps, target ownership) and the CLAUDE.md repo map/recipe.
+- Not done:
+  - UV2 isn't generated in the content pipeline.
+  - HLA's per-texel light indices (R6).
+  - Shadow masks for dynamic objects.
+  - Lightmaps on forward/glass surfaces.
+  - Seam stitching and automatic invalidation of stale bakes.
+- Validation:
+  - The solution builds, and all component checks pass, including the new `LightmapChecks` (unwrap, baker on a hand-built scene, channels, sidecar round trip, flags in the scene file and through the bridge, the LookDev bake).
+  - The `--graphics` lightmap shader check passes. That run still stops at the pre-existing `PauseChecks` "the document is filled in" failure.
+  - LookDev was captured before and after the bake, plus the `Lightmap`, `ShadowMask` and `AmbientOcclusion` views.
+  - The new Anvil controls compile, but I didn't look at them in the running editor.
+
+- Claude
+
 ## Changed: Source 2 look defaults recovered from Half-Life: Alyx (research R1–R7, 2026-10-19)
 
 - Completed the reverse-engineering follow-ups R1–R7 in `Docs/Research/Source2Look/README.md` ("Research follow-ups: findings").

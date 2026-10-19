@@ -53,6 +53,7 @@ public partial class MaterialInfo : ComponentViewModel
     [ObservableProperty] private double _puddleAmount = 0.5;
     [ObservableProperty] private double _puddleSize = 3;
     [ObservableProperty] private bool _weatherWetness = true;
+    [ObservableProperty] private bool _rainDrops = true;
     [ObservableProperty] private double _tilingU = 1;
     [ObservableProperty] private double _tilingV = 1;
 
@@ -164,6 +165,7 @@ public partial class MaterialInfo : ComponentViewModel
     partial void OnPuddleAmountChanged(double value) => Push(c => ((MaterialComponent)c).PuddleAmount = (float)value);
     partial void OnPuddleSizeChanged(double value) => Push(c => ((MaterialComponent)c).PuddleSize = (float)value);
     partial void OnWeatherWetnessChanged(bool value) => Push(c => ((MaterialComponent)c).WeatherWetness = value);
+    partial void OnRainDropsChanged(bool value) => Push(c => ((MaterialComponent)c).RainDrops = value);
     partial void OnTilingUChanged(double value) => Push(c => ((MaterialComponent)c).TilingU = (float)value);
     partial void OnTilingVChanged(double value) => Push(c => ((MaterialComponent)c).TilingV = (float)value);
 
@@ -202,6 +204,7 @@ public partial class MaterialInfo : ComponentViewModel
         Clarity = material.Clarity; Foam = material.Foam;
         Wetness = material.Wetness; PuddleAmount = material.PuddleAmount;
         PuddleSize = material.PuddleSize; WeatherWetness = material.WeatherWetness;
+        RainDrops = material.RainDrops;
         TilingU = material.TilingU; TilingV = material.TilingV;
         foreach (var slot in TextureSlots) slot.Apply(material);
     }
@@ -217,6 +220,8 @@ public partial class LightInfo : ObservableObject
     [ObservableProperty] private bool _castShadows;
     [ObservableProperty] private double _shadowResolution = 512;
     [ObservableProperty] private bool _staticShadows;
+    // Lightmaps (Source 2 look, phase 4.2): lightmapped surfaces take this light's shadows from the bake.
+    [ObservableProperty] private bool _bakedShadows = true;
     // Point and spot lights: the glowing sphere / tube the light comes from (Source 2 light source size), metres.
     [ObservableProperty] private double _sourceRadius;
     [ObservableProperty] private double _sourceLength;
@@ -324,6 +329,11 @@ public partial class LightInfo : ObservableObject
         });
     }
     partial void OnStaticShadowsChanged(bool value) => Mutate(obj => { if (obj is PointLight pl) { pl.StaticShadows = value; pl.HasChanged = true; } });
+    partial void OnBakedShadowsChanged(bool value) => Mutate(obj =>
+    {
+        if (obj is PointLight pl) pl.BakedShadows = value;
+        else if (obj is DirectionalLight dl) dl.BakedShadows = value;
+    });
     partial void OnSourceRadiusChanged(double value) => Mutate(obj => { if (obj is PointLight pl) pl.SourceRadius = (float)value; });
     partial void OnSourceLengthChanged(double value) => Mutate(obj => { if (obj is PointLight pl) pl.SourceLength = (float)value; });
     partial void OnCookiePathChanged(string value)
@@ -383,6 +393,9 @@ public partial class SceneObjectViewModel : ObservableObject
     public bool IsWaterRole => Role == GameObjectRole.Water;
     // Kept across scene loads during Play (BasicEntity.Persistent).
     [ObservableProperty] private bool _persistent;
+    // Lightmaps (BasicEntity.LightmapStatic / LightmapScale): baked by Lighting > Bake.
+    [ObservableProperty] private bool _lightmapStatic;
+    [ObservableProperty] private double _lightmapScale = 1;
 
     [ObservableProperty] private double _positionX;
     [ObservableProperty] private double _positionY;
@@ -568,6 +581,17 @@ public partial class SceneObjectViewModel : ObservableObject
     {
         if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
         bridge.EnqueueSetPersistent(id, value);
+    }
+
+    partial void OnLightmapStaticChanged(bool value) => PushLightmap();
+    partial void OnLightmapScaleChanged(double value) => PushLightmap();
+
+    private void PushLightmap()
+    {
+        if (SuppressPush || Bridge is not { } bridge || EngineId is not int id) return;
+        // NumericUpDown can pass through 0 / NaN while typing
+        if (!double.IsFinite(LightmapScale) || LightmapScale <= 0) return;
+        bridge.EnqueueSetLightmap(id, LightmapStatic, (float)LightmapScale);
     }
 
     partial void OnNameChanged(string value)

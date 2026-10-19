@@ -25,6 +25,21 @@ Changing the selected script stops the old instance and starts the new one on
 the next Play frame. An exception or missing script ID is logged to the engine
 editor log and stops that instance's updates until restarted or changed.
 
+## Debug logging
+
+`ScriptBehaviour` already provides `Log(message)`. Call it from any behaviour:
+
+```csharp
+public override void Start()
+{
+    Log("Player ready");
+}
+```
+
+Anvil's **Console** shows `[ObjectName] Player ready` (or `[Main Camera]` for camera scripts). Outside a behaviour, use `Engine.Editor.EditorBridge.Log("message")`. Logging works in Debug and Release builds, including standalone games.
+
+Messages are also appended to `anvil-bridge.log` on the Desktop, with `%LOCALAPPDATA%/Anvil/anvil-bridge.log` as a fallback. Debug builds additionally write to the attached debugger. If neither file can be written, recent messages remain available in the Console. File writes and the recent history are synchronized across threads; the history and Console retain at most 1,000 entries. Clearing the Console discards pending messages too.
+
 ## Scripts on the Main Camera
 
 Select **Main Camera** in the Hierarchy and choose **Add Component > Script
@@ -354,7 +369,7 @@ the physics engine uses.
 | `DeltaTime` | Seconds since the last frame. Multiply speeds by it. |
 | `Time` / `FrameCount` | Game-time seconds since this script started (held while paused) / Updates run so far. See [Timers, coroutines and tweens](#timers-coroutines-and-tweens). |
 | `GetComponent<T>()` | First component of type `T` on this gameobject, or `null`. |
-| `Log(message)` | Writes `[ObjectName] message` to the engine/editor log. |
+| `Log(message)` | Writes `[ObjectName] message` to Anvil's Console and the engine/editor log file. |
 | `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
 | `Voxels` | The scene's voxel world (`VoxelWorld`), or `null` when it has none: `GetBlock`, `SetBlock`, `FillSphere`, `FillBox`, `Raycast`, `TryGetSurface`. Edited chunks are remeshed before the next physics step; Stop regenerates the world. Fetch it each frame, because changing a voxel setting replaces it. See [Voxel_World.md](Voxel_World.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |

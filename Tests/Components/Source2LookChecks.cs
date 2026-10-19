@@ -452,10 +452,15 @@ internal static class Source2LookChecks
             field.SetValue(assets, new ModelDefinition(null, bounds));
         var scene = SceneSerialization.LoadFromFile(path, assets);
         var entities = scene.BasicEntities;
-        Check(entities.Count == 53 && entities.Count(e => e.GetComponent<AoProxyComponent>() != null) >= 10 &&
+        Check(entities.Count == 56 && entities.Count(e => e.GetComponent<AoProxyComponent>() != null) >= 10 &&
               entities.Any(e => e.GetComponent<ReflectionProbeComponent>() != null) &&
               entities.Any(e => e.GetComponent<ProbeVolumeComponent>() != null),
             "the LookDev scene loads its spheres, room, reflection probe, detail probe volume and AO proxies");
+        var mirror = entities.SingleOrDefault(e => e.Name == "Mirror Glass Pane");
+        var body = entities.SingleOrDefault(e => e.Name == "Player Body");
+        Check(mirror?.GetComponent<PlanarReflectionComponent>() != null && body?.GetComponent<AnimatorComponent>() != null &&
+              scene.MainCamera.Components.OfType<ScriptBehaviourComponent>().Any(c => c.ScriptId == "camera-body"),
+            "it has the mirror glass with a Planar Reflection and a Player Body the camera carries");
         Check(scene.DirectionalLights.Single().CascadeCount == 4 &&
               scene.PointLights.OfType<SpotLight>().Any(s => s.CookiePath == SpotLight.FlashlightCookie) &&
               scene.PointLights.Any(l => l.SourceLength > 0),
@@ -480,8 +485,15 @@ internal static class Source2LookChecks
         Check(Has(Load("Shaders/Deferred/DeferredEnvironmentMap"), "ProbeData", "ReflectionCubeMap", "ProbeCube0", "BrdfLut", "AoProxyA"),
             "the environment shader blends probe volumes, local reflection probes, the BRDF LUT and AO proxies");
         Check(Has(Load("Shaders/Deferred/Froxel"), "CascadeViewProjection", "ProbeData"), "the fog shader samples the cascades and packed probes");
+        Check(Has(Load("Shaders/Deferred/Lightmap"), "Lightmap", "IrradianceMap", "DirectionMap", "MaskMap", "DepthMap", "NormalMap", "WorldViewProj") &&
+              Has(Load("Shaders/Deferred/DeferredEnvironmentMap"), "LightmapMap", "UseLightmaps", "LightmapIntensity") &&
+              Has(Load("Shaders/Deferred/DeferredPointLight"), "ShadowMaskMap", "ShadowMaskChannel") &&
+              Has(Load("Shaders/Deferred/DeferredDirectionalLight"), "ShadowMaskMap", "ShadowMaskChannel"),
+            "the lightmap pass compiles, and the environment and light shaders read its lightmap and shadow mask");
         Check(Has(Load("Shaders/Forward/Forward"), "LightSourceRadius", "PointShadowAtlas", "LightShadowTiles", "LightShadowSettings",
             "CookieAtlas", "LightCookieRect", "LightCookieRight", "LightCookieUp"), "the forward shader lights glass with sized sources, local shadows and cookies");
+        Check(Has(Load("Shaders/Forward/Forward"), "ReflectionPass", "ClipPlane", "UsePlanarReflection", "PlanarReflectionMap", "PlanarSky", "SkyCubeMap"),
+            "the forward shader draws and reads planar reflections");
         Check(Has(Load("Shaders/GBufferSetup/Gbuffer"), "PreviousWorldViewProj", "AoMap"), "the G-buffer writes velocity and material AO");
         Check(Has(Load("Shaders/TemporalAntiAliasing/TemporalAntiAliasing"), "VelocityMap", "Sharpness"), "TAA reprojects with velocity and sharpens");
         Check(Has(Load("Shaders/PostProcessing/PostProcessing"), "TonemapCurve"), "the final pass picks a tonemap curve");

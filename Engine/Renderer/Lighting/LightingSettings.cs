@@ -55,6 +55,35 @@ namespace Engine.Renderer.Lighting
         public Vector3 SkyColor { get; set; } = new Vector3(0.55f, 0.7f, 1f);
         public float SkyIntensity { get; set; } = 0.3f;
 
+        // ---------------- Lightmaps (Source 2 look, phase 4.2) ----------------
+
+        //Use the baked lightmaps of Lightmap Static gameobjects (indirect light, AO and the static lights' shadow mask)
+        public bool LightmapsEnabled { get; set; } = true;
+
+        //Bake lightmaps for Lightmap Static gameobjects along with the probes
+        public bool BakeLightmaps { get; set; } = true;
+
+        //Lightmap texels per metre of surface (each gameobject's Lightmap Scale multiplies it)
+        public float LightmapTexelsPerUnit { get; set; } = 8f;
+
+        //Largest lightmap page (texels a side); gameobjects that don't fit get a lower density
+        public int LightmapMaxSize { get; set; } = 2048;
+
+        //Rays gathered per lightmap texel (indirect light and AO)
+        public int LightmapSamples { get; set; } = 128;
+
+        //Shadow mask rays per texel and static light (soft shadows from the light's size)
+        public int LightmapShadowSamples { get; set; } = 16;
+
+        //Metres within which a hit darkens the baked ambient occlusion
+        public float LightmapAoDistance { get; set; } = 1f;
+
+        //Angular diameter of the sun (degrees) for the soft baked sun shadow
+        public float SunAngle { get; set; } = 1.5f;
+
+        //Edge-aware blur of the gathered light (removes sampling noise)
+        public bool LightmapDenoise { get; set; } = true;
+
         public LightingSettings Clone() => (LightingSettings)MemberwiseClone();
     }
 }

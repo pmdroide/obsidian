@@ -111,6 +111,13 @@ the sun shines through the back of the leaves (`FoliageTransmission` in
 parts flutter while the rest of the model only bends and sways. The built-in Tree model's leaves use it. See
 [Foliage_Wind.md](Foliage_Wind.md).
 
+## Rain drops
+
+**Rain Drops** (under Cast Shadows, on by default, hidden for WetSurface) lets the scene's rain bead on
+the material and run down it, with a wet sheen. Untick it for surfaces under a roof, since the rain is
+not occluded. See [Weather.md](Weather.md#raindrops-on-surfaces). It is saved with the component and
+in material assets (`RainDrops`).
+
 ## Wet surfaces
 
 **WetSurface** (Shader list) turns a ground material such as bricks, cobblestone or

@@ -39,6 +39,12 @@ namespace Engine.Logic
         /// </summary>
         public ProbeVolumeData BakedProbes;
 
+        /// <summary>
+        /// Lightmaps of the Lightmap Static gameobjects from the last bake (Source 2 look, phase 4.2), or null. Persisted as a
+        /// <c>.lightmaps</c> file next to the .obsc.
+        /// </summary>
+        public LightmapData BakedLightmaps;
+
         /// <summary>Filtered reflection captures by component instance ID; saved in a sibling .reflections file.</summary>
         public readonly Dictionary<System.Guid, ReflectionProbeData> ReflectionCaptures = new();
 
@@ -51,6 +57,7 @@ namespace Engine.Logic
             EnvironmentSample = null;
             MainCamera = null;
             BakedProbes = null;
+            BakedLightmaps = null;
             ReflectionCaptures.Clear();
         }
     }

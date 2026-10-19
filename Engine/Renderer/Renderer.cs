@@ -158,7 +158,10 @@ namespace Engine.Renderer
             // Source 2 look debug views (Docs/Research/Source2Look phase 0.4)
             IndirectDiffuse,
             AmbientOcclusion,
-            ShadowCascades
+            ShadowCascades,
+            // Lightmaps (phase 4.2): the lightmap pass's indirect light and its static lights' shadow mask
+            Lightmap,
+            ShadowMask
         }
 
         //Render targets
@@ -195,6 +198,12 @@ namespace Engine.Renderer
         private RenderTarget2D _renderTargetIndirect;
         private readonly RenderTargetBinding[] _renderTargetEnvironmentBinding = new RenderTargetBinding[3];
 
+        //Lightmaps (Source 2 look, phase 4.2): the lightmap pass writes the indirect light + AO of Lightmap Static pixels and
+        //the static lights' shadow mask (LightmapRenderModule)
+        private RenderTarget2D _renderTargetLightmap;
+        private RenderTarget2D _renderTargetShadowMask;
+        private LightmapRenderModule _lightmapRenderModule;
+
         private RenderTarget2D _renderTargetComposed;
         private RenderTarget2D _renderTargetBloom;
 
@@ -227,6 +236,8 @@ namespace Engine.Renderer
         private readonly ReflectionProbes _reflectionProbes = new ReflectionProbes();
         //AO Proxy components of this frame (Source 2 look, phase 6.1)
         private readonly AoProxyShapes _aoProxies = new AoProxyShapes();
+        //Planar Reflection components: mirror images of glass panes, drawn before the forward pass
+        private readonly PlanarReflectionRenderModule _planarReflections = new PlanarReflectionRenderModule();
         //Optional occlusion culling (phase 7)
         private readonly OcclusionCulling _occlusionCulling = new OcclusionCulling();
         private readonly Dictionary<int, RenderTargetCube> _probeCaptureTargets = new Dictionary<int, RenderTargetCube>();
@@ -271,6 +282,7 @@ namespace Engine.Renderer
             _temporalAntialiasingRenderModule = new TemporalAntialiasingRenderModule(content, "Shaders/TemporalAntiAliasing/TemporalAntiAliasing");
             _deferredEnvironmentMapRenderModule = new DeferredEnvironmentMapRenderModule(content, "Shaders/Deferred/DeferredEnvironmentMap");
             _decalRenderModule = new DecalRenderModule(shaderManager, "Shaders/Deferred/DeferredDecal");
+            _lightmapRenderModule = new LightmapRenderModule(content, "Shaders/Deferred/Lightmap");
             _subsurfaceScatterRenderModule = new SubsurfaceScatterRenderModule(content, "Shaders/SubsurfaceScattering/SubsurfaceScattering");
             _forwardRenderModule = new ForwardRenderModule(content, "Shaders/forward/forward");
             _waterRenderModule = new WaterRenderModule(content);
@@ -421,6 +433,7 @@ namespace Engine.Renderer
             _wetSurfaceTime = (_wetSurfaceTime + wetSeconds) % 3600;
             _gBufferRenderModule.SceneWetness = _surfaceWetness.Wetness;
             _gBufferRenderModule.SceneRipples = _surfaceWetness.Ripples;
+            _gBufferRenderModule.SceneDrops = _surfaceWetness.Drops;
             _gBufferRenderModule.Time = (float)_wetSurfaceTime;
 
             _frameDirectionalLights = directionalLights;
@@ -534,6 +547,9 @@ namespace Engine.Renderer
 
                 //Deferred Decals
                 DrawDecals(decals);
+
+                //Baked lightmaps of Lightmap Static gameobjects: indirect light, AO and the static lights' shadow mask
+                DrawLightmaps(entities);
             }
             finally
             {
@@ -572,6 +588,9 @@ namespace Engine.Renderer
                 //Draw emissive materials on an offscreen render target
                 //DrawEmissiveEffect(camera, meshMaterialLibrary, gameTime);
 
+                //Planar Reflection panes: their mirror images for the forward pass
+                DrawPlanarReflections(meshMaterialLibrary, camera, pointLights);
+
                 //Compose the scene by combining our lighting data with the gbuffer data
                 _currentOutput = Compose(); //-> output _renderTargetComposed
 
@@ -604,7 +623,7 @@ namespace Engine.Renderer
                 // Paused (pause menu): the particles hang in the air.
                 _weatherRenderModule.Update(scene?.Environment, GameFlow.Paused ? 0 : gameTime.ElapsedGameTime.TotalSeconds);
                 _weatherRenderModule.Draw(_graphicsDevice, scene?.Environment, camera, _view, _viewProjection,
-                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, _fullScreenTriangle);
+                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, _fullScreenTriangle, _surfaceWetness);
 
                 //Render features: After Transparents
                 _currentOutput = DrawRenderFeatures(RenderFeatureEvent.AfterTransparents, _currentOutput, inPlace: true);
@@ -934,6 +953,8 @@ namespace Engine.Renderer
 
                 bool volumeEnabled = GameSettings.g_VolumetricLights;
                 GameSettings.g_VolumetricLights = false;
+                //The shadow mask is the main view's screen: captures light without it
+                _lightAccumulationModule.PointLightRenderModule.ShadowMask = null;
                 _lightAccumulationModule.DrawLights(pointLights, dirLights, origin, gameTime, _renderTargetLightBinding, _renderTargetDiffuse);
 
                 _deferredEnvironmentMapRenderModule.DrawSky(_graphicsDevice, _fullScreenTriangle);
@@ -1309,6 +1330,32 @@ namespace Engine.Renderer
         /// Draw deferred Decals
         /// </summary>
         /// <param name="decals"></param>
+        /// <summary>
+        /// The lightmap pass (Source 2 look, phase 4.2). Without lightmaps the environment and light passes are told to
+        /// ignore its targets.
+        /// </summary>
+        private void DrawLightmaps(List<BasicEntity> entities)
+        {
+            PointLightRenderModule pointLights = _lightAccumulationModule.PointLightRenderModule;
+            LightmapResources lightmaps = _lightingSettings?.LightmapsEnabled != false ? _lighting?.Lightmaps : null;
+            if (lightmaps == null)
+            {
+                pointLights.ShadowMask = null;
+                _deferredEnvironmentMapRenderModule.SetLightmaps(null, 1);
+                return;
+            }
+
+            _lightmapRenderModule.Draw(_graphicsDevice, lightmaps, entities, _view, _viewProjection, _boundingFrustum, _g_FarClip,
+                _renderTargetLightmap, _renderTargetShadowMask);
+            GameStats.LightmappedMeshes = _lightmapRenderModule.DrawnInstances;
+
+            pointLights.ShadowMask = _renderTargetShadowMask;
+            pointLights.ShadowMaskChannel ??= light => _lighting?.ShadowMaskChannel(light) ?? Vector4.Zero;
+            _lightAccumulationModule.DirectionalShadowMaskChannel ??= light => _lighting?.ShadowMaskChannel(light) ?? Vector4.Zero;
+            _deferredEnvironmentMapRenderModule.SetLightmaps(_renderTargetLightmap,
+                (_lightingSettings?.Intensity ?? 1f) * _environmentSky.AmbientScale);
+        }
+
         private void DrawDecals(List<Decal> decals)
         {
             if (!GameSettings.g_drawdecals) return;
@@ -1668,6 +1715,23 @@ namespace Engine.Renderer
             _graphicsDevice.SetRenderTarget(input);
             ReconstructDepth();
 
+            return _forwardRenderModule.Draw(_graphicsDevice, input, meshMaterialLibrary, _viewProjection, ForwardContext(camera, pointLights));
+        }
+
+        /// <summary>
+        /// Mirror images of the Planar Reflection panes for the forward pass. Drawn before Compose: binding another
+        /// target afterwards would discard the composed image.
+        /// </summary>
+        private void DrawPlanarReflections(MeshMaterialLibrary meshMaterialLibrary, Camera camera, List<PointLight> pointLights)
+        {
+            if (!GameSettings.g_forwardenable) return;
+            _planarReflections.Draw(_graphicsDevice, _fullScreenTriangle, _frameEntities, meshMaterialLibrary, _forwardRenderModule, ForwardContext(camera, pointLights),
+                _viewProjection, _boundingFrustum, GameSettings.g_screenwidth, GameSettings.g_screenheight);
+        }
+
+        /// <summary>What the forward pass (and the planar reflections drawn with it) reads from the frame.</summary>
+        private ForwardRenderModule.Context ForwardContext(Camera camera, List<PointLight> pointLights)
+        {
             bool useProbes = _lighting?.GpuData != null && _lighting.ProbeData != null &&
                              _lightingSettings != null && _lightingSettings.ProbeVolumeEnabled;
             var context = new ForwardRenderModule.Context
@@ -1686,8 +1750,10 @@ namespace Engine.Renderer
                 AmbientStrength = (_frameEnvSample?.DiffuseStrength ?? 0.2f) * 5,
                 ApplyFog = p => ApplyFroxelFogParameters(p, "UseFog"),
                 Resolution = new Vector2(GameSettings.g_screenwidth, GameSettings.g_screenheight),
+                SkyCube = _deferredEnvironmentMapRenderModule.BackgroundSkyCube,
+                SkyMap = _deferredEnvironmentMapRenderModule.BackgroundSkyMap,
             };
-            return _forwardRenderModule.Draw(_graphicsDevice, input, meshMaterialLibrary, _viewProjection, context);
+            return context;
         }
 
         /// <summary>
@@ -2025,6 +2091,12 @@ namespace Engine.Renderer
                 case RenderModes.ShadowCascades:
                     DrawDebugChannel(_renderTargetComposed, 2);
                     break;
+                case RenderModes.Lightmap:
+                    DrawDebugChannel(_renderTargetLightmap, 0);
+                    break;
+                case RenderModes.ShadowMask:
+                    DrawMapToScreenToFullScreen(_renderTargetShadowMask);
+                    break;
                 default:
                     DrawPostProcessing(currentInput);
                     break;
@@ -2134,6 +2206,8 @@ namespace Engine.Renderer
                 _renderTargetSpecular.Dispose();
                 _renderTargetVolume.Dispose();
                 _renderTargetIndirect.Dispose();
+                _renderTargetLightmap.Dispose();
+                _renderTargetShadowMask.Dispose();
                 _renderTargetOutput.Dispose();
                 //_renderTargetSSS.Dispose();
 
@@ -2205,6 +2279,12 @@ namespace Engine.Renderer
             _renderTargetEnvironmentBinding[0] = new RenderTargetBinding(_renderTargetDiffuse);
             _renderTargetEnvironmentBinding[1] = new RenderTargetBinding(_renderTargetSpecular);
             _renderTargetEnvironmentBinding[2] = new RenderTargetBinding(_renderTargetIndirect);
+
+            //Preserved: they are cleared to different values, then bound together for the lightmap pass
+            _renderTargetLightmap = new RenderTarget2D(_graphicsDevice, targetWidth,
+               targetHeight, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
+            _renderTargetShadowMask = new RenderTarget2D(_graphicsDevice, targetWidth,
+               targetHeight, false, SurfaceFormat.Color, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
 
             _renderTargetComposed = new RenderTarget2D(_graphicsDevice, targetWidth,
                targetHeight, false, SurfaceFormat.HalfVector4, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
@@ -2292,6 +2372,9 @@ namespace Engine.Renderer
             _deferredEnvironmentMapRenderModule.DepthMap = _renderTargetDepth;
 
             _decalRenderModule.DepthMap = _renderTargetDepth;
+
+            _lightmapRenderModule.DepthMap = _renderTargetDepth;
+            _lightmapRenderModule.NormalMap = _renderTargetNormal;
 
             _distanceFieldRenderModule.DepthMap = _renderTargetDepth;
             
@@ -2411,6 +2494,7 @@ namespace Engine.Renderer
 
         public void Dispose()
         {
+            _planarReflections.Dispose();
             _environmentSky.Dispose();
             _graphicsDevice?.Dispose();
             _spriteBatch?.Dispose();
@@ -2442,6 +2526,9 @@ namespace Engine.Renderer
             _renderTargetSpecular?.Dispose();
             _renderTargetVolume?.Dispose();
             _renderTargetIndirect?.Dispose();
+            _renderTargetLightmap?.Dispose();
+            _renderTargetShadowMask?.Dispose();
+            _lightmapRenderModule?.Dispose();
             _renderTargetComposed?.Dispose();
             _renderTargetBloom?.Dispose();
             _renderTargetTAA_1?.Dispose();

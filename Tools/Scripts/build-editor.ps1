@@ -25,10 +25,10 @@
     Start the editor after a successful build.
 
 .EXAMPLE
-    .\build-editor.ps1
-    .\build-editor.ps1 -Clean -Run
-    .\build-editor.ps1 -Output Builds\Anvil-Test
-    powershell -ExecutionPolicy Bypass -File .\build-editor.ps1   # when scripts are blocked
+    .\Tools\Scripts\build-editor.ps1
+    .\Tools\Scripts\build-editor.ps1 -Clean -Run
+    .\Tools\Scripts\build-editor.ps1 -Output Builds\Anvil-Test
+    powershell -ExecutionPolicy Bypass -File .\Tools\Scripts\build-editor.ps1   # when scripts are blocked
 #>
 [CmdletBinding()]
 param(
@@ -39,7 +39,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$root = $PSScriptRoot
+$root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $project = Join-Path $root 'Editor\Anvil\Anvil.csproj'
 $runtime = 'win-x64'
 $outputDir = if ([System.IO.Path]::IsPathRooted($Output)) { $Output } else { Join-Path $root $Output }

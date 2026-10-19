@@ -50,6 +50,10 @@ public partial class EnvironmentViewModel : ObservableObject
     [ObservableProperty] private double _weatherHaze = 0.6;
     [ObservableProperty] private double _windSpeed = 4;
     [ObservableProperty] private double _windDirection = 45;
+    [ObservableProperty] private double _groundFog = 0.6;
+    [ObservableProperty] private double _groundFogHeight = 1.2;
+    [ObservableProperty] private double _groundFogBase;
+    [ObservableProperty] private double _surfaceDrops = 1;
     [ObservableProperty] private double _fogDensity = 0.03;
     [ObservableProperty] private double _fogAbsorption = 0.1;
     [ObservableProperty] private double _fogSunScatter = 0.1;
@@ -137,6 +141,10 @@ public partial class EnvironmentViewModel : ObservableObject
             WeatherHaze = settings.WeatherHaze;
             WindSpeed = settings.WindSpeed;
             WindDirection = settings.WindDirection;
+            GroundFog = settings.GroundFog;
+            GroundFogHeight = settings.GroundFogHeight;
+            GroundFogBase = settings.GroundFogBase;
+            SurfaceDrops = settings.SurfaceDrops;
             FogDensity = settings.FogDensity;
             FogAbsorption = settings.FogAbsorption;
             FogSunScatter = settings.FogSunScatter;
@@ -197,6 +205,10 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnWeatherHazeChanged(double value) => Push(s => s.WeatherHaze = (float)value);
     partial void OnWindSpeedChanged(double value) => Push(s => s.WindSpeed = (float)value);
     partial void OnWindDirectionChanged(double value) => Push(s => s.WindDirection = (float)value);
+    partial void OnGroundFogChanged(double value) => Push(s => s.GroundFog = (float)value);
+    partial void OnGroundFogHeightChanged(double value) => Push(s => s.GroundFogHeight = (float)value);
+    partial void OnGroundFogBaseChanged(double value) => Push(s => s.GroundFogBase = (float)value);
+    partial void OnSurfaceDropsChanged(double value) => Push(s => s.SurfaceDrops = (float)value);
     partial void OnFogDensityChanged(double value) => Push(s => s.FogDensity = (float)value);
     partial void OnFogAbsorptionChanged(double value) => Push(s => s.FogAbsorption = (float)value);
     partial void OnFogSunScatterChanged(double value) => Push(s => s.FogSunScatter = (float)value);

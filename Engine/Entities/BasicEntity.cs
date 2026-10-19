@@ -151,6 +151,16 @@ namespace Engine.Entities
         public bool IsPersistent => Persistent || RuntimePersistent;
 
         /// <summary>
+        /// Inspector > Lightmap Static (saved): the lighting bake gives this gameobject a lightmap (indirect light, AO and the
+        /// static lights' shadows, Source 2 look phase 4.2). It must not move after the bake.
+        /// </summary>
+        public bool LightmapStatic { get; set; }
+
+        /// <summary>Inspector > Lightmap Scale (saved): multiplies the scene's lightmap texel density for this gameobject.</summary>
+        public float LightmapScale { get => _lightmapScale; set => _lightmapScale = float.IsFinite(value) ? System.Math.Clamp(value, 0.01f, 100f) : 1f; }
+        private float _lightmapScale = 1f;
+
+        /// <summary>
         /// Prefab instance: the Content-relative .prefab this gameobject was made from ("Prefabs/Crate.prefab"),
         /// saved with the scene; null for a plain gameobject. See <c>Logic.PrefabUtility</c>.
         /// </summary>
@@ -176,6 +186,8 @@ namespace Engine.Entities
                     LayerId = LayerId,
                     TagId = TagId,
                     Persistent = Persistent,
+                    LightmapStatic = LightmapStatic,
+                    LightmapScale = LightmapScale,
                     // A duplicate of a prefab instance is another instance of that prefab, like Unity.
                     PrefabPath = PrefabPath,
                 };
@@ -403,6 +415,8 @@ namespace Engine.Entities
         public int LodLevel;
         // Foliage Wind component: the vertex shaders sway this mesh in the wind; null = static.
         public FoliageWind Wind;
+        // Planar Reflection component: the mirror image its forward (glass) shader shows this frame; null = the probes.
+        public Renderer.RenderModules.PlanarReflectionView PlanarReflection;
 
         public TransformMatrix(Matrix world, int id)
         {

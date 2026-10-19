@@ -142,6 +142,8 @@
                           IsChecked="{Binding IsTransparent, Mode=TwoWay}"
                           FontSize="11" />
                 <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" IsVisible="{Binding !IsWater}" FontSize="11" />
+                <CheckBox Content="Rain Drops" IsChecked="{Binding RainDrops, Mode=TwoWay}" IsVisible="{Binding !IsWetSurface}" FontSize="11"
+                          ToolTip.Tip="In the rain, drops bead on the faces the rain reaches and run down walls, and the surface gets a wet sheen. Turn it off for surfaces under a roof. Wet Surface pools puddles instead (Wet in Rain)." />
 
                 <Expander Header="Textures" IsExpanded="True">
                     <StackPanel Spacing="8" Margin="0,8,0,0">
@@ -1028,7 +1030,10 @@
                             <TextBlock Text="Port" />
                             <NumericUpDown Value="{Binding Port, Mode=TwoWay}" Minimum="1024" Maximum="65535"
                                            Increment="1" FormatString="0" IsEnabled="{Binding !IsBusy}" />
-                            <Button Content="Apply" Command="{Binding ApplyCommand}" IsEnabled="{Binding !IsBusy}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Apply" Command="{Binding ApplyCommand}" IsEnabled="{Binding !IsBusy}" />
+                                <Button Content="Log Status" Command="{Binding LogStatusCommand}" IsEnabled="{Binding !IsBusy}" />
+                            </StackPanel>
                             <TextBlock Text="{Binding ServerStatus}" TextWrapping="Wrap" />
                             <TextBlock Text="Streamable HTTP endpoint" Classes="muted" />
                             <SelectableTextBlock Text="{Binding Endpoint}" />
@@ -1578,6 +1583,29 @@
                                         <Slider Grid.Column="1" Minimum="0" Maximum="359" Value="{Binding WindDirection, Mode=TwoWay}" MinHeight="18" />
                                         <TextBlock Grid.Column="2" Text="{Binding WindDirection, StringFormat={}{0:0}°}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                     </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Ground Fog" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Low mist the weather raises over the ground (dust in a sandstorm). It rises over a few seconds and lingers after the weather." />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding GroundFog, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding GroundFog, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Fog Height (m)" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="How high the mist reaches: it thins to about a third this far above its base" />
+                                        <Slider Grid.Column="1" Minimum="0.2" Maximum="10" Value="{Binding GroundFogHeight, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding GroundFogHeight, StringFormat={}{0:0.0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Fog Base Z" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="World height (Z) of the ground the mist lies on" />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="-10000" Maximum="10000" Increment="0.5" Value="{Binding GroundFogBase, Mode=TwoWay}" FormatString="0.##" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Rain Drops" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Rain beads on surfaces and runs down walls (materials with Rain Drops ticked). They dry off after the rain." />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding SurfaceDrops, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding SurfaceDrops, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
                                     <TextBlock Text="Wind angle: 0° blows towards +X, 90° towards +Y. A sandstorm always blows at least 7 m/s. With the day/night sky, weather also thickens the clouds and dims the sun."
                                                TextWrapping="Wrap" Classes="muted" FontSize="11" />
                                 </StackPanel>
@@ -1957,7 +1985,7 @@
                                     <TextBlock Text="{Binding BakedSummary}" FontSize="10.5"
                                                TextWrapping="Wrap" Classes="subtle"
                                                IsVisible="{Binding HasBakedData}" />
-                                    <TextBlock Text="Not baked. Saving the scene stores the bake as a .probes file next to the .obsc."
+                                    <TextBlock Text="Not baked. Saving the scene stores the bake as .probes (and .lightmaps) files next to the .obsc."
                                                FontSize="10.5" TextWrapping="Wrap" Classes="subtle"
                                                IsVisible="{Binding !HasBakedData}" />
                                 </StackPanel>
@@ -1985,6 +2013,70 @@
                                                        Value="{Binding Intensity, Mode=TwoWay}"
                                                        ShowButtonSpinner="False" FormatString="0.00" />
                                     </Grid>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Lightmaps (Source 2 look, phase 4.2) -->
+                            <Expander IsExpanded="True">
+                                <Expander.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <controls:LucideIcon Icon="Grid3x3" />
+                                        <TextBlock Text="Lightmaps" FontSize="11.5"
+                                                   FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Expander.Header>
+                                <StackPanel Spacing="6" Margin="12,8,12,12">
+                                    <CheckBox Content="Use lightmaps"
+                                              IsChecked="{Binding LightmapsEnabled, Mode=TwoWay}"
+                                              ToolTip.Tip="Lightmap Static gameobjects take their indirect light, AO and static lights' shadows from the bake" />
+                                    <CheckBox Content="Bake lightmaps"
+                                              IsChecked="{Binding BakeLightmaps, Mode=TwoWay}"
+                                              ToolTip.Tip="Bake Lighting also bakes lightmaps for gameobjects ticked Inspector > Lightmap Static" />
+                                    <CheckBox Content="Denoise"
+                                              IsChecked="{Binding LightmapDenoise, Mode=TwoWay}" />
+                                    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Texels / m"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                       Minimum="0.5" Maximum="128" Increment="1"
+                                                       Value="{Binding LightmapTexelsPerUnit, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0.##" />
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Max Size"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Largest lightmap page, texels a side" />
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                       Minimum="64" Maximum="8192" Increment="256"
+                                                       Value="{Binding LightmapMaxSize, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0" />
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Rays / Texel"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                       Minimum="16" Maximum="4096" Increment="32"
+                                                       Value="{Binding LightmapSamples, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0" />
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Shadow Rays"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Rays per texel and static light for the soft baked shadows" />
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                       Minimum="1" Maximum="256" Increment="4"
+                                                       Value="{Binding LightmapShadowSamples, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0" />
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="AO Distance"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
+                                                       Minimum="0.05" Maximum="20" Increment="0.25"
+                                                       Value="{Binding LightmapAoDistance, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0.##" />
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Sun Angle"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Angular diameter of the sun (degrees): how soft the baked sun shadows are" />
+                                        <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
+                                                       Minimum="0" Maximum="20" Increment="0.25"
+                                                       Value="{Binding SunAngle, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0.##" />
+                                    </Grid>
+                                    <TextBlock Text="Tick Inspector > Lightmap Static on gameobjects that never move, then Bake Lighting. Lights with Baked Shadows shadow them from the bake."
+                                               FontSize="10.5" TextWrapping="Wrap" Classes="subtle" />
                                 </StackPanel>
                             </Expander>
 
@@ -2456,6 +2548,16 @@
                                         <CheckBox Content="Persistent" IsChecked="{Binding Persistent, Mode=TwoWay}" FontSize="11"
                                                   IsVisible="{Binding HasRole}"
                                                   ToolTip.Tip="Keep this gameobject, with its scripts still running, when a script loads another scene during Play (like Unity's DontDestroyOnLoad)." />
+                                        <!-- Lightmaps (Source 2 look, phase 4.2) -->
+                                        <Grid ColumnDefinitions="Auto,*,64" ColumnSpacing="8" IsVisible="{Binding HasRole}">
+                                            <CheckBox Grid.Column="0" Content="Lightmap Static" IsChecked="{Binding LightmapStatic, Mode=TwoWay}" FontSize="11"
+                                                      ToolTip.Tip="Never moves: Lighting > Bake gives it a lightmap (bounce light, AO and the static lights' soft shadows)." />
+                                            <TextBlock Grid.Column="1" Text="Scale" Classes="muted" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       IsVisible="{Binding LightmapStatic}" ToolTip.Tip="Multiplies the scene's lightmap texels per metre for this gameobject" />
+                                            <NumericUpDown Grid.Column="2" Classes="field" Minimum="0.05" Maximum="100" Increment="0.25"
+                                                           IsVisible="{Binding LightmapStatic}"
+                                                           Value="{Binding LightmapScale, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.##" />
+                                        </Grid>
 
                                         <!-- Prefab (Engine.Logic.PrefabUtility): save a plain gameobject as one, or the
                                              instance's link with Apply / Revert / Unpack. -->
@@ -2705,6 +2807,8 @@
                                         </Grid>
                                         <CheckBox Content="Static Shadows" IsChecked="{Binding StaticShadows, Mode=TwoWay}" FontSize="11" IsVisible="{Binding HasRadius}"
                                                   ToolTip.Tip="Drawn once and kept in the shadow atlas" />
+                                        <CheckBox Content="Baked Shadows" IsChecked="{Binding BakedShadows, Mode=TwoWay}" FontSize="11"
+                                                  ToolTip.Tip="On Lightmap Static surfaces this light's shadows come from the lighting bake (soft, even without Cast Shadows). Turn off for lights that move." />
                                         <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
                                               IsVisible="{Binding IsDirectional}">
                                             <TextBlock Grid.Column="0" Text="Cascades" Classes="muted" FontSize="11" VerticalAlignment="Center" />
@@ -3163,6 +3267,29 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:PlanarReflectionComponentViewModel" x:DataType="m:PlanarReflectionComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="FlipHorizontal2" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="A real mirror image on a flat glass pane (a Forward material: windows, mirrors, shop glass). The opaque scene in front of it is drawn again from the mirrored camera every frame, so moving objects and the player reflect exactly; the sky and anything beyond Render Distance keep the reflection probes. The surface is the face across the gameobject's thinnest side. At most 2 panes draw a frame, nearest first." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Size of the mirror image against the screen; lower is cheaper and softer">
+                                                        <TextBlock Grid.Column="0" Text="Resolution" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ResolutionScale, Mode=TwoWay}"
+                                                                       Minimum="0.25" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Gameobjects farther than this from the camera (metres) are left out of the mirror image">
+                                                        <TextBlock Grid.Column="0" Text="Render Dist." Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RenderDistance, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="10000" Increment="10" FormatString="0" />
+                                                    </Grid>
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>

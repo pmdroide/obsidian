@@ -68,7 +68,11 @@ public partial class McpSettingsViewModel : ObservableObject
     partial void OnIsReadOnlyChanged(bool value) => _automation.ReadOnly = value;
     partial void OnIsEnabledChanged(bool value)
     {
-        if (!value) _automation.Stop();
+        if (!value)
+        {
+            _automation.Stop();
+            _host.LogStatus();
+        }
     }
 
     [RelayCommand]
@@ -93,16 +97,23 @@ public partial class McpSettingsViewModel : ObservableObject
                 await _host.StartAsync((int)Port, Token);
                 ServerStatus = "Listening on this computer.";
             }
-            else ServerStatus = IsEnabled ? "Waiting for the engine." : "Disabled";
+            else
+            {
+                ServerStatus = IsEnabled ? "Waiting for the engine." : "Disabled";
+                _host.LogStatus();
+            }
         }
         catch (Exception ex)
         {
             _automation.Stop();
             ServerStatus = "MCP could not start or save settings. Check the port and local settings folder.";
-            EditorBridge.Log("MCP host failure: " + ex.GetType().Name);
+            EditorBridge.Log("MCP: Could not apply settings (" + ex.GetType().Name + ").");
         }
         finally { IsBusy = false; }
     }
+
+    [RelayCommand]
+    private void LogStatus() => _host.LogStatus();
 
     [RelayCommand]
     private async Task RotateTokenAsync()

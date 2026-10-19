@@ -52,6 +52,7 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _WetSurface;
         private EffectParameter _WetParams;
         private EffectParameter _Ripples;
+        private EffectParameter _RainDrops;
         private EffectParameter _Time;
 
         private EffectTechnique _DrawTextureDisplacement;
@@ -102,6 +103,8 @@ namespace Engine.Renderer.RenderModules
         public float SceneWetness { get; set; }
         /// <summary>Weather raindrop ripples in Wet Surface puddles.</summary>
         public float SceneRipples { get; set; }
+        /// <summary>Raindrops on the surfaces of other materials (<see cref="Logic.SurfaceWetness.Drops"/>).</summary>
+        public float SceneDrops { get; set; }
 
         /// <summary>Seconds that animate the puddle ripples.</summary>
         public float Time
@@ -151,6 +154,7 @@ namespace Engine.Renderer.RenderModules
             _WetSurface = _gbufferShader.Parameters["WetSurface"];
             _WetParams = _gbufferShader.Parameters["WetParams"];
             _Ripples = _gbufferShader.Parameters["Ripples"];
+            _RainDrops = _gbufferShader.Parameters["RainDrops"];
             _Time = _gbufferShader.Parameters["Time"];
 
             //Techniques
@@ -232,6 +236,12 @@ namespace Engine.Renderer.RenderModules
                     ? Math.Clamp(material.EmissiveStrength / 8f, 0, 1) : material.Metallic));
             bool wet = material.Type == MaterialEffect.MaterialTypes.WetSurface && !GameSettings.d_defaultmaterial;
             _WetSurface.SetValue(wet);
+            // Wet Surface has its own rain response; glowing and hologram surfaces stay as they are
+            bool drops = !wet && material.RainDrops && SceneDrops > 0 &&
+                material.Type != MaterialEffect.MaterialTypes.Emissive &&
+                material.Type != MaterialEffect.MaterialTypes.Hologram &&
+                material.Type != MaterialEffect.MaterialTypes.ProjectHologram;
+            _RainDrops?.SetValue(drops ? Math.Clamp(SceneDrops, 0, 1) : 0f);
             bool ao = material.HasAmbientOcclusion && !GameSettings.d_defaultmaterial;
             _gbufferShader.Parameters["UseAoMap"]?.SetValue(ao);
             if (ao) _gbufferShader.Parameters["AoMap"]?.SetValue(material.AmbientOcclusionMap);

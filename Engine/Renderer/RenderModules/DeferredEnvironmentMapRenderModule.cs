@@ -153,6 +153,12 @@ namespace Engine.Renderer.RenderModules
             }
         }
 
+        /// <summary>The background sky's cube map (planar reflections draw it too); null under the day/night cycle's procedural sky.</summary>
+        public TextureCube BackgroundSkyCube => _dayNightCycle || _skyMapTexture != null ? null : _skyCubeMapTexture;
+        /// <summary>The background sky's equirectangular map; null without one or under the day/night cycle.</summary>
+        public Texture2D BackgroundSkyMap => _dayNightCycle ? null : _skyMapTexture;
+        private bool _dayNightCycle;
+
         public Texture2D SkyTexture
         {
             set
@@ -165,6 +171,7 @@ namespace Engine.Renderer.RenderModules
 
         public void SetDayNightCycle(bool enabled, Vector3 sunDirection, float daylight)
         {
+            _dayNightCycle = enabled;
             _deferredEnvironmentShader.Parameters["DayNightCycle"]?.SetValue(enabled);
             _deferredEnvironmentShader.Parameters["SunDirection"]?.SetValue(sunDirection);
             _deferredEnvironmentShader.Parameters["Daylight"]?.SetValue(daylight);
@@ -380,6 +387,17 @@ namespace Engine.Renderer.RenderModules
         /// </summary>
         public void SetProbeVolume(LightingSystem lighting, float intensity, Vector3 capturePosition) =>
             ImageBasedLightingParameters.ApplyProbeVolume(_deferredEnvironmentShader.Parameters, lighting, intensity, capturePosition);
+
+        /// <summary>
+        /// Lightmaps (Source 2 look, phase 4.2): the lightmap pass's screen target (indirect irradiance + baked AO), or null.
+        /// Lightmapped pixels take their indirect diffuse and AO from it instead of the probes and SSAO.
+        /// </summary>
+        public void SetLightmaps(Texture2D lightmapTarget, float intensity)
+        {
+            _deferredEnvironmentShader.Parameters["UseLightmaps"]?.SetValue(lightmapTarget != null);
+            _deferredEnvironmentShader.Parameters["LightmapIntensity"]?.SetValue(intensity);
+            if (lightmapTarget != null) _deferredEnvironmentShader.Parameters["LightmapMap"]?.SetValue(lightmapTarget);
+        }
 
         public void DrawEnvironmentMap(GraphicsDevice graphicsDevice, Camera camera, Matrix view, FullScreenTriangle fullScreenTriangle, EnvironmentSample envSample, GameTime gameTime, bool fireflyReduction, float ffThreshold)
         {

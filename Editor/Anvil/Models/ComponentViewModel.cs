@@ -59,6 +59,7 @@ public static class ComponentEditorRegistry
         Register(FogVolumeComponent.TypeId, owner => new FogVolumeComponentViewModel(owner));
         Register(FoliageWindComponent.TypeId, owner => new FoliageWindComponentViewModel(owner));
         Register(ReflectionProbeComponent.TypeId, owner => new ReflectionProbeComponentViewModel(owner));
+        Register(PlanarReflectionComponent.TypeId, owner => new PlanarReflectionComponentViewModel(owner));
         Register(ProbeVolumeComponent.TypeId, owner => new ProbeVolumeComponentViewModel(owner));
         Register(PostProcessVolumeComponent.TypeId, owner => new PostProcessVolumeComponentViewModel(owner));
         Register(AoProxyComponent.TypeId, owner => new AoProxyComponentViewModel(owner));

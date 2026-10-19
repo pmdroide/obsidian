@@ -40,14 +40,22 @@ namespace Engine.Renderer.RenderModules
             /// <summary>Sets the froxel fog parameters (Common/FroxelFog.fx) on the effect, or disables the fog.</summary>
             public Action<EffectParameterCollection> ApplyFog;
             public Vector2 Resolution;
+            /// <summary>The background sky (cube, or equirectangular when <see cref="SkyMap"/> is set) for mirror images; none = keep the probes.</summary>
+            public TextureCube SkyCube;
+            public Texture2D SkyMap;
         }
 
         private Effect _shader;
         private EffectPass _pass;
+        private EffectPass _skyPass;
 
         private EffectParameter _worldParam;
         private EffectParameter _worldViewProjParam;
         private EffectParameter _worldViewITParam;
+        private EffectParameter _usePlanarParam;
+        private EffectParameter _planarMapParam;
+        private EffectParameter _planarSizeParam;
+        private PlanarReflectionView _boundPlanar;
 
         private readonly Vector3[] _lightPositionWS = new Vector3[MaxLights];
         private readonly float[] _lightRadius = new float[MaxLights];
@@ -76,7 +84,11 @@ namespace Engine.Renderer.RenderModules
             _worldParam = _shader.Parameters["World"];
             _worldViewProjParam = _shader.Parameters["WorldViewProj"];
             _worldViewITParam = _shader.Parameters["WorldViewIT"];
+            _usePlanarParam = _shader.Parameters["UsePlanarReflection"];
+            _planarMapParam = _shader.Parameters["PlanarReflectionMap"];
+            _planarSizeParam = _shader.Parameters["PlanarReflectionSize"];
             _pass = _shader.Techniques["Default"].Passes[0];
+            _skyPass = _shader.Techniques["PlanarSky"].Passes[0];
         }
 
         public void Load(ContentManager content, string shaderPath)
@@ -90,8 +102,64 @@ namespace Engine.Renderer.RenderModules
             graphicsDevice.DepthStencilState = DepthStencilState.Default;
 
             EffectParameterCollection p = _shader.Parameters;
-            p["CameraPositionWS"]?.SetValue(context.Camera.Position);
-            p["CameraForwardWS"]?.SetValue(Vector3.Normalize(context.Camera.Forward));
+            SetupFrame(context, context.Camera.Position, context.Camera.Forward);
+            if (context.ApplyFog != null) context.ApplyFog(p);
+            else p["UseFog"]?.SetValue(false);
+            p["ReflectionPass"]?.SetValue(false);
+            UnbindPlanarReflection();
+
+            meshMat.Draw(MeshMaterialLibrary.RenderType.Forward, viewProjection, renderModule: this);
+            UnbindPlanarReflection();
+            return output;
+        }
+
+        /// <summary>
+        /// Draws the opaque scene lit like the forward pass, seen from <paramref name="eye"/> (the camera mirrored about
+        /// <paramref name="clipPlane"/>), into the bound target; pixels behind the plane are clipped. The mesh library's
+        /// <see cref="MeshMaterialLibrary.ReflectionCull"/> must be set for this view.
+        /// </summary>
+        public void DrawReflection(MeshMaterialLibrary meshMat, Matrix viewProjection, Context context, Vector3 eye, Vector3 forward, Plane clipPlane)
+        {
+            EffectParameterCollection p = _shader.Parameters;
+            SetupFrame(context, eye, forward);
+            p["UseFog"]?.SetValue(false);
+            p["ReflectionPass"]?.SetValue(true);
+            p["ClipPlane"]?.SetValue(new Vector4(clipPlane.Normal, clipPlane.D));
+            //The image being drawn must not stay bound as a texture: D3D drops one of the two bindings
+            UnbindPlanarReflection();
+
+            meshMat.Draw(MeshMaterialLibrary.RenderType.Reflection, viewProjection, renderModule: this);
+            p["ReflectionPass"]?.SetValue(false);
+        }
+
+        /// <summary>
+        /// Fills the pixels of the bound mirror image nothing was drawn on (depth still 1) with the background sky seen
+        /// along the mirrored rays, at the brightness the main view shows it. False without a sky texture.
+        /// </summary>
+        public bool DrawReflectionSky(GraphicsDevice graphics, FullScreenTriangle triangle, Matrix viewProjection, Vector3 eye, Context context)
+        {
+            if (context.SkyCube == null && context.SkyMap == null) return false;
+            EffectParameterCollection p = _shader.Parameters;
+            p["InverseViewProjection"]?.SetValue(Matrix.Invert(viewProjection));
+            p["CameraPositionWS"]?.SetValue(eye);
+            p["UseSkyMap2D"]?.SetValue(context.SkyMap != null);
+            if (context.SkyMap != null) p["SkyMap2D"]?.SetValue(context.SkyMap);
+            else p["SkyCubeMap"]?.SetValue(context.SkyCube);
+
+            graphics.BlendState = BlendState.Opaque;
+            graphics.DepthStencilState = DepthStencilState.DepthRead;
+            graphics.RasterizerState = RasterizerState.CullNone;
+            _skyPass.Apply();
+            triangle.Draw(graphics);
+            return true;
+        }
+
+        /// <summary>The camera, lights and image based light shared by the forward and the reflection passes.</summary>
+        private void SetupFrame(Context context, Vector3 eye, Vector3 forward)
+        {
+            EffectParameterCollection p = _shader.Parameters;
+            p["CameraPositionWS"]?.SetValue(eye);
+            p["CameraForwardWS"]?.SetValue(Vector3.Normalize(forward));
             p["Resolution"]?.SetValue(context.Resolution);
             p["AmbientStrength"]?.SetValue(context.AmbientStrength);
 
@@ -100,11 +168,25 @@ namespace Engine.Renderer.RenderModules
             ImageBasedLightingParameters.ApplyGlobal(p, context.GlobalProbe, context.BrdfLut);
             ImageBasedLightingParameters.ApplyProbeVolume(p, context.Lighting, context.LightingIntensity, context.GlobalCapturePosition);
             ImageBasedLightingParameters.ApplyLocalProbes(p, context.LocalProbes, context.Lighting?.GpuData != null && context.Lighting.ProbeData != null ? context.Lighting.GpuData : null);
-            if (context.ApplyFog != null) context.ApplyFog(p);
-            else p["UseFog"]?.SetValue(false);
+        }
 
-            meshMat.Draw(MeshMaterialLibrary.RenderType.Forward, viewProjection, renderModule: this);
-            return output;
+        private void UnbindPlanarReflection()
+        {
+            _boundPlanar = null;
+            _usePlanarParam?.SetValue(false);
+            _planarMapParam?.SetValue((Texture2D)null);
+        }
+
+        /// <summary>Per instance (MeshMaterialLibrary): the mirror image a Planar Reflection pane shows, or null for the probes.</summary>
+        public void SetPlanarReflection(PlanarReflectionView view)
+        {
+            if (view != null && (!view.Ready || view.Map == null || view.Map.IsDisposed)) view = null;
+            if (view == _boundPlanar) return;
+            _boundPlanar = view;
+            _usePlanarParam?.SetValue(view != null);
+            if (view == null) return;
+            _planarMapParam?.SetValue(view.Map);
+            _planarSizeParam?.SetValue(new Vector3(view.Map.Width, view.Map.Height, view.Map.LevelCount));
         }
 
         /// <summary>Prepares cookie textures before scene rendering; rebuilding the atlas switches render targets.</summary>
@@ -219,6 +301,9 @@ namespace Engine.Renderer.RenderModules
             p["Opacity"]?.SetValue(MathHelper.Clamp(material.Opacity, 0, 1));
             p["HasAlbedo"]?.SetValue(hasAlbedo);
             if (hasAlbedo) p["AlbedoMap"]?.SetValue(material.AlbedoMap);
+            //Cut-out materials (foliage) in mirror images
+            p["HasMask"]?.SetValue(material.HasMask);
+            if (material.HasMask) p["MaskMap"]?.SetValue(material.Mask);
             p["TextureTiling"]?.SetValue(material.TextureTiling);
         }
 

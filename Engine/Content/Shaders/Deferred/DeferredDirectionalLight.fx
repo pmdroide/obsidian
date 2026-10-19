@@ -51,6 +51,11 @@ int ShadowFiltering = 0; //PCF, PCF(3), PCF(7), Poisson
 
 float ShadowMapSize = 2048;
 
+//Lightmaps (Source 2 look, phase 4.2): the lightmap pass's shadow mask (1 off lightmapped surfaces) and this light's
+//channel in it, one-hot; zero = no baked shadows. Beyond the cascades it is the only sun shadow.
+Texture2D ShadowMaskMap;
+float4 ShadowMaskChannel = float4(0, 0, 0, 0);
+
 SamplerState pointSampler
 {
     AddressU = CLAMP;
@@ -240,6 +245,13 @@ float SunShadow(float3 positionVS, float3 normalVS, float ndotl, float2 screenSe
 	return shadow;
 }
 
+float BakedShadow(float2 texCoord)
+{
+    [branch]
+    if (!any(ShadowMaskChannel)) return 1;
+    return dot(ShadowMaskMap.SampleLevel(pointSampler, texCoord, 0), ShadowMaskChannel);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  PIXEL SHADERS
 
@@ -272,8 +284,9 @@ PixelShaderOutput PixelShaderUnshadowedFunction(VertexShaderOutput input)
 
         float3 transmission = IsFoliage(normalData.b) ? FoliageTransmission(normal, cameraDirection) : float3(0, 0, 0);
 
-        output.Diffuse = float4(diffuse + transmission, 0) * 0.1f;
-        output.Specular = float4(specular, 0) * 0.1f;
+        float baked = BakedShadow(texCoord);
+        output.Diffuse = float4(diffuse + transmission, 0) * 0.1f * baked;
+        output.Specular = float4(specular, 0) * 0.1f * baked;
 
         return output;
     }
@@ -305,7 +318,7 @@ PixelShaderOutput PixelShaderShadowedFunction(VertexShaderOutput input)
 	float shadowContribution = 0;
     [branch]
     if (shadowNdL > 0)
-        shadowContribution = SunShadow(positionVS, normal, shadowNdL, texCoord);
+        shadowContribution = SunShadow(positionVS, normal, shadowNdL, texCoord) * BakedShadow(texCoord);
 
     float roughness = normalData.a;
     float4 color = AlbedoMap.Sample(pointSampler, texCoord);

@@ -202,10 +202,18 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         /// <param name="pointLights"></param>
         /// <param name="cameraOrigin"></param>
         /// <param name="gameTime"></param>
+        /// <summary>
+        /// Lightmaps (Source 2 look, phase 4.2): the screen's shadow mask (LightmapRenderModule; null = none this frame) and
+        /// each light's channel in it (zero = no baked shadows). Set by the Renderer every frame.
+        /// </summary>
+        public Texture2D ShadowMask;
+        public Func<PointLight, Vector4> ShadowMaskChannel;
+
         public void Draw(List<PointLight> pointLights, Vector3 cameraOrigin, GameTime gameTime, Assets assets, BoundingFrustum _boundingFrustum, bool _viewProjectionHasChanged, Matrix _view, Matrix _viewProjection, Matrix _inverseView, GraphicsDevice _graphicsDevice)
         {
 
             if (pointLights.Count < 1) return;
+            _pointLightShader.Parameters["ShadowMaskMap"]?.SetValue(ShadowMask);
 
             ModelMeshPart meshpart = assets?.SphereMeshPart;
             if (meshpart == null)
@@ -336,6 +344,7 @@ namespace Engine.Renderer.RenderModules.DeferredLighting
         private void ApplyLightShape(PointLight light, Matrix view)
         {
             var parameters = _pointLightShader.Parameters;
+            parameters["ShadowMaskChannel"]?.SetValue(ShadowMask != null && ShadowMaskChannel != null ? ShadowMaskChannel(light) : Vector4.Zero);
             parameters["lightSourceRadius"]?.SetValue(light.SourceRadius);
             parameters["lightSourceLength"]?.SetValue(light.SourceLength * 0.5f);
             parameters["lightAxis"]?.SetValue(Vector3.Normalize(Vector3.TransformNormal(light.TubeAxis, view)));

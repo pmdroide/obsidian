@@ -45,6 +45,14 @@ namespace Engine.Logic
         public float WindSpeed { get; set; } = 4;
         /// <summary>Compass angle in degrees the wind blows towards: 0 = +X, 90 = +Y.</summary>
         public float WindDirection { get; set; } = 45;
+        /// <summary>Scales the low mist the weather raises over the ground (rain, snow, sand); 0 = none.</summary>
+        public float GroundFog { get; set; } = 0.6f;
+        /// <summary>Height in metres over which the ground mist thins out to about a third.</summary>
+        public float GroundFogHeight { get; set; } = 1.2f;
+        /// <summary>World Z (up) of the ground the mist lies on.</summary>
+        public float GroundFogBase { get; set; }
+        /// <summary>Scales the raindrops that bead on and run down surfaces in the rain; 0 = none.</summary>
+        public float SurfaceDrops { get; set; } = 1f;
 
         // Volumetric fog (froxels): the haze and light shafts (god rays) of this scene. The renderer copies these into
         // GameSettings.g_Froxel* every frame. Defaults are an outdoor haze that stays thin near the camera; denser
@@ -126,6 +134,10 @@ namespace Engine.Logic
             WeatherHaze = Limit(WeatherHaze, 0, 1, 0.6f);
             WindSpeed = Limit(WindSpeed, 0, 40, 4);
             WindDirection = float.IsFinite(WindDirection) ? ((WindDirection % 360) + 360) % 360 : 45;
+            GroundFog = Limit(GroundFog, 0, 1, 0.6f);
+            GroundFogHeight = Limit(GroundFogHeight, 0.2f, 20, 1.2f);
+            GroundFogBase = float.IsFinite(GroundFogBase) ? Math.Clamp(GroundFogBase, -10000, 10000) : 0;
+            SurfaceDrops = Limit(SurfaceDrops, 0, 1, 1f);
             FogDensity = Limit(FogDensity, 0.001f, 5, 0.03f);
             FogAbsorption = Limit(FogAbsorption, 0, 1, 0.1f);
             FogSunScatter = Limit(FogSunScatter, 0, 4, 0.1f);

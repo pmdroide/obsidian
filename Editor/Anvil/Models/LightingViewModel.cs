@@ -52,6 +52,17 @@ public partial class LightingViewModel : ObservableObject
     [ObservableProperty] private Color _skyColor;
     [ObservableProperty] private double _skyIntensity;
 
+    // --------- Lightmaps (Source 2 look, phase 4.2) ---------
+    [ObservableProperty] private bool _lightmapsEnabled;
+    [ObservableProperty] private bool _bakeLightmaps;
+    [ObservableProperty] private bool _lightmapDenoise;
+    [ObservableProperty] private double _lightmapTexelsPerUnit;
+    [ObservableProperty] private int _lightmapMaxSize;
+    [ObservableProperty] private int _lightmapSamples;
+    [ObservableProperty] private int _lightmapShadowSamples;
+    [ObservableProperty] private double _lightmapAoDistance;
+    [ObservableProperty] private double _sunAngle;
+
     // --------- Bake status ---------
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle))]
@@ -104,6 +115,16 @@ public partial class LightingViewModel : ObservableObject
 
             SkyColor = Color.FromRgb(ToByte(s.SkyColor.X), ToByte(s.SkyColor.Y), ToByte(s.SkyColor.Z));
             SkyIntensity = s.SkyIntensity;
+
+            LightmapsEnabled = s.LightmapsEnabled;
+            BakeLightmaps = s.BakeLightmaps;
+            LightmapDenoise = s.LightmapDenoise;
+            LightmapTexelsPerUnit = s.LightmapTexelsPerUnit;
+            LightmapMaxSize = s.LightmapMaxSize;
+            LightmapSamples = s.LightmapSamples;
+            LightmapShadowSamples = s.LightmapShadowSamples;
+            LightmapAoDistance = s.LightmapAoDistance;
+            SunAngle = s.SunAngle;
         }
         finally { _suppress = false; }
 
@@ -179,6 +200,28 @@ public partial class LightingViewModel : ObservableObject
         Push(s => s.SkyColor = c);
     }
     partial void OnSkyIntensityChanged(double value)      => Push(s => s.SkyIntensity = (float)value);
+
+    partial void OnLightmapsEnabledChanged(bool value)    => Push(s => s.LightmapsEnabled = value);
+    partial void OnBakeLightmapsChanged(bool value)       => Push(s => s.BakeLightmaps = value);
+    partial void OnLightmapDenoiseChanged(bool value)     => Push(s => s.LightmapDenoise = value);
+    partial void OnLightmapTexelsPerUnitChanged(double value)
+    {
+        if (double.IsFinite(value) && value > 0) Push(s => s.LightmapTexelsPerUnit = (float)value);
+    }
+    partial void OnLightmapMaxSizeChanged(int value)
+    {
+        if (value >= 64) Push(s => s.LightmapMaxSize = value);
+    }
+    partial void OnLightmapSamplesChanged(int value)      => Push(s => s.LightmapSamples = Math.Max(16, value));
+    partial void OnLightmapShadowSamplesChanged(int value) => Push(s => s.LightmapShadowSamples = Math.Max(1, value));
+    partial void OnLightmapAoDistanceChanged(double value)
+    {
+        if (double.IsFinite(value) && value > 0) Push(s => s.LightmapAoDistance = (float)value);
+    }
+    partial void OnSunAngleChanged(double value)
+    {
+        if (double.IsFinite(value) && value >= 0) Push(s => s.SunAngle = (float)value);
+    }
 
     private void PushBounds()
     {

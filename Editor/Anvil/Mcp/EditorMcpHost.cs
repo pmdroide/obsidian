@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Anvil.Mcp.Tools;
+using Engine.Editor;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -22,8 +23,19 @@ public sealed class EditorMcpHost(EditorAutomationService editor) : IAsyncDispos
     private WebApplication? _app;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private SemaphoreSlim? _calls;
-    public bool IsRunning => _app != null;
+    public bool IsRunning => _app is { } app && !app.Lifetime.ApplicationStopping.IsCancellationRequested;
     public string? Endpoint { get; private set; }
+
+    /// <summary>Logs actual listener and automation state without exposing credentials.</summary>
+    public string LogStatus()
+    {
+        string message = $"MCP: listener={(IsRunning ? "running" : "stopped")}; " +
+            $"automation={(editor.IsActive ? "active" : "disabled")}; " +
+            $"bridge={(editor.HasBridge ? "attached" : "waiting")}; " +
+            $"access={(editor.ReadOnly ? "read-only" : "read-write")}; endpoint={Endpoint ?? "none"}";
+        EditorBridge.Log(message);
+        return message;
+    }
 
     public async Task StartAsync(int port, string token, CancellationToken ct = default)
     {
@@ -64,6 +76,7 @@ public sealed class EditorMcpHost(EditorAutomationService editor) : IAsyncDispos
             var app = builder.Build();
             byte[] expected = SHA256.HashData(Encoding.UTF8.GetBytes("Bearer " + token));
             var calls = new SemaphoreSlim(16, 16);
+            int activityLogged = 0;
             app.Use(async (context, next) =>
             {
                 var host = context.Request.Host;
@@ -81,6 +94,8 @@ public sealed class EditorMcpHost(EditorAutomationService editor) : IAsyncDispos
                     return;
                 }
                 if (!await calls.WaitAsync(0, context.RequestAborted)) { context.Response.StatusCode = 429; return; }
+                if (Interlocked.Exchange(ref activityLogged, 1) == 0)
+                    EditorBridge.Log("MCP: Client activity received; listener is accepting authenticated requests.");
                 try { await next(context); }
                 finally { calls.Release(); }
             });
@@ -91,6 +106,12 @@ public sealed class EditorMcpHost(EditorAutomationService editor) : IAsyncDispos
             _app = app;
             _calls = calls;
             Endpoint = $"http://127.0.0.1:{port}/mcp";
+            LogStatus();
+        }
+        catch (Exception ex)
+        {
+            EditorBridge.Log("MCP: Listener failed to start (" + ex.GetType().Name + ").");
+            throw;
         }
         finally { _lifecycle.Release(); }
     }
@@ -109,7 +130,12 @@ public sealed class EditorMcpHost(EditorAutomationService editor) : IAsyncDispos
             if (app == null) return;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             try { await app.StopAsync(timeout.Token); }
-            finally { await app.DisposeAsync(); calls?.Dispose(); }
+            finally
+            {
+                await app.DisposeAsync();
+                calls?.Dispose();
+                LogStatus();
+            }
         }
         finally { _lifecycle.Release(); }
     }

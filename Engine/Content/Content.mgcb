@@ -456,6 +456,12 @@
 /processorParam:DebugMode=Auto
 /build:Shaders/Deferred/DeferredPointLight.fx
 
+#begin Shaders/Deferred/Lightmap.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Deferred/Lightmap.fx
+
 #begin Shaders/Deferred/EnvironmentPrefilter.fx
 /importer:EffectImporter
 /processor:EffectProcessor

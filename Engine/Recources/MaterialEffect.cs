@@ -38,6 +38,8 @@ namespace Engine.Recources
         public float PuddleAmount = 0.5f;
         public float PuddleSize = 3f;
         public bool WeatherWetness = true;
+        // Rain beads on and runs down the surface (any material but Wet Surface, which has puddles instead).
+        public bool RainDrops = true;
         // Texture repeats across the mesh UVs (all G-buffer techniques).
         public Vector2 TextureTiling = Vector2.One;
 
@@ -213,6 +215,7 @@ namespace Engine.Recources
                 (Wetness != b.Wetness || PuddleAmount != b.PuddleAmount ||
                  PuddleSize != b.PuddleSize || WeatherWetness != b.WeatherWetness)) return false;
             if (TextureTiling != b.TextureTiling) return false;
+            if (RainDrops != b.RainDrops) return false;
 
             if (HasDiffuse != b.HasDiffuse) return false;
 
@@ -277,6 +280,7 @@ namespace Engine.Recources
                 PuddleAmount = PuddleAmount,
                 PuddleSize = PuddleSize,
                 WeatherWetness = WeatherWetness,
+                RainDrops = RainDrops,
                 TextureTiling = TextureTiling,
                 HasDiffuse = HasDiffuse,
                 HasRoughnessMap = HasRoughnessMap,

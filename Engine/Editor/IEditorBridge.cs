@@ -76,11 +76,14 @@ namespace Engine.Editor
         public readonly int CascadeCount;
         public readonly float ShadowDistance;
         public readonly float SplitLambda;
+        // Lightmaps (Source 2 look, phase 4.2): lightmapped surfaces take this light's shadows from the bake
+        public readonly bool BakedShadows;
 
         public LightSnapshot(Color color, float intensity, float radius, bool castShadows, bool isDirectional, Vector3 direction, bool isSpot = false, float spotAngle = 0f, float innerSpotAngle = 0f,
             int shadowResolution = 0, bool staticShadows = false, float sourceRadius = 0, float sourceLength = 0, string cookiePath = null,
-            int cascadeCount = 0, float shadowDistance = 0, float splitLambda = 0)
+            int cascadeCount = 0, float shadowDistance = 0, float splitLambda = 0, bool bakedShadows = true)
         {
+            BakedShadows = bakedShadows;
             ShadowResolution = shadowResolution;
             StaticShadows = staticShadows;
             SourceRadius = sourceRadius;
@@ -139,6 +142,9 @@ namespace Engine.Editor
         public readonly string Tag, Layer, RoleName;
         // BasicEntity only: the saved Persistent flag (not a script's DontDestroyOnLoad).
         public readonly bool IsPersistent;
+        // BasicEntity only: Lightmap Static and its texel density multiplier (Source 2 look, phase 4.2).
+        public readonly bool LightmapStatic;
+        public readonly float LightmapScale;
         // Decal only: Content-relative texture path (Decal.TexturePath); null = the built-in Assets.DefaultDecal.
         public readonly string DecalTexture;
         // BasicEntity only: the prefab this gameobject is an instance of ("Prefabs/Crate.prefab"), or null.
@@ -152,8 +158,10 @@ namespace Engine.Editor
 
         public EditorObjectSnapshot(int id, string name, EditorObjectKind kind, Vector3 position, Matrix rotation, Vector3 scale, bool isEnabled, LightSnapshot? light, MaterialSnapshot? material, IReadOnlyList<ComponentRecord> components = null, GameObjectRole role = GameObjectRole.Default, bool isPersistent = false, string decalTexture = null,
             string prefabPath = null, IReadOnlyList<string> prefabOverrides = null, bool prefabMissing = false, IReadOnlyList<BoneSnapshot> bones = null,
-            string tag = "Untagged", string layer = "Default", string roleName = null)
+            string tag = "Untagged", string layer = "Default", string roleName = null, bool lightmapStatic = false, float lightmapScale = 1f)
         {
+            LightmapStatic = lightmapStatic;
+            LightmapScale = lightmapScale;
             Tag = tag;
             Layer = layer;
             RoleName = roleName ?? role.ToString();
@@ -250,6 +258,8 @@ namespace Engine.Editor
         void EnqueueEditClassification(ClassificationEdit edit, ClassificationKind kind, string definitionId, string name, Action<string> completed);
         /// <summary>Set a gameobject's saved Persistent flag (kept across scene loads during Play) and mark the scene dirty.</summary>
         void EnqueueSetPersistent(int entityId, bool persistent);
+        /// <summary>Set a gameobject's Lightmap Static flag and Lightmap Scale (used by the next bake) and mark the scene dirty.</summary>
+        void EnqueueSetLightmap(int entityId, bool lightmapStatic, float lightmapScale);
         void EnqueuePlayAudio(int entityId, bool play);
         /// <summary>Enable or mute the engine's output, including editor audio previews.</summary>
         void EnqueueSetAudioEnabled(bool enabled);

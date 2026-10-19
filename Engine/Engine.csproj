@@ -58,7 +58,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <None Update="Content\Scenes\**\*.obsc;Content\Scenes\**\*.probes;Content\**\*.reflections">
+    <None Update="Content\Scenes\**\*.obsc;Content\Scenes\**\*.probes;Content\Scenes\**\*.lightmaps;Content\**\*.reflections">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>

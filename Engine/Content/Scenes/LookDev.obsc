@@ -1,4 +1,5 @@
 {
+  "ReflectionDataFile": "LookDev.reflections",
   "Version": 2,
   "Name": "LookDev",
   "Entities": [
@@ -7,6 +8,8 @@
       "Name": "Floor",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
+      "LightmapScale": 0.5,
       "ModelKey": "Cube",
       "Position": [
         0,
@@ -756,6 +759,7 @@
       "Name": "Checker Board",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4,
@@ -839,6 +843,7 @@
       "Name": "Checker 01",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -5.25,
@@ -901,6 +906,7 @@
       "Name": "Checker 02",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.75,
@@ -963,6 +969,7 @@
       "Name": "Checker 03",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.25,
@@ -1025,6 +1032,7 @@
       "Name": "Checker 04",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.75,
@@ -1087,6 +1095,7 @@
       "Name": "Checker 05",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.25,
@@ -1149,6 +1158,7 @@
       "Name": "Checker 06",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -2.75,
@@ -1211,6 +1221,7 @@
       "Name": "Checker 07",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -5.25,
@@ -1273,6 +1284,7 @@
       "Name": "Checker 08",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.75,
@@ -1335,6 +1347,7 @@
       "Name": "Checker 09",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.25,
@@ -1397,6 +1410,7 @@
       "Name": "Checker 10",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.75,
@@ -1459,6 +1473,7 @@
       "Name": "Checker 11",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.25,
@@ -1521,6 +1536,7 @@
       "Name": "Checker 12",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -2.75,
@@ -1583,6 +1599,7 @@
       "Name": "Checker 13",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -5.25,
@@ -1645,6 +1662,7 @@
       "Name": "Checker 14",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.75,
@@ -1707,6 +1725,7 @@
       "Name": "Checker 15",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.25,
@@ -1769,6 +1788,7 @@
       "Name": "Checker 16",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.75,
@@ -1831,6 +1851,7 @@
       "Name": "Checker 17",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.25,
@@ -1893,6 +1914,7 @@
       "Name": "Checker 18",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -2.75,
@@ -1955,6 +1977,7 @@
       "Name": "Checker 19",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -5.25,
@@ -2017,6 +2040,7 @@
       "Name": "Checker 20",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.75,
@@ -2079,6 +2103,7 @@
       "Name": "Checker 21",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -4.25,
@@ -2141,6 +2166,7 @@
       "Name": "Checker 22",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.75,
@@ -2203,6 +2229,7 @@
       "Name": "Checker 23",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -3.25,
@@ -2265,6 +2292,7 @@
       "Name": "Checker 24",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -2.75,
@@ -2327,6 +2355,7 @@
       "Name": "Room Floor",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         14,
@@ -2410,6 +2439,7 @@
       "Name": "Room Roof",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         14,
@@ -2493,6 +2523,7 @@
       "Name": "Room East Wall",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         18.15,
@@ -2576,6 +2607,7 @@
       "Name": "Room North Wall",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         14,
@@ -2659,6 +2691,7 @@
       "Name": "Room South Wall",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         14,
@@ -2742,6 +2775,7 @@
       "Name": "Room West Wall N",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         9.85,
@@ -2825,6 +2859,7 @@
       "Name": "Room West Wall S",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         9.85,
@@ -2908,6 +2943,7 @@
       "Name": "Room Lintel",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         9.85,
@@ -3139,6 +3175,7 @@
       "Name": "Room Crate",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         14.5,
@@ -3257,6 +3294,7 @@
       "Name": "Room Emissive Panel",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         16.5,
@@ -3355,6 +3393,7 @@
       "Name": "Glass Wall",
       "IsEnabled": true,
       "Role": "Default",
+      "LightmapStatic": true,
       "ModelKey": "Cube",
       "Position": [
         -12,
@@ -3642,6 +3681,169 @@
           }
         }
       ]
+    },
+    {
+      "Id": 54,
+      "Name": "Mirror Glass Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -8,
+        7.0,
+        1.3
+      ],
+      "Scale": [
+        1.6,
+        0.1,
+        1.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "3bca3cb7-0be9-520b-8ea7-9bca74b19d03",
+          "Data": {
+            "Red": 0.06,
+            "Green": 0.06,
+            "Blue": 0.07,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "7468bcf4-d4a5-5b0f-8919-beaf1e19729f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 55,
+      "Name": "Mirror Glass Pane",
+      "ModelKey": "Cube",
+      "Position": [
+        -8,
+        7.5,
+        1.1
+      ],
+      "Scale": [
+        1.2,
+        0.02,
+        1.0
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8a8188de-d2fc-5343-bd29-a930c1be2394",
+          "Data": {
+            "Red": 0.05,
+            "Green": 0.05,
+            "Blue": 0.06,
+            "Roughness": 0.02,
+            "Metallic": 0.0,
+            "CastShadows": false,
+            "Enabled": true,
+            "MaterialType": 5,
+            "IsTransparent": true,
+            "Opacity": 0.35
+          }
+        },
+        {
+          "Type": "planar-reflection",
+          "InstanceId": "82637819-cd08-57ba-a37e-b45628dd3aa4",
+          "Data": {
+            "ResolutionScale": 1.0,
+            "RenderDistance": 100,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 56,
+      "Name": "Player Body",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        -8,
+        10.5,
+        0
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8b798038-a35e-54cb-9114-5d2abd563f0e",
+          "Data": {
+            "Red": 0.55,
+            "Green": 0.55,
+            "Blue": 0.58,
+            "Roughness": 0.45,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "animator",
+          "InstanceId": "1a80783b-e307-5559-8cf3-70b201806ec2",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 1.0,
+            "Loop": true,
+            "InPlace": true,
+            "Actions": [
+              {
+                "Name": "Idle",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 0.0,
+                "Loop": true
+              },
+              {
+                "Name": "Walk",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 1.0,
+                "Loop": true
+              },
+              {
+                "Name": "Run",
+                "ClipSource": "",
+                "ClipName": "",
+                "Speed": 1.8,
+                "Loop": true
+              }
+            ],
+            "StartAction": "Idle",
+            "FadeTime": 0.25,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ao-proxy",
+          "InstanceId": "387d417f-38cf-585b-8cd9-56c2a98997ab",
+          "Data": {
+            "Shape": "Auto",
+            "Intensity": 1.0,
+            "SizeScale": 1.0,
+            "Falloff": 2.0,
+            "CullDistance": 25,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
     }
   ],
   "PointLights": [
@@ -3670,11 +3872,12 @@
       "VolumetricDensity": 1,
       "SourceRadius": 0.05,
       "SourceLength": 1.2,
+      "BakedShadows": true,
       "Rotation": [
         0,
         0,
         0.7071069,
-        0.7071067
+        0.70710665
       ]
     }
   ],
@@ -3707,11 +3910,12 @@
       "VolumetricDensity": 1,
       "SourceRadius": 0.03,
       "SourceLength": 0,
+      "BakedShadows": true,
       "Rotation": [
-        0.45535272,
-        -0.48019072,
+        0.45535251,
+        -0.48019052,
         0,
-        0.7497134
+        0.7497138
       ]
     },
     {
@@ -3741,11 +3945,12 @@
       "VolumetricDensity": 1,
       "SourceRadius": 0,
       "SourceLength": 0,
+      "BakedShadows": true,
       "Rotation": [
-        0.39622408,
+        0.3962241,
         0,
         0,
-        0.9181539
+        0.9181538
       ]
     }
   ],
@@ -3779,7 +3984,8 @@
       "ScreenSpaceShadowBlur": false,
       "CascadeCount": 4,
       "ShadowDistance": 120,
-      "SplitLambda": 0.8
+      "SplitLambda": 0.8,
+      "BakedShadows": true
     }
   ],
   "Decals": [],
@@ -3918,7 +4124,7 @@
     "Forward": [
       0,
       0.9854312,
-      -0.17007455
+      -0.17007439
     ],
     "FieldOfView": 0.9,
     "Components": [
@@ -3928,6 +4134,17 @@
         "Data": {
           "ScriptId": "freecam",
           "Fields": {},
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "285c3c01-129b-52a3-99e4-f7fbcc5d57c8",
+        "Data": {
+          "ScriptId": "camera-body",
+          "Fields": {
+            "Body": 56
+          },
           "Enabled": true
         }
       }
@@ -3960,8 +4177,18 @@
         0.7,
         1
       ],
-      "SkyIntensity": 0.3
+      "SkyIntensity": 0.3,
+      "LightmapsEnabled": true,
+      "BakeLightmaps": true,
+      "LightmapTexelsPerUnit": 8,
+      "LightmapMaxSize": 2048,
+      "LightmapSamples": 128,
+      "LightmapShadowSamples": 16,
+      "LightmapAoDistance": 1,
+      "SunAngle": 1.5,
+      "LightmapDenoise": true
     },
-    "ProbeDataFile": "LookDev.probes"
+    "ProbeDataFile": "LookDev.probes",
+    "LightmapDataFile": "LookDev.lightmaps"
   }
 }

@@ -3,6 +3,8 @@
 // metalness; the sun with its cascaded shadows; point and spot lights with atlas shadows and cookies; image based light from the
 // probe volume and the reflection probes; the froxel fog in front of it. Output is premultiplied: reflections stay
 // visible on clear glass. Light units match DeferredCompose's output (the light buffers' 1/10 scale).
+// The same shader draws the opaque scene into a Planar Reflection pane's mirror image (ReflectionPass), and panes
+// with one show that image instead of the reflection probes (PlanarReflectionRenderModule).
 
 #define MAXLIGHTS 40
 
@@ -36,6 +38,33 @@ SamplerState AlbedoSampler
     AddressV = Wrap;
 };
 float2 TextureTiling = float2(1, 1);
+bool HasMask = false;
+Texture2D MaskMap;
+SamplerState MaskSampler
+{
+    Texture = <MaskMap>;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+// ---- Planar reflections (PlanarReflectionRenderModule) ----
+// ReflectionPass: drawing an opaque gameobject into a mirror image, seen from the mirrored camera; pixels behind the
+// pane (dot(ClipPlane.xyz, p) + ClipPlane.w < 0) are clipped.
+bool ReflectionPass = false;
+float4 ClipPlane;
+// The pane being drawn has a mirror image: rgb = light, a = coverage (0 where nothing was drawn: keep the probes).
+bool UsePlanarReflection = false;
+float3 PlanarReflectionSize = float3(1280, 720, 1); // width, height, mip levels
+Texture2D PlanarReflectionMap;
+SamplerState PlanarReflectionSampler
+{
+    Texture = <PlanarReflectionMap>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
 
 // ---- Point / spot lights (ForwardRenderModule ranks them; spot lights use cos outer -2 for point lights) ----
 int LightAmount = 0;
@@ -192,6 +221,9 @@ float SunShadow(float3 positionWS, float3 normalWS, float ndotl)
 
 float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
 {
+    [branch]
+    if (ReflectionPass) clip(dot(ClipPlane.xyz, input.PositionWS) + ClipPlane.w);
+
     float3 normal = normalize(input.Normal);
     float3 cameraDirection = normalize(CameraPositionWS - input.PositionWS);
     //Thin glass is lit from the side the camera sees
@@ -205,6 +237,13 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
         float4 texel = AlbedoMap.Sample(AlbedoSampler, input.TexCoord);
         albedoGamma *= texel.rgb;
         opacity *= texel.a;
+    }
+    //Mirror images hold opaque surfaces (cut-outs keep their mask)
+    [branch]
+    if (ReflectionPass)
+    {
+        if (HasMask) clip(MaskMap.Sample(MaskSampler, input.TexCoord).r - 0.5f);
+        opacity = 1;
     }
     float3 albedo = AlbedoToLinear(albedoGamma);
     float roughness = max(Roughness, PBR_MIN_ROUGHNESS);
@@ -270,8 +309,18 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
 
     float3 r = reflect(-cameraDirection, normal);
     float2 envBRDF = UseBrdfLut ? BrdfLut.SampleLevel(BrdfSampler, float2(NdotV, roughness), 0).rg : EnvBRDFApprox(NdotV, roughness);
-    specularLight += SampleReflections(input.PositionWS, r, normal, roughness, UseProbeVolume, pixelIrradiance, irradianceWeight)
-        * (f0 * envBRDF.x + envBRDF.y);
+    float3 reflection = SampleReflections(input.PositionWS, r, normal, roughness, UseProbeVolume, pixelIrradiance, irradianceWeight);
+    // A Planar Reflection pane: the mirrored scene at this pixel (premultiplied by its coverage), blurred with roughness
+    [branch]
+    if (UsePlanarReflection && !ReflectionPass)
+    {
+        float2 screenUV = input.Position.xy / Resolution;
+        float lobe = roughness * roughness * PlanarReflectionSize.x * 0.5f;
+        float mip = min(log2(1 + lobe), PlanarReflectionSize.z - 1);
+        float4 planar = PlanarReflectionMap.SampleLevel(PlanarReflectionSampler, screenUV, mip);
+        reflection = reflection * (1 - saturate(planar.a)) + planar.rgb;
+    }
+    specularLight += reflection * (f0 * envBRDF.x + envBRDF.y);
 
     // Premultiplied: light passing through is scaled by the opacity, reflections are not
     float3 color = albedo * (1 - Metallic) * diffuseLight * opacity + specularLight;
@@ -296,5 +345,69 @@ technique Default
     {
         VertexShader = compile vs_5_0 VertexShaderFunction();
         PixelShader = compile ps_5_0 PixelShaderFunction();
+    }
+}
+
+// ---- Planar reflection sky (PlanarSky): fills a mirror image where nothing was drawn (depth still 1) with the
+// background sky along the mirrored rays, at the main view's brightness (DeferredEnvironmentMap: sky * 0.5) ----
+float4x4 InverseViewProjection; // of the mirrored view
+bool UseSkyMap2D = false;
+TextureCube SkyCubeMap;
+SamplerState SkyCubeSampler
+{
+    Texture = <SkyCubeMap>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = Linear;
+};
+Texture2D SkyMap2D;
+SamplerState SkyMap2DSampler
+{
+    Texture = <SkyMap2D>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = Linear;
+    AddressU = Wrap;
+    AddressV = Clamp;
+};
+
+struct SkyVertexOutput
+{
+    float4 Position : SV_POSITION;
+    float2 Ndc : TEXCOORD0;
+};
+
+SkyVertexOutput SkyVertexShader(float2 position : POSITION0)
+{
+    SkyVertexOutput output;
+    output.Position = float4(position, 1, 1); //on the far plane: only where the depth is still clear
+    output.Ndc = position;
+    return output;
+}
+
+float4 SkyPixelShader(SkyVertexOutput input) : COLOR
+{
+    float4 far = mul(float4(input.Ndc, 1, 1), InverseViewProjection);
+    float3 direction = normalize(far.xyz / far.w - CameraPositionWS);
+    float3 sky;
+    [branch]
+    if (UseSkyMap2D)
+    {
+        //Z up, like SampleSky in DeferredEnvironmentMap.fx
+        float u = atan2(direction.y, direction.x) / 6.2831853f + 0.5f;
+        float v = acos(clamp(direction.z, -1.0f, 1.0f)) / 3.14159265f;
+        sky = SkyMap2D.SampleLevel(SkyMap2DSampler, float2(u, v), 0).rgb;
+    }
+    else
+        sky = SkyCubeMap.SampleLevel(SkyCubeSampler, direction, 0).rgb;
+    return float4(sky * 0.5f, 1);
+}
+
+technique PlanarSky
+{
+    pass Pass1
+    {
+        VertexShader = compile vs_5_0 SkyVertexShader();
+        PixelShader = compile ps_5_0 SkyPixelShader();
     }
 }

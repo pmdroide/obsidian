@@ -20,11 +20,11 @@ Implemented; how to use it is in [`Docs/markdown/Source2_Look.md`](../../markdow
 | 2.1–2.4 | Done. The screen-space sun shadow path was removed. The atlas defaults to 4096², not 8192². |
 | 3.1–3.4 | Done. Probe cubemaps are captured at runtime (not stored as sidecars). Forward surfaces get no point/spot shadows or cookies yet. |
 | 4.1 | Done, except optional L2 SH. |
-| 4.2 Lightmaps | **Not done** (XL). |
+| 4.2 Lightmaps | **Done (2026-10-19)**, see [`Docs/markdown/Lightmaps.md`](../../markdown/Lightmaps.md). UV2 is unwrapped at bake time and stored in the `.lightmaps` sidecar, not in the model `.xnb`; authored TEXCOORD1 is used when present. Directional irradiance, baked AO and a 4-channel shadow mask, with lights graph-coloured into channels rather than R6's per-texel indices. Dynamic objects get no baked mask (the probes don't store one). |
 | 5.1–5.3 | Done. |
 | 6.1–6.2 | Done. AO proxies are ellipsoids/capsules (no box shape). |
 | 7 | Screen-size culling and hardware occlusion queries done (queries off by default); no depth prepass. |
-| R1–R7 | **Done (2026-10-19)**, see [Research follow-ups: findings](#research-follow-ups-findings-2026-10-19). Applied: the `Source2` tonemap curve, `Source2` metering, the `Source2` bloom ramp, HLA exposure clamp and speeds, cubemap normalisation 32 / 0.1 with HLA's cap formula, and cascade lambda 0.85. Not applied: HLA's 1000-unit (about 25 m) shadow distance, the screen bloom blend, the AO cone LUT (R7), and lightmap packing (R6, for 4.2). |
+| R1–R7 | **Done (2026-10-19)**, see [Research follow-ups: findings](#research-follow-ups-findings-2026-10-19). Applied: the `Source2` tonemap curve, `Source2` metering, the `Source2` bloom ramp, HLA exposure clamp and speeds, cubemap normalisation 32 / 0.1 with HLA's cap formula, and cascade lambda 0.85. Not applied: HLA's 1000-unit (about 25 m) shadow distance, the screen bloom blend, the AO cone LUT (R7), and R6's per-texel light index packing (4.2 uses 4 graph-coloured mask channels instead). |
 
 **Related:** volumetric fog was studied and rebuilt separately. See
 [`../AlyxVolumetric/README.md`](../AlyxVolumetric/README.md); this plan only covers
@@ -217,6 +217,11 @@ Without side-by-side references, "close to Source 2" can't be measured.
   - Storage: per-scene sidecar `<scene>.lightmaps` + textures, invalidated by a bake hash like the probe file.
   - Anvil: Bake button (Inspector > Lighting), a "Static" flag per gameobject, and texel density.
   - Source 2 reference: `m_bHasBakedLightingFromLightMap`, `vr_directional_lightmaps`, `bakelightindex`, `m_bUsesIndexedBakedLighting`, `VrNumBakedLights`.
+  - **Status (2026-10-19): done.** How it was built and what differs from this plan is in [`Docs/markdown/Lightmaps.md`](../../markdown/Lightmaps.md):
+    - UV2 is built at bake time and stored in the sidecar.
+    - The mask uses 4 graph-coloured channels.
+    - Static lights multiply their mask with their shadow map instead of dropping it, so dynamic objects keep casting real-time shadows onto lightmapped surfaces.
+    - There is no automatic bake hash.
 
 **Done when:** the dark room in look-dev is lit only by bounce light from the doorway, with soft contact shadows and no SSAO, and moving the camera doesn't change it.
 

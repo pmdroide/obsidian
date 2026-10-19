@@ -318,6 +318,27 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         SelectedWorkspaceTab = WorkspaceTabs[0];
         BuildConsole();
+        RefreshConsoleLogs();
+    }
+
+    private DispatcherTimer? _logTimer;
+    private long _lastLogSequence;
+
+    public void RefreshConsoleLogs()
+    {
+        foreach (var entry in EditorBridge.GetLogEntries(_lastLogSequence))
+        {
+            AddConsoleEntry(ConsoleLevel.Log, entry.Message,
+                entry.Message.StartsWith("MCP:", StringComparison.Ordinal) ? "Anvil:MCP" : "Engine",
+                entry.Timestamp);
+            _lastLogSequence = entry.Sequence;
+        }
+    }
+
+    public void StopConsoleLogging()
+    {
+        _logTimer?.Stop();
+        RefreshConsoleLogs();
     }
 
     // -------- Engine bridge wiring --------
@@ -326,6 +347,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge != null) return;
         _bridge = bridge;
+        _logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _logTimer.Tick += (_, _) => RefreshConsoleLogs();
+        _logTimer.Start();
         bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
         PushStatsVisible();
         PushGridVisible();
@@ -529,6 +553,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ClearConsole()
     {
+        // Clear pending history too, so the next timer tick cannot restore old messages.
+        var pending = EditorBridge.GetLogEntries(_lastLogSequence);
+        if (pending.Length > 0) _lastLogSequence = pending[^1].Sequence;
         ConsoleEntries.Clear();
         OnPropertyChanged(nameof(FilteredConsole));
         OnPropertyChanged(nameof(ConsoleLogCount));
@@ -1580,13 +1607,14 @@ public partial class MainWindowViewModel : ViewModelBase
         return true;
     }
 
-    private void AddConsoleEntry(ConsoleLevel level, string message, string source)
+    private void AddConsoleEntry(ConsoleLevel level, string message, string source, DateTime? timestamp = null)
     {
         int id = ConsoleEntries.Count == 0 ? 1 : ConsoleEntries.Max(e => e.Id) + 1;
+        if (ConsoleEntries.Count >= EditorBridge.LogCapacity) ConsoleEntries.RemoveAt(0);
         ConsoleEntries.Add(new ConsoleEntry
         {
             Id = id, Level = level, Message = message, Source = source,
-            Time = DateTime.Now.ToString("HH:mm:ss"),
+            Time = (timestamp ?? DateTime.Now).ToString("HH:mm:ss"),
         });
         OnPropertyChanged(nameof(FilteredConsole));
         OnPropertyChanged(nameof(ConsoleLogCount));

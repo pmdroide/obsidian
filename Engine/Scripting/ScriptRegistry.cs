@@ -16,6 +16,7 @@ public static class ScriptRegistry
         Register<SpinExampleScript>(SpinExampleScript.ScriptId, "Spin Example");
         Register<TimerExampleScript>(TimerExampleScript.ScriptId, "Timer Example");
         Register<FreecamScript>(FreecamScript.ScriptId, "Freecam");
+        Register<CameraBodyScript>(CameraBodyScript.ScriptId, "Camera Body");
         Register<MainMenuScript>(MainMenuScript.ScriptId, "Main Menu");
         Register<MultiplayerTestScript>(MultiplayerTestScript.ScriptId, "Multiplayer Test");
         Register<CollisionTestPlayerScript>(CollisionTestPlayerScript.ScriptId, "Collision Test Player");

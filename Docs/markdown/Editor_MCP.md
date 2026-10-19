@@ -13,6 +13,20 @@ Anvil exposes twelve tools through a local Streamable HTTP MCP server. The serve
 
 Enable/port preferences take effect when you press Apply. Unchecking Enable revokes automation immediately; Apply closes the listener and saves that preference. Closing the MCP tab leaves the server running; closing Anvil cancels queued commands and shuts down the host. Enabled settings restart the listener when a subsequent editor session attaches its bridge.
 
+### Status logging
+
+The **Console** records MCP listener startup/shutdown, startup failures and the first authenticated client request after each startup. Search for `MCP` or `Anvil:MCP`. These messages also go to the engine's `anvil-bridge.log` file.
+
+Press **Log Status** in the MCP panel to log the current state, for example:
+
+```text
+MCP: listener=running; automation=active; bridge=attached; access=read-only; endpoint=http://127.0.0.1:47831/mcp
+```
+
+The listener and automation states are reported separately: unchecking Enable immediately disables automation while the listener stays open until Apply. `bridge=attached` confirms that the engine bridge is connected; a successful `editor_get_status` call confirms that the engine is responding. The client activity message confirms an authenticated request reached the listener and is emitted once per startup. It does not imply a client remains connected. Tokens, authorization headers and request arguments are omitted from these logs.
+
+Code that owns an `EditorMcpHost` can call `LogStatus()` for the same report.
+
 A client configuration may look like this; use your client's documented field names:
 
 ```json
@@ -38,7 +52,7 @@ Settings and the token are stored in `%LOCALAPPDATA%/Anvil/Mcp/settings.json`, i
 Run the installer from the repository root to choose **Claude Code, Cursor, Codex, VS Code**, or several at once:
 
 ```powershell
-.\install-mcp.ps1
+.\Tools\Scripts\install-mcp.ps1
 ```
 
 The menu accepts names or numbers separated by commas, asks for user/project scope, and previews the affected files before writing. First enable Anvil MCP and press Apply so its saved endpoint/token exist. The installer registers that server; Anvil must remain running when clients use its tools.
@@ -46,7 +60,7 @@ The menu accepts names or numbers separated by commas, asks for user/project sco
 The source launcher requires the .NET 10 SDK and builds only the small installer project. To run without the SDK, publish the standalone Windows x64 executable:
 
 ```powershell
-.\build-mcp-installer.ps1
+.\Tools\Scripts\build-mcp-installer.ps1
 .\Builds\McpInstaller\anvil-mcp.exe
 ```
 
@@ -56,20 +70,20 @@ The executable can be copied outside the checkout. It has its own .NET runtime a
 
 ```powershell
 # Preview selected harnesses; no files, folders or backups are created.
-.\install-mcp.ps1 --harness claudecode,cursor,codex --dry-run
+.\Tools\Scripts\install-mcp.ps1 --harness claudecode,cursor,codex --dry-run
 
 # Install one harness without the final prompt.
-.\install-mcp.ps1 --harness codex --yes
+.\Tools\Scripts\install-mcp.ps1 --harness codex --yes
 
 # Install every supported harness.
-.\install-mcp.ps1 --harness all --yes
+.\Tools\Scripts\install-mcp.ps1 --harness all --yes
 
 # Refresh an existing entry after changing the port or rotating the token.
-.\install-mcp.ps1 --harness all --replace --yes
+.\Tools\Scripts\install-mcp.ps1 --harness all --replace --yes
 
 # Show options or target paths.
-.\install-mcp.ps1 --help
-.\install-mcp.ps1 --list
+.\Tools\Scripts\install-mcp.ps1 --help
+.\Tools\Scripts\install-mcp.ps1 --list
 ```
 
 The same flags work on `anvil-mcp.exe`, or directly with `dotnet run --project Tools/McpInstaller/McpInstaller.csproj -- <flags>`. `claude` and `claude-code` are aliases for `claudecode`; harness flags can be repeated. In a script or redirected terminal, supply the harnesses and `--yes`, or use `--dry-run`.
@@ -89,16 +103,16 @@ These destinations/formats follow [Claude Code's scopes](https://code.claude.com
 
 ```powershell
 # Share server definitions with this project, keeping the token outside them.
-.\install-mcp.ps1 --harness all --scope project --project . --yes
+.\Tools\Scripts\install-mcp.ps1 --harness all --scope project --project . --yes
 
 # Use an environment-variable reference even in private user settings.
-.\install-mcp.ps1 --harness cursor --token-env ANVIL_MCP_TOKEN --yes
+.\Tools\Scripts\install-mcp.ps1 --harness cursor --token-env ANVIL_MCP_TOKEN --yes
 
 # Target a custom client profile, portable installation or VS Code Insiders.
-.\install-mcp.ps1 --harness cursor --config 'C:\MyProfile\mcp.json' --yes
+.\Tools\Scripts\install-mcp.ps1 --harness cursor --config 'C:\MyProfile\mcp.json' --yes
 
 # Read another Anvil settings file, if needed.
-.\install-mcp.ps1 --harness codex --settings 'C:\MyAnvil\settings.json' --yes
+.\Tools\Scripts\install-mcp.ps1 --harness codex --settings 'C:\MyAnvil\settings.json' --yes
 ```
 
 For environment-based entries, run the **Prepare the connection** block below before launching the client. Each harness receives its own variable syntax. Installing an entry does not set persistent Windows environment variables. After rotation, reload the environment variable; static user entries need a `--replace` refresh. If the endpoint changes, reinstall with `--replace` in either mode.

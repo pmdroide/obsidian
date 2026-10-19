@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Anvil.Mcp;
+using Anvil.ViewModels;
 using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
@@ -29,6 +30,7 @@ internal static class McpChecks
             logic.SceneManager.Assets = assets;
             logic.PlayMode = new PlayModeController(logic);
             var entity = new BasicEntity(assets.Cube, null, Vector3.Zero, Matrix.Identity, Vector3.One) { Name = "MCP object" };
+            CheckLogging(entity);
             logic.BasicEntities.Add(entity);
             var bridge = new EditorBridge { AutomationContentRootOverride = root };
             var editor = new EditorLogic();
@@ -181,9 +183,16 @@ internal static class McpChecks
         listener.Stop();
         string token = EditorMcpSettings.NewToken();
         var host = new EditorMcpHost(service);
+        long beforeStart = EditorBridge.GetLogEntries().Last().Sequence;
         host.StartAsync(port, token).GetAwaiter().GetResult();
         try
         {
+            Check(host.IsRunning && EditorBridge.GetLogEntries(beforeStart).Any(e => e.Message.Contains("listener=running")),
+                "listener startup is logged only after the host is running");
+            service.Stop();
+            Check(host.LogStatus().Contains("listener=running; automation=disabled"),
+                "status distinguishes a running listener from disabled automation");
+            service.Start();
             using var http = new HttpClient();
             var endpoint = new Uri(host.Endpoint!);
             HttpStatusCode Probe(string? credential, string? origin = null, string? hostHeader = null)
@@ -212,6 +221,8 @@ internal static class McpChecks
                     "official SDK client discovers the twelve tools over Streamable HTTP");
                 var status = complete(client.CallToolAsync("editor_get_status"));
                 Check(status.IsError != true && Text(status).Contains(generation), "real MCP status call returns the current scene generation");
+                Check(EditorBridge.GetLogEntries(beforeStart).Count(e => e.Message.Contains("Client activity received")) == 1,
+                    "authenticated client activity is logged once per listener start");
                 var moveArgs = new Dictionary<string, object?> { ["requestId"] = "http-move", ["sceneGeneration"] = generation,
                     ["objectId"] = entity.Id, ["position"] = new { x = 7, y = 8, z = 9 } };
                 service.ReadOnly = true;
@@ -239,6 +250,60 @@ internal static class McpChecks
         }
         finally { host.StopAsync().GetAwaiter().GetResult(); }
         Check(!host.IsRunning, "MCP host stops independently of editor workspace tabs");
+        Check(EditorBridge.GetLogEntries(beforeStart).Any(e => e.Message.Contains("listener=stopped; automation=disabled")),
+            "listener shutdown logs the stopped state");
+        Check(EditorBridge.GetLogEntries(beforeStart).All(e => !e.Message.Contains(token) && !e.Message.Contains("Bearer ")),
+            "MCP lifecycle and activity logs omit credentials");
+
+        using var occupied = new TcpListener(IPAddress.Loopback, port);
+        occupied.Start();
+        try
+        {
+            host.StartAsync(port, token).GetAwaiter().GetResult();
+            throw new Exception("Expected occupied MCP port to fail.");
+        }
+        catch (IOException)
+        {
+            Check(!host.IsRunning && !service.IsActive && host.Endpoint == null &&
+                EditorBridge.GetLogEntries(beforeStart).Any(e => e.Message.Contains("Listener failed to start")),
+                "failed listener startup logs the failure and leaves automation disabled");
+        }
+    }
+
+    private static void CheckLogging(BasicEntity entity)
+    {
+        var script = new LogProbeScript();
+        script.Attach(entity);
+        script.Emit("debug log probe");
+        Check(EditorBridge.GetLogEntries().Last().Message == "[MCP object] debug log probe",
+            "existing ScriptBehaviour.Log retains the gameobject name in Console history");
+
+        var vm = new MainWindowViewModel();
+        vm.ClearConsoleCommand.Execute(null);
+        EditorBridge.Log("MCP: Console log probe");
+        vm.RefreshConsoleLogs();
+        Check(vm.ConsoleEntries.Count == 1 && vm.ConsoleEntries[0].Source == "Anvil:MCP" &&
+            vm.ConsoleEntries[0].Message == "MCP: Console log probe",
+            "engine logs reach the Console and MCP messages have a searchable source");
+        EditorBridge.Log("pending before clear");
+        vm.ClearConsoleCommand.Execute(null);
+        vm.RefreshConsoleLogs();
+        Check(vm.ConsoleEntries.Count == 0, "clearing the Console also discards pending history");
+        Parallel.For(0, 16, i => EditorBridge.Log("worker log " + i));
+        vm.RefreshConsoleLogs();
+        Check(vm.ConsoleEntries.Count == 16, "concurrent engine logs reach the Console without lost messages");
+        for (int i = 0; i <= EditorBridge.LogCapacity; i++) EditorBridge.Log("bounded log " + i);
+        var recent = EditorBridge.GetLogEntries();
+        vm.RefreshConsoleLogs();
+        Check(recent.Length == EditorBridge.LogCapacity && recent.Zip(recent.Skip(1)).All(pair => pair.First.Sequence < pair.Second.Sequence) &&
+            vm.ConsoleEntries.Count == EditorBridge.LogCapacity && vm.ConsoleEntries.Last().Message == "bounded log 1000",
+            "log history and Console remain bounded and ordered");
+        vm.StopConsoleLogging();
+    }
+
+    private sealed class LogProbeScript : Engine.Scripting.ScriptBehaviour
+    {
+        public void Emit(string message) => Log(message);
     }
 
     private static string Text(CallToolResult result) => JsonSerializer.Serialize(result);
