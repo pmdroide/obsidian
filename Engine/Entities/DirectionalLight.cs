@@ -23,7 +23,7 @@ namespace Engine.Entities
         private int _shadowResolution;
         private int _cascadeCount = MaxCascades;
         private float _shadowDistance = 150;
-        private float _splitLambda = 0.75f;
+        private float _splitLambda = 0.85f; // HLA csm_split_log_scalar (Docs/Research/Source2Look R5)
 
         /// <summary>Whether the light casts (cascaded) shadows.</summary>
         public bool CastShadows { get => _castShadows; set { if (_castShadows != value) { _castShadows = value; HasChanged = true; } } }
@@ -62,7 +62,7 @@ namespace Engine.Entities
         /// <summary>Distance (m) from the camera where sun shadows end, fading out over the last cascade's last tenth.</summary>
         public float ShadowDistance { get => _shadowDistance; set { _shadowDistance = float.IsFinite(value) ? Math.Clamp(value, 5, 5000) : 150; HasChanged = true; } }
         /// <summary>0 = evenly spaced cascades, 1 = logarithmic (most detail near the camera). Practical split scheme.</summary>
-        public float SplitLambda { get => _splitLambda; set { _splitLambda = float.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.75f; HasChanged = true; } }
+        public float SplitLambda { get => _splitLambda; set { _splitLambda = float.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.85f; HasChanged = true; } }
 
         /// <summary>The cascade atlas: cascade i sits in tile (i % 2, i / 2) of <see cref="ShadowResolution"/> texels.</summary>
         public RenderTarget2D ShadowMap;

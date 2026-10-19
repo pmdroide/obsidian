@@ -55,11 +55,12 @@ namespace Engine.Recources
         public static bool g_envmapupdateeveryframe = false;
         public static int g_envmapresolution = 1024;
         //Image based lighting (Source 2 look, phase 3): texels per face of the GGX-prefiltered global probe, and the
-        //cubemap normalisation (vr_cubemap_normalization_max / _roughness_begin): reflections are scaled by the baked
-        //light at the pixel over that at the capture point, at most NormalizationMax, fading in up to RoughnessBegin
+        //cubemap normalisation (vr_cubemap_normalization_max / _roughness_begin, HLA defaults 32 / 0.1, Source2Look R4):
+        //reflections are scaled by the baked light at the pixel over that at the capture point; brightening is capped
+        //at 1 up to RoughnessBegin and rises linearly to NormalizationMax at roughness 1, darkening is never limited
         public static int g_reflectionprobesize = 256;
-        public static float g_cubemapnormalizationmax = 1;
-        public static float g_cubemapnormalizationroughnessbegin = 0;
+        public static float g_cubemapnormalizationmax = 32;
+        public static float g_cubemapnormalizationroughnessbegin = 0.1f;
 
         //Shadow Settings
         public static int g_shadowforcefiltering = 2; //1 = PCF, 2 3 better PCF  4 = Poisson, 5 = VSM;
@@ -162,14 +163,19 @@ namespace Engine.Recources
 
 
 
-        //Bloom (Source 2 look): exposed brightness where bloom starts, its soft knee and the amount added.
+        //Bloom (Source 2 look): exposed brightness where bloom starts, its knee / ramp width and the amount added.
         //Per scene in EnvironmentSettings.Post, copied here every frame by Renderer.ApplyScenePost.
-        public static float g_BloomStart = 1.5f;
-        public static float g_BloomKnee = 0.5f;
+        public static Logic.BloomThresholdShape g_BloomShape = Logic.BloomThresholdShape.Source2;
+        public static float g_BloomStart = 1.976f;
+        public static float g_BloomKnee = 2.3655f;
         public static float g_BloomScale = 0.35f;
 
         //Tonemapping / grading (EnvironmentSettings.Post, copied every frame by Renderer.ApplyScenePost)
-        public static Logic.TonemapCurve g_TonemapCurve = Logic.TonemapCurve.Hejl;
+        public static Logic.TonemapCurve g_TonemapCurve = Logic.TonemapCurve.Source2;
+        //Source 2 filmic curve (TonemapParameters_t): shoulder, linear strength, linear angle, toe strength ...
+        public static Microsoft.Xna.Framework.Vector4 g_FilmicCurve = new Microsoft.Xna.Framework.Vector4(0.15f, 0.5f, 0.1f, 0.2f);
+        //... toe numerator, toe denominator, white point (stops)
+        public static Microsoft.Xna.Framework.Vector3 g_FilmicToe = new Microsoft.Xna.Framework.Vector3(0.02f, 0.3f, 4);
         public static bool g_ExactSrgb = true;
         public static float g_Saturation = 1;
         public static float g_Contrast = 1;
@@ -245,7 +251,7 @@ namespace Engine.Recources
             }
         }
 
-        private static float _exposure = 0.75f;
+        private static float _exposure = 0;
         public static float Exposure
         {
             get { return _exposure; }
@@ -261,13 +267,13 @@ namespace Engine.Recources
         // Eye adaptation / auto exposure. The adapted EV is added on top of Exposure (and the day/night offset).
         public static bool g_AutoExposure = true;
         public static float g_AutoExposureKey = 0.18f; //The average scene luminance is exposed to this value
-        public static float g_AutoExposureMin = -3f; //EV clamp
+        public static float g_AutoExposureMin = -2f; //EV clamp (HLA 0.25 .. 8)
         public static float g_AutoExposureMax = 3f;
-        public static float g_AutoExposureSpeedDarkToLight = 3f; //Adaptation per second when the scene gets brighter
-        public static float g_AutoExposureSpeedLightToDark = 1f; //... and when it gets darker
-        public static float g_AutoExposureCenterWeight = 0.5f; //0 = whole frame, 1 = favour the screen center
+        public static float g_AutoExposureSpeedDarkToLight = 1.2f; //Adaptation per second when the scene gets brighter
+        public static float g_AutoExposureSpeedLightToDark = 0.3f; //... and when it gets darker (HLA rate 0.3, x4 down)
+        public static float g_AutoExposureCenterWeight = 0f; //0 = whole frame (HLA), 1 = favour the screen center
         //Source's tonemap controller: expose the brightest g_BrightPixelPercent % of the frame to g_BrightPixelTarget
-        public static Logic.ExposureMetering g_ExposureMetering = Logic.ExposureMetering.BrightPixels;
+        public static Logic.ExposureMetering g_ExposureMetering = Logic.ExposureMetering.Source2;
         public static float g_BrightPixelPercent = 2f;
         public static float g_BrightPixelTarget = 0.18f;
         public static float g_MinAverageLuminance = 0.03f;

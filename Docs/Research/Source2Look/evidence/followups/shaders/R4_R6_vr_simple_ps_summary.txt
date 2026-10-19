@@ -1,0 +1,493 @@
+Valve Compiled Shader 2 (vcs2), version 64
+
+Showing PixelShader: vr_simple_pc_50_ps.vcs
+Editor/Shader compiler stack
+MD5    cd23740d-a06e-49d3-7b1e-1fb6143f42f9    // PixelShader
+MD5    922d7060-4dff-95b1-cfbf-5411e994ec67    // Common editor/compiler hash shared by multiple different vcs files.
+VariableSourceMax = 17
+
+STATIC COMBOS(4)
+BlockIndex  Name                         RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        S_BINDLESS_RUNTIME           0         0         S_BINDLESS_RUNTIME  -1            Static            
+[ 1]        S_METALNESS_TEXTURE          0         1         __SET_BY_FEATURE__   5            Static            
+[ 2]        S_AMBIENT_OCCLUSION_TEXTURE  0         1         __SET_BY_FEATURE__   6            Static            
+[ 3]        S_MODE_TOOLS_VIS             0         1         __SET_BY_FEATURE__  -1            Static            
+
+STATIC COMBOS INCLUSION/EXCLUSION RULES
+[ 0]  AllowNum1   S_MODE_TOOLS_VIS, S_BINDLESS_RUNTIME                                  -1,-1     1,2     
+
+DYNAMIC COMBOS(6)
+BlockIndex  Name                                 RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        D_OPAQUE_FADE                        0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 1]        D_MULTIVIEW_INSTANCING               0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 2]        D_BAKED_LIGHTING_FROM_VERTEX_STREAM  0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 3]        D_BAKED_LIGHTING_FROM_PROBE          0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 4]        D_BAKED_LIGHTING_FROM_LIGHTMAP       0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 5]        D_HIGH_QUALITY_SHADOWS               0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+
+DYNAMIC COMBOS INCLUSION/EXCLUSION RULES
+[ 0]  AllowNum1   D_BAKED_LIGHTING_FROM_PROBE, D_BAKED_LIGHTING_FROM_VERTEX_STREAM      -1,-1,-1  1,3,-1  
+                                                D_BAKED_LIGHTING_FROM_LIGHTMAP                                        
+[ 1]  Requires1   D_HIGH_QUALITY_SHADOWS, D_BAKED_LIGHTING_FROM_PROBE                   -1,-1     1,2     
+
+VARIABLE DESCRIPTIONS(97)    *dyn-expressions shown separately
+index Name                                           VfxType          SourceIndex ContextStateAffectedByVariable MinPrecisionBits RegisterElements ExtConstantBufferId VariableSource         StringData                                     RegisterType   UiType     UiGroup                 command 0|1               DefaultInputTexture UiVisibilityExp
+[ 0]  AddressU                                       Int               _          4096                            _                0               1                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 1]  AddressU                                       Int               _          4096                            _                0               1                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 2]  AddressU                                       Int               _          4096                            _                0               1                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 3]  AddressV                                       Int               _          4096                            _                0               2                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 4]  AddressV                                       Int               _          4096                            _                0               2                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 5]  AddressV                                       Int               _          4096                            _                0               2                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 6]  AddressW                                       Int               _          4096                            _                0               3                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 7]  AddressW                                       Int               _          4096                            _                0               3                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 8]  BorderColor                                    Float4            _          4096                            _                0               4                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[ 9]  DepthEnable                                    Bool              _          256                             _                1               16                  __Expression__                                                        RenderState    None                                                                                            
+[10]  DepthWriteEnable                               Bool              _          256                             _                1               17                  __Expression__                                                        RenderState    None                                                                                            
+[11]  Filter                                         Int               _          4096                            _                0               0                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[12]  Filter                                         Int               _          4096                            _                0               0                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[13]  Filter                                         Int               _          4096                            _                0               0                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[14]  Filter                                         Int               _          4096                            _                0               0                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[15]  Filter                                         Int               _          4096                            _                0               0                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[16]  HighQualityShadowsConstantBuffer_t             Cbuffer           _          8192                            _                0               4                   __SetByArtist__        HighQualityShadowsConstantBuffer_t             ConstantBuffer None                                                                                            
+[17]  HighQualityShadowsConstantBuffer_t             Cbuffer           _          8192                            _                0               5                   __SetByArtist__        HighQualityShadowsConstantBuffer_t             ConstantBuffer None                                                                                            
+[18]  HighQualityShadowsConstantBuffer_t             Cbuffer           _          8192                            _                0               6                   __SetByArtist__        HighQualityShadowsConstantBuffer_t             ConstantBuffer None                                                                                            
+[19]  MSAASampleOffsetConstantBuffer_t               Cbuffer           _          8192                            _                0               2                   __SetByArtist__        MSAASampleOffsetConstantBuffer_t               ConstantBuffer None                                                                                            
+[20]  MSAASampleOffsetConstantBuffer_t               Cbuffer           _          8192                            _                0               5                   __SetByArtist__        MSAASampleOffsetConstantBuffer_t               ConstantBuffer None                                                                                            
+[21]  MSAASampleOffsetConstantBuffer_t               Cbuffer           _          8192                            _                0               7                   __SetByArtist__        MSAASampleOffsetConstantBuffer_t               ConstantBuffer None                                                                                            
+[22]  MaxAniso                                       Int               _          4096                            _                0               7                   __RenderStateLiteral__                                                SamplerState   None                                                                                            
+[23]  PerBatchLightProbeVolumeConstantBuffer_t       Cbuffer           _          8192                            _                0               2                   __SetByArtist__        PerBatchLightProbeVolumeConstantBuffer_t       ConstantBuffer None                                                                                            
+[24]  PerBatchLightProbeVolumeConstantBuffer_t       Cbuffer           _          8192                            _                0               3                   __SetByArtist__        PerBatchLightProbeVolumeConstantBuffer_t       ConstantBuffer None                                                                                            
+[25]  PerBatchLightProbeVolumeConstantBuffer_t       Cbuffer           _          8192                            _                0               5                   __SetByArtist__        PerBatchLightProbeVolumeConstantBuffer_t       ConstantBuffer None                                                                                            
+[26]  PerBatchLightProbeVolumeConstantBuffer_t       Cbuffer           _          8192                            _                0               8                   __SetByArtist__        PerBatchLightProbeVolumeConstantBuffer_t       ConstantBuffer None                                                                                            
+[27]  PerViewConstantBufferVR_t                      Cbuffer           _          8192                            _                0               1                   __SetByArtist__        PerViewConstantBufferVR_t                      ConstantBuffer None                                                                                            
+[28]  PerViewConstantBuffer_t                        Cbuffer           _          8192                            _                0               0                   __SetByArtist__        PerViewConstantBuffer_t                        ConstantBuffer None                                                                                            
+[29]  PerViewLightingConstantBufferVr_t              Cbuffer           _          8192                            _                0               2                   __SetByArtist__        PerViewLightingConstantBufferVr_t              ConstantBuffer None                                                                                            
+[30]  PerViewLightingConstantBufferVr_t              Cbuffer           _          8192                            _                0               3                   __SetByArtist__        PerViewLightingConstantBufferVr_t              ConstantBuffer None                                                                                            
+[31]  PerViewLightingConstantBufferVr_t              Cbuffer           _          8192                            _                0               4                   __SetByArtist__        PerViewLightingConstantBufferVr_t              ConstantBuffer None                                                                                            
+[32]  PerViewLightingConstantBufferVr_t              Cbuffer           _          8192                            _                0               5                   __SetByArtist__        PerViewLightingConstantBufferVr_t              ConstantBuffer None                                                                                            
+[33]  PerViewLightingConstantBufferVr_t              Cbuffer           _          8192                            _                0               8                   __SetByArtist__        PerViewLightingConstantBufferVr_t              ConstantBuffer None                                                                                            
+[34]  PerViewRuntimeFastPathLightingConstantBuffer_t Cbuffer           _          8192                            _                0               2                   __SetByArtist__        PerViewRuntimeFastPathLightingConstantBuffer_t ConstantBuffer None                                                                                            
+[35]  PerViewRuntimeFastPathLightingConstantBuffer_t Cbuffer           _          8192                            _                0               3                   __SetByArtist__        PerViewRuntimeFastPathLightingConstantBuffer_t ConstantBuffer None                                                                                            
+[36]  PerViewRuntimeFastPathLightingConstantBuffer_t Cbuffer           _          8192                            _                0               4                   __SetByArtist__        PerViewRuntimeFastPathLightingConstantBuffer_t ConstantBuffer None                                                                                            
+[37]  PerViewRuntimeFastPathLightingConstantBuffer_t Cbuffer           _          8192                            _                0               5                   __SetByArtist__        PerViewRuntimeFastPathLightingConstantBuffer_t ConstantBuffer None                                                                                            
+[38]  PerViewRuntimeFastPathLightingConstantBuffer_t Cbuffer           _          8192                            _                0               6                   __SetByArtist__        PerViewRuntimeFastPathLightingConstantBuffer_t ConstantBuffer None                                                                                            
+[39]  SFMLightsConstantBuffer_t                      Cbuffer           _          8192                            _                0               2                   __SetByArtist__        SFMLightsConstantBuffer_t                      ConstantBuffer None                                                                                            
+[40]  SFMLightsConstantBuffer_t                      Cbuffer           _          8192                            _                0               3                   __SetByArtist__        SFMLightsConstantBuffer_t                      ConstantBuffer None                                                                                            
+[41]  SFMLightsConstantBuffer_t                      Cbuffer           _          8192                            _                0               5                   __SetByArtist__        SFMLightsConstantBuffer_t                      ConstantBuffer None                                                                                            
+[42]  SFMLightsConstantBuffer_t                      Cbuffer           _          8192                            _                0               8                   __SetByArtist__        SFMLightsConstantBuffer_t                      ConstantBuffer None                                                                                            
+[43]  StencilEnable                                  Bool              _          256                             _                1               21                  __RenderStateLiteral__                                                RenderState    None                                                                                            
+[44]  StencilFunc                                    Int               _          256                             _                1               27                  __RenderStateLiteral__                                                RenderState    None                                                                                            
+[45]  StencilReadMask                                Int               _          256                             _                1               22                  __RenderStateLiteral__                                                RenderState    None                                                                                            
+[46]  StencilRef                                     Int               _          256                             _                4               32                  __RenderStateLiteral__                                                RenderState    None                                                                                            
+[47]  StencilWriteMask                               Int               _          256                             _                1               23                  __RenderStateLiteral__                                                RenderState    None                                                                                            
+[48]  SunLightShaderParamsCB                         Cbuffer           _          8192                            _                0               5                   __SetByArtist__        SunLightShaderParamsCB                         ConstantBuffer None                                                                                            
+[49]  SunLightShaderParamsCB                         Cbuffer           _          8192                            _                0               7                   __SetByArtist__        SunLightShaderParamsCB                         ConstantBuffer None                                                                                            
+[50]  SunLightShaderParamsCB                         Cbuffer           _          8192                            _                0               8                   __SetByArtist__        SunLightShaderParamsCB                         ConstantBuffer None                                                                                            
+[51]  TextureAmbientOcclusion                        Sampler2D         _          2048                            8               -1               -1                  __SetByArtist__                                                       InputTexture   Texture    Ambient Occlusion,40/10 ao                                                           
+[52]  TextureColor                                   Sampler2D         _          2048                            8               -1               -1                  __SetByArtist__                                                       InputTexture   Texture    Color/10                color                                                        
+[53]  TextureMetalness                               Sampler2D         _          2048                            8               -1               -1                  __SetByArtist__                                                       InputTexture   Texture    Metalness,27/10         metal                                                        
+[54]  TextureNormal                                  Sampler2D         _          2048                            8               -1               -1                  __SetByArtist__                                                       InputTexture   Texture    Normal,20               normal | NormalizeNormals                                    
+[55]  TextureRoughness                               Sampler2D         _          2048                            8               -1               -1                  __SetByArtist__                                                       InputTexture   Texture    Roughness,23/10         rough | Inverse                                              
+[56]  g_bCubemapNormalization                        Bool              _          8192                            _                1               -1                  __Attribute__          g_bCubemapNormalization                        Bool           CheckBox                                                                                        
+[57]  g_bDisableNormalMapping                        Bool              _          8192                            _                1               -1                  __Attribute__          g_bDisableNormalMapping                        Bool           CheckBox                                                                                        
+[58]  g_bFogEnabled                                  Bool              _          8192                            _                1               -1                  __SetByArtist__                                                       Bool           CheckBox   Fog,300                                                                              
+[59]  g_bHighlightDeprecated                         Bool              _          8192                            _                1               -1                  __Attribute__          g_bHighlightDeprecated                         Bool           CheckBox                                                                                        
+[60]  g_bIsDeprecated                                Bool              _          8192                            _                1               -1                  __Attribute__          bIsDeprecated                                  Bool           CheckBox                                                                                        
+[61]  g_bIsSFM                                       Bool              _          8192                            _                1               -1                  __Attribute__          g_bIsSFM                                       Bool           CheckBox                                                                                        
+[62]  g_bRenderingToCubemaps                         Bool              _          8192                            _                1               -1                  __Attribute__          g_bRenderingToCubemaps                         Bool           CheckBox                                                                                        
+[63]  g_bShowLPVVoxels                               Bool              _          8192                            _                1               -1                  __Attribute__          g_bShowLPVVoxels                               Bool           CheckBox                                                                                        
+[64]  g_bShowLightmapTexels                          Bool              _          8192                            _                1               -1                  __Attribute__          g_bShowLightmapTexels                          Bool           CheckBox                                                                                        
+[65]  g_flDirectionalLightmapMinZ                    Float             _          8192                            _                1               -1                  __SetByArtist__                                                       Float4         Slider     Lighting                                                                             
+[66]  g_flDirectionalLightmapStrength                Float             _          8192                            _                1               -1                  __SetByArtist__                                                       Float4         Slider     Lighting,200                                                                         
+[67]  g_flMetalness                                  Float             _          8192                            _                1               -1                  __SetByArtist__                                                       Float4         Slider     Metalness,27/20                                                                      
+[68]  g_nToolsVisMode                                Int               _          8192                            _                1               -1                  __Attribute__          g_nToolsVisMode                                Int4           Slider                                                                                          
+[69]  g_tAmbientOcclusion                            Sampler2D         _          6144                            _                1               0                   __SetByArtist__                                                       Texture        Texture                                                                                         
+[70]  g_tBRDFLookup                                  Sampler2D         _          6144                            _                1               0                   __Attribute__          BRDFLookup                                     Texture        Texture                                                                                         
+[71]  g_tBlueNoise                                   Sampler2D         _          6144                            _                1               0                   __Attribute__          BlueNoise                                      Texture        Texture                                                                                         
+[72]  g_tColor                                       Sampler2D         _          6144                            _                1               1                   __SetByArtist__                                                       Texture        Texture                                                                                         
+[73]  g_tColor                                       Sampler2D         _          6144                            _                1               1                   __SetByArtist__                                                       Texture        Texture                                                                                         
+[74]  g_tColor                                       Sampler2D         _          6144                            _                1               1                   __SetByArtist__                                                       Texture        Texture                                                                                         
+[75]  g_tDynamicAmbientOcclusion                     Sampler2D         _          6144                            _                1               0                   __Attribute__          DynamicAmbientOcclusion                        Texture        Texture                                                                                         
+[76]  g_tDynamicAmbientOcclusionDepth                Sampler2D         _          6144                            _                1               0                   __Attribute__          DynamicAmbientOcclusionDepth                   Texture        Texture                                                                                         
+[77]  g_tEnvironmentMap                              SamplerCubeArray  _          6144                            _                1               0                   __Attribute__          EnvironmentMap                                 Texture        Texture                                                                                         
+[78]  g_tFogCubeTexture                              SamplerCube       _          6144                            _                1               1                   __Attribute__          CubemapFogTexture                              Texture        Texture                                                                                         
+[79]  g_tFogVolume                                   Sampler3D         _          6144                            _                1               0                   __Attribute__          FogVolume                                      Texture        Texture                                                                                         
+[80]  g_tHighQualityShadowDepth                      Sampler2D         _          6144                            _                1               0                   __Attribute__          HighQualityShadowDepth                         Texture        Texture                                                                                         
+[81]  g_tLightProbeVolumeTexture                     Sampler3D         _          6144                            _                1               0                   __Attribute__          LightProbeVolumeTexture                        Texture        Texture                                                                                         
+[82]  g_tLightProbeVolumeTextureDirectLightIndices   Sampler3D         _          6144                            _                1               0                   __Attribute__          LightProbeVolumeTextureDirectLightIndices      Texture        Texture                                                                                         
+[83]  g_tLightProbeVolumeTextureDirectLightScalars   Sampler3D         _          6144                            _                1               0                   __Attribute__          LightProbeVolumeTextureDirectLightScalars      Texture        Texture                                                                                         
+[84]  g_tLightmap0                                   Sampler2DArray    _          6144                            _                1               0                   __Attribute__          direct_light_indices                           Texture        Texture                                                                                         
+[85]  g_tLightmap1                                   Sampler2DArray    _          6144                            _                1               0                   __Attribute__          direct_light_strengths                         Texture        Texture                                                                                         
+[86]  g_tLightmap2                                   Sampler2DArray    _          6144                            _                1               0                   __Attribute__          irradiance                                     Texture        Texture                                                                                         
+[87]  g_tLightmap3                                   Sampler2DArray    _          6144                            _                1               0                   __Attribute__          directional_irradiance                         Texture        Texture                                                                                         
+[88]  g_tLightmap4                                   Sampler2DArray    _          6144                            _                1               0                   __Attribute__          debug_chart_color                              Texture        Texture                                                                                         
+[89]  g_tNormal                                      Sampler2D         _          6144                            _                1               0                   __SetByArtist__                                                       Texture        Texture                                                                                         
+[90]  g_tSFMCookieTextureArray                       Sampler2DArray    _          6144                            _                1               0                   __Attribute__          SFMLightCookieTexture                          Texture        Texture                                                                                         
+[91]  g_tSFMShadowDepthTexture                       Sampler2DArray    _          6144                            _                1               0                   __Attribute__          SFMShadowDepthTexture                          Texture        Texture                                                                                         
+[92]  g_tShadowDepthMapAtlas                         Sampler2D         _          6144                            _                1               0                   __Attribute__          ShadowDepthMapAtlas                            Texture        Texture                                                                                         
+[93]  g_tVrLightCookieTexture                        Sampler3D         _          6144                            _                1               1                   __Attribute__          VrLightCookieTexture                           Texture        Texture                                                                                         
+[94]  g_tVrShadowDepthBufferDepth                    Sampler2D         _          6144                            _                1               0                   __Attribute__          VrShadowDepthBuffer                            Texture        Texture                                                                                         
+[95]  g_vFlatOverlayColor                            Float3            _          8192                            _                3               -1                  __Attribute__          FlatOverlayColor                               Float4         VectorText                                                                                      
+[96]  g_vShaderIDColor                               Float4            _          8192                            _                4               -1                  ShaderIDColor                                                         Float4         VectorText                                                                                      
+
+VARIABLES - Default values and limits    (type0,type1,arg0,arg1,arg2,arg4,arg5,command0 reprinted)
+(- indicates -infinity, + indicates +infinity, def. = default)
+index Name                                           IntDefs     IntMins   IntMaxs   FloatDefs       FloatMins    FloatMaxs ChannelIndices ImageFormat ImageSuffix DefaultInputTexture DynExp LayerId AllowLayerOverride MaxRes
+[ 0]  AddressU                                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 1]  AddressU                                       (2,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 2]  AddressU                                       (3,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 3]  AddressV                                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 4]  AddressV                                       (2,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 5]  AddressV                                       (3,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 6]  AddressW                                       (2,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 7]  AddressW                                       (3,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 8]  BorderColor                                    (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 9]  DepthEnable                                    (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[10]  DepthWriteEnable                               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[11]  Filter                                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[12]  Filter                                         (20,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[13]  Filter                                         (21,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[14]  Filter                                         (85,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[15]  Filter                                         (149,0,0,0) (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[16]  HighQualityShadowsConstantBuffer_t             (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[17]  HighQualityShadowsConstantBuffer_t             (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[18]  HighQualityShadowsConstantBuffer_t             (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[19]  MSAASampleOffsetConstantBuffer_t               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[20]  MSAASampleOffsetConstantBuffer_t               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[21]  MSAASampleOffsetConstantBuffer_t               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[22]  MaxAniso                                       (8,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[23]  PerBatchLightProbeVolumeConstantBuffer_t       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[24]  PerBatchLightProbeVolumeConstantBuffer_t       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[25]  PerBatchLightProbeVolumeConstantBuffer_t       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[26]  PerBatchLightProbeVolumeConstantBuffer_t       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[27]  PerViewConstantBufferVR_t                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[28]  PerViewConstantBuffer_t                        (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[29]  PerViewLightingConstantBufferVr_t              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[30]  PerViewLightingConstantBufferVr_t              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[31]  PerViewLightingConstantBufferVr_t              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[32]  PerViewLightingConstantBufferVr_t              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[33]  PerViewLightingConstantBufferVr_t              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[34]  PerViewRuntimeFastPathLightingConstantBuffer_t (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[35]  PerViewRuntimeFastPathLightingConstantBuffer_t (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[36]  PerViewRuntimeFastPathLightingConstantBuffer_t (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[37]  PerViewRuntimeFastPathLightingConstantBuffer_t (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[38]  PerViewRuntimeFastPathLightingConstantBuffer_t (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[39]  SFMLightsConstantBuffer_t                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[40]  SFMLightsConstantBuffer_t                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[41]  SFMLightsConstantBuffer_t                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[42]  SFMLightsConstantBuffer_t                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[43]  StencilEnable                                  (1,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[44]  StencilFunc                                    (5,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[45]  StencilReadMask                                (1,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[46]  StencilRef                                     (3,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[47]  StencilWriteMask                               (254,0,0,0) (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[48]  SunLightShaderParamsCB                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[49]  SunLightShaderParamsCB                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[50]  SunLightShaderParamsCB                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[51]  TextureAmbientOcclusion                        (1,1,1,0)   (-,-,-,-) (+,+,+,+) (1,1,1,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN     ao                                     0       False              0     
+[52]  TextureColor                                   (1,1,1,0)   (-,-,-,-) (+,+,+,+) (1,1,1,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN     color                                  0       False              0     
+[53]  TextureMetalness                               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN     metal                                  0       False              0     
+[54]  TextureNormal                                  (0,0,1,0)   (-,-,-,-) (+,+,+,+) (0,5,0,5,1,0)   (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN     normal                                 0       False              0     
+[55]  TextureRoughness                               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,5,0,5,0,5,0) (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN     rough                                  0       False              0     
+[56]  g_bCubemapNormalization                        (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[57]  g_bDisableNormalMapping                        (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[58]  g_bFogEnabled                                  (1,0,0,0)   (-,-,-,-) (+,+,+,+) (1,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[59]  g_bHighlightDeprecated                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[60]  g_bIsDeprecated                                (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[61]  g_bIsSFM                                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[62]  g_bRenderingToCubemaps                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[63]  g_bShowLPVVoxels                               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[64]  g_bShowLightmapTexels                          (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[65]  g_flDirectionalLightmapMinZ                    (0,0,0,0)   (0,0,0,0) (1,1,1,1) (0,05,0,0,0)    (0,01,0,0,0) (1,1,1,1) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[66]  g_flDirectionalLightmapStrength                (1,0,0,0)   (0,0,0,0) (1,1,1,1) (1,0,0,0)       (0,0,0,0)    (1,1,1,1) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[67]  g_flMetalness                                  (0,0,0,0)   (0,0,0,0) (1,1,1,1) (0,0,0,0)       (0,0,0,0)    (1,1,1,1) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[68]  g_nToolsVisMode                                (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[69]  g_tAmbientOcclusion                            (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (3,-1,-1,-1)   RGBA1010102                                        0       False              0     
+[70]  g_tBRDFLookup                                  (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[71]  g_tBlueNoise                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[72]  g_tColor                                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (0,-1,-1,-1)   UV88                                               0       False              0     
+[73]  g_tColor                                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (0,2,-1,-1)    86                                                 0       False              0     
+[74]  g_tColor                                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (0,4,-1,-1)    86                                                 0       False              0     
+[75]  g_tDynamicAmbientOcclusion                     (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[76]  g_tDynamicAmbientOcclusionDepth                (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[77]  g_tEnvironmentMap                              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[78]  g_tFogCubeTexture                              (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[79]  g_tFogVolume                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[80]  g_tHighQualityShadowDepth                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[81]  g_tLightProbeVolumeTexture                     (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[82]  g_tLightProbeVolumeTextureDirectLightIndices   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[83]  g_tLightProbeVolumeTextureDirectLightScalars   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[84]  g_tLightmap0                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[85]  g_tLightmap1                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[86]  g_tLightmap2                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[87]  g_tLightmap3                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[88]  g_tLightmap4                                   (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[89]  g_tNormal                                      (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (1,-1,-1,-1)   86                                                 0       False              0     
+[90]  g_tSFMCookieTextureArray                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[91]  g_tSFMShadowDepthTexture                       (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[92]  g_tShadowDepthMapAtlas                         (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[93]  g_tVrLightCookieTexture                        (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[94]  g_tVrShadowDepthBufferDepth                    (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[95]  g_vFlatOverlayColor                            (1,0,1,0)   (-,-,-,-) (+,+,+,+) (1,0,1,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[96]  g_vShaderIDColor                               (0,0,0,0)   (-,-,-,-) (+,+,+,+) (0,0,0,0)       (-,-,-,-)    (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+
+DYNAMIC EXPRESSIONS(2)
+param-index  name              vfxtype,registertype,vecsize,tex,  VariableSource  dyn-exp          ui-visibility
+[ 9]         DepthEnable       bool,RenderState, 1, _             __Expression__  FEAT[3] ? 0 : 1               
+[10]         DepthWriteEnable  bool,RenderState, 1, _             __Expression__  FEAT[3] ? 0 : 1               
+[96]         g_vShaderIDColor  float4,Float4, 4, _                ShaderIDColor                                 
+
+TEXTURE CHANNEL PROCESSORS(5)
+index  name                      Channel  inputs       ColorMode
+[ 0]   Box                       RGB      52 -1 -1 -1   1       
+[ 1]   HemiOctIsoRoughness_RG_B  RGBA     54 55 -1 -1   0       
+[ 2]   Box                       A        53 -1 -1 -1   0       
+[ 3]   Box3                      R        51 -1 -1 -1   0       
+[ 4]   Box                       A        51 -1 -1 -1   0       
+
+CONSTANT BUFFERS[0]
+PerViewConstantBuffer_t size=816 (816) param-count=50 arg0=0 crc32=1b240212
+         name                                 offset  vertex-size  attrib-count  data-count
+         g_matWorldToProjection                 0       4            4             1       
+         g_matProjectionToWorld                16       4            4             1       
+         g_matWorldToView                      32       4            4             1       
+         g_matViewToProjection                 48       4            4             1       
+         g_vInvProjRow3                        64       4            1             1       
+         g_vClipPlane0                         68       4            1             1       
+         g_flToneMapScalarLinear               72       1            1             1       
+         g_flLightMapScalar                    73       1            1             1       
+         g_flEnvMapScalar                      74       1            1             1       
+         g_flToneMapScalarGamma                75       1            1             1       
+         g_vCameraPositionWs                   76       3            1             1       
+         g_flViewportMinZ                      79       1            1             1       
+         g_vCameraDirWs                        80       3            1             1       
+         g_flViewportMaxZ                      83       1            1             1       
+         g_vCameraUpDirWs                      84       3            1             1       
+         g_flTime                              87       1            1             1       
+         g_vDepthPsToVsConversion              88       3            1             1       
+         g_flNearPlane                         91       1            1             1       
+         g_flFarPlane                          92       1            1             1       
+         g_flLightBinnerFarPlane               93       1            1             1       
+         g_vInvViewportSize                    94       2            1             1       
+         g_vViewportToGBufferRatio             96       2            1             1       
+         g_vMorphTextureAtlasSize              98       2            1             1       
+         g_vInvGBufferSize                    100       4            1             1       
+         g_vViewportOffset                    104       2            1             1       
+         g_vViewportSize                      106       2            1             1       
+         g_vRenderTargetSize                  108       2            1             1       
+         g_flFogBlendToBackground             110       1            1             1       
+         g_flHenyeyGreensteinCoeff            111       1            1             1       
+         g_vFogColor                          112       3            1             1       
+         g_flNegFogStartOverFogRange          115       1            1             1       
+         g_flInvFogRange                      116       1            1             1       
+         g_flFogMaxDensity                    117       1            1             1       
+         g_flFogExponent                      118       1            1             1       
+         g_flMod2xIdentity                    119       1            1             1       
+         g_bRoughnessParams                   120       2            1             1       
+         g_bStereoEnabled                     122       1            1             1       
+         g_flStereoCameraIndex                123       1            1             1       
+         g_vMiddleEyePositionWs               124       3            1             1       
+         g_flPad2                             127       1            1             1       
+         g_matWorldToProjectionMultiview      128       4            4             2       
+         g_vCameraPositionWsMultiview         160       4            1             2       
+         g_vFrameBufferCopyInvSizeAndUvScale  168       4            1             1       
+         g_vCameraAngles                      172       4            1             1       
+         g_vWorldToCameraOffset               176       4            1             1       
+         g_vWorldToCameraOffsetMultiview      180       4            1             2       
+         g_vPerViewConstantExtraData0         188       4            1             1       
+         g_vPerViewConstantExtraData1         192       4            1             1       
+         g_vPerViewConstantExtraData2         196       4            1             1       
+         g_vPerViewConstantExtraData3         200       4            1             1       
+
+CONSTANT BUFFERS[1]
+PerViewConstantBufferVR_t size=592 (592) param-count=27 arg0=2 crc32=a19100ec
+         name                                             offset  vertex-size  attrib-count  data-count
+         g_bFogTypeEnabled                                  0       4            1             1       
+         g_bOtherFxEnabled                                  4       4            1             1       
+         g_vAoProxyDownres                                  8       4            1             1       
+         g_vXenAnimation                                   12       4            1             1       
+         g_vWindDirection                                  16       4            1             1       
+         g_vWindStrengthFreqMulHighStrength                20       4            1             1       
+         g_vInteractionProjectionOrigin                    24       4            1             1       
+         g_vInteractionVolumeInvExtents                    28       4            1             1       
+         g_vInteractionTriggerVolumeInvMins                32       4            1             1       
+         g_vInteractionTriggerVolumeWorldToVolumeScale     36       4            1             1       
+         g_vGradientFogBiasAndScale                        40       4            1             1       
+         m_vGradientFogExponents                           44       4            1             1       
+         g_vGradientFogColor_Opacity                       48       4            1             1       
+         g_vGradientFogCullingParams                       52       4            1             1       
+         g_vCubeFog_Offset_Scale_Bias_Exponent             56       4            1             1       
+         g_vCubeFog_Height_Offset_Scale_Exponent_Log2Mip   60       4            1             1       
+         g_matvCubeFogSkyWsToOs                            64       4            4             1       
+         g_vCubeFogCullingParams                           80       4            1             1       
+         g_vSphericalVignetteBiasAndScale                  84       4            1             1       
+         g_vSphericalVignetteOrigin_Exponent               88       4            1             1       
+         g_vSphericalVignetteColor_Opacity                 92       4            1             1       
+         g_vVolFog_VolumeScale_Shift_Near_Range            96       4            1             1       
+         g_vVolFogDitherScaleBias                         100       4            1             1       
+         g_vVolFogPostWorldToFrustumScale                 104       4            1             1       
+         g_vVolFogPostWorldToFrustumBias                  108       4            1             1       
+         g_mVolFogFromWorld                               112       4            4             2       
+         g_vHighPrecisionLightingOffsetWs                 144       4            1             1       
+
+CONSTANT BUFFERS[2]
+PerViewLightingConstantBufferVr_t size=4848 (4848) param-count=45 arg0=1 crc32=61a77d8e
+         name                                     offset  vertex-size  attrib-count  data-count
+         g_vNumLights                               0       4            1             1       
+         g_vMultiviewData                           4       4            1             1       
+         g_vMultiviewViewAndSubviewIndexArray       8       4            1             4       
+         g_vLightParams                            24       4            1           128       
+         g_vLightPosition_flInvRadius             536       4            1           128       
+         g_vLightColor                            1048      4            1           128       
+         g_vLightFalloffParams                    1560      4            1           128       
+         g_vLightDirection                        2072      4            1           128       
+         g_vSpotLightInnerOuterConeCosines        2584      4            1           128       
+         g_matWorldToShadow                       3096      4            4           128       
+         g_vShadow3x3PCFTermC0                    5144      4            1             1       
+         g_vShadow3x3PCFTermC1                    5148      4            1             1       
+         g_vShadow3x3PCFTermC2                    5152      4            1             1       
+         g_vShadow3x3PCFTermC3                    5156      4            1             1       
+         g_vToolsAmbientLightingVr                5160      4            1             1       
+         g_vLightBinCameraPositionWs              5164      4            1             1       
+         g_vLightBinCameraDirWs                   5168      4            1             1       
+         g_vLightBinCameraNearZFarZ               5172      4            1             1       
+         g_matLightBinViewProj                    5176      4            4             1       
+         g_vMultiviewScaleBias                    5192      4            1             4       
+         g_vMultiviewClipEdge0                    5208      4            1             4       
+         g_vMultiviewClipEdge1                    5224      4            1             4       
+         g_flNumViews                             5240      1            1             1       
+         g_flOoNumViews                           5241      1            1             1       
+         g_flNumSubiews                           5242      1            1             1       
+         g_flOoNumSubviews                        5243      1            1             1       
+         g_flNumTotalMultiviews                   5244      1            1             1       
+         g_flOoNumTotalMultiviews                 5245      1            1             1       
+         g_flVrLuminanceOffset                    5246      1            1             1       
+         g_flVrLuminanceScale                     5247      1            1             1       
+         g_vLightmapParams                        5248      4            1             1       
+         g_vScreenSpaceDitherParams               5252      4            1             1       
+         g_matWorldToLightCookie                  5256      4            4           128       
+         g_vSpotLightShadowOffsetScale            7304      4            1           128       
+         g_vSpotLightShadowBounds                 7816      4            1           128       
+         g_vLightProjectiveDepthToLinearDepth     8328      4            1           128       
+         g_vUnlitShadowColor                      8840      4            1             1       
+         g_vAmbientLightingSH                     8844      4            1             3       
+         g_vLightIndexData                        8856      4            1           128       
+         g_vSunLightIndexData                     9368      4            1             1       
+         g_vAmbientOcclusionProxyLightPositions   9372      4            1             4       
+         g_vAmbientOcclusionProxyLightConeAngles  9388      4            1             1       
+         g_vAmbientOcclusionProxyLightStrengths   9392      4            1             1       
+         g_vAmbientOcclusionProxyAmbientStrength  9396      4            1             1       
+         g_vCubemapNormalizationParams            9400      4            1             1       
+
+CONSTANT BUFFERS[3]
+PerViewRuntimeFastPathLightingConstantBuffer_t size=3296 (3296) param-count=35 arg0=1 crc32=392a0459
+         name                                        offset  vertex-size  attrib-count  data-count
+         g_vFastPathNumLights                          0       4            1             1       
+         g_vSingleLightPosition_flInvRadius            4       4            1             1       
+         g_vSingleLightColor                           8       4            1             1       
+         g_vSingleLightFalloffParams                  12       4            1             1       
+         g_vSingleLightDirection                      16       4            1             1       
+         g_matSingleLightWorldToCookie                20       4            4             1       
+         g_matSingleLightWorldToShadow                36       4            4             1       
+         g_vSingleLightProjectiveDepthToLinearDepth   52       4            1             1       
+         g_vFxLightColors                             56       4            1             8       
+         g_vFxLightPositions                          88       4            1             8       
+         g_vBakedLightPosition                       120       4            1           256       
+         g_vBakedLightColor                          1144      4            1           256       
+         g_matWorldToBakedLightShadow                2168      4            4             2       
+         g_vBakedLightShadowBounds                   2200      4            1             1       
+         g_vBakedLightCascadeThreshold               2204      4            1             4       
+         g_vBakedLightShadowStrengthVignette         2220      4            1             1       
+         g_vBakedLightShadowIntParams                2224      4            1             1       
+         g_vCachedLightParams                        2228      4            1            32       
+         g_vCachedLightPosition_flInvRadius          2356      4            1            32       
+         g_vCachedLightColor                         2484      4            1            32       
+         g_vCachedLightFalloffParams                 2612      4            1            32       
+         g_vCachedLightDirection                     2740      4            1            32       
+         g_vCachedSpotLightInnerOuterConeCosines     2868      4            1            32       
+         g_matCachedWorldToShadow                    2996      4            4            32       
+         g_matCachedWorldToLightCookie               3508      4            4            32       
+         g_vCachedSpotLightShadowOffsetScale         4020      4            1            32       
+         g_vCachedSpotLightShadowBounds              4148      4            1            32       
+         g_vCachedLightProjectiveDepthToLinearDepth  4276      4            1            32       
+         g_vEnvironmentMapSizeConstants              4404      4            1             1       
+         g_matEnvMapWorldToLocal                     4408      4            3           144       
+         g_vEnvironmentMapBoxMins                    6136      4            1           144       
+         g_vEnvironmentMapBoxMaxs                    6712      4            1           144       
+         g_vEnvironmentMapProxySphere                7288      4            1           144       
+         g_vEnvironmentMapColorRotated               7864      4            1           144       
+         g_vEnvironmentMapNormalizationSH            8440      4            1           144       
+
+CONSTANT BUFFERS[4]
+MSAASampleOffsetConstantBuffer_t size=272 (272) param-count=2 arg0=0 crc32=bffeeb36
+         name                  offset  vertex-size  attrib-count  data-count
+         g_vMSAASampleOffsets    0       4            1            16       
+         g_nMSAASampleCount     64       1            1             1       
+
+CONSTANT BUFFERS[5]
+PerBatchLightProbeVolumeConstantBuffer_t size=96 (96) param-count=4 arg0=0 crc32=2ffd35b9
+         name                                 offset  vertex-size  attrib-count  data-count
+         g_matLightProbeVolumeWorldToLocal      0       4            3             1       
+         g_vLightProbeVolumeLayer0TextureMin   12       4            1             1       
+         g_vLightProbeVolumeLayer0TextureMax   16       4            1             1       
+         g_vLightProbeVolumeColor              20       4            1             1       
+
+CONSTANT BUFFERS[6]
+HighQualityShadowsConstantBuffer_t size=480 (480) param-count=6 arg0=1 crc32=2e770e42
+         name                           offset  vertex-size  attrib-count  data-count
+         g_nHighQualityShadowsCount       0       4            1             1       
+         g_vHighQualityShadowsIndices     4       4            1             4       
+         g_vHighQualityLightSize         20       4            1             4       
+         g_matHighQualityWorldToShadow   36       4            4             4       
+         g_vHighQualityLightPosition    100       4            1             4       
+         g_vHighQualityShadowRegion     116       4            1             1       
+
+CONSTANT BUFFERS[7]
+SunLightShaderParamsCB size=480 (480) param-count=10 arg0=0 crc32=0c59a1f9
+         name                             offset  vertex-size  attrib-count  data-count
+         g_vSunLightColor                   0       4            1             1       
+         g_vSunLightDir                     4       3            1             1       
+         g_flSunNormalizedRadius            7       1            1             1       
+         g_vSunTexParams                    8       4            1             1       
+         g_vSunTexParams2                  12       4            1             1       
+         g_vSunTexParams3                  16       4            1             1       
+         g_matWorldToShadowTexMatrices     20       4            4             4       
+         g_vCascadeAtlasUVOffsets          84       4            1             4       
+         g_flCascadeViewShadowBiasScales  100       4            1             4       
+         g_nSunShadowCascadeCount         116       1            1             1       
+
+CONSTANT BUFFERS[8]
+SFMLightsConstantBuffer_t size=5680 (5680) param-count=16 arg0=0 crc32=0ceb2773
+         name                                   offset  vertex-size  attrib-count  data-count
+         g_SFMLight_Count                         0       1            1             1       
+         g_SFMLight_VolumetricOffset              1       1            1             1       
+         g_SFMLight_PadZ                          2       1            1             1       
+         g_SFMLight_PadW                          3       1            1             1       
+         g_SFMLight_ShadowSampleDelta0            4       2            1             1       
+         g_SFMLight_ShadowSampleDelta1            6       2            1             1       
+         g_SFMLight_ShadowSampleDelta2            8       2            1             1       
+         g_SFMLight_ShadowSampleDelta3           10       2            1             1       
+         g_SFMLight_Position_Roundness           12       4            1            32       
+         g_SFMLight_Direction_ShadowFilterSize  140       4            1            32       
+         g_SFMLight_Color_ShadowTexIndex        268       4            1            32       
+         g_SFMLight_Attenuation_CookieTexIndex  396       4            1            32       
+         g_SFMLight_DepthParams_SpotFalloff     524       4            1            32       
+         g_SFMLight_GoboTexCoords               652       4            1            32       
+         g_SFMLight_PadXYZ_AmbientIntensity     780       4            1            32       
+         g_SFMLight_ViewProj                    908       4            4            32       
+
+VERTEX INPUT SIGNATURES(0)
+[none defined]
+
+STATIC COMBOS(8)
+S_BINDLESS_RUNTIME(bin_r), S_METALNESS_TEXTURE(met_t), S_AMBIENT_OCCLUSION_TEXTURE(aot), S_MODE_TOOLS_VIS(m_tv)
+
+                 bin_r met_t   aot  m_tv
+  Z[00000000]      _     _     _     _
+  Z[00000001]      _     1     _     _
+  Z[00000002]      _     _     1     _
+  Z[00000003]      _     1     1     _
+  Z[00000004]      _     _     _     1
+  Z[00000005]      _     1     _     1
+  Z[00000006]      _     _     1     1
+  Z[00000007]      _     1     1     1

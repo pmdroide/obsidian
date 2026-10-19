@@ -225,7 +225,7 @@ public partial class LightInfo : ObservableObject
     // Directional lights: cascaded shadows.
     [ObservableProperty] private double _cascadeCount = 4;
     [ObservableProperty] private double _shadowDistance = 150;
-    [ObservableProperty] private double _splitLambda = 0.75;
+    [ObservableProperty] private double _splitLambda = 0.85;
     public bool IsDirectional => Type == LightType.Directional;
     // Spot lights only: full cone angles in degrees.
     [ObservableProperty] private double _spotAngle = 60.0;

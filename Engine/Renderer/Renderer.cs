@@ -1773,6 +1773,8 @@ namespace Engine.Renderer
             GameSettings.Exposure = post.Exposure;
             GameSettings.WhitePoint = post.WhitePoint;
             GameSettings.SCurveStrength = post.SCurveStrength;
+            GameSettings.g_FilmicCurve = new Vector4(post.FilmicShoulder, post.FilmicLinearStrength, post.FilmicLinearAngle, post.FilmicToeStrength);
+            GameSettings.g_FilmicToe = new Vector3(post.FilmicToeNumerator, post.FilmicToeDenominator, post.FilmicWhitePoint);
             GameSettings.g_ExactSrgb = post.ExactSrgb;
             GameSettings.g_ColorGrading = post.ColorGrading;
             GameSettings.g_LutPath = post.LutPath;
@@ -1796,6 +1798,7 @@ namespace Engine.Renderer
             GameSettings.g_AutoExposureSpeedLightToDark = post.AdaptationSpeedDown;
             GameSettings.g_AutoExposureCenterWeight = post.CenterWeight;
             GameSettings.g_BloomEnable = post.Bloom;
+            GameSettings.g_BloomShape = post.BloomShape;
             GameSettings.g_BloomStart = post.BloomStart;
             GameSettings.g_BloomKnee = post.BloomKnee;
             GameSettings.g_BloomScale = post.BloomScale;
@@ -2056,6 +2059,8 @@ namespace Engine.Renderer
                 Shaders.PostProcessingParameter_ScreenTexture.SetValue(currentInput);
                 EffectParameterCollection post = Shaders.PostProcessing.Parameters;
                 post["TonemapCurve"]?.SetValue((float)(int)GameSettings.g_TonemapCurve);
+                post["FilmicCurve"]?.SetValue(GameSettings.g_FilmicCurve);
+                post["FilmicToe"]?.SetValue(GameSettings.g_FilmicToe);
                 post["ExactSrgb"]?.SetValue(GameSettings.g_ExactSrgb ? 1f : 0f);
                 post["Saturation"]?.SetValue(GameSettings.g_Saturation);
                 post["Contrast"]?.SetValue(GameSettings.g_Contrast);

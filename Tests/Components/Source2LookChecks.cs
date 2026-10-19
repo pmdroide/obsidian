@@ -55,6 +55,30 @@ internal static class Source2LookChecks
         Check(!PostProcessSettings.Settings.Any(p => p.Name == nameof(PostProcessSettings.BlendLutPath)) ||
               !json.Contains(nameof(PostProcessSettings.BlendLutPath)),
             "the runtime LUT blend isn't saved");
+
+        //Research R1-R5: the defaults are Half-Life: Alyx's values
+        var hla = new PostProcessSettings();
+        Check(hla.Tonemap == TonemapCurve.Source2 && hla.Exposure == 0 && hla.FilmicShoulder == 0.15f &&
+              hla.FilmicLinearStrength == 0.5f && hla.FilmicLinearAngle == 0.1f && hla.FilmicToeStrength == 0.2f &&
+              hla.FilmicToeNumerator == 0.02f && hla.FilmicToeDenominator == 0.3f && hla.FilmicWhitePoint == 4,
+            "new scenes use Half-Life: Alyx's filmic curve with its neutral parameters");
+        Check(hla.Metering == ExposureMetering.Source2 && hla.AutoExposureMin == -2 && hla.AutoExposureMax == 3 &&
+              hla.AdaptationSpeedUp == 1.2f && hla.AdaptationSpeedDown == 0.3f && hla.CenterWeight == 0,
+            "new scenes meter exposure like Half-Life: Alyx (median, 0.25 to 8, rate 0.3 / x4 down)");
+        Check(hla.BloomShape == BloomThresholdShape.Source2 && hla.BloomStart == 1.976f && hla.BloomKnee == 2.3655f,
+            "new scenes threshold bloom like Half-Life: Alyx's base profile");
+        Check(GameSettings.g_cubemapnormalizationmax == 32 && GameSettings.g_cubemapnormalizationroughnessbegin == 0.1f &&
+              new DirectionalLight(Color.White, 1, -Vector3.UnitZ).SplitLambda == 0.85f,
+            "cubemap normalisation and cascade splits use Half-Life: Alyx's ConVar defaults");
+        var broken = new PostProcessSettings { FilmicToeDenominator = 0, FilmicWhitePoint = float.NaN, Tonemap = (TonemapCurve)99 };
+        broken.Normalize();
+        Check(broken.FilmicToeDenominator > 0 && broken.FilmicWhitePoint == 4 && broken.Tonemap == TonemapCurve.Source2,
+            "the Source 2 curve can't divide by zero after Normalize");
+        string hlaJson = System.Text.Json.JsonSerializer.Serialize(hla, SceneSerialization.JsonOptions);
+        var hlaBack = System.Text.Json.JsonSerializer.Deserialize<PostProcessSettings>(hlaJson, SceneSerialization.JsonOptions)!;
+        Check(hlaJson.Contains("\"Source2\"") && hlaBack.BloomShape == BloomThresholdShape.Source2 &&
+              hlaBack.Metering == ExposureMetering.Source2 && hlaBack.FilmicShoulder == 0.15f,
+            "the Source 2 settings save by name and load back");
     }
 
     private static void CheckPostVolumes()

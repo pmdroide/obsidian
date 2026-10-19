@@ -120,8 +120,10 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             // A long hitch (loading, breakpoint) should not count as seconds of adaptation.
             _deltaTimeParam.SetValue(MathHelper.Clamp(deltaSeconds, 0, 0.25f));
             _resetParam.SetValue(_hasHistory ? 0f : 1f);
-            bool bright = GameSettings.g_ExposureMetering == Logic.ExposureMetering.BrightPixels;
-            _effect.Parameters["Metering"]?.SetValue(bright ? 0f : 1f);
+            Logic.ExposureMetering metering = GameSettings.g_ExposureMetering;
+            // Bright pixels and Source 2 (median) both read the luminance histogram
+            bool bright = metering != Logic.ExposureMetering.Average;
+            _effect.Parameters["Metering"]?.SetValue(metering == Logic.ExposureMetering.BrightPixels ? 0f : metering == Logic.ExposureMetering.Average ? 1f : 2f);
             _effect.Parameters["BrightShare"]?.SetValue(MathHelper.Clamp(GameSettings.g_BrightPixelPercent / 100f, 0.0001f, 0.5f));
             _effect.Parameters["BrightTarget"]?.SetValue(Math.Max(GameSettings.g_BrightPixelTarget, 0.001f));
             _effect.Parameters["MinAverage"]?.SetValue(Math.Max(GameSettings.g_MinAverageLuminance, 0));
@@ -133,7 +135,7 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
             _meterPass.Apply();
             _fullScreenTriangle.Draw(graphics);
 
-            // Bright-pixel metering: the share of the frame above each luminance level
+            // Bright-pixel and median metering: the share of the frame above each luminance level
             if (bright)
             {
                 graphics.SetRenderTarget(_histogram);

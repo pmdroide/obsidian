@@ -1,0 +1,3135 @@
+===== lighting/postprocessing/a1_eli_corridor.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -1.228
+		m_flShoulderStrength = 0.2631
+		m_flLinearStrength = 0.3376
+		m_flLinearAngle = 0.1096
+		m_flToeStrength = 0.2631
+		m_flToeNum = 0.0263
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.784
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.098
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_playground.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.4952
+		m_flShoulderStrength = 0.2857
+		m_flLinearStrength = 0.1902
+		m_flLinearAngle = 0.1568
+		m_flToeStrength = 0.219
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3048
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.828
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.752
+		m_flBloomThresholdWidth = 1.64
+		m_flSkyboxBloomStrength = 0.4409
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_zoo_clinic.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.5336
+		m_flShoulderStrength = 0.1498
+		m_flLinearStrength = 0.4857
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.2952
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.699
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.484
+		m_flBloomThresholdWidth = 1.6665
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_zoo_drainage.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.152
+		m_flShoulderStrength = 0.338
+		m_flLinearStrength = 0.3619
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1476
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.8856
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.021
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 0.914
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_zoo_exterior1.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.152
+		m_flShoulderStrength = 0.1498
+		m_flLinearStrength = 0.4048
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.667
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 0.914
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_zoo_exterior2.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0752
+		m_flShoulderStrength = 0.1762
+		m_flLinearStrength = 0.3762
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1714
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.667
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 0.914
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_zoo_feeding_area.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 4.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.591
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_zoo_tunnel.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 1.2952
+		m_flShoulderStrength = 0.1499
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a5_vault_combine_hall_interior.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.161
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.098
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/basepostprocess.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.319
+		m_flLinearStrength = 0.5047
+		m_flLinearAngle = 0.1619
+		m_flToeStrength = 0.4667
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.7475
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.976
+		m_flBloomThresholdWidth = 2.3655
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/dead_game.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/distillery_master.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.6096
+		m_flShoulderStrength = 0.1476
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.4032
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.505
+		m_flBloomThresholdWidth = 0.1345
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.26364, 0.178785, 0.127269, 0.192425,
+			0.237882,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/main_menu.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.664
+		m_flShoulderStrength = 0.1625
+		m_flLinearStrength = 0.2861
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.3074
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/paused_game.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/russel_lab.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/russell_gravitygloves.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 4.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 2.366
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/startup_map.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/vort_corridor.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.3246
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.392
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/vort_hideout.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.1623
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.484
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.686
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/vort_ritual.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.269
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a1_intro_world_2master.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.6096
+		m_flShoulderStrength = 0.1476
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.4032
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.61
+		m_flBloomThresholdWidth = 0.1345
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.26364, 0.178785, 0.127269, 0.192425,
+			0.237882,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a1_intro_world_courtyard.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.4192
+		m_flShoulderStrength = 0.1476
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.5
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.021
+		m_flBloomThresholdWidth = 4.543
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.303444, 0.097861, 0.084843, 0.233257,
+			0.280595,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a1_intro_world_int_laundry.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.4192
+		m_flShoulderStrength = 0.1476
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.5
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.021
+		m_flBloomThresholdWidth = 4.543
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.303444, 0.097861, 0.084843, 0.233257,
+			0.280595,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a1_intro_world_master.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.6096
+		m_flShoulderStrength = 0.1476
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.4032
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.505
+		m_flBloomThresholdWidth = 0.1345
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.26364, 0.178785, 0.127269, 0.192425,
+			0.237882,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a1_intro_world_max.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a1_intro_world_max_1.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a1_intro_world/a2_quarantine_entrance_master.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.2664
+		m_flShoulderStrength = 0.1238
+		m_flLinearStrength = 0.3952
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.129
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 4.032
+		m_flBloomThresholdWidth = 2.9025
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.26364, 0.178785, 0.127269, 0.192425,
+			0.237882,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a2_hideout/a2_hideout_exterior.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.1904
+		m_flLinearStrength = 0.2095
+		m_flLinearAngle = 0.1143
+		m_flToeStrength = 0.0571
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.323
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 2.957
+		m_flBloomThresholdWidth = 3.8435
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2009,
+			0.1991,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a2_hideout/a2_hideout_interior_start.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3432
+		m_flShoulderStrength = 0.3286
+		m_flLinearStrength = 0.3286
+		m_flLinearAngle = 0.0905
+		m_flToeStrength = 0.1095
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.269
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.752
+		m_flBloomThresholdWidth = 0.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2009,
+			0.1991,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a2_hideout/a2_hideout_interior_transition.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.2288
+		m_flShoulderStrength = 0.3619
+		m_flLinearStrength = 0.2429
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.2523
+		m_flToeNum = 0.019
+		m_flToeDenom = 0.2952
+		m_flWhitePoint = 4.2
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.505
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.644
+		m_flBloomThresholdWidth = 0.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.20012, 0.20012, 0.20012, 0.20042,
+			0.199219,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a2_train_yard/a2_train_yard_master.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.1238
+		m_flLinearStrength = 0.3238
+		m_flLinearAngle = 0.0905
+		m_flToeStrength = 0.0762
+		m_flToeNum = 0.0234
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.1021
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.559
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a3_c17_processing_plant/a3_c17_processing_plant_courtyard.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.1144
+		m_flShoulderStrength = 0.2333
+		m_flLinearStrength = 0.5762
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.019
+		m_flToeNum = 0.0286
+		m_flToeDenom = 0.2904
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.2151
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.968
+		m_flBloomThresholdWidth = 4.543
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.263619, 0.112211, 0.088453, 0.243183,
+			0.292534,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a3_c17_processing_plant/a3_c17_processing_plant_interior.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a3_hotel/a3_hotel_lobby.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.341
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.341
+		m_flBloomThresholdWidth = 2.3655
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a3_hotel/a3_hotel_rooftop.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.183
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.214
+		m_flBloomThresholdWidth = 0.403
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a3_hotel/a3_hotel_rooftop_temp.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 4.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.882
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a3_hotel/a3_hotel_street.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 4.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.146
+		m_flBloomThresholdWidth = 1.989
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_parking_garage/a4_c17_parking_garage_ufo_beam.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 4.0
+		m_flShoulderStrength = 0.1498
+		m_flLinearStrength = 1.0
+		m_flLinearAngle = 1.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_BLUR"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 0.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_parking_garage/a4_c17_parking_garage_ufo_beam_2.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.5824
+		m_flShoulderStrength = 0.1498
+		m_flLinearStrength = 0.2437
+		m_flLinearAngle = 0.462
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 4.614
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_BLUR"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.7194
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 0.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_parking_garage/parking_garage_main.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.108
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a4_c17_tanker_yard/a4_c17_tanker_yard.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.484
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.214
+		m_flBloomThresholdWidth = 0.403
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a5_ending/a5_ending_black_white.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.6544
+		m_flShoulderStrength = 0.3236
+		m_flLinearStrength = 0.1902
+		m_flLinearAngle = 0.1568
+		m_flToeStrength = 0.219
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3048
+		m_flWhitePoint = 2.4654
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.514
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.752
+		m_flBloomThresholdWidth = 1.64
+		m_flSkyboxBloomStrength = 0.4409
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = true
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = -0.0874
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.6504
+		m_flRoundness = 0.262
+		m_flFeather = 0.2491
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a5_ending/a5_ending_negative.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a5_ending/a5_ending_postprocess.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.8104
+		m_flShoulderStrength = 0.1498
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.4304
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.0863
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.043
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a5_ending/a5_ending_void.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.319
+		m_flLinearStrength = 0.5047
+		m_flLinearAngle = 0.1619
+		m_flToeStrength = 0.4667
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.7475
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.976
+		m_flBloomThresholdWidth = 2.3655
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/a5_vault/mirrored_apartment.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.319
+		m_flLinearStrength = 0.5047
+		m_flLinearAngle = 0.1619
+		m_flToeStrength = 0.4667
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.7475
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.976
+		m_flBloomThresholdWidth = 2.3655
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/chrise/street_scene_chris.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.4568
+		m_flShoulderStrength = 0.1569
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.5054
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.129
+		m_flBloomThresholdWidth = 4.543
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.303444, 0.097861, 0.084843, 0.233257,
+			0.280595,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/jaker/posttest_blue.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/jaker/posttest_desaturated.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/jaker/posttest_red.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/jaker/posttest_testmaster.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/michaelc/test_a.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.4952
+		m_flShoulderStrength = 0.2857
+		m_flLinearStrength = 0.1902
+		m_flLinearAngle = 0.1568
+		m_flToeStrength = 0.219
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3048
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 1.828
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.752
+		m_flBloomThresholdWidth = 1.64
+		m_flSkyboxBloomStrength = 0.4409
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== lighting/postprocessing/personal/michaelc/test_b.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = false
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.0
+		m_flLinearStrength = 0.0
+		m_flLinearAngle = 0.0
+		m_flToeStrength = 0.0
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.0
+		m_flWhitePoint = 0.0
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_BLUR"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 0.2135
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.757042, 0.242958, 0.0, 0.0,
+			0.0,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== materials/workshop_examples/postprocessing/basepostprocess.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.319
+		m_flLinearStrength = 0.5047
+		m_flLinearAngle = 0.1619
+		m_flToeStrength = 0.4667
+		m_flToeNum = 0.0
+		m_flToeDenom = 0.7475
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_SCREEN"
+		m_flBloomStrength = 0.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 1.976
+		m_flBloomThresholdWidth = 2.3655
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== materials/workshop_examples/postprocessing/example_blue.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== materials/workshop_examples/postprocessing/example_blur.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = 0.0
+		m_flShoulderStrength = 0.15
+		m_flLinearStrength = 0.5
+		m_flLinearAngle = 0.1
+		m_flToeStrength = 0.2
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.3
+		m_flWhitePoint = 4.0
+	}
+	m_bHasBloomParams = false
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 2.0
+		m_flScreenBloomStrength = 1.0
+		m_flBlurBloomStrength = 1.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+
+===== materials/workshop_examples/postprocessing/example_red.vpost_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_bHasTonemapParams = true
+	m_toneMapParams = 
+	{
+		m_flExposureBias = -0.3048
+		m_flShoulderStrength = 0.419
+		m_flLinearStrength = 0.5143
+		m_flLinearAngle = 0.0999
+		m_flToeStrength = 0.1999
+		m_flToeNum = 0.02
+		m_flToeDenom = 0.2999
+		m_flWhitePoint = 3.9996
+	}
+	m_bHasBloomParams = true
+	m_bloomParams = 
+	{
+		m_blendMode = "BLOOM_BLEND_ADD"
+		m_flBloomStrength = 0.376
+		m_flScreenBloomStrength = 0.0
+		m_flBlurBloomStrength = 0.0
+		m_flBloomThreshold = 0.0
+		m_flBloomThresholdWidth = 1.0
+		m_flSkyboxBloomStrength = 1.0
+		m_flBloomStartValue = 1.0
+		m_flBlurWeight = 
+		[
+			0.2, 0.2, 0.2, 0.2,
+			0.2,
+		]
+		m_vBlurTint = 
+		[
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+			[ 1.0, 1.0, 1.0 ],
+		]
+	}
+	m_bHasVignetteParams = false
+	m_vignetteParams = 
+	{
+		m_flVignetteStrength = 0.0
+		m_vCenter = [ 0.0, 0.0 ]
+		m_flRadius = 0.5
+		m_flRoundness = 1.0
+		m_flFeather = 0.5
+		m_vColorTint = [ 1.0, 1.0, 1.0 ]
+	}
+	m_nColorCorrectionVolumeDim = 32
+	m_colorCorrectionVolumeData = 
+		<LUT bytes omitted>
+}
+

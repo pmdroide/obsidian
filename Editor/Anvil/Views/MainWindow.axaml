@@ -1115,6 +1115,22 @@
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="S-Curve" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="-1" Maximum="1" Increment="0.01" Value="{Binding SCurveStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
                                         </Grid>
+                                        <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6" IsVisible="{Binding IsSource2Curve}">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Shoulder" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0.001" Maximum="4" Increment="0.01" Value="{Binding FilmicShoulder, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Linear Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01" Value="{Binding FilmicLinearStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Linear Angle" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01" Value="{Binding FilmicLinearAngle, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Toe Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01" Value="{Binding FilmicToeStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Toe Numerator" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.005" Value="{Binding FilmicToeNumerator, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Toe Denominator" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="0.001" Maximum="4" Increment="0.01" Value="{Binding FilmicToeDenominator, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="White (stops)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="16" Increment="0.05" Value="{Binding FilmicWhitePoint, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" ToolTip.Tip="Half-Life: Alyx's m_flWhitePoint: the curve is normalised by its value at 2^stops" />
+                                        </Grid>
                                         <CheckBox Content="Exact sRGB output" IsChecked="{Binding ExactSrgb, Mode=TwoWay}" ToolTip.Tip="Off = a plain 2.2 gamma (the engine's original output)" />
                                     </StackPanel>
                                 </Expander>
@@ -1202,6 +1218,10 @@
                                     </Expander.Header>
                                     <StackPanel Spacing="6" Margin="12,8,12,12">
                                         <CheckBox Content="Enable Bloom (scene)" IsChecked="{Binding BloomEnabled, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="110,*" RowSpacing="6">
+                                            <TextBlock Grid.Column="0" Text="Threshold (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding BloomShapes}" SelectedIndex="{Binding BloomShape, Mode=TwoWay}" ToolTip.Tip="Source 2: the colour fades in from Start over Knee (luma x exposure). Soft Knee: brightest channel above Start." />
+                                        </Grid>
                                         <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Start (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0" Maximum="64" Increment="0.05" Value="{Binding BloomStart, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
@@ -1277,7 +1297,7 @@
                                             <TextBlock Grid.Row="5" Grid.Column="0" Text="Probe Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="32" Maximum="1024" Increment="32" Value="{Binding ReflectionProbeSize, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
                                             <TextBlock Grid.Row="6" Grid.Column="0" Text="Normalize Max" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.05" Value="{Binding CubemapNormalizationMax, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="1" Maximum="64" Increment="1" Value="{Binding CubemapNormalizationMax, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
                                             <TextBlock Grid.Row="7" Grid.Column="0" Text="Normalize Rough." Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding CubemapNormalizationRoughnessBegin, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
                                         </Grid>

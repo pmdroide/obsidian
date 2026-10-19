@@ -1,0 +1,170 @@
+Valve Compiled Shader 2 (vcs2), version 64
+
+Showing PixelShader: post_process_pc_50_ps.vcs
+Editor/Shader compiler stack
+MD5    29079ae4-f294-1951-c06c-7532222a3228    // PixelShader
+MD5    922d7060-4dff-95b1-cfbf-5411e994ec67    // Common editor/compiler hash shared by multiple different vcs files.
+VariableSourceMax = 17
+
+STATIC COMBOS(1)
+BlockIndex  Name                RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        S_BINDLESS_RUNTIME  0         0         S_BINDLESS_RUNTIME  -1            Static            
+
+DYNAMIC COMBOS(6)
+BlockIndex  Name                        RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        D_COLOR_CORRECTION_LUT      0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 1]        D_ENABLE_FADE_AND_VIGNETTE  0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 2]        D_BLOOM                     0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 3]        D_OUTPUT_LINEAR             0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 4]        D_OLD_TONEMAPPING_CURVE     0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 5]        D_MULTIVIEW_INSTANCING      0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+
+VARIABLE DESCRIPTIONS(28)    *dyn-expressions shown separately
+index Name                                   VfxType   SourceIndex ContextStateAffectedByVariable MinPrecisionBits RegisterElements ExtConstantBufferId VariableSource         StringData                          RegisterType   UiType     UiGroup command 0|1 DefaultInputTexture UiVisibilityExp
+[ 0]  AddressU                               Int        _          4096                            _                0               1                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 1]  AddressU                               Int        _          4096                            _                0               1                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 2]  AddressV                               Int        _          4096                            _                0               2                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 3]  AddressV                               Int        _          4096                            _                0               2                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 4]  AddressW                               Int        _          4096                            _                0               3                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 5]  Filter                                 Int        _          4096                            _                0               0                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 6]  Filter                                 Int        _          4096                            _                0               0                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 7]  Filter                                 Int        _          4096                            _                0               0                   __RenderStateLiteral__                                     SamplerState   None                                                              
+[ 8]  PerViewConstantBuffer_t                Cbuffer    _          8192                            _                0               0                   __SetByArtist__        PerViewConstantBuffer_t             ConstantBuffer None                                                              
+[ 9]  PostProcessingConstantBuffer_t         Cbuffer    _          8192                            _                0               1                   __SetByArtist__        PostProcessingConstantBuffer_t      ConstantBuffer None                                                              
+[10]  StencilRef                             Int        _          256                             _                4               32                  __RenderStateLiteral__                                     RenderState    None                                                              
+[11]  g_flColorCorrectionDefaultWeight       Float      _          8192                            _                1               -1                  __Attribute__          ColorCorrectionDefaultWeight        Float4         Slider                                                            
+[12]  g_flFadeMode                           Float      _          8192                            _                1               -1                  __Attribute__          ScreenFadeMode                      Float4         Slider                                                            
+[13]  g_flScreenShakeFactor                  Float      _          8192                            _                1               -1                  __Attribute__          VrScreenShakeMagnitude              Float4         Slider                                                            
+[14]  g_tBloom                               Sampler2D  _          6144                            _                1               0                   __Attribute__          BlurBuffer                          Texture        Texture                                                           
+[15]  g_tBlueNoise                           Sampler2D  _          6144                            _                1               0                   __Attribute__          BlueNoise                           Texture        Texture                                                           
+[16]  g_tColorBuffer                         Sampler2D  _          6144                            _                1               0                   __Attribute__          ColorBuffer                         Texture        Texture                                                           
+[17]  g_tColorCorrection                     Sampler3D  _          6144                            _                1               0                   __Attribute__          ColorCorrectionTex                  Texture        Texture                                                           
+[18]  g_tScreenSpaceTranslucent              Sampler2D  _          6144                            _                1               0                   __Attribute__          ScreenSpaceTranslucent              Texture        Texture                                                           
+[19]  g_vBloomUvScaleClamp                   Float4     _          8192                            _                4               -1                  __Expression__                                             Float4         VectorText                                                        
+[20]  g_vBlueNoiseDitherParams               Float4     _          8192                            _                4               -1                  __Expression__                                             Float4         VectorText                                                        
+[21]  g_vInvScreenSpaceTranslucentTextureDim Float4    18          8192                            _                4               -1                  InvTextureDim                                              Float4         VectorText                                                        
+[22]  g_vNormalizedBloomStrengths            Float3     _          8192                            _                3               -1                  __Expression__                                             Float4         VectorText                                                        
+[23]  g_vNormalizedUvToColorBufferUv         Float2     _          8192                            _                2               -1                  __Expression__                                             Float4         VectorText                                                        
+[24]  g_vScreenSpaceTranslucentViewportRatio Float2     _          8192                            _                2               -1                  __Attribute__          ScreenSpaceTranslucentViewportRatio Float4         VectorText                                                        
+[25]  g_vUnNormalizedBloomStrengths          Float3     _          8192                            _                3               -1                  __Expression__                                             Float4         VectorText                                                        
+[26]  g_vViewFadeColor                       Float4     _          8192                            _                4               -1                  __Attribute__          ScreenFadeColor                     Float4         VectorText                                                        
+[27]  g_vVignetteColor                       Float4     _          8192                            _                4               -1                  __Attribute__          TeleportVignetteColor               Float4         VectorText                                                        
+
+VARIABLES - Default values and limits    (type0,type1,arg0,arg1,arg2,arg4,arg5,command0 reprinted)
+(- indicates -infinity, + indicates +infinity, def. = default)
+index Name                                   IntDefs    IntMins   IntMaxs   FloatDefs FloatMins FloatMaxs ChannelIndices ImageFormat ImageSuffix DefaultInputTexture DynExp LayerId AllowLayerOverride MaxRes
+[ 0]  AddressU                               (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 1]  AddressU                               (2,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 2]  AddressV                               (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 3]  AddressV                               (2,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 4]  AddressW                               (2,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 5]  Filter                                 (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 6]  Filter                                 (20,0,0,0) (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 7]  Filter                                 (21,0,0,0) (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 8]  PerViewConstantBuffer_t                (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 9]  PostProcessingConstantBuffer_t         (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[10]  StencilRef                             (1,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[11]  g_flColorCorrectionDefaultWeight       (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[12]  g_flFadeMode                           (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[13]  g_flScreenShakeFactor                  (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[14]  g_tBloom                               (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[15]  g_tBlueNoise                           (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[16]  g_tColorBuffer                         (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[17]  g_tColorCorrection                     (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[18]  g_tScreenSpaceTranslucent              (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[19]  g_vBloomUvScaleClamp                   (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[20]  g_vBlueNoiseDitherParams               (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[21]  g_vInvScreenSpaceTranslucentTextureDim (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[22]  g_vNormalizedBloomStrengths            (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[23]  g_vNormalizedUvToColorBufferUv         (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[24]  g_vScreenSpaceTranslucentViewportRatio (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[25]  g_vUnNormalizedBloomStrengths          (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[26]  g_vViewFadeColor                       (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[27]  g_vVignetteColor                       (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+
+DYNAMIC EXPRESSIONS(5)
+param-index  name                                    vfxtype,registertype,vecsize,tex,  VariableSource  dyn-exp                                                                                            ui-visibility
+[19]         g_vBloomUvScaleClamp                    float4,Float4, 4, _                __Expression__  bloombufferscaleclamp                                                                                           
+[20]         g_vBlueNoiseDitherParams                float4,Float4, 4, _                __Expression__  bluenoiseditherparams                                                                                           
+[21]         g_vInvScreenSpaceTranslucentTextureDim  float4,Float4, 4,18                InvTextureDim                                                                                                                   
+[22]         g_vNormalizedBloomStrengths             float3,Float4, 3, _                __Expression__  float3(normalizedadditivebloomstrength,normalizedscreenbloomstrength,normalizedblurbloomstrength)               
+[23]         g_vNormalizedUvToColorBufferUv          float2,Float4, 2, _                __Expression__  normalizeduvtocolorbufferuv                                                                                     
+[25]         g_vUnNormalizedBloomStrengths           float3,Float4, 3, _                __Expression__  float3(additivebloomstrength,screenbloomstrength,blurbloomstrength)                                             
+
+TEXTURE CHANNEL PROCESSORS(0)
+[none defined]
+
+CONSTANT BUFFERS[0]
+PerViewConstantBuffer_t size=816 (816) param-count=50 arg0=0 crc32=1b240212
+         name                                 offset  vertex-size  attrib-count  data-count
+         g_matWorldToProjection                 0       4            4             1       
+         g_matProjectionToWorld                16       4            4             1       
+         g_matWorldToView                      32       4            4             1       
+         g_matViewToProjection                 48       4            4             1       
+         g_vInvProjRow3                        64       4            1             1       
+         g_vClipPlane0                         68       4            1             1       
+         g_flToneMapScalarLinear               72       1            1             1       
+         g_flLightMapScalar                    73       1            1             1       
+         g_flEnvMapScalar                      74       1            1             1       
+         g_flToneMapScalarGamma                75       1            1             1       
+         g_vCameraPositionWs                   76       3            1             1       
+         g_flViewportMinZ                      79       1            1             1       
+         g_vCameraDirWs                        80       3            1             1       
+         g_flViewportMaxZ                      83       1            1             1       
+         g_vCameraUpDirWs                      84       3            1             1       
+         g_flTime                              87       1            1             1       
+         g_vDepthPsToVsConversion              88       3            1             1       
+         g_flNearPlane                         91       1            1             1       
+         g_flFarPlane                          92       1            1             1       
+         g_flLightBinnerFarPlane               93       1            1             1       
+         g_vInvViewportSize                    94       2            1             1       
+         g_vViewportToGBufferRatio             96       2            1             1       
+         g_vMorphTextureAtlasSize              98       2            1             1       
+         g_vInvGBufferSize                    100       4            1             1       
+         g_vViewportOffset                    104       2            1             1       
+         g_vViewportSize                      106       2            1             1       
+         g_vRenderTargetSize                  108       2            1             1       
+         g_flFogBlendToBackground             110       1            1             1       
+         g_flHenyeyGreensteinCoeff            111       1            1             1       
+         g_vFogColor                          112       3            1             1       
+         g_flNegFogStartOverFogRange          115       1            1             1       
+         g_flInvFogRange                      116       1            1             1       
+         g_flFogMaxDensity                    117       1            1             1       
+         g_flFogExponent                      118       1            1             1       
+         g_flMod2xIdentity                    119       1            1             1       
+         g_bRoughnessParams                   120       2            1             1       
+         g_bStereoEnabled                     122       1            1             1       
+         g_flStereoCameraIndex                123       1            1             1       
+         g_vMiddleEyePositionWs               124       3            1             1       
+         g_flPad2                             127       1            1             1       
+         g_matWorldToProjectionMultiview      128       4            4             2       
+         g_vCameraPositionWsMultiview         160       4            1             2       
+         g_vFrameBufferCopyInvSizeAndUvScale  168       4            1             1       
+         g_vCameraAngles                      172       4            1             1       
+         g_vWorldToCameraOffset               176       4            1             1       
+         g_vWorldToCameraOffsetMultiview      180       4            1             2       
+         g_vPerViewConstantExtraData0         188       4            1             1       
+         g_vPerViewConstantExtraData1         192       4            1             1       
+         g_vPerViewConstantExtraData2         196       4            1             1       
+         g_vPerViewConstantExtraData3         200       4            1             1       
+
+CONSTANT BUFFERS[1]
+PostProcessingConstantBuffer_t size=32 (32) param-count=8 arg0=0 crc32=5a8ac392
+         name                         offset  vertex-size  attrib-count  data-count
+         g_flExposureBiasScaleFactor    0       1            1             1       
+         g_flShoulderStrength           1       1            1             1       
+         g_flLinearStrength             2       1            1             1       
+         g_flLinearAngle                3       1            1             1       
+         g_flToeStrength                4       1            1             1       
+         g_flToeNum                     5       1            1             1       
+         g_flToeDenom                   6       1            1             1       
+         g_flWhitePointScale            7       1            1             1       
+
+VERTEX INPUT SIGNATURES(0)
+[none defined]
+
+STATIC COMBOS(1)
+S_BINDLESS_RUNTIME(bin_r)
+
+                 bin_r
+  Z[00000000]      _

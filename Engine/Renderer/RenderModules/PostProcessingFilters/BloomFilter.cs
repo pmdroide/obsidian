@@ -553,6 +553,7 @@ namespace Engine.Renderer.RenderModules.PostProcessingFilters
 
             _bloomEffect.Parameters["BloomStart"]?.SetValue(GameSettings.g_BloomStart);
             _bloomEffect.Parameters["BloomKnee"]?.SetValue(GameSettings.g_BloomKnee);
+            _bloomEffect.Parameters["BloomShape"]?.SetValue(GameSettings.g_BloomShape == Logic.BloomThresholdShape.Source2 ? 1f : 0f);
         }
 
         private void ChangeBlendState()

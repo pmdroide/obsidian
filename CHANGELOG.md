@@ -1,5 +1,28 @@
 # Changelog
 
+## Changed: Source 2 look defaults recovered from Half-Life: Alyx (research R1–R7, 2026-10-19)
+
+- Completed the reverse-engineering follow-ups R1–R7 in `Docs/Research/Source2Look/README.md` ("Research follow-ups: findings").
+- Sources: HLA's `.vpost` profiles, `gameinfo.gi`, the FGDs, and the DXBC of the `post_process`, `tonemap_query`, `gaussian_bloom_blur`, `vr_simple` and `vr_aoproxy_splat` shaders. Also the ConVar registrations and the tonemap, cascade and normalisation code in `scenesystem.dll` and `materialsystem2.dll`.
+- Evidence is in `evidence/followups/`, with hashes. The read-only extraction tool (ValveResourceFormat + Iced + D3DDisassemble) is in `re_tool/`.
+- REA's native providers weren't available, so these are not REA Evidence records.
+- Added the `Source2` tonemap curve: Hable's 8-parameter form on 2.8 × the exposed colour, normalised by H(2^white stops), with new `Filmic*` post settings.
+- Added `Source2` exposure metering: the histogram median exposed as `Key / 2^ln(L)`.
+- Added the `Source2` bloom threshold: a linear ramp on 0.3/0.59/0.11 luma.
+- All three are exposed in Anvil's Post Processing window and in volume overrides.
+- New defaults:
+  - Exposure 0 EV.
+  - Auto exposure −2 to +3 EV, adaptation 1.2 / 0.3 per second, no centre weight.
+  - Bloom start 1.976, width 2.3655.
+  - Cubemap normalisation max 32 / roughness begin 0.1, using HLA's cap formula.
+  - Cascade split lambda 0.85.
+  - Saved scenes keep their own Post values. `LookDev.obsc` now uses the HLA values.
+- Not applied: HLA's ~25 m sun shadow distance, the Screen bloom blend, the AO cone LUT and lightmap packing. All are documented for later.
+- Validation: the solution builds and all component checks pass, including new HLA default/serialization checks. LookDev was captured before and after.
+- The `--graphics` run fails at `PauseChecks` ("the document is filled in"). It fails the same way on unmodified `dev`.
+
+- Claude
+
 ## Added: MCP harness installer CLI (2026-10-18)
 
 - Added `anvil-mcp`, an independent .NET 10 Windows console installer with an interactive multi-harness menu and flags for Claude Code, Cursor, Codex and VS Code. Added a source launcher and standalone executable publishing script.

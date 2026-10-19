@@ -32,8 +32,13 @@ Texture2D AutoExposureTexture;
 float AutoExposureEnabled = 0;
 
 // Source 2 look (Docs/Research/Source2Look phase 1.5), per scene in EnvironmentSettings.Post:
-// 0 = Hejl 2015, 1 = ACES (Narkowicz), 2 = Hable (Uncharted 2), 3 = Reinhard (extended), 4 = linear (clamp)
-float TonemapCurve = 0;
+// 0 = Hejl 2015, 1 = ACES (Narkowicz), 2 = Hable (Uncharted 2), 3 = Reinhard (extended), 4 = linear (clamp),
+// 5 = Source 2 (Half-Life: Alyx post_process.vfx, Docs/Research/Source2Look R1)
+float TonemapCurve = 5;
+// Source 2 curve (PostProcessingConstantBuffer_t): shoulder, linear strength, linear angle, toe strength
+float4 FilmicCurve = float4(0.15f, 0.5f, 0.1f, 0.2f);
+// toe numerator, toe denominator, white point in stops
+float3 FilmicToe = float3(0.02f, 0.3f, 4);
 // 1 = exact sRGB encoding, 0 = plain 2.2 gamma
 float ExactSrgb = 1;
 float Saturation = 1;
@@ -195,10 +200,27 @@ float3 AcesFilm(float3 x)
 	return saturate((x * (2.51f * x + 0.03f)) / (x * (2.43f * x + 0.59f) + 0.14f));
 }
 
+//Half-Life: Alyx's filmic curve with the .vpost parameters (Hable's form, all eight terms free)
+float3 Source2FilmicCurve(float3 x)
+{
+	float A = FilmicCurve.x, B = FilmicCurve.y, C = FilmicCurve.z, D = FilmicCurve.w;
+	float E = FilmicToe.x, F = FilmicToe.y;
+	return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+//post_process.vfx: H(2.8 x exposed) * WhitePointScale; materialsystem2 sets WhitePointScale = 1 / H(2^WhitePoint)
+//and folds the exposure bias in as 2^bias (our Exposure EV). The 2.8 is a shader literal.
+float3 Source2Tonemap(float3 exposed)
+{
+	return Source2FilmicCurve(exposed * 2.8f) / Source2FilmicCurve(exp2(FilmicToe.z).xxx).x;
+}
+
 float3 ApplyTonemapCurve(float3 hdr)
 {
 	[branch]
-	if (TonemapCurve < 0.5f)
+	if (TonemapCurve > 4.5f)
+		return Source2Tonemap(hdr);
+	else if (TonemapCurve < 0.5f)
 		return ToneMapFilmic_Hejl2015(hdr, WhitePoint);
 	else if (TonemapCurve < 1.5f)
 		return AcesFilm(hdr);

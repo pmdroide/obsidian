@@ -24,7 +24,7 @@ Implemented; how to use it is in [`Docs/markdown/Source2_Look.md`](../../markdow
 | 5.1–5.3 | Done. |
 | 6.1–6.2 | Done. AO proxies are ellipsoids/capsules (no box shape). |
 | 7 | Screen-size culling and hardware occlusion queries done (queries off by default); no depth prepass. |
-| R1–R7 | **Not done.** Current defaults: Hejl curve, bloom start 1.5 / knee 0.5 / scale 0.35, 2 % bright pixels to 0.18, cascade lambda 0.75 over 150 m, normalisation max 1, AO proxy falloff 2 radii. |
+| R1–R7 | **Done (2026-10-19)**, see [Research follow-ups: findings](#research-follow-ups-findings-2026-10-19). Applied: the `Source2` tonemap curve, `Source2` metering, the `Source2` bloom ramp, HLA exposure clamp and speeds, cubemap normalisation 32 / 0.1 with HLA's cap formula, and cascade lambda 0.85. Not applied: HLA's 1000-unit (about 25 m) shadow distance, the screen bloom blend, the AO cone LUT (R7), and lightmap packing (R6, for 4.2). |
 
 **Related:** volumetric fog was studied and rebuilt separately. See
 [`../AlyxVolumetric/README.md`](../AlyxVolumetric/README.md); this plan only covers
@@ -269,6 +269,216 @@ Do each before the phase that needs its numbers. Run REA against the same files.
 | R7 | AO proxy shape and falloff | `vr_aoproxy_splat` shader DXBC | 6.1 |
 
 `client.dll` exceeds REA's 330 s analysis limit. If it is needed, analyse it in Ghidra directly and import the result, or ask the REA maintainers about a longer provider timeout.
+
+## Research follow-ups: findings (2026-10-19)
+
+Author: Claude. Every number below was **observed** in the installed game files (hashes in
+[`evidence/followups/hashes.txt`](evidence/followups/hashes.txt)). This time it was not
+estimated by eye.
+
+**Method.** REA's native providers were unavailable in this session: Ghidra, IDA and Kuna
+were not configured, and Hopper does not run on this host. So these are **not REA
+Evidence records**. A small read-only .NET tool did the work instead
+([`re_tool/`](re_tool/): ValveResourceFormat 20.1 for VPK, KV3 and VCS; Iced 1.21 for
+x64 disassembly; `D3DDisassemble` from `d3dcompiler_47.dll` for DXBC). It never runs
+game code. It:
+
+- decodes `.vpost_c` post-processing resources;
+- disassembles each VCS shader variant;
+- finds every ConVar registration (`lea rdx,"name"` / `lea r8,"default"` / `mov r9d,flags`
+  before the ConVar constructor);
+- prints the code that reads a ConVar object (`[obj+0x54]` = float value).
+
+Rebuild it with `dotnet build re_tool -c Release` and run it with
+`s2tool cvars <dll> <regex>`, `xref <dll> <names|0xaddr>`, `shader <mod> <vcs> <outdir>`,
+`res <mod> <vpk> <regex>` or `lut <mod> <vtex> <out>`. Output files are under
+[`evidence/followups/`](evidence/followups/).
+
+Two configuration facts drive R1 to R3. HLA's `hlvr/gameinfo.gi` sets
+`RenderingPipeline { TonemappingVRForward 1, Tonemapping_UseLogLuminance 1 }`, and
+post-processing comes from `.vpost` profiles placed with `post_processing_volume`.
+
+### R1 Tonemap curve, white point, gamma
+
+- **Curve.** Shader `post_process` (hlvr, ps_5_0) runs this sequence:
+  1. `x = 2.8 × colour × g_flToneMapScalarLinear (auto exposure) × ExposureBiasScaleFactor`.
+  2. `H(x) = (x(Ax + CB) + DE) / (x(Ax + B) + DF) − E/F`.
+  3. `out = H(x) × WhitePointScale`.
+  4. Exact sRGB encode (`≤ 0.0031308 → ×12.92`, else `1.055·x^(1/2.4) − 0.055`).
+  5. Blue-noise dither.
+
+  The constants live in `PostProcessingConstantBuffer_t`, eight floats in this order:
+  ExposureBiasScaleFactor, Shoulder (A), LinearStrength (B), LinearAngle (C),
+  ToeStrength (D), ToeNum (E), ToeDenom (F), WhitePointScale. Files:
+  [`shaders/R1_post_process_ps_full.asm`](evidence/followups/shaders/R1_post_process_ps_full.asm)
+  and the cbuffer list in `R1_post_process_ps_summary.txt`.
+- **CPU side** (`materialsystem2.dll` 0x18003C9F0, imports `tier0!V_powf`):
+  `ExposureBiasScaleFactor = 2^m_flExposureBias` and `WhitePointScale = 1 / H(2^m_flWhitePoint)`.
+  The white point is therefore in **stops**, and the 2.8 pre-scale does **not** apply to it
+  ([`R1_materialsystem2_tonemap_cbuffer.asm`](evidence/followups/R1_materialsystem2_tonemap_cbuffer.asm)).
+- **Old curve.** The `D_OLD_TONEMAPPING_CURVE` variant is just `saturate(exposure × colour)` → sRGB.
+- **Parameter values.** They come from the `.vpost` profiles
+  ([`R1_R3_vpost_table.txt`](evidence/followups/R1_R3_vpost_table.txt), 56 files).
+  - Neutral profiles (tanker yard, hotel, feeding area, `workshop_examples/example_blur`) use
+    Hable's published constants: A 0.15, B 0.5, C 0.1, D 0.2, E 0.02, F 0.3, W 4.0.
+  - `basepostprocess` (the template) uses 0.319 / 0.5047 / 0.1619 / 0.4667 / 0 / 0.7475 / W 3.9996.
+  - Map profiles adjust the shoulder (0.12–0.42) and the exposure bias (−1.2 to +1.3).
+- **What this means for the image.**
+  - Exposed middle grey 0.18 maps to linear 0.16 (sRGB about 0.44).
+  - White is reached at an exposed value of 2^4 / 2.8 ≈ 5.7.
+
+### R2 Exposure metering
+
+- **Built-in defaults** (`scenesystem.dll` 0x18010BE7F; the `mat_tonemap_force_*` ConVars
+  are all `-1` overrides, [`convar_defaults_scenesystem.txt`](evidence/followups/convar_defaults_scenesystem.txt)):
+
+  | Setting | Default |
+  |---|---|
+  | Min exposure | 0.25 |
+  | Max exposure | 8 |
+  | Percent target | 60 (clamped to ≤ 92.25) |
+  | Bright pixels | **5 %** (help text: "old value was 1.0") |
+  | Min average luminance | 3 % |
+  | Rate | 2.0, but **0.3 with `TonemappingVRForward`** |
+  | Accelerate exposure down | 4.0 |
+
+  Priority: ConVar ≥ 0, then the controller or volume value ≥ 0, then the default.
+  `env_tonemap_controller` and `post_processing_volume` in `core/*.fgd` also default to
+  min 0.25 and max 8.
+- **HLA uses log-luminance mode** (`Tonemapping_UseLogLuminance`):
+  1. `tonemap_query` writes `ln(max(dot(c, 0.2125/0.7154/0.0721), 1e-4))` into 16
+     occlusion-query buckets over ln L ∈ [−8, 5]. Black pixels are discarded.
+  2. The CPU finds the 50th percentile, from `mat_tonemap_force_log_lum_min/max`, which
+     default to 0.5 and 0.5.
+  3. It computes `exposure = 0.18 / powf(2, ln L_median)`.
+  4. Because the histogram is in natural log but is exponentiated in base 2, exposure
+     follows `L^−0.693`, not `L^−1`. This is observed, not a typo here.
+
+  Files: [`R2_CTonemapSystem_metering_and_adaptation.asm`](evidence/followups/R2_CTonemapSystem_metering_and_adaptation.asm)
+  and [`shaders/R2_tonemap_query_log.asm`](evidence/followups/shaders/R2_tonemap_query_log.asm).
+- **Bright-pixel mode** (Source 1 style, not used by HLA): the luminance above which 5 % of
+  pixels lie is scaled to 0.60. The median is kept ≥ 0.03. The result is clamped to
+  [min, max].
+- **Smoothing:**
+  1. The targets of the last 10 frames are averaged with weights |i − 5| × 0.2.
+  2. The average is clamped to [min, max].
+  3. `exposure = lerp(exposure, target, saturate(rate' × dt))`. When the target is darker,
+     `rate' = min(r + (4r − r)(cur − target)·2/3, 4r)`.
+
+### R3 Bloom
+
+- **ConVars.** `mat_tonemap_bloom_scale` and `_start_value` default to `-1.0`; they are
+  overrides only. Every profile stores `m_flBloomStartValue = 1.0`.
+- **Threshold** (`gaussian_bloom_blur`, first mip): `w = saturate((dot(c, 0.3/0.59/0.11) × exposure − Threshold) / ThresholdWidth)`,
+  then `bloom = c × w` (not exposed). The 4× downsample variant adds Karis
+  `1 / (1 + max)` firefly weighting.
+- **Blur.** A separable Gaussian whose taps are tonemapped as `c / (1 + luma)` and
+  restored as `c / (1 − luma)`. It runs over 5 mips with `m_flBlurWeight` (default
+  0.2 each) and per-mip tints.
+- **Blend** (`post_process`), by mode:
+  - **Add:** `+ bloom × exposure × strength` before the curve.
+  - **Screen:** the bloom is compressed as `b / (b + 0.187) × 1.035`, then screen-blended
+    in sRGB after the curve.
+  - **Blur:** scene and bloom are lerped.
+- **Profile values.** `basepostprocess` is Screen 1.0 with Threshold 1.976 and Width 2.3655.
+  Most maps use Add, with strength 0.1–2.3 and threshold 0–3.
+
+### R4 Cubemap normalisation
+
+- **ConVars:** `vr_cubemap_normalization_max` = **32.0**,
+  `vr_cubemap_normalization_roughness_begin` = **0.1**.
+- **CPU** (`scenesystem.dll` 0x180050B2D): `A = (max − 1) / (1 − begin)`, `B = max − A`.
+- **Shader** (`vr_simple` ps; the same structure is in `vr_complex`):
+  `factor = min(max(roughness·A + B, 1), luma(pixel irradiance) / dot((N,1), g_vEnvironmentMapNormalizationSH[probe]))`.
+  - The probe stores luminance-only L1 SH.
+  - Brightening is capped at 1 for roughness ≤ 0.1 and rises to 32 at roughness 1.
+    Darkening is never limited.
+- **Related, observed in the same shaders:**
+  - Geometric specular AA: `roughness = max(roughness, max(|ddx N|², |ddy N|²)^0.333)`.
+  - The environment BRDF LUT stores square roots, so the shader squares them (`F0·a² + b²`).
+  - Mip = `sqrt(roughness) × mips`.
+
+Files: [`R4_cubemap_normalization_cpu.asm`](evidence/followups/R4_cubemap_normalization_cpu.asm)
+and [`shaders/R4_vr_simple_ps_ambient.asm`](evidence/followups/shaders/R4_vr_simple_ps_ambient.asm).
+
+### R5 Cascades and bias
+
+- **Splits** (`scenesystem.dll` 0x18008EF27):
+  - Cascades whose distance the light sets explicitly come first.
+  - The rest use `split_i = λ·n(f/n)^(i/N) + (1 − λ)(n + (f − n)i/N) + 0.1`, kept monotonic.
+  - λ = `csm_split_log_scalar` = **0.85**.
+  - n = max(camera near, 0.125).
+  - f = min(camera far, `csm_max_shadow_dist_override` or **1000 units** ≈ 25.4 m).
+- **Cascade count:** 3 (`light_environment` FGD default).
+- **Biases:**
+  - `sc_shadow_depth_bias` 8 (raster depth-bias units).
+  - `sc_shadow_slopescale_depth_bias` 2.13, clamp 0.
+  - `csm_viewdir_shadow_bias` 0 × (1 + 2i) (`csm_cascade_viewdir_shadow_bias_scale` 2), so off by default.
+- **VR single-light fast path** (HLA's gameinfo turns it on): sun cascades sized by texel
+  density, 8.0 and 1.5 texels per unit (`vr_single_light_fast_path_sun_cascade_0/1_texels_per_world`),
+  with vignette 0.25 and size cull 0.5. Not traced further.
+- **Atlas:** gameinfo sets the shadow atlas to 4096² in-game (`VrDefaultShadowTextureWidth/Height`)
+  and 6144² for Hammer.
+
+### R6 Baked light index packing
+
+- **Bake config** (`gameinfo.gi` `BakedLighting`):
+  - `IndexResolutionDivisor 4`: the index maps are at 1/4 of lightmap resolution.
+  - `IndexCountMax 256`, matching `baked_light_index_max` 256 and `g_vBakedLightPosition[256]`.
+  - Channels: `direct_light_indices`, `direct_light_strengths`, `irradiance`,
+    `directional_irradiance` (AO lives inside it) and `debug_chart_color`.
+- **Shader** (`vr_simple`, lightmap variant), one `Texture2DArray` per channel:
+  - **Lightmap0** (point-sampled RGBA8): **4 light indices per texel** (`× 255`, `ftoi`).
+  - **Lightmap1:** the 4 lights' shadow strengths, stored as **sqrt** and squared on read.
+  - **Lightmap2:** RGB irradiance.
+  - **Lightmap3:** directional data. `xy` is the dominant direction (`2t − 1`,
+    `z = 1 − |xy|`); `z` is the non-directional share `f = saturate((t.z − 1)·DirectionalLightmapStrength + LightmapParams.x + 1)`.
+  - Diffuse = `irr·f + irr·(1 − f)·max(dot(dir, N), 0) / max(dir.z, DirectionalLightmapMinZ)`.
+- **Indexed lights:**
+  - Each listed light is evaluated in real time (GGX, Schlick F, Smith k = (r + 1)²/8) and
+    multiplied by its strength.
+  - The sun's index is compared separately.
+  - Dynamic objects near cached shadows use a 25-tap PCF.
+  - Probe volumes use the same 4-index / 4-strength packing in two 3D textures.
+
+Files: [`shaders/R6_vr_simple_ps_lightmap.asm`](evidence/followups/shaders/R6_vr_simple_ps_lightmap.asm)
+and [`shaders/R6_vr_simple_ps_probe_volume.asm`](evidence/followups/shaders/R6_vr_simple_ps_probe_volume.asm).
+
+### R7 AO proxy shape and falloff
+
+- **Proxy shapes** (`vr_aoproxy_splat`, ps):
+  - **Ellipsoids:** a unit sphere in proxy space (`g_matWorldToProxy`).
+  - **Boxes:** the point is clamped to 0.9 × the box, and the inverse distance is
+    `1 / (1 + d·Σ wᵢ·π/(eⱼeₖ))`.
+- **Visibility.** For each of 4 AO light directions (`g_vAmbientOcclusionProxyLightPositions[4]`),
+  the shader samples a precomputed **sphere-versus-cone visibility LUT**
+  (`aoproxy_splat_lut_z000`, 64 × 32 × 19, [`R7_ao_cone_lut.txt`](evidence/followups/R7_ao_cone_lut.txt)).
+  It is indexed by (cos angle to the proxy × 0.5 + 0.5, radius / distance, cone angle).
+  The results multiply across all proxies.
+- **Fade and output:**
+  - The group's bounds fade as `saturate(3·min(1 − |p|)) × saturate(2.8 − 2|p|)`.
+  - The output is `1 + strength × (product − 1)`, with 4 channels.
+- **Consumers.** Forward shaders compute
+  `(Σ wᵢ·aoᵢ + ambient) / (Σ wᵢ + ambient)`, where `wᵢ = max(dot(N, Lᵢ), 0) × g_vAmbientOcclusionProxyLightStrengths`.
+  The result multiplies **indirect** diffuse and specular only.
+- **Culling:** `r_aoproxy_cull_dist` 12 (× size), `r_aoproxy_min_dist` 3.0, `r_aoproxy_min_dist_box` 1.
+- **Unknown:** how the CPU chooses the 4 AO light directions and cone angles.
+
+### What changed in Obsidian
+
+- **R1:** `TonemapCurve.Source2` (`PostProcessing.fx` `Source2Tonemap`) with seven new
+  post settings, `FilmicShoulder` … `FilmicWhitePoint`. The exposure bias is the existing
+  Exposure EV.
+- **R2:** `ExposureMetering.Source2` (`AutoExposure.fx`: median of the histogram, `log2(Key) − ln2·log2 L`).
+  Defaults: EV −2…+3, speeds 1.2 / 0.3, centre weight 0, Exposure 0.
+- **R3:** `BloomThresholdShape.Source2` (`Bloom.fx`), Start 1.976, Knee (= width) 2.3655.
+  Bloom Scale stays 0.35 by eye, because Obsidian has no Screen blend.
+- **R4:** `Reflections.fx` `Normalization` uses HLA's cap. `g_cubemapnormalizationmax`
+  is 32 and the roughness begin is 0.1.
+- **R5:** `DirectionalLight.SplitLambda` defaults to 0.85. The 150 m distance and 4 cascades
+  are kept, because the god rays need the coverage.
+- New scenes use all the Source 2 values. Saved scenes keep their own Post block.
+  `LookDev.obsc` now uses the HLA values.
 
 ## Working rules for every phase
 
