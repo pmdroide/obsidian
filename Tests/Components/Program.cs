@@ -24,6 +24,11 @@ if (args.Contains("--mcp"))
     McpChecks.Run();
     return;
 }
+if (args.Contains("--liquid"))
+{
+    LiquidChecks.Run();
+    return;
+}
 if (args.Contains("--forward-graphics"))
 {
     MaterialGraphicsChecks.Run(forwardOnly: true);
@@ -608,9 +613,11 @@ RagdollChecks.Run();
 MultiplayerChecks.Run();
 CollisionChecks.Run();
 ClothChecks.Run();
+GlassChecks.Run();
 NpcChecks.Run();
 LodChecks.Run();
 FoliageChecks.Run();
+LiquidChecks.Run();
 FogChecks.Run();
 Source2LookChecks.Run();
 LightmapChecks.Run();

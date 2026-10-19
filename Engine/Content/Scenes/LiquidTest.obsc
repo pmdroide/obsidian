@@ -1,0 +1,488 @@
+{
+  "Version": 2,
+  "Name": "LiquidTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.25
+      ],
+      "Scale": [
+        6,
+        6,
+        0.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.32,
+          0.33,
+          0.35
+        ],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 2,
+      "Name": "Table",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        0.375
+      ],
+      "Scale": [
+        0.75,
+        0.4,
+        0.375
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.42,
+          0.27,
+          0.16
+        ],
+        "Roughness": 0.6
+      }
+    },
+    {
+      "Id": 3,
+      "Name": "Back Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        1.4,
+        1.2
+      ],
+      "Scale": [
+        3,
+        0.05,
+        1.2
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.8,
+          0.78,
+          0.74
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 4,
+      "Name": "Beer Bottle - Swing",
+      "ModelKey": "Bottle",
+      "Position": [
+        -0.5,
+        0.05,
+        0.75
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "liquid",
+          "InstanceId": "96f83a06-77cb-4cfe-805b-89567c644483",
+          "Data": {
+            "Fill": 0.7,
+            "LiquidColor": [
+              196,
+              120,
+              34,
+              255
+            ],
+            "FoamColor": [
+              245,
+              235,
+              210,
+              255
+            ],
+            "Opacity": 0.7,
+            "Roughness": 0.1,
+            "Emissive": 0,
+            "Foaminess": 3,
+            "Fizz": 0.6,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "698444ef-6d38-444c-960c-1e73061ecd2e",
+          "Data": {
+            "ScriptId": "liquid-test",
+            "Fields": {
+              "Mode": "Swing",
+              "Angle": 25,
+              "Period": 1.6
+            },
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 5,
+      "Name": "Wine Bottle - Tilted",
+      "ModelKey": "Bottle",
+      "Position": [
+        -0.22,
+        0.12,
+        0.77
+      ],
+      "Rotation": [
+        0,
+        0.3007,
+        0,
+        0.9537
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "liquid",
+          "InstanceId": "b0d58754-35d8-418e-829d-117102dff4af",
+          "Data": {
+            "Fill": 0.5,
+            "LiquidColor": [
+              110,
+              12,
+              30,
+              255
+            ],
+            "FoamColor": [
+              245,
+              235,
+              210,
+              255
+            ],
+            "Opacity": 0.93,
+            "Roughness": 0.1,
+            "Emissive": 0,
+            "Foaminess": 0.2,
+            "Fizz": 0,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 6,
+      "Name": "Water Bottle - Jolt",
+      "ModelKey": "Bottle",
+      "Position": [
+        0.06,
+        0.05,
+        0.75
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "liquid",
+          "InstanceId": "ff1feded-6f0e-4090-a909-41c4a1b1a9d8",
+          "Data": {
+            "Fill": 0.65,
+            "LiquidColor": [
+              150,
+              190,
+              215,
+              255
+            ],
+            "FoamColor": [
+              245,
+              235,
+              210,
+              255
+            ],
+            "Opacity": 0.25,
+            "Roughness": 0.1,
+            "Emissive": 0,
+            "Foaminess": 1,
+            "Fizz": 1,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "e2bd169c-c502-4476-a491-f4656c2e49b4",
+          "Data": {
+            "ScriptId": "liquid-test",
+            "Fields": {
+              "Mode": "Jolt",
+              "Angle": 0,
+              "Period": 3
+            },
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 7,
+      "Name": "Potion - Pour",
+      "ModelKey": "Bottle",
+      "Position": [
+        0.42,
+        0.05,
+        0.75
+      ],
+      "Rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "liquid",
+          "InstanceId": "011d5a0c-8fbe-4e3d-8632-299268fbb1ad",
+          "Data": {
+            "Fill": 0.75,
+            "LiquidColor": [
+              60,
+              230,
+              90,
+              255
+            ],
+            "FoamColor": [
+              200,
+              255,
+              210,
+              255
+            ],
+            "Opacity": 0.8,
+            "Roughness": 0.1,
+            "Emissive": 3,
+            "Foaminess": 0.5,
+            "Fizz": 0.8,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "785b62a7-9013-4b0a-a620-2e6dd1d19a01",
+          "Data": {
+            "ScriptId": "liquid-test",
+            "Fields": {
+              "Mode": "Pour",
+              "Angle": 110,
+              "Period": 3
+            },
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 8,
+      "Name": "Bottle on its Side",
+      "ModelKey": "Bottle",
+      "Position": [
+        -0.35,
+        -0.25,
+        0.787
+      ],
+      "Rotation": [
+        -0.7071,
+        0,
+        0,
+        0.7071
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "liquid",
+          "InstanceId": "9e2bc02f-9162-4e02-aebd-78604e31c4bc",
+          "Data": {
+            "Fill": 0.5,
+            "LiquidColor": [
+              215,
+              160,
+              40,
+              255
+            ],
+            "FoamColor": [
+              245,
+              235,
+              210,
+              255
+            ],
+            "Opacity": 0.75,
+            "Roughness": 0.1,
+            "Emissive": 0,
+            "Foaminess": 0.5,
+            "Fizz": 0.2,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 9,
+      "Name": "Bottle Upside Down",
+      "ModelKey": "Bottle",
+      "Position": [
+        0.25,
+        -0.22,
+        1.05
+      ],
+      "Rotation": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "liquid",
+          "InstanceId": "33c5d9af-6da3-4eac-9f77-86f2bf8e5ea9",
+          "Data": {
+            "Fill": 0.4,
+            "LiquidColor": [
+              120,
+              60,
+              170,
+              255
+            ],
+            "FoamColor": [
+              245,
+              235,
+              210,
+              255
+            ],
+            "Opacity": 0.85,
+            "Roughness": 0.1,
+            "Emissive": 0,
+            "Foaminess": 0.5,
+            "Fizz": 0.2,
+            "Enabled": true
+          }
+        }
+      ]
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 10,
+      "Name": "Lamp",
+      "Position": [
+        0.6,
+        -0.6,
+        1.6
+      ],
+      "Radius": 6,
+      "Color": [
+        255,
+        236,
+        210,
+        255
+      ],
+      "Intensity": 12,
+      "CastShadows": true
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 11,
+      "Name": "Sun",
+      "Direction": [
+        -0.5,
+        0.6,
+        -0.65
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        250,
+        240,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 20,
+      "ShadowDepth": 60,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      1.2
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.2,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 14
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -1.35,
+      1.12
+    ],
+    "Forward": [
+      0,
+      1,
+      -0.32
+    ],
+    "FieldOfView": 0.7853982,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "81f7203b-86d0-4663-9039-cf59104fab6d",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

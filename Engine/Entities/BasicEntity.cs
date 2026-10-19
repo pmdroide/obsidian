@@ -26,6 +26,8 @@ namespace Engine.Entities
         public readonly MaterialEffect Material;
         private MeshMaterialLibrary _materialLibrary;
         private readonly List<MaterialEffect> _materialInstances = new();
+        /// <summary>The material the mesh library draws the model with: the Material component's instance, else the gameobject's.</summary>
+        internal MaterialEffect DrawMaterial => _materialInstances.Count > 0 ? _materialInstances[0] : Material ?? FirstPartMaterial();
         // LOD component, as registered: the models of levels 1..n and the camera distances they start at.
         private readonly List<Model> _lodModels = new();
         private readonly List<float> _lodDistances = new();
@@ -64,6 +66,8 @@ namespace Engine.Entities
         internal int PhysicsFrame;
         // The Ragdoll component's bodies (ScenePhysics.CreateRagdoll); null without one.
         internal Ragdoll Ragdoll;
+        // The Breakable Glass component's shards (ScenePhysics.CreateGlass); null without one.
+        internal GlassShatter Glass;
         // Collision group shared by this gameobject's own body and its ragdoll parts; 0 until it has a ragdoll.
         internal int CollisionGroup;
 
@@ -290,6 +294,15 @@ namespace Engine.Entities
             WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
         }
 
+        private MaterialEffect FirstPartMaterial()
+        {
+            if (Model == null) return null;
+            foreach (var mesh in Model.Meshes)
+                foreach (var part in mesh.MeshParts)
+                    if (part.Effect is MaterialEffect material) return material;
+            return null;
+        }
+
         public void RegisterInLibrary(MeshMaterialLibrary library)
         {
             _materialLibrary = library;
@@ -417,6 +430,9 @@ namespace Engine.Entities
         public FoliageWind Wind;
         // Planar Reflection component: the mirror image its forward (glass) shader shows this frame; null = the probes.
         public Renderer.RenderModules.PlanarReflectionView PlanarReflection;
+        // Liquid component: the liquid surface its forward (glass) shader fills this mesh below, and its colours; null = none.
+        public Physics.LiquidSlosh Liquid;
+        public Components.LiquidLook LiquidLook;
 
         public TransformMatrix(Matrix world, int id)
         {

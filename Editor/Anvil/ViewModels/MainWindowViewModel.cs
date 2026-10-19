@@ -373,6 +373,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
         AddableObjects.Add(new AddableObjectType("Decal", _ => AddDecal(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Liquid Bottle", _ => AddLiquidBottle(), _bridge));
         AddableObjects.Add(new AddableObjectType("Tree", _ => AddTree(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
@@ -608,6 +609,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge == null) return;
         _bridge.EnqueueAddBasicEntity("Tree", _bridge.SpawnPoint, "Tree", componentTypes: new[] { FoliageWindComponent.TypeId });
+    }
+
+    /// <summary>The built-in glass Bottle filled by a Liquid component (sloshes when moved; Inspector &gt; Liquid).</summary>
+    [RelayCommand]
+    private void AddLiquidBottle()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("Bottle", _bridge.SpawnPoint, "Bottle", componentTypes: new[] { LiquidComponent.TypeId });
     }
 
     [RelayCommand]

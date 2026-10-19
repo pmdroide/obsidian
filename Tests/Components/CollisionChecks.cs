@@ -308,7 +308,7 @@ internal static class CollisionChecks
         BasicEntity Named(string name) => scene.BasicEntities.Single(e => e.Name == name);
 
         BasicEntity player = Named("Player");
-        Check(scene.BasicEntities.Count == 44 && player.GetComponent<PhysicsComponent>() is
+        Check(scene.BasicEntities.Count == 51 && player.GetComponent<PhysicsComponent>() is
                   { BodyType: PhysicsBodyType.Dynamic, Mass: 80, FreezeRotation: true, IsTrigger: false } &&
               player.GetComponent<ScriptBehaviourComponent>()?.ScriptId == CollisionTestPlayerScript.ScriptId,
             "the collision sample loads with an upright dynamic player capsule running the player script");

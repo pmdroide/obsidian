@@ -44,6 +44,8 @@ public static class ComponentRegistry
         Register<ProbeVolumeComponent>(ProbeVolumeComponent.TypeId, "Probe Volume");
         Register<PostProcessVolumeComponent>(PostProcessVolumeComponent.TypeId, "Post Process Volume");
         Register<AoProxyComponent>(AoProxyComponent.TypeId, "AO Proxy");
+        Register<BreakableGlassComponent>(BreakableGlassComponent.TypeId, "Breakable Glass");
+        Register<LiquidComponent>(LiquidComponent.TypeId, "Liquid");
     }
 
     /// <summary>Definitions in registration order (the Add Component menu order).</summary>

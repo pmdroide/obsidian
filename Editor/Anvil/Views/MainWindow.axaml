@@ -650,6 +650,8 @@
                                       Command="{Binding AddParticleSystemCommand}" />
                             <MenuItem Header="Decal"
                                       Command="{Binding AddDecalCommand}" />
+                            <MenuItem Header="Liquid Bottle"
+                                      Command="{Binding AddLiquidBottleCommand}" />
                         </MenuItem>
                         <MenuItem Header="Nature">
                             <MenuItem Header="Tree"
@@ -3152,6 +3154,116 @@
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
+                                        <DataTemplate DataType="m:LiquidComponentViewModel" x:DataType="m:LiquidComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Wine" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Fills this bottle, glass or jar with liquid, like Half-Life: Alyx: the surface stays level as it tilts, leans and lags when it moves, wobbles when shaken and settles over Settle Time, with foam, bubbles and a water line. The gameobject's material must be Forward Shaded (the built-in Bottle is) and its mesh closed: the fill follows its volume. Works in the editor too (move it with the gizmo, or Shake). Visual only." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="0 = empty, 1 = to the brim (by volume)">
+                                                        <TextBlock Grid.Column="0" Text="Fill" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Fill, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Liquid Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding LiquidColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:LiquidComponentViewModel" Color="{Binding LiquidColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Foam Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding FoamColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:LiquidComponentViewModel" Color="{Binding FoamColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How much it hides what's behind it: water ~0.3, wine ~0.9, milk 1">
+                                                        <TextBlock Grid.Column="0" Text="Opacity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Opacity, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Roughness of the liquid's top">
+                                                        <TextBlock Grid.Column="0" Text="Roughness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Roughness, Mode=TwoWay}"
+                                                                       Minimum="0.02" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Glow of the liquid (potions, chemicals)">
+                                                        <TextBlock Grid.Column="0" Text="Emissive" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Emissive, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="20" Increment="0.5" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How easily motion shakes it: 1 = Alyx, 0.5 = syrup, 2 = very runny">
+                                                        <TextBlock Grid.Column="0" Text="Sensitivity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Sensitivity, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Seconds a shaken liquid takes to calm down (Alyx: 20)">
+                                                        <TextBlock Grid.Column="0" Text="Settle Time s" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SettleTime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How much the surface leans while it moves (Alyx: 1)">
+                                                        <TextBlock Grid.Column="0" Text="Lean" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Lean, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How far the wobble and ripples swing (Alyx: 0.02)">
+                                                        <TextBlock Grid.Column="0" Text="Wobble" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WobbleScale, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="0.5" Increment="0.005" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Wobble speed (Alyx: 1)">
+                                                        <TextBlock Grid.Column="0" Text="Wobble Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WobbleSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How far the surface climbs the glass at its edges (Alyx: 1)">
+                                                        <TextBlock Grid.Column="0" Text="Meniscus" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SurfaceTension, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Brightness of the line where the surface meets the glass">
+                                                        <TextBlock Grid.Column="0" Text="Water Line" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WaterLine, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How much foam shaking makes: 0 = none, 1 = Alyx, 3 = beer">
+                                                        <TextBlock Grid.Column="0" Text="Foaminess" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Foaminess, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="4" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Seconds the foam and bubbles take to go (Alyx: 30)">
+                                                        <TextBlock Grid.Column="0" Text="Foam Time s" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FoamSettleTime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Rising bubbles: 0 = still, 1 = fizzy">
+                                                        <TextBlock Grid.Column="0" Text="Fizz" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Fizz, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="4" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Button Content="Shake" Command="{Binding ShakeCommand}" HorizontalAlignment="Stretch" ToolTip.Tip="Knock the liquid to see it slosh and settle" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
                                         <DataTemplate DataType="m:ReflectionProbeComponentViewModel" x:DataType="m:ReflectionProbeComponentViewModel">
                                             <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
                                                 <Expander.Header>
@@ -3290,6 +3402,55 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RenderDistance, Mode=TwoWay}"
                                                                        Minimum="1" Maximum="10000" Increment="10" FormatString="0" />
                                                     </Grid>
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:BreakableGlassComponentViewModel" x:DataType="m:BreakableGlassComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Sparkles" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Breaks this flat gameobject like Half-Life: Alyx's shatter glass during Play (the thinnest local side is the pane's normal). The first hit cracks the pane into Voronoi panels of Crack Size, punches a hole and throws its shards; panels no longer joined to the frame fall. Bodies break it above Impact Speed and Momentum and fly on through; scripts call GetComponent&lt;BreakableGlassComponent&gt;().Shatter(point, direction). Add a Static Physics component so things can hit it. Shards use the gameobject's material and vanish after Debris Lifetime (at most 150 in the scene). Stop puts the pane back." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Size of the panels the first hit cracks the pane into (Half-Life: Alyx: 0.381 m)">
+                                                        <TextBlock Grid.Column="0" Text="Crack Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CrackSize, Mode=TwoWay}"
+                                                                       Minimum="0.05" Maximum="10" Increment="0.05" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Radius of a bullet hole (m); thrown bodies punch holes their own size">
+                                                        <TextBlock Grid.Column="0" Text="Hole Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding HoleRadius, Mode=TwoWay}"
+                                                                       Minimum="0.01" Maximum="2" Increment="0.01" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Speed (m/s) a body must hit with to break it; 0 = only scripts break it">
+                                                        <TextBlock Grid.Column="0" Text="Impact Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Mass x speed (kg·m/s) a body must hit with to break it">
+                                                        <TextBlock Grid.Column="0" Text="Impact Momentum" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactMomentum, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Seconds fallen shards last (Half-Life: Alyx: 15)">
+                                                        <TextBlock Grid.Column="0" Text="Debris Lifetime" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding DebrisLifetime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="A hit finds a panel within this many times its size around its centre (Half-Life: Alyx: 2)">
+                                                        <TextBlock Grid.Column="0" Text="Hit Tolerance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding HitTolerance, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Drop Loose Shards" IsChecked="{Binding DropLooseShards, Mode=TwoWay}" FontSize="11"
+                                                              ToolTip.Tip="Panels no longer joined to the pane's border fall" />
+                                                    <CheckBox Content="Distort" IsChecked="{Binding Distort, Mode=TwoWay}" FontSize="11"
+                                                              ToolTip.Tip="Cracked panels lean slightly, so reflections break up along the cracks" />
+                                                    <CheckBox Content="Solid Shards" IsChecked="{Binding SolidShards, Mode=TwoWay}" FontSize="11"
+                                                              ToolTip.Tip="Shards left in the frame stop bodies" />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>

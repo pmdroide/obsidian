@@ -40,6 +40,7 @@ public static class ScriptRegistry
         Register<ParticleTestScript>(ParticleTestScript.ScriptId, "Particle Test");
         Register<SmokeTestScript>(SmokeTestScript.ScriptId, "Smoke Test");
         Register<WaterTestScript>(WaterTestScript.ScriptId, "Water Test");
+        Register<LiquidTestScript>(LiquidTestScript.ScriptId, "Liquid Test");
         Register<SceneLoadingTestScript>(SceneLoadingTestScript.ScriptId, "Scene Loading Test");
     }
 

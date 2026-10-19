@@ -15,7 +15,8 @@ namespace Engine.Scripting;
 ///   Move      W A S D / left stick          Sprint   Shift / left stick press     Jump   Space / A
 ///   Look      hold right mouse and drag, the arrow keys, or the right stick
 ///   Interact  E / X: use the Interactable under the crosshair (a ray from the camera)
-///   Attack    hold left mouse / RT: carry a light object      F   throw it
+///   Attack    hold left mouse / RT: carry a light object      F   throw it (through a window to break it)
+///             on Breakable Glass: shoot it (Half-Life: Alyx style shatter at the crosshair)
 ///   Q         shove what the crosshair is on (impulse at the hit point)
 ///   R         reset the scene
 /// Movement sets the body's velocity with a limited acceleration, so the solver does the pushing:
@@ -203,6 +204,8 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
         bool aimed = Raycast(ray, ReachDistance, out RaycastHit aimHit);
         BasicEntity movable = aimed && aimHit.GameObject?.DynamicBody != null ? aimHit.GameObject : null;
         bool canCarry = _carried == null && movable != null && aimHit.Distance <= CarryReach;
+        BreakableGlassComponent glass = _carried == null && aimed && interactable == null
+            ? aimHit.GameObject?.GetComponent<BreakableGlassComponent>() : null;
 
         SetHovered(interactable != null ? useHit.GameObject : canCarry ? movable : null);
 
@@ -211,11 +214,15 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
         else if (interactable != null) _prompt = $"{BindingText("Interact")}  {interactable.Prompt}";
         else if (canCarry && movable.Mass <= CarryMaxMass) _prompt = $"Hold {BindingText("Attack")}  carry {movable.Name}";
         else if (movable != null) _prompt = $"Q  shove {movable.Name} ({movable.Mass:0} kg)";
+        else if (glass != null) _prompt = $"{BindingText("Attack")}  shoot {aimHit.GameObject.Name}";
         else _prompt = "";
-        _crosshairActive = interactable != null || movable != null;
+        _crosshairActive = interactable != null || movable != null || glass != null;
 
         if (interactable != null && WasActionPressed("Interact"))
             Interact(useHit);
+
+        if (WasActionPressed("Attack") && glass != null && glass.Shatter(aimHit, ray.Direction, GlassStress.Ballistic, speed: 5f))
+            CollisionTestFeed.Post($"Shot {aimHit.GameObject.Name}: {glass.ShardCount} panels left in the frame");
 
         if (WasActionPressed("Attack") && canCarry)
         {

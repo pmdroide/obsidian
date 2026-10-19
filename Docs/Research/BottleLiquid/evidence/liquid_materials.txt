@@ -1,0 +1,779 @@
+===== materials/models/props/interior_deco/interior_bottle_001a_liquid.vmat_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_materialName = "materials/models/props/interior_deco/interior_bottle_001a_liquid.vmat"
+	m_shaderName = "vr_simple_liquid.vfx"
+	m_intParams = 
+	[
+		{
+			m_name = "g_bFogEnabled"
+			m_nValue = 1
+		},
+		{
+			m_name = "g_nScaleTexCoordUByModelScaleAxis"
+			m_nValue = 0
+		},
+		{
+			m_name = "g_nScaleTexCoordVByModelScaleAxis"
+			m_nValue = 0
+		},
+	]
+	m_floatParams = 
+	[
+		{
+			m_name = "g_flBubbleDepthFalloff"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flBubbleOpacity"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flBubbleScale"
+			m_flValue = 0.7
+		},
+		{
+			m_name = "g_flBubblesMaximum"
+			m_flValue = 0.75
+		},
+		{
+			m_name = "g_flBubblesMinimum"
+			m_flValue = 0.15
+		},
+		{
+			m_name = "g_flBubbleSpaceScale"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flBubbleSpeed"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flBubbleStrength"
+			m_flValue = 8.0
+		},
+		{
+			m_name = "g_flDirectionalLightmapMinZ"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flDirectionalLightmapStrength"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flBrightenEmptyArea"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flFresnelGlassThickness"
+			m_flValue = 0.3
+		},
+		{
+			m_name = "g_flLiquidBackFade"
+			m_flValue = 0.742
+		},
+		{
+			m_name = "g_flLiquidBackOffset"
+			m_flValue = 3.0
+		},
+		{
+			m_name = "g_flLiquidBrightness"
+			m_flValue = 0.876
+		},
+		{
+			m_name = "g_flLiquidEmissiveStrength"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flLiquidInnerGlow"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flLiquidLevelHeight"
+			m_flValue = 0.95
+		},
+		{
+			m_name = "g_flLiquidLevelHeightDelta"
+			m_flValue = 0.3
+		},
+		{
+			m_name = "g_flLiquidRoughness"
+			m_flValue = 0.3
+		},
+		{
+			m_name = "g_flLiquidSharpness"
+			m_flValue = 16.0
+		},
+		{
+			m_name = "g_flLiquidSpecularStrength"
+			m_flValue = 1.125
+		},
+		{
+			m_name = "g_flLiquidSurfaceSpecularStrength"
+			m_flValue = 18.125
+		},
+		{
+			m_name = "g_flLiquidWobbleScale"
+			m_flValue = 0.005
+		},
+		{
+			m_name = "g_flLiquidWobbleSpeed"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flLiquidWobbleWavelength"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flMaskMaximum"
+			m_flValue = 0.678
+		},
+		{
+			m_name = "g_flMaskMinimum"
+			m_flValue = 0.158
+		},
+		{
+			m_name = "g_flSurfaceTension"
+			m_flValue = 0.2
+		},
+		{
+			m_name = "g_flTransmissiveStrength"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flWaterLineStrength"
+			m_flValue = 0.1
+		},
+		{
+			m_name = "g_flChromaticDispersion"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flCubeRefractBrightness"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flCubeRefractLiquidTransparency"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flCubeRefractTransparency"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flRefractRoughnessMultiplier"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flTestAgitation"
+			m_flValue = 0.3
+		},
+	]
+	m_vectorParams = 
+	[
+		{
+			m_name = "g_vBubbleColorInner"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vBubbleColorOuter"
+			m_value = [ 1.0, 1.0, 1.0, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidColor"
+			m_value = [ 1.0, 1.0, 1.0, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelDownwardsMinMidMax"
+			m_value = [ -12.0, -5.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelSidewardsMinMidMax"
+			m_value = [ -2.0, 0.0, 0.8, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelUpwardsMinMidMax"
+			m_value = [ -0.5, 4.0, 10.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTestGravityDir"
+			m_value = [ 0.0, 0.0, -1.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordOffset"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordScale"
+			m_value = [ 1.0, 1.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordScrollSpeed"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+	]
+	m_textureParams = 
+	[
+		{
+			m_name = "g_tLiquidMask"
+			m_pValue = resource:"materials/models/props/interior_deco/interior_bottle_001a_liquid_psd_802e7b83.vtex"
+		},
+		{
+			m_name = "g_tColorA"
+			m_pValue = resource:"materials/models/props/interior_deco/interior_bottle_001a_color_psd_3c4bae9b.vtex"
+		},
+		{
+			m_name = "g_tNormalA"
+			m_pValue = resource:"materials/models/props/interior_deco/interior_bottle_001a_normal_psd_fcd2ba6b.vtex"
+		},
+	]
+	m_dynamicParams = [  ]
+	m_dynamicTextureParams = [  ]
+	m_intAttributes = 
+	[
+		{
+			m_name = "RepresentativeTextureWidth"
+			m_nValue = 2048
+		},
+		{
+			m_name = "RepresentativeTextureHeight"
+			m_nValue = 2048
+		},
+	]
+	m_floatAttributes = [  ]
+	m_vectorAttributes = [  ]
+	m_textureAttributes = [  ]
+	m_stringAttributes = 
+	[
+		{
+			m_name = "PhysicsSurfaceProperties"
+			m_value = "base.glass"
+		},
+	]
+	m_renderAttributesUsed = [  ]
+}
+
+===== materials/models/props_interiors/waterbottle_liquid.vmat_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_materialName = "materials/models/props_interiors/waterbottle_liquid.vmat"
+	m_shaderName = "vr_simple_liquid.vfx"
+	m_intParams = 
+	[
+		{
+			m_name = "g_bFogEnabled"
+			m_nValue = 1
+		},
+		{
+			m_name = "g_nScaleTexCoordUByModelScaleAxis"
+			m_nValue = 0
+		},
+		{
+			m_name = "g_nScaleTexCoordVByModelScaleAxis"
+			m_nValue = 0
+		},
+	]
+	m_floatParams = 
+	[
+		{
+			m_name = "g_flBubbleDepthFalloff"
+			m_flValue = 0.3
+		},
+		{
+			m_name = "g_flBubbleOpacity"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flBubbleScale"
+			m_flValue = 0.2
+		},
+		{
+			m_name = "g_flBubblesMaximum"
+			m_flValue = 2.0
+		},
+		{
+			m_name = "g_flBubblesMinimum"
+			m_flValue = 0.01
+		},
+		{
+			m_name = "g_flBubbleSpaceScale"
+			m_flValue = 0.2
+		},
+		{
+			m_name = "g_flBubbleSpeed"
+			m_flValue = 0.6
+		},
+		{
+			m_name = "g_flBubbleStrength"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flDirectionalLightmapMinZ"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flDirectionalLightmapStrength"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flBrightenEmptyArea"
+			m_flValue = 2.0
+		},
+		{
+			m_name = "g_flFresnelGlassThickness"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flLiquidBackFade"
+			m_flValue = 2.0
+		},
+		{
+			m_name = "g_flLiquidBackOffset"
+			m_flValue = 4.0
+		},
+		{
+			m_name = "g_flLiquidBrightness"
+			m_flValue = 1.5
+		},
+		{
+			m_name = "g_flLiquidEmissiveStrength"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flLiquidInnerGlow"
+			m_flValue = 0.2
+		},
+		{
+			m_name = "g_flLiquidLevelHeight"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flLiquidLevelHeightDelta"
+			m_flValue = 0.686
+		},
+		{
+			m_name = "g_flLiquidRoughness"
+			m_flValue = 0.186
+		},
+		{
+			m_name = "g_flLiquidSharpness"
+			m_flValue = 6.0
+		},
+		{
+			m_name = "g_flLiquidSpecularStrength"
+			m_flValue = 13.144
+		},
+		{
+			m_name = "g_flLiquidSurfaceSpecularStrength"
+			m_flValue = 8.0
+		},
+		{
+			m_name = "g_flLiquidWobbleScale"
+			m_flValue = 0.02
+		},
+		{
+			m_name = "g_flLiquidWobbleSpeed"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flLiquidWobbleWavelength"
+			m_flValue = 0.1
+		},
+		{
+			m_name = "g_flMaskMaximum"
+			m_flValue = 0.515
+		},
+		{
+			m_name = "g_flMaskMinimum"
+			m_flValue = 0.165
+		},
+		{
+			m_name = "g_flSurfaceTension"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flTransmissiveStrength"
+			m_flValue = 2.0
+		},
+		{
+			m_name = "g_flWaterLineStrength"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flChromaticDispersion"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flCubeRefractBrightness"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flCubeRefractLiquidTransparency"
+			m_flValue = 0.1
+		},
+		{
+			m_name = "g_flCubeRefractTransparency"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flRefractRoughnessMultiplier"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flMetalnessA"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flTestAgitation"
+			m_flValue = 0.0
+		},
+	]
+	m_vectorParams = 
+	[
+		{
+			m_name = "g_vBubbleColorInner"
+			m_value = [ 0.756863, 0.384314, 0.058824, 0.0 ]
+		},
+		{
+			m_name = "g_vBubbleColorOuter"
+			m_value = [ 1.0, 0.631373, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidColor"
+			m_value = [ 0.678431, 0.611765, 0.513726, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelDownwardsMinMidMax"
+			m_value = [ -21.0, -12.0, -3.0, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelSidewardsMinMidMax"
+			m_value = [ -7.0, 0.0, 4.25, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelUpwardsMinMidMax"
+			m_value = [ 1.0, 10.0, 19.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTestGravityDir"
+			m_value = [ 0.0, 0.0, -1.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordOffset"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordScale"
+			m_value = [ 1.0, 1.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordScrollSpeed"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+	]
+	m_textureParams = 
+	[
+		{
+			m_name = "g_tLiquidMask"
+			m_pValue = resource:"materials/models/props_interiors/waterbottle_large_1_liquid_tga_d65e88a.vtex"
+		},
+		{
+			m_name = "g_tColorA"
+			m_pValue = resource:"materials/models/props_interiors/waterbottle_large_1_color_tga_f90cc132.vtex"
+		},
+		{
+			m_name = "g_tNormalA"
+			m_pValue = resource:"materials/models/props_interiors/waterbottle_large_1_normal_tga_a09cd334.vtex"
+		},
+	]
+	m_dynamicParams = [  ]
+	m_dynamicTextureParams = [  ]
+	m_intAttributes = 
+	[
+		{
+			m_name = "RepresentativeTextureWidth"
+			m_nValue = 2048
+		},
+		{
+			m_name = "RepresentativeTextureHeight"
+			m_nValue = 2048
+		},
+	]
+	m_floatAttributes = [  ]
+	m_vectorAttributes = [  ]
+	m_textureAttributes = [  ]
+	m_stringAttributes = 
+	[
+		{
+			m_name = "PhysicsSurfaceProperties"
+			m_value = "prop.plastic"
+		},
+	]
+	m_renderAttributesUsed = [  ]
+}
+
+===== models/props/distillery/materials/goldenlion_vodka_liquid.vmat_c
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	m_materialName = "models/props/distillery/materials/goldenlion_vodka_liquid.vmat"
+	m_shaderName = "vr_simple_liquid.vfx"
+	m_intParams = 
+	[
+		{
+			m_name = "g_bFogEnabled"
+			m_nValue = 1
+		},
+		{
+			m_name = "g_nScaleTexCoordUByModelScaleAxis"
+			m_nValue = 0
+		},
+		{
+			m_name = "g_nScaleTexCoordVByModelScaleAxis"
+			m_nValue = 0
+		},
+	]
+	m_floatParams = 
+	[
+		{
+			m_name = "g_flBubbleDepthFalloff"
+			m_flValue = 1.25
+		},
+		{
+			m_name = "g_flBubbleOpacity"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flBubbleScale"
+			m_flValue = 0.6
+		},
+		{
+			m_name = "g_flBubblesMaximum"
+			m_flValue = 0.65
+		},
+		{
+			m_name = "g_flBubblesMinimum"
+			m_flValue = 0.15
+		},
+		{
+			m_name = "g_flBubbleSpaceScale"
+			m_flValue = 0.75
+		},
+		{
+			m_name = "g_flBubbleSpeed"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flBubbleStrength"
+			m_flValue = 5.0
+		},
+		{
+			m_name = "g_flDirectionalLightmapMinZ"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flDirectionalLightmapStrength"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flBrightenEmptyArea"
+			m_flValue = 4.0
+		},
+		{
+			m_name = "g_flFresnelGlassThickness"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flLiquidBackFade"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flLiquidBackOffset"
+			m_flValue = 3.7
+		},
+		{
+			m_name = "g_flLiquidBrightness"
+			m_flValue = 0.9
+		},
+		{
+			m_name = "g_flLiquidEmissiveStrength"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flLiquidInnerGlow"
+			m_flValue = 0.25
+		},
+		{
+			m_name = "g_flLiquidLevelHeight"
+			m_flValue = 0.95
+		},
+		{
+			m_name = "g_flLiquidLevelHeightDelta"
+			m_flValue = 0.3
+		},
+		{
+			m_name = "g_flLiquidRoughness"
+			m_flValue = 0.3
+		},
+		{
+			m_name = "g_flLiquidSharpness"
+			m_flValue = 20.0
+		},
+		{
+			m_name = "g_flLiquidSpecularStrength"
+			m_flValue = 20.0
+		},
+		{
+			m_name = "g_flLiquidSurfaceSpecularStrength"
+			m_flValue = 40.0
+		},
+		{
+			m_name = "g_flLiquidWobbleScale"
+			m_flValue = 0.01
+		},
+		{
+			m_name = "g_flLiquidWobbleSpeed"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flLiquidWobbleWavelength"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flMaskMaximum"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flMaskMinimum"
+			m_flValue = 0.0
+		},
+		{
+			m_name = "g_flSurfaceTension"
+			m_flValue = 0.4
+		},
+		{
+			m_name = "g_flTransmissiveStrength"
+			m_flValue = 0.2
+		},
+		{
+			m_name = "g_flWaterLineStrength"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flChromaticDispersion"
+			m_flValue = 0.05
+		},
+		{
+			m_name = "g_flCubeRefractBrightness"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flCubeRefractLiquidTransparency"
+			m_flValue = 0.5
+		},
+		{
+			m_name = "g_flCubeRefractTransparency"
+			m_flValue = 0.7
+		},
+		{
+			m_name = "g_flRefractRoughnessMultiplier"
+			m_flValue = 1.0
+		},
+		{
+			m_name = "g_flTestAgitation"
+			m_flValue = 0.3
+		},
+	]
+	m_vectorParams = 
+	[
+		{
+			m_name = "g_vBubbleColorInner"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vBubbleColorOuter"
+			m_value = [ 1.0, 1.0, 1.0, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidColor"
+			m_value = [ 0.956863, 0.956863, 0.956863, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelDownwardsMinMidMax"
+			m_value = [ -14.0, -4.294, -0.5, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelSidewardsMinMidMax"
+			m_value = [ -2.0, 0.0, 1.5, 0.0 ]
+		},
+		{
+			m_name = "g_vLiquidLevelUpwardsMinMidMax"
+			m_value = [ -1.0, 6.098, 12.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTestGravityDir"
+			m_value = [ 0.0, 0.0, -1.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordOffset"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordScale"
+			m_value = [ 1.0, 1.0, 0.0, 0.0 ]
+		},
+		{
+			m_name = "g_vTexCoordScrollSpeed"
+			m_value = [ 0.0, 0.0, 0.0, 0.0 ]
+		},
+	]
+	m_textureParams = 
+	[
+		{
+			m_name = "g_tLiquidMask"
+			m_pValue = resource:"models/props/distillery/materials/vodka_bottle_liquid_mask_psd_3b8f43a5.vtex"
+		},
+		{
+			m_name = "g_tColorA"
+			m_pValue = resource:"models/props/distillery/materials/vodka_bottle_color_png_2c89e738.vtex"
+		},
+		{
+			m_name = "g_tNormalA"
+			m_pValue = resource:"models/props/distillery/materials/vodka_bottle_normal_png_2b0ddc52.vtex"
+		},
+	]
+	m_dynamicParams = [  ]
+	m_dynamicTextureParams = [  ]
+	m_intAttributes = 
+	[
+		{
+			m_name = "bSimpleLiquidMaterial"
+			m_nValue = 1
+		},
+		{
+			m_name = "RepresentativeTextureWidth"
+			m_nValue = 2048
+		},
+		{
+			m_name = "RepresentativeTextureHeight"
+			m_nValue = 2048
+		},
+	]
+	m_floatAttributes = 
+	[
+		{
+			m_name = "bSimpleLiquidMaterial"
+			m_flValue = 1.0
+		},
+	]
+	m_vectorAttributes = [  ]
+	m_textureAttributes = [  ]
+	m_stringAttributes = 
+	[
+		{
+			m_name = "PhysicsSurfaceProperties"
+			m_value = "base.glass"
+		},
+	]
+	m_renderAttributesUsed = [  ]
+}
+

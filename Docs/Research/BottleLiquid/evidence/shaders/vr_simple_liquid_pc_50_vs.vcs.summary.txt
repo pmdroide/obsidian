@@ -1,0 +1,708 @@
+Valve Compiled Shader 2 (vcs2), version 64
+
+Showing VertexShader: vr_simple_liquid_pc_50_vs.vcs
+Editor/Shader compiler stack
+MD5    254e4e15-30be-f63d-d6f0-c4b0f6ba61c8    // VertexShader
+MD5    922d7060-4dff-95b1-cfbf-5411e994ec67    // Common editor/compiler hash shared by multiple different vcs files.
+VariableSourceMax = 17
+
+STATIC COMBOS(5)
+BlockIndex  Name                         RangeMin  RangeMax  ComboSourceType         FeatureIndex                ComboType  Strings
+[ 0]        S_TRANSFORM_CONSTANT_BUFFER  0         0         S_REVERSE_DEPTH_BUFFER  -1                          Static            
+[ 1]        S_BINDLESS_RUNTIME           0         0         S_BINDLESS_RUNTIME      -1                          Static            
+[ 2]        S_MODE_TOOLS_VIS             0         1         __SET_BY_FEATURE__      -1                          Static            
+[ 3]        S_MORPH_SUPPORTED            0         1         __SET_BY_FEATURE__       2 (S_MODE_TOOLS_VIS 0..1)  Static            
+[ 4]        S_NO_LIQUID                  0         1         __SET_BY_FEATURE__       6                          Static            
+
+STATIC COMBOS INCLUSION/EXCLUSION RULES
+[ 0]  AllowNum1   S_MODE_TOOLS_VIS, S_BINDLESS_RUNTIME                                  -1,-1     1,2     
+
+DYNAMIC COMBOS(6)
+BlockIndex  Name                                 RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        D_BLEND_WEIGHT_COUNT                 0         4         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 1]        D_COMPRESSED_NORMALS_AND_TANGENTS    0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 2]        D_MORPH                              0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 3]        D_MULTIVIEW_INSTANCING               0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 4]        D_BAKED_LIGHTING_FROM_VERTEX_STREAM  0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+[ 5]        D_BAKED_LIGHTING_FROM_LIGHTMAP       0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+
+DYNAMIC COMBOS INCLUSION/EXCLUSION RULES
+[ 0]  Requires1   D_MORPH, S_MORPH_SUPPORTED                                            -1,-1     1,2     
+[ 1]  AllowNum1   S_MORPH_SUPPORTED, D_BAKED_LIGHTING_FROM_VERTEX_STREAM                -1,-1,-1  1,3,-1  
+                                                D_BAKED_LIGHTING_FROM_LIGHTMAP                                        
+
+VARIABLE DESCRIPTIONS(19)    *dyn-expressions shown separately
+index Name                              VfxType   SourceIndex ContextStateAffectedByVariable MinPrecisionBits RegisterElements ExtConstantBufferId VariableSource         StringData                        RegisterType   UiType     UiGroup                   command 0|1 DefaultInputTexture UiVisibilityExp
+[ 0]  BakedLightingConstantBuffer_t     Cbuffer    _          8192                            _                0               2                   __SetByArtist__        BakedLightingConstantBuffer_t     ConstantBuffer None                                                                                
+[ 1]  BakedLightingConstantBuffer_t     Cbuffer    _          8192                            _                0               3                   __SetByArtist__        BakedLightingConstantBuffer_t     ConstantBuffer None                                                                                
+[ 2]  Filter                            Int        _          4096                            _                0               0                   __RenderStateLiteral__                                   SamplerState   None                                                                                
+[ 3]  PerViewConstantBufferVR_t         Cbuffer    _          8192                            _                0               1                   __SetByArtist__        PerViewConstantBufferVR_t         ConstantBuffer None                                                                                
+[ 4]  PerViewConstantBuffer_t           Cbuffer    _          8192                            _                0               0                   __SetByArtist__        PerViewConstantBuffer_t           ConstantBuffer None                                                                                
+[ 5]  PerViewLightingConstantBufferVr_t Cbuffer    _          8192                            _                0               2                   __SetByArtist__        PerViewLightingConstantBufferVr_t ConstantBuffer None                                                                                
+[ 6]  PerViewLightingConstantBufferVr_t Cbuffer    _          8192                            _                0               3                   __SetByArtist__        PerViewLightingConstantBufferVr_t ConstantBuffer None                                                                                
+[ 7]  g_bTexCoordScaleByModel           Bool       _          8192                            _                1               -1                  __Expression__                                           Bool           CheckBox                                                                            
+[ 8]  g_nScaleTexCoordUByModelScaleAxis Int        _          8192                            _                1               -1                  __SetByArtist__                                          Int4           Slider     Texture Coordinates/40                                                   
+[ 9]  g_nScaleTexCoordVByModelScaleAxis Int        _          8192                            _                1               -1                  __SetByArtist__                                          Int4           Slider     Texture Coordinates/50                                                   
+[10]  g_tCompositeMorphTextureAtlas     Sampler2D  _          6144                            _                1               0                   __Attribute__          CompositeMorphTextureAtlas        Texture        Texture                                                                             
+[11]  g_tTransformTexture               Sampler2D  _          6144                            _                1               0                   __Attribute__          TransformTexture                  Texture        Texture                                                                             
+[12]  g_vLiquidLevelUpwardsMinMidMax    Float3     _          8192                            _                3               -1                  __SetByArtist__                                          Float4         VectorText Liquid, 100/30                                                           
+[13]  g_vTestGravityDir                 Float3     _          8192                            _                3               -1                  __SetByArtist__                                          Float4         VectorText Test Values, 100/32                                                      
+[14]  g_vTexCoordOffset                 Float2     _          8192                            _                2               -1                  __SetByArtist__                                          Float4         VectorText Texture Coordinates/20                                                   
+[15]  g_vTexCoordScale                  Float2     _          8192                            _                2               -1                  __SetByArtist__                                          Float4         VectorText Texture Coordinates,80/10                                                
+[16]  g_vTexCoordScaleByModelU          Float4     _          8192                            _                4               -1                  __Expression__                                           Float4         VectorText                                                                          
+[17]  g_vTexCoordScaleByModelV          Float4     _          8192                            _                4               -1                  __Expression__                                           Float4         VectorText                                                                          
+[18]  g_vTexCoordScrollSpeed            Float2     _          8192                            _                2               -1                  __SetByArtist__                                          Float4         VectorText Texture Coordinates/30                                                   
+
+VARIABLES - Default values and limits    (type0,type1,arg0,arg1,arg2,arg4,arg5,command0 reprinted)
+(- indicates -infinity, + indicates +infinity, def. = default)
+index Name                              IntDefs      IntMins            IntMaxs         FloatDefs    FloatMins          FloatMaxs       ChannelIndices ImageFormat ImageSuffix DefaultInputTexture DynExp LayerId AllowLayerOverride MaxRes
+[ 0]  BakedLightingConstantBuffer_t     (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 1]  BakedLightingConstantBuffer_t     (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 2]  Filter                            (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 3]  PerViewConstantBufferVR_t         (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 4]  PerViewConstantBuffer_t           (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 5]  PerViewLightingConstantBufferVr_t (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 6]  PerViewLightingConstantBufferVr_t (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 7]  g_bTexCoordScaleByModel           (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[ 8]  g_nScaleTexCoordUByModelScaleAxis (0,0,0,0)    (0,0,0,0)          (3,1,1,1)       (0,0,0,0)    (0,0,0,0)          (3,1,1,1)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 9]  g_nScaleTexCoordVByModelScaleAxis (0,0,0,0)    (0,0,0,0)          (3,1,1,1)       (0,0,0,0)    (0,0,0,0)          (3,1,1,1)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[10]  g_tCompositeMorphTextureAtlas     (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[11]  g_tTransformTexture               (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[12]  g_vLiquidLevelUpwardsMinMidMax    (-20,0,20,0) (-100,-100,-100,0) (100,100,100,1) (-20,0,20,0) (-100,-100,-100,0) (100,100,100,1) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[13]  g_vTestGravityDir                 (0,0,-1,0)   (-1,-1,-1,0)       (1,1,1,1)       (0,0,-1,0)   (-1,-1,-1,0)       (1,1,1,1)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[14]  g_vTexCoordOffset                 (0,0,0,0)    (-1,-1,0,0)        (1,1,1,1)       (0,0,0,0)    (-1,-1,0,0)        (1,1,1,1)       (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[15]  g_vTexCoordScale                  (1,1,0,0)    (0,0,0,0)          (100,100,1,1)   (1,1,0,0)    (0,0,0,0)          (100,100,1,1)   (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[16]  g_vTexCoordScaleByModelU          (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[17]  g_vTexCoordScaleByModelV          (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (0,0,0,0)    (-,-,-,-)          (+,+,+,+)       (-1,-1,-1,-1)  UNKNOWN                                     true   0       False              0     
+[18]  g_vTexCoordScrollSpeed            (0,0,0,0)    (-10,-10,0,0)      (10,10,1,1)     (0,0,0,0)    (-10,-10,0,0)      (10,10,1,1)     (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+
+DYNAMIC EXPRESSIONS(3)
+param-index  name                      vfxtype,registertype,vecsize,tex,  VariableSource  dyn-exp                                                                                                                                                                                              ui-visibility
+[ 7]         g_bTexCoordScaleByModel   bool,Bool, 1, _                    __Expression__  g_nScaleTexCoordUByModelScaleAxis!=0 || g_nScaleTexCoordVByModelScaleAxis!=0                                                                                                                                      
+[16]         g_vTexCoordScaleByModelU  float4,Float4, 4, _                __Expression__  float4((g_nScaleTexCoordUByModelScaleAxis==1) ? 1 : 0,(g_nScaleTexCoordUByModelScaleAxis==2) ? 1 : 0,(g_nScaleTexCoordUByModelScaleAxis==3) ? 1 : 0,(g_nScaleTexCoordUByModelScaleAxis==0) ? 1 : 0)               
+[17]         g_vTexCoordScaleByModelV  float4,Float4, 4, _                __Expression__  float4((g_nScaleTexCoordVByModelScaleAxis==1) ? 1 : 0,(g_nScaleTexCoordVByModelScaleAxis==2) ? 1 : 0,(g_nScaleTexCoordVByModelScaleAxis==3) ? 1 : 0,(g_nScaleTexCoordVByModelScaleAxis==0) ? 1 : 0)               
+
+TEXTURE CHANNEL PROCESSORS(0)
+[none defined]
+
+CONSTANT BUFFERS[0]
+PerViewConstantBuffer_t size=816 (816) param-count=50 arg0=0 crc32=1b240212
+         name                                 offset  vertex-size  attrib-count  data-count
+         g_matWorldToProjection                 0       4            4             1       
+         g_matProjectionToWorld                16       4            4             1       
+         g_matWorldToView                      32       4            4             1       
+         g_matViewToProjection                 48       4            4             1       
+         g_vInvProjRow3                        64       4            1             1       
+         g_vClipPlane0                         68       4            1             1       
+         g_flToneMapScalarLinear               72       1            1             1       
+         g_flLightMapScalar                    73       1            1             1       
+         g_flEnvMapScalar                      74       1            1             1       
+         g_flToneMapScalarGamma                75       1            1             1       
+         g_vCameraPositionWs                   76       3            1             1       
+         g_flViewportMinZ                      79       1            1             1       
+         g_vCameraDirWs                        80       3            1             1       
+         g_flViewportMaxZ                      83       1            1             1       
+         g_vCameraUpDirWs                      84       3            1             1       
+         g_flTime                              87       1            1             1       
+         g_vDepthPsToVsConversion              88       3            1             1       
+         g_flNearPlane                         91       1            1             1       
+         g_flFarPlane                          92       1            1             1       
+         g_flLightBinnerFarPlane               93       1            1             1       
+         g_vInvViewportSize                    94       2            1             1       
+         g_vViewportToGBufferRatio             96       2            1             1       
+         g_vMorphTextureAtlasSize              98       2            1             1       
+         g_vInvGBufferSize                    100       4            1             1       
+         g_vViewportOffset                    104       2            1             1       
+         g_vViewportSize                      106       2            1             1       
+         g_vRenderTargetSize                  108       2            1             1       
+         g_flFogBlendToBackground             110       1            1             1       
+         g_flHenyeyGreensteinCoeff            111       1            1             1       
+         g_vFogColor                          112       3            1             1       
+         g_flNegFogStartOverFogRange          115       1            1             1       
+         g_flInvFogRange                      116       1            1             1       
+         g_flFogMaxDensity                    117       1            1             1       
+         g_flFogExponent                      118       1            1             1       
+         g_flMod2xIdentity                    119       1            1             1       
+         g_bRoughnessParams                   120       2            1             1       
+         g_bStereoEnabled                     122       1            1             1       
+         g_flStereoCameraIndex                123       1            1             1       
+         g_vMiddleEyePositionWs               124       3            1             1       
+         g_flPad2                             127       1            1             1       
+         g_matWorldToProjectionMultiview      128       4            4             2       
+         g_vCameraPositionWsMultiview         160       4            1             2       
+         g_vFrameBufferCopyInvSizeAndUvScale  168       4            1             1       
+         g_vCameraAngles                      172       4            1             1       
+         g_vWorldToCameraOffset               176       4            1             1       
+         g_vWorldToCameraOffsetMultiview      180       4            1             2       
+         g_vPerViewConstantExtraData0         188       4            1             1       
+         g_vPerViewConstantExtraData1         192       4            1             1       
+         g_vPerViewConstantExtraData2         196       4            1             1       
+         g_vPerViewConstantExtraData3         200       4            1             1       
+
+CONSTANT BUFFERS[1]
+PerViewConstantBufferVR_t size=592 (592) param-count=27 arg0=2 crc32=a19100ec
+         name                                             offset  vertex-size  attrib-count  data-count
+         g_bFogTypeEnabled                                  0       4            1             1       
+         g_bOtherFxEnabled                                  4       4            1             1       
+         g_vAoProxyDownres                                  8       4            1             1       
+         g_vXenAnimation                                   12       4            1             1       
+         g_vWindDirection                                  16       4            1             1       
+         g_vWindStrengthFreqMulHighStrength                20       4            1             1       
+         g_vInteractionProjectionOrigin                    24       4            1             1       
+         g_vInteractionVolumeInvExtents                    28       4            1             1       
+         g_vInteractionTriggerVolumeInvMins                32       4            1             1       
+         g_vInteractionTriggerVolumeWorldToVolumeScale     36       4            1             1       
+         g_vGradientFogBiasAndScale                        40       4            1             1       
+         m_vGradientFogExponents                           44       4            1             1       
+         g_vGradientFogColor_Opacity                       48       4            1             1       
+         g_vGradientFogCullingParams                       52       4            1             1       
+         g_vCubeFog_Offset_Scale_Bias_Exponent             56       4            1             1       
+         g_vCubeFog_Height_Offset_Scale_Exponent_Log2Mip   60       4            1             1       
+         g_matvCubeFogSkyWsToOs                            64       4            4             1       
+         g_vCubeFogCullingParams                           80       4            1             1       
+         g_vSphericalVignetteBiasAndScale                  84       4            1             1       
+         g_vSphericalVignetteOrigin_Exponent               88       4            1             1       
+         g_vSphericalVignetteColor_Opacity                 92       4            1             1       
+         g_vVolFog_VolumeScale_Shift_Near_Range            96       4            1             1       
+         g_vVolFogDitherScaleBias                         100       4            1             1       
+         g_vVolFogPostWorldToFrustumScale                 104       4            1             1       
+         g_vVolFogPostWorldToFrustumBias                  108       4            1             1       
+         g_mVolFogFromWorld                               112       4            4             2       
+         g_vHighPrecisionLightingOffsetWs                 144       4            1             1       
+
+CONSTANT BUFFERS[2]
+PerViewLightingConstantBufferVr_t size=4848 (4848) param-count=45 arg0=1 crc32=61a77d8e
+         name                                     offset  vertex-size  attrib-count  data-count
+         g_vNumLights                               0       4            1             1       
+         g_vMultiviewData                           4       4            1             1       
+         g_vMultiviewViewAndSubviewIndexArray       8       4            1             4       
+         g_vLightParams                            24       4            1           128       
+         g_vLightPosition_flInvRadius             536       4            1           128       
+         g_vLightColor                            1048      4            1           128       
+         g_vLightFalloffParams                    1560      4            1           128       
+         g_vLightDirection                        2072      4            1           128       
+         g_vSpotLightInnerOuterConeCosines        2584      4            1           128       
+         g_matWorldToShadow                       3096      4            4           128       
+         g_vShadow3x3PCFTermC0                    5144      4            1             1       
+         g_vShadow3x3PCFTermC1                    5148      4            1             1       
+         g_vShadow3x3PCFTermC2                    5152      4            1             1       
+         g_vShadow3x3PCFTermC3                    5156      4            1             1       
+         g_vToolsAmbientLightingVr                5160      4            1             1       
+         g_vLightBinCameraPositionWs              5164      4            1             1       
+         g_vLightBinCameraDirWs                   5168      4            1             1       
+         g_vLightBinCameraNearZFarZ               5172      4            1             1       
+         g_matLightBinViewProj                    5176      4            4             1       
+         g_vMultiviewScaleBias                    5192      4            1             4       
+         g_vMultiviewClipEdge0                    5208      4            1             4       
+         g_vMultiviewClipEdge1                    5224      4            1             4       
+         g_flNumViews                             5240      1            1             1       
+         g_flOoNumViews                           5241      1            1             1       
+         g_flNumSubiews                           5242      1            1             1       
+         g_flOoNumSubviews                        5243      1            1             1       
+         g_flNumTotalMultiviews                   5244      1            1             1       
+         g_flOoNumTotalMultiviews                 5245      1            1             1       
+         g_flVrLuminanceOffset                    5246      1            1             1       
+         g_flVrLuminanceScale                     5247      1            1             1       
+         g_vLightmapParams                        5248      4            1             1       
+         g_vScreenSpaceDitherParams               5252      4            1             1       
+         g_matWorldToLightCookie                  5256      4            4           128       
+         g_vSpotLightShadowOffsetScale            7304      4            1           128       
+         g_vSpotLightShadowBounds                 7816      4            1           128       
+         g_vLightProjectiveDepthToLinearDepth     8328      4            1           128       
+         g_vUnlitShadowColor                      8840      4            1             1       
+         g_vAmbientLightingSH                     8844      4            1             3       
+         g_vLightIndexData                        8856      4            1           128       
+         g_vSunLightIndexData                     9368      4            1             1       
+         g_vAmbientOcclusionProxyLightPositions   9372      4            1             4       
+         g_vAmbientOcclusionProxyLightConeAngles  9388      4            1             1       
+         g_vAmbientOcclusionProxyLightStrengths   9392      4            1             1       
+         g_vAmbientOcclusionProxyAmbientStrength  9396      4            1             1       
+         g_vCubemapNormalizationParams            9400      4            1             1       
+
+CONSTANT BUFFERS[3]
+BakedLightingConstantBuffer_t size=16 (16) param-count=1 arg0=0 crc32=305f822a
+         name                offset  vertex-size  attrib-count  data-count
+         g_vLightmapUvScale    0       4            1             1       
+
+VERTEX INPUT SIGNATURES[0] definitions=5
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[1] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[2] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[3] definitions=4
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[4] definitions=5
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[5] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[6] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[7] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[8] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[9] definitions=5
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[10] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[11] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[12] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[13] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[14] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[15] definitions=5
+         Name                        Semantic                          SemanticName                Index
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[16] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[17] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[18] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[19] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[20] definitions=9
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[21] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[22] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[23] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vPerVertexLighting          PerVertexLighting                 COLOR                        1   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[24] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[25] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[26] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[27] definitions=5
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[28] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[29] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[30] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[31] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[32] definitions=9
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[33] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[34] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[35] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vLightmapUV                 LightmapUV                        TEXCOORD                     3   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+
+VERTEX INPUT SIGNATURES[36] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[37] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[38] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[39] definitions=5
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[40] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[41] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[42] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[43] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[44] definitions=9
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTangentUOs_flTangentVSign  TangentU_SignV                    TANGENT                      0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[45] definitions=6
+         Name                        Semantic                          SemanticName                Index
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[46] definitions=7
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+VERTEX INPUT SIGNATURES[47] definitions=8
+         Name                        Semantic                          SemanticName                Index
+         vBlendIndices               BlendIndices                      BLENDINDICES                 0   
+         vBlendWeight                BlendWeight                       BLENDWEIGHT                  0   
+         vNormalOs                   OptionallyCompressedTangentFrame  NORMAL                       0   
+         vPositionOs                 PosXyz                            POSITION                     0   
+         nInstanceID                 None                              SV_InstanceID                0   
+         vTexCoord                   LowPrecisionUv                    TEXCOORD                     0   
+         vTransformTextureUV         InstanceTransformUv               TEXCOORD                    13   
+         nVertexIndex                MorphIndex                        TEXCOORD                    14   
+
+
+STATIC COMBOS(8)
+S_TRANSFORM_CONSTANT_BUFFER(tcb), S_BINDLESS_RUNTIME(bin_r), S_MODE_TOOLS_VIS(m_tv), S_MORPH_SUPPORTED(mor_s)
+S_NO_LIQUID(no_l)
+
+                   tcb bin_r  m_tv mor_s  no_l
+  Z[00000000]      _     _     _     _     _
+  Z[00000001]      _     _     1     _     _
+  Z[00000002]      _     _     _     1     _
+  Z[00000003]      _     _     1     1     _
+  Z[00000004]      _     _     _     _     1
+  Z[00000005]      _     _     1     _     1
+  Z[00000006]      _     _     _     1     1
+  Z[00000007]      _     _     1     1     1

@@ -42,6 +42,7 @@ namespace Engine.Recources
             "GameObjects/Default",          // Assets: cube, sphere, isosphere, capsule, dragons
             "GameObjects/Cloth",            // Assets.Cloth
             "GameObjects/Tree",             // Assets.Tree (+ its bark/leaf textures and generator)
+            "GameObjects/Bottle",           // Assets.Bottle (+ its generator)
             "GameObjects/Error",            // fallback model for failed imports
             "GameObjects/error.png",        // fallback material texture
             "GameObjects/sky.dds",          // default sky

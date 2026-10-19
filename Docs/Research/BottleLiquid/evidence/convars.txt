@@ -1,0 +1,12 @@
+prop_liquid_settle_duration	"20"	flags=0	obj=1814A1350	The duration in seconds before liquid will 100% settle
+prop_liquid_gravity_velocity_scale	"1"	flags=0	obj=1814A13E0	The proportion of velocity to gravity to applied to what direction is 'down' for liquid
+prop_liquid_velocity_max_agitation	"5"	flags=0	obj=1814A1470	The maximum velocity delta for liquid agitation
+prop_liquid_velocity_additive_power	"10"	flags=0	obj=1814A1500	While agitated, the power to apply to the proportion of new velocity to max - sort of how additive do you want new vibrations to be.
+prop_liquid_velocity_dampening	"0.4"	flags=0	obj=1814A1590	The dampening on incoming delta velocity
+prop_liquid_debug	"0"	flags=0	obj=1814A1620	Display some debugging information
+prop_liquid_foam_settle_duration	"30"	flags=0	obj=1814A16B0	The duration in seconds before liquid will 100% settle
+prop_liquid_velocity_foam_max_agitation	"200"	flags=0	obj=1814A1740	The maximum velocity delta for liquid agitation
+prop_liquid_velocity_foam_additive_power	"1"	flags=0	obj=1814A17D0	While agitated, the power to apply to the proportion of new velocity to max - sort of how additive do you want new vibrations to be.
+prop_liquid_velocity_foam_dampening	"0.4"	flags=0	obj=1814A1860	The dampening on incoming delta velocity
+prop_liquid_gravity_interpolation	"0.2"	flags=0	obj=1814A18F0	How much we interpolation our gravity direction
+prop_liquid_debug_gravity	"0"	flags=0	obj=1814A1980	Shows the input vector from gravity and velocity and what the output vector should look like after encoding/decoding

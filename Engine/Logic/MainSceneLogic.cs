@@ -395,6 +395,9 @@ namespace Engine.Logic
             // Trees with a Foliage Wind component sway in the scene wind while editing too; the pause menu holds them.
             FoliageWindComponent.UpdateAll(ActiveScene?.BasicEntities,
                 GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds, WeatherProfile.Wind(ActiveScene?.Environment));
+            // Bottles with a Liquid component slosh when moved (editor gizmo included); the pause menu holds them.
+            LiquidComponent.UpdateAll(ActiveScene?.BasicEntities, GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+                _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f));
             // Posed bones (Anvil Hierarchy > Armature) skin their mesh unless an Animator or Ragdoll already does.
             BonePose.UpdateAll(ActiveScene?.BasicEntities);
             // Material components linked to a material asset (.mat) follow edits of the file, in Edit and Play.

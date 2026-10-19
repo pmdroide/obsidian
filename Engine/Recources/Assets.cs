@@ -33,6 +33,10 @@ namespace Engine.Recources
         public MaterialEffect TreeBarkMaterial;
         // Foliage material type: alpha-cut leaf cards that flutter in the wind and let sunlight through.
         public MaterialEffect TreeLeavesMaterial;
+        // 0.30 m glass bottle, Z up, base at the origin, one closed shell (GameObjects/Bottle, made by Source/generate_bottle.cs).
+        // Its part draws with BottleGlassMaterial (Forward Shaded); add a Liquid component to fill it.
+        public ModelDefinition Bottle;
+        public MaterialEffect BottleGlassMaterial;
 
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
@@ -158,6 +162,7 @@ namespace Engine.Recources
                 mesh.BoundingSphere = new BoundingSphere(mesh.BoundingSphere.Center, mesh.BoundingSphere.Radius * 2f);
 
             Tree = LoadTree(content, graphicsDevice);
+            Bottle = LoadBottle(content, graphicsDevice);
 
             IconDecal = content.Load<Texture2D>("System/Editor/icon_decal");
             IconLight = content.Load<Texture2D>("System/Editor/icon_light");
@@ -349,6 +354,26 @@ namespace Engine.Recources
             catch (Exception ex)
             {
                 EditorBridge.Log("Assets: failed to load the tree model: " + ex.Message);
+                return null;
+            }
+        }
+
+        private ModelDefinition LoadBottle(ContentManager content, GraphicsDevice graphicsDevice)
+        {
+            try
+            {
+                var definition = new ModelDefinition(content, "GameObjects/Bottle/bottle", graphicsDevice);
+                // Clear green-tinted glass, drawn by the forward pass (where the Liquid component fills it).
+                BottleGlassMaterial = CreateMaterial(new Color(205, 230, 215), 0.05f, 0, type: MaterialEffect.MaterialTypes.ForwardShaded);
+                BottleGlassMaterial.Opacity = 0.18f;
+                foreach (ModelMesh mesh in definition.Model.Meshes)
+                    foreach (ModelMeshPart part in mesh.MeshParts)
+                        part.Effect = BottleGlassMaterial;
+                return definition;
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log("Assets: failed to load the bottle model: " + ex.Message);
                 return null;
             }
         }
@@ -636,6 +661,7 @@ namespace Engine.Recources
             MirrorMaterial?.Dispose();
             TreeBarkMaterial?.Dispose();
             TreeLeavesMaterial?.Dispose();
+            BottleGlassMaterial?.Dispose();
             NoiseMap?.Dispose();
             SkyTexture?.Dispose();
             if (ErrorModelMaterial != ErrorMaterial) ErrorModelMaterial?.Dispose();

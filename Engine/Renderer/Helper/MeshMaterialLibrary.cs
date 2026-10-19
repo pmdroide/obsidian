@@ -563,7 +563,9 @@ namespace Engine.Renderer.Helper
                         Matrix localWorldMatrix = transform.World;
                         wind?.SetInstance(transform.Wind);
                         (renderModule as IVelocityModule)?.SetPreviousWorld(transform.HasPrevious ? transform.PreviousWorld : transform.World);
-                        if (renderType == RenderType.Forward) (renderModule as ForwardRenderModule)?.SetPlanarReflection(transform.PlanarReflection);
+                        ForwardRenderModule forward = renderType == RenderType.Forward ? renderModule as ForwardRenderModule : null;
+                        forward?.SetPlanarReflection(transform.PlanarReflection);
+                        forward?.SetLiquid(transform.Liquid, transform.LiquidLook);
 
                         if (!ApplyShaders(renderType, renderModule, localWorldMatrix, view, viewProjection, meshLib, index,
                                 outlineId, outlined)) continue;
@@ -574,6 +576,18 @@ namespace Engine.Renderer.Helper
                             ? transform.Skin?.Resolve(sharedVertices) ?? transform.Cloth?.Resolve(sharedVertices)
                             : null;
                         if (skinned != null) graphicsDevice.SetVertexBuffer(skinned);
+
+                        // Liquid component: the inside of the container first (its back faces under the surface
+                        // show the liquid's top), then the outside as usual.
+                        if (forward != null && transform.Liquid != null && !transform.Liquid.Empty)
+                        {
+                            forward.ApplyLiquidFaces(backFaces: true);
+                            graphicsDevice.RasterizerState = RasterizerState.CullClockwise;
+                            graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex,
+                                primitiveCount);
+                            graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+                            forward.ApplyLiquidFaces(backFaces: false);
+                        }
 
                         graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, vertexOffset, startIndex,
                                 primitiveCount);

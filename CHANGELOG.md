@@ -1,5 +1,44 @@
 # Changelog
 
+## Added: Liquid in bottles, reverse engineered from Half-Life: Alyx (2026-10-19)
+
+- **Liquid component** (`liquid`). A bottle, glass or jar shows liquid that stays level as it tilts, lies on its side or turns upside down, leans and lags when it moves, wobbles and ripples when shaken and settles over 20 s, with a meniscus, a water line, foam and bubbles. Runs in Edit (the gizmo sloshes it) and Play; held while paused. Visual only.
+  - Like Alyx there is no fluid simulation: the liquid is a plane, and the container's own Forward Shaded glass shows it below the plane.
+  - Scripts: `Fill`, `Agitate(speed)`, `Settle()`, `Agitation`, `FoamAmount`.
+- New code:
+  - `Engine/Physics/LiquidSlosh.cs`: Alyx's server code in Source units, with its convar defaults. A 10 Hz think turns the change of velocity + angular velocity into agitation and foam peaks (`pow(Δ, 0.6)`, additive power 10/1, max 5/200, linear decay over 20/30 s). The down direction is `normalize(gravity − velocity)`, eased 20 % per 0.1 s. The shader's per-instance part (a ~21 rad/s wobble of that direction, the surface height from the fill and the tilt) runs on the CPU.
+  - `Engine/Physics/LiquidVolume.cs`: the fill tables (upright / on its side / upside down, 9 fills each). They're measured from the closed mesh's volume by plane clipping, where Alyx has artists type 3 heights per orientation.
+  - `Engine/Components/LiquidComponent.cs` (+ `LiquidLook`), `TransformMatrix.Liquid`/`LiquidLook`, and `MainSceneLogic.Update` calls `LiquidComponent.UpdateAll`.
+  - `Forward.fx` `UseLiquid` block: Alyx's ripple wave sum and meniscus, soft liquid edge, water line, foam band, rising bubbles. `MeshMaterialLibrary` draws liquid containers from the inside first (back faces show the liquid's top where the view ray crosses it). `ForwardRenderModule.SetLiquid`/`ApplyLiquidFaces`.
+- Built-in **Bottle** model (`Content/GameObjects/Bottle/bottle.obj`, 0.30 m closed glass shell, made by `Source/generate_bottle.cs`; `Assets.Bottle` + `BottleGlassMaterial`). `Engine.csproj` no longer compiles `Content/GameObjects/**/Source/*.cs` (model generators). `ProjectReset` keeps the folder.
+- Anvil: GameObject > Effects > **Liquid Bottle** (also in the Hierarchy "+" menu), Inspector template with colour pickers and a **Shake** button (`LiquidComponentViewModel`).
+- Sample: `Content/Scenes/LiquidTest.obsc`, six bottles on a table: swung beer, tilted wine, knocked water, a potion poured empty and refilled, one on its side, one upside down. Moved by `Content/Scripts/LiquidTestScript.cs` (**Liquid Test**: Swing / Jolt / Pour).
+- Research (`Docs/Research/BottleLiquid/README.md` + `evidence/`): `server.dll` strings and `prop_liquid_*` convar defaults; the disassembled think (`0x1809DC010`) and down-direction routine (`0x1809D94B0`, 8-bit encoding into the render colour's alpha); the liquid materials (`vr_simple_liquid`, `g_vLiquidLevel*MinMidMax`); and the DXBC of the `vr_simple_liquid` vertex and pixel shaders. Done with the project's `re_tool` (Ghidra can't finish `server.dll` in time).
+- Docs: `Docs/markdown/Bottle_Liquid.md`, `Engine_Wiring.md` (frame update, components, forward draw, recipes) and the CLAUDE.md map. README version 1.3.0. ISSUES: the 1 m near plane clips close-up bottles; liquid limits.
+- Checks: `Tests/Components/LiquidChecks.cs` (`-- --liquid` runs them alone) covers the volume tables (box and the real bottle.obj, which is closed with outward faces, 1.01 l), the agitation/foam/down rules, pause, Settle, lying on its side, empty, the component through the bridge and inspector, save/load of colours, cloning and the sample. `GameObjectMenuChecks` covers the new menu entry. All 1569 component checks pass. Checked visually with `Engine.exe --scene Scenes/LiquidTest.obsc --shot` in Edit and Play.
+
+- Claude
+
+
+## Added: Breakable glass, reverse engineered from Half-Life: Alyx (2026-10-19)
+
+- **Breakable Glass component** (`breakable-glass`). A flat gameobject cracks, punches holes and drops shards like Half-Life: Alyx's `func_shatterglass`.
+  - The first hit cracks the pane into Voronoi panels on Valve's jittered grid: 0.381 m cells, sites moved a quarter cell and jittered ±0.49 cells.
+  - Each hit splits the panels it touches into radial pieces. The hole's pieces fly off as physics shards, and panels no longer joined to the frame fall.
+  - Bodies above Impact Speed/Momentum break it and carry on through. Scripts call `Shatter(point, direction, GlassStress.Ballistic/Blunt/Explosive)`, `Restore()` and the `Shattered` event.
+  - Shards use the gameobject's material (texture coordinates fitted to its front face). They live 15 s, with at most 150 in the scene.
+- New code: `Engine/Physics/GlassFracture.cs` (2D fracture math), `GlassShatter.cs` (meshes, frame colliders, debris bodies) and `Engine/Components/BreakableGlassComponent.cs`.
+  - `ScenePhysics`: `CreateGlass`/`RemoveGlass`, owned static colliders, contact hits and collider replacement once cracked.
+  - `BasicEntity.Glass`/`DrawMaterial`.
+  - `PhysicsSystem.TryCreateHull` now rejects sliver hulls whose centre is non-finite (they crashed BEPU's broad phase).
+- Anvil: Inspector template and `BreakableGlassComponentViewModel`.
+- Sample: a window station in `CollisionTest.obsc` (a framed 2.4 x 2 m pane and a small fine-cracking pane). `CollisionTestPlayerScript` shoots Breakable Glass with **Attack**.
+- Research: the REA MCP server timed out, so `server.dll`/`client.dll` were analysed with the project's `re_tool`: strings, convar defaults, and the disassembly of the crack and hit-test functions. Findings are in `Docs/Research/BreakableGlass/README.md` (`hlvr.exe` itself is only the launcher).
+- Docs: `Docs/markdown/Breakable_Glass.md`, `Engine_Wiring.md` (physics flow, entity state, component order) and the CLAUDE.md map. README version 1.2.0.
+- Checks: `Tests/Components/GlassChecks.cs` covers the crack pattern, the fracture, the support check, the component/editor/save, and Play (a script shot, rays through the hole, debris lifetime, Restore, a slow crate that bounces and a fast crate that breaks through, Stop) plus the sample. All 1543 component checks pass. Checked visually with `Engine.exe --play --shot` (a crate dropped through a glass table).
+
+- Claude
+
 ## Added: Ground mist in the weather and raindrops on surfaces (2026-10-19)
 
 - **Ground mist.** Rain now raises a low mist that lies on the ground and thins out with height. A sandstorm drags orange dust along the ground, and snow raises a thin pale mist. Wind-blown banks of noise break it into patches that drift with the wind.

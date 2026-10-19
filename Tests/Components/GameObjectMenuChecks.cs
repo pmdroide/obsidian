@@ -14,7 +14,7 @@ internal static class GameObjectMenuChecks
     {
         var bounds = new BoundingBox(-Vector3.One, Vector3.One);
         var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds),
-            Tree = new ModelDefinition(null, bounds) };
+            Tree = new ModelDefinition(null, bounds), Bottle = new ModelDefinition(null, bounds) };
         // Decals need a texture registered on Assets to be saved; a texture without a GraphicsDevice is enough here.
         assets.DefaultDecal = (Microsoft.Xna.Framework.Graphics.Texture2D)System.Runtime.CompilerServices.RuntimeHelpers
             .GetUninitializedObject(typeof(Microsoft.Xna.Framework.Graphics.Texture2D));
@@ -58,6 +58,12 @@ internal static class GameObjectMenuChecks
               ReferenceEquals(tree.ModelDefinition, assets.Tree) && tree.Components.Single() is FoliageWindComponent { Enabled: true },
             "GameObject > Nature > Tree creates the built-in tree (its own materials) with Foliage Wind");
 
+        vm.AddLiquidBottleCommand.Execute(null);
+        Drain();
+        Check(logic.BasicEntities.Count == entities + 5 && logic.BasicEntities[^1] is { Name: "Bottle", Material: null } bottle &&
+              ReferenceEquals(bottle.ModelDefinition, assets.Bottle) && bottle.Components.Single() is LiquidComponent { Enabled: true },
+            "GameObject > Effects > Liquid Bottle creates the built-in glass bottle (its own material) with a Liquid component");
+
         int decals = logic.Decals.Count;
         Vector3 spawn = bridge.SpawnPoint;
         vm.AddDecalCommand.Execute(null);
@@ -68,11 +74,11 @@ internal static class GameObjectMenuChecks
             "GameObject > Effects > Decal creates an enabled 2 m decal box projecting the default texture down -Z");
         DecalTextureChecks(logic.Decals[^1]);
 
-        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Decal", "Tree" }),
+        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Decal", "Liquid Bottle", "Tree" }),
             "the Hierarchy + menu offers the same objects as the GameObject menu");
         foreach (var option in vm.AddableObjects) option.AddCommand.Execute(null);
         Drain();
-        Check(logic.BasicEntities.Count == entities + 8 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4 &&
+        Check(logic.BasicEntities.Count == entities + 10 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4 &&
               logic.Decals.Count == decals + 2,
             "every Hierarchy + menu entry creates its object");
 

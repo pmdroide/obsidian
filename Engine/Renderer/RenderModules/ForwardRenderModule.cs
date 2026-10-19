@@ -57,6 +57,12 @@ namespace Engine.Renderer.RenderModules
         private EffectParameter _planarSizeParam;
         private PlanarReflectionView _boundPlanar;
 
+        // Liquid component (Physics/LiquidSlosh.cs): per instance
+        private EffectParameter _useLiquidParam, _liquidBackFaceParam, _liquidSurfaceParam, _liquidCentreParam, _liquidAxisParam,
+            _liquidWaveParam, _liquidPhaseAParam, _liquidPhaseBParam, _liquidAmountsParam, _liquidColorParam, _liquidFoamColorParam,
+            _liquidLookParam, _liquidLook2Param;
+        private bool _liquidBound;
+
         private readonly Vector3[] _lightPositionWS = new Vector3[MaxLights];
         private readonly float[] _lightRadius = new float[MaxLights];
         private readonly float[] _lightIntensity = new float[MaxLights];
@@ -87,6 +93,19 @@ namespace Engine.Renderer.RenderModules
             _usePlanarParam = _shader.Parameters["UsePlanarReflection"];
             _planarMapParam = _shader.Parameters["PlanarReflectionMap"];
             _planarSizeParam = _shader.Parameters["PlanarReflectionSize"];
+            _useLiquidParam = _shader.Parameters["UseLiquid"];
+            _liquidBackFaceParam = _shader.Parameters["LiquidBackFace"];
+            _liquidSurfaceParam = _shader.Parameters["LiquidSurface"];
+            _liquidCentreParam = _shader.Parameters["LiquidCentre"];
+            _liquidAxisParam = _shader.Parameters["LiquidAxis"];
+            _liquidWaveParam = _shader.Parameters["LiquidWave"];
+            _liquidPhaseAParam = _shader.Parameters["LiquidPhaseA"];
+            _liquidPhaseBParam = _shader.Parameters["LiquidPhaseB"];
+            _liquidAmountsParam = _shader.Parameters["LiquidAmounts"];
+            _liquidColorParam = _shader.Parameters["LiquidColor"];
+            _liquidFoamColorParam = _shader.Parameters["LiquidFoamColor"];
+            _liquidLookParam = _shader.Parameters["LiquidLook"];
+            _liquidLook2Param = _shader.Parameters["LiquidLook2"];
             _pass = _shader.Techniques["Default"].Passes[0];
             _skyPass = _shader.Techniques["PlanarSky"].Passes[0];
         }
@@ -107,6 +126,7 @@ namespace Engine.Renderer.RenderModules
             else p["UseFog"]?.SetValue(false);
             p["ReflectionPass"]?.SetValue(false);
             UnbindPlanarReflection();
+            UnbindLiquid();
 
             meshMat.Draw(MeshMaterialLibrary.RenderType.Forward, viewProjection, renderModule: this);
             UnbindPlanarReflection();
@@ -125,6 +145,7 @@ namespace Engine.Renderer.RenderModules
             p["UseFog"]?.SetValue(false);
             p["ReflectionPass"]?.SetValue(true);
             p["ClipPlane"]?.SetValue(new Vector4(clipPlane.Normal, clipPlane.D));
+            UnbindLiquid();
             //The image being drawn must not stay bound as a texture: D3D drops one of the two bindings
             UnbindPlanarReflection();
 
@@ -170,6 +191,13 @@ namespace Engine.Renderer.RenderModules
             ImageBasedLightingParameters.ApplyLocalProbes(p, context.LocalProbes, context.Lighting?.GpuData != null && context.Lighting.ProbeData != null ? context.Lighting.GpuData : null);
         }
 
+        private void UnbindLiquid()
+        {
+            _liquidBound = false;
+            _useLiquidParam?.SetValue(false);
+            _liquidBackFaceParam?.SetValue(false);
+        }
+
         private void UnbindPlanarReflection()
         {
             _boundPlanar = null;
@@ -187,6 +215,42 @@ namespace Engine.Renderer.RenderModules
             if (view == null) return;
             _planarMapParam?.SetValue(view.Map);
             _planarSizeParam?.SetValue(new Vector3(view.Map.Width, view.Map.Height, view.Map.LevelCount));
+        }
+
+        /// <summary>
+        /// Per instance (MeshMaterialLibrary): the liquid a Liquid component fills this container with, or null. Set
+        /// before the pass is applied; <see cref="ApplyLiquidFaces"/> then switches between its inside and outside.
+        /// </summary>
+        public void SetLiquid(Physics.LiquidSlosh liquid, Components.LiquidLook look)
+        {
+            bool use = liquid != null && !liquid.Empty;
+            if (!use)
+            {
+                if (_liquidBound) _useLiquidParam?.SetValue(false);
+                _liquidBound = false;
+                return;
+            }
+            _liquidBound = true;
+            _useLiquidParam?.SetValue(true);
+            _liquidBackFaceParam?.SetValue(false);
+            _liquidSurfaceParam?.SetValue(new Vector4(liquid.SurfaceUp, liquid.SurfaceHeight));
+            _liquidCentreParam?.SetValue(new Vector4(liquid.Centre, liquid.CosUp));
+            _liquidAxisParam?.SetValue(new Vector4(liquid.Axis, liquid.Height));
+            _liquidWaveParam?.SetValue(new Vector4(liquid.WobbleAmplitude, liquid.WobbleScale, liquid.WobbleWavelength, liquid.SurfaceTension));
+            _liquidPhaseAParam?.SetValue(liquid.RipplePhaseA);
+            _liquidPhaseBParam?.SetValue(new Vector4(liquid.RipplePhaseB, (float)(liquid.Clock % 1000.0), 0));
+            _liquidAmountsParam?.SetValue(new Vector3(liquid.Agitation, liquid.Foam, liquid.Bubbles));
+            _liquidColorParam?.SetValue(look.Color);
+            _liquidFoamColorParam?.SetValue(look.Foam);
+            _liquidLookParam?.SetValue(new Vector4(look.Opacity, look.Roughness, look.Emissive, look.WaterLine));
+            _liquidLook2Param?.SetValue(new Vector4(look.Foaminess, look.Fizz, liquid.Radius, 0));
+        }
+
+        /// <summary>Draws the next liquid container from the inside (back faces: the liquid's top) or the outside.</summary>
+        public void ApplyLiquidFaces(bool backFaces)
+        {
+            _liquidBackFaceParam?.SetValue(backFaces);
+            _pass.Apply();
         }
 
         /// <summary>Prepares cookie textures before scene rendering; rebuilding the atlas switches render targets.</summary>

@@ -47,6 +47,88 @@ SamplerState MaskSampler
     AddressV = Wrap;
 };
 
+// ---- Liquid component (Physics/LiquidSlosh.cs): Half-Life: Alyx's vr_simple_liquid (Docs/Research/BottleLiquid) ----
+// The container's own shell shows liquid below a plane. LiquidSlosh computes the wobbling plane per instance; here are
+// the per-pixel parts: ripples, the meniscus at grazing angles, the water line, foam and bubbles. Back faces under the
+// surface draw its top (LiquidBackFace pass, drawn before the outside). Wave constants are Alyx's, in inches.
+bool UseLiquid = false;
+bool LiquidBackFace = false;
+float4 LiquidSurface;   // xyz = world up of the surface, w = height: liquid where dot(p, up) <= w
+float4 LiquidCentre;    // xyz = container centre (ripple origin), w = dot(container axis, up)
+float4 LiquidAxis;      // xyz = container +Z, w = container height (m)
+float4 LiquidWave;      // wobble amplitude, wobble scale, wavelength, surface tension
+float4 LiquidPhaseA;    // ripple phases (rad)
+float4 LiquidPhaseB;    // xy = ripple phases, z = clock (s)
+float3 LiquidAmounts;   // agitation, foam, bubbles (0..1)
+float3 LiquidColor = float3(0.77, 0.47, 0.13);     // sRGB
+float3 LiquidFoamColor = float3(0.96, 0.92, 0.82); // sRGB
+float4 LiquidLook;      // opacity, roughness, emissive, water line
+float4 LiquidLook2;     // foaminess, fizz, container radius (m)
+
+static const float LIQUID_INCH = 0.0254f;
+
+// Ripple height in inches at a world offset o (inches) from the centre. facing = |normal * up| (component-wise, as Alyx).
+float LiquidRipple(float2 o, float facing)
+{
+    float amp = LiquidWave.x;
+    float side = abs(LiquidCentre.w) * 0.5f + 0.5f;
+    float k = side * LiquidWave.z * (amp * 0.4f + 0.2f);
+    float w = sin(dot(k * float2(-1.242110f, 1.142074f), o) + LiquidPhaseA.x) * amp;
+    w = w * 0.125f + sin(dot(k * float2(2.821100f, 2.920740f), o) + LiquidPhaseA.y) * 0.333333f;
+    w += amp * sin(dot(k * float2(-3.242110f, -3.642074f), o) + LiquidPhaseA.z) * 0.111111f;
+    w += amp * sin(dot(k * float2(3.742110f, -3.642074f), o) + LiquidPhaseA.w) * 0.111111f;
+    float chop = 1 - facing;
+    w *= 1 + chop * 0.14f * sin(dot(k * float2(-8.742110f, 13.642074f), o) + LiquidPhaseB.x);
+    w *= 1 + chop * 0.13f * sin(dot(k * float2(13.742110f, 14.642074f), o) + LiquidPhaseB.y);
+    w *= 1 + chop * 0.10f * sin(dot(k * float2(-23.742109f, -13.642074f), o) + LiquidPhaseB.x);
+    w *= 1 + chop * 0.08f * sin(dot(k * float2(31.742109f, -20.642075f), o) + LiquidPhaseB.y);
+    return w * LiquidWave.y * amp * amp * side * 150;
+}
+
+// Signed depth (m) of p under the surface; > 0 = liquid. fres = 1 - N.V of the shell.
+float LiquidDepth(float3 p, float3 normal, float fres)
+{
+    float3 up = LiquidSurface.xyz;
+    float facing = length(normal * up);
+    float meniscus = ((0.75f * facing + 0.25f) * fres + 0.8f * pow(fres, 5)) * LiquidWave.w;
+    float ripple = LiquidRipple((p.xy - LiquidCentre.xy) / LIQUID_INCH, facing) * (1.5f - fres);
+    return LiquidSurface.w + (meniscus + ripple) * LIQUID_INCH - dot(p, up);
+}
+
+float LiquidHash(float2 p)
+{
+    return frac(sin(dot(p, float2(12.9898f, 78.233f))) * 43758.5453f);
+}
+
+// Rising bubbles on the shell (0..1): dots on a grid around the container's axis, columns at their own speed.
+float LiquidBubbles(float3 p, float amount)
+{
+    if (amount <= 0.002f) return 0;
+    float3 axis = LiquidAxis.xyz;
+    float3 rel = p - LiquidCentre.xyz;
+    float h = dot(rel, axis);
+    float3 radial = rel - axis * h;
+    float3 t = normalize(abs(axis.z) < 0.9f ? cross(axis, float3(0, 0, 1)) : cross(axis, float3(1, 0, 0)));
+    float3 b = cross(axis, t);
+    float angle = atan2(dot(radial, b), dot(radial, t));
+    float2 uv = float2(angle * max(LiquidLook2.z, 0.005f), h) / 0.005f; // 5 mm cells
+    float sum = 0;
+    [unroll]
+    for (int layer = 0; layer < 2; layer++)
+    {
+        float2 q = uv * (1 + layer * 0.7f) + float2(layer * 17.3f, layer * 5.1f);
+        float column = floor(q.x);
+        q.y -= LiquidPhaseB.z * (3 + LiquidHash(float2(column, layer)) * 4);
+        float2 cell = floor(q);
+        float rnd = LiquidHash(cell + layer * 31.0f);
+        float2 offset = (float2(frac(rnd * 7.31f), frac(rnd * 13.7f)) - 0.5f) * 0.45f;
+        float radius = 0.1f + 0.14f * frac(rnd * 3.17f);
+        float dist = length(frac(q) - 0.5f - offset);
+        sum += smoothstep(radius, radius * 0.55f, dist) * step(rnd, amount);
+    }
+    return saturate(sum);
+}
+
 // ---- Planar reflections (PlanarReflectionRenderModule) ----
 // ReflectionPass: drawing an opaque gameobject into a mirror image, seen from the mirrored camera; pixels behind the
 // pane (dot(ClipPlane.xyz, p) + ClipPlane.w < 0) are clipped.
@@ -245,9 +327,64 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
         if (HasMask) clip(MaskMap.Sample(MaskSampler, input.TexCoord).r - 0.5f);
         opacity = 1;
     }
+
+    // Liquid component: the shell below the surface shows the liquid; from the inside (back faces) its top
+    float3 positionWS = input.PositionWS;
+    float metallic = Metallic;
+    float roughnessIn = Roughness;
+    float liquidLine = 0;
+    float3 liquidEmission = 0;
+    [branch]
+    if (UseLiquid && !ReflectionPass)
+    {
+        float foamThickness = LiquidAmounts.y * LiquidLook2.x * 0.02f;
+        [branch]
+        if (LiquidBackFace)
+        {
+            // Where the view ray crosses the surface, if it does inside the container
+            float3 up = LiquidSurface.xyz;
+            float cameraHeight = dot(CameraPositionWS, up) - LiquidSurface.w;
+            float pixelHeight = dot(input.PositionWS, up) - LiquidSurface.w;
+            clip(cameraHeight);
+            clip(-pixelHeight);
+            float3 hit = lerp(CameraPositionWS, input.PositionWS, cameraHeight / max(cameraHeight - pixelHeight, 1e-6f));
+            float3 rel = hit - LiquidCentre.xyz;
+            float along = dot(rel, LiquidAxis.xyz);
+            clip(LiquidLook2.z * 1.02f - length(rel - LiquidAxis.xyz * along));
+            positionWS = hit;
+            // The ripples tilt the top
+            float2 o = (hit.xy - LiquidCentre.xy) / LIQUID_INCH;
+            float r0 = LiquidRipple(o, 1);
+            float3 slope = float3(LiquidRipple(o + float2(0.1f, 0), 1) - r0, LiquidRipple(o + float2(0, 0.1f), 1) - r0, 0) / 0.1f;
+            normal = normalize(up - (slope - up * dot(slope, up)));
+            float foamTop = saturate(LiquidAmounts.y * LiquidLook2.x * 3);
+            albedoGamma = lerp(LiquidColor, LiquidFoamColor, foamTop);
+            opacity = lerp(max(LiquidLook.x, 0.5f), 1, foamTop);
+            roughnessIn = lerp(LiquidLook.y, 0.6f, foamTop);
+            metallic = 0;
+            liquidEmission = AlbedoToLinear(LiquidColor) * LiquidLook.z * (1 - foamTop);
+        }
+        else
+        {
+            float fres = saturate(1 - dot(normal, cameraDirection));
+            float depth = LiquidDepth(input.PositionWS, normal, fres);
+            float cover = saturate(depth / max(fwidth(depth), 1e-5f) + 0.5f);
+            float foam = cover * saturate((foamThickness - depth) / 0.002f) * step(0.0005f, foamThickness);
+            float bubbles = cover * LiquidBubbles(input.PositionWS, saturate(LiquidAmounts.z * 0.5f + 0.06f) * LiquidLook2.y * 0.5f);
+            // Seen at a grazing angle the light crosses more liquid
+            float liquidOpacity = 1 - pow(saturate(1 - LiquidLook.x), 1 / max(1 - fres, 0.2f));
+            float3 liquid = lerp(LiquidColor, LiquidFoamColor, saturate(foam + bubbles * 0.8f));
+            albedoGamma = lerp(albedoGamma, liquid, cover);
+            opacity = lerp(opacity, max(opacity, saturate(liquidOpacity + foam + bubbles * 0.5f)), cover);
+            liquidEmission = AlbedoToLinear(LiquidColor) * LiquidLook.z * cover * (1 - foam);
+            // Water line: a thin bright band just under the surface (Alyx: 0.05 and 0.09 inch down)
+            liquidLine = cover * (1 - fres) * (1 - fres) * saturate(1 - abs(depth / LIQUID_INCH - 0.07f) * 10);
+        }
+    }
+
     float3 albedo = AlbedoToLinear(albedoGamma);
-    float roughness = max(Roughness, PBR_MIN_ROUGHNESS);
-    float3 f0 = GetF0(albedo, Metallic);
+    float roughness = max(roughnessIn, PBR_MIN_ROUGHNESS);
+    float3 f0 = GetF0(albedo, metallic);
     float NdotV = saturate(dot(normal, cameraDirection));
 
     float3 diffuseLight = 0;
@@ -259,7 +396,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
     {
         float3 l = -SunDirection;
         float ndotl = saturate(dot(normal, l));
-        float shadow = ndotl > 0 ? SunShadow(input.PositionWS, normal, ndotl) : 0;
+        float shadow = ndotl > 0 ? SunShadow(positionWS, normal, ndotl) : 0;
         float3 d, s;
         EvaluateLight(normal, l, cameraDirection, SunColor, f0, roughness, 1, d, s);
         diffuseLight += d * shadow * OUTPUTCONST;
@@ -270,7 +407,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
     [loop]
     for (int i = 0; i < LightAmount; i++)
     {
-        float3 lightVector = LightPositionWS[i] - input.PositionWS;
+        float3 lightVector = LightPositionWS[i] - positionWS;
         float lightDistance = length(lightVector);
         float lightRadius = LightRadius[i];
         if (lightDistance >= lightRadius) continue;
@@ -300,7 +437,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
     if (UseProbeVolume)
     {
         float3 probeCell = 1.0f / (ProbeVolumeExtentRcp * max(ProbeVolumeCells, 1));
-        float4 probe = SampleProbeVolume(input.PositionWS + normal * probeCell * 0.5f, normal);
+        float4 probe = SampleProbeVolume(positionWS + normal * probeCell * 0.5f, normal);
         ambient = lerp(ambient, probe.rgb * ProbeVolumeIntensity, probe.a);
         pixelIrradiance = probe.rgb;
         irradianceWeight = probe.a;
@@ -309,7 +446,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
 
     float3 r = reflect(-cameraDirection, normal);
     float2 envBRDF = UseBrdfLut ? BrdfLut.SampleLevel(BrdfSampler, float2(NdotV, roughness), 0).rg : EnvBRDFApprox(NdotV, roughness);
-    float3 reflection = SampleReflections(input.PositionWS, r, normal, roughness, UseProbeVolume, pixelIrradiance, irradianceWeight);
+    float3 reflection = SampleReflections(positionWS, r, normal, roughness, UseProbeVolume, pixelIrradiance, irradianceWeight);
     // A Planar Reflection pane: the mirrored scene at this pixel (premultiplied by its coverage), blurred with roughness
     [branch]
     if (UsePlanarReflection && !ReflectionPass)
@@ -323,7 +460,10 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
     specularLight += reflection * (f0 * envBRDF.x + envBRDF.y);
 
     // Premultiplied: light passing through is scaled by the opacity, reflections are not
-    float3 color = albedo * (1 - Metallic) * diffuseLight * opacity + specularLight;
+    float3 color = albedo * (1 - metallic) * diffuseLight * opacity + specularLight;
+    // Liquid: its own glow, and the water line catching the light around it
+    color += liquidEmission * OUTPUTCONST * opacity;
+    color += liquidLine * LiquidLook.w * 0.5f * (ambient + reflection);
     float alpha = saturate(opacity);
 
     // Fog between the camera and the surface
@@ -331,7 +471,7 @@ float4 PixelShaderFunction(VertexShaderOutput input) : COLOR
     if (UseFog)
     {
         float2 screenUV = input.Position.xy / Resolution;
-        float viewDepth = dot(input.PositionWS - CameraPositionWS, CameraForwardWS);
+        float viewDepth = dot(positionWS - CameraPositionWS, CameraForwardWS);
         float4 fog = SampleFroxelFog(screenUV, viewDepth);
         color = color * fog.a + fog.rgb * alpha;
     }

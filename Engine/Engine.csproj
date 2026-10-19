@@ -48,6 +48,8 @@
     <MonoGameContentReference Include="Content\Content.mgcb" />
     <!-- C# scripts compile normally and also remain editable assets in runtime Content. -->
     <None Include="Content\Scripts\**\*.cs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Model generators run on their own (dotnet run generate_x.cs), never as engine code. -->
+    <Compile Remove="Content\GameObjects\**\Source\*.cs" />
   </ItemGroup>
 
   <!-- Loose files read at runtime (NOT via the MGCB pipeline): Vista UI documents (the debug overlay
