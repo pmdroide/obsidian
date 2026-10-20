@@ -1,5 +1,17 @@
 # Changelog
 
+## Changed: MainMenu scene shows the game (2026-10-20)
+
+- `Content/Scenes/MainMenu.obsc` is now a showcase instead of the monolith ring: the player (Y Bot) dances to the new `GameObjects/Player/Silly Dancing.fbx` clip in a dark, closed, hazy room, backlit by a warm shadow-casting light that glows through a Fog Volume, with a front fill, a teal fill, a green neon tube, balloons, a beach ball, trash bags and a dim figure dancing slowly at the back. No sun.
+- `MainMenuScript`: the camera sways slowly in front of the character (centre at its chest) instead of orbiting the ring; in the menus it aims left of it so it sits right of the menu column.
+- `UI/MainMenu.css`: the title wordmark, rule, tagline and **Press any button** moved to the bottom left so they don't cover the character.
+- Content pipeline: `Silly Dancing.fbx` added to `Content.mgcb` (SkinnedModelProcessor, Mixamo settings). `SkinnedModelProcessor` now builds **animation-only FBX files** (Mixamo "Without Skin"): with no skinned mesh the importer leaves the rig as plain nodes and the file used to build as a static model with no clips, so the topmost node the clips animate (`FbxAnimationReader.AnimatedNodes`) is turned into the skeleton (`PromoteAnimatedNodes`). Files with a skinned mesh build as before (Y Bot, Walking, Wolf: same bones and clips).
+- Docs: `Scenes_and_Game_Flow.md` (MainMenu sample), `Skeletal_Animation.md` (animation-only files), `Engine_Wiring.md` (ContentPipeline row). README version 1.3.2.
+- Checks: `GameFlowChecks` now checks the new scene (dancing player with the Silly Dancing source, shadowed backlight, fog volume, emissive neon, no sun); `AnimationChecks` counts 3 Player FBX entries. All 1579 component checks pass. Checked visually with `Engine.exe --scene Scenes/MainMenu.obsc --shot ... --play`.
+
+- Claude
+
+
 ## Added: Bright sun for image skyboxes (2026-10-20)
 
 - A 360° panorama skybox is an LDR image, so its sun was no brighter than a white cloud and never bloomed. Now, without the day/night cycle, the scene's brightest enabled directional light marks the sun: aim it from the panorama's sun and looking there blooms like looking at the real sun.

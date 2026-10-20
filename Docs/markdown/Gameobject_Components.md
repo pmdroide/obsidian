@@ -83,8 +83,8 @@ Example** selected, and press Play. See [Script behaviours](Script_Behaviours.md
 for the example and instructions for writing and registering your own scripts.
 
 The **Material** component includes Standard and Water shaders. Select
-**Add Component > Material**, then **Apply Water Example** to try the animated
-water preset. See [Material component and water example](Material_Component.md)
+**Add Component > Material**, then select **Water** in **Shader** for animated
+water. Assign the **Water** role for water physics. See [Material component](Material_Component.md)
 for surface controls and rendering details.
 
 1. Derive from `Engine.Components.GameComponent`. Use public properties for saved

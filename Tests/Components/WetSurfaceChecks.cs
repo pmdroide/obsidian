@@ -124,7 +124,8 @@ internal static class WetSurfaceChecks
               material.TilingU == 1 && material.TilingV == 1 && !vm.IsWetSurface,
             "materials start dry, untiled and follow the weather once they are Wet Surface");
 
-        vm.WetFloorExampleCommand.Execute(null);
+        vm.MaterialType = (int)MaterialEffect.MaterialTypes.WetSurface;
+        vm.Wetness = 1;
         vm.PuddleAmount = 0.7;
         vm.PuddleSize = 6;
         vm.WeatherWetness = false;
@@ -134,7 +135,7 @@ internal static class WetSurfaceChecks
         Check(vm.IsWetSurface && material.MaterialType == MaterialEffect.MaterialTypes.WetSurface && material.Wetness == 1 &&
               material.PuddleAmount == 0.7f && material.PuddleSize == 6 && !material.WeatherWetness &&
               material.TilingU == 4 && material.TilingV == 8,
-            "the Wet Floor example and the wet/tiling Inspector fields reach the material component");
+            "WetSurface shader selection and the wet/tiling Inspector fields reach the material component");
 
         material.Wetness = 0.25f;
         material.TilingU = 2;

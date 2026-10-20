@@ -838,6 +838,25 @@
 /processorParam:TextureFormat=Compressed
 /build:GameObjects/Player/Walking.fbx
 
+#begin GameObjects/Player/Silly Dancing.fbx
+/importer:FbxImporter
+/processor:SkinnedModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=90
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=0.01
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:GameObjects/Player/Silly Dancing.fbx
+
 #begin GameObjects/Wolf/Wolf.fbx
 /importer:FbxImporter
 /processor:SkinnedModelProcessor

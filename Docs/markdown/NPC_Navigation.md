@@ -13,7 +13,7 @@ Outside Play nothing moves. Stopping Play puts every NPC back where it was.
    **Dynamic**, about 70 kg, with **Freeze Rotation** so it stays upright.
 2. Add **Inspector > Add Component > NPC**.
 3. Turn the gameobject so its **+Y** points where it should look at the start. +Y is its forward.
-4. Name the player `Player`, or set the NPC's **Target** to the player's name. The player needs a
+4. Name the player `Player`, or drag it from the Hierarchy into the NPC's **Target** slot. The player needs a
    collider (a Physics component) so that sight rays can hit it.
 5. Give the scene's floor and walls **Static** Physics components. The navigation grid is built from
    them.
@@ -32,9 +32,9 @@ Don't give an NPC a **Static** body: a moving static rebuilds the grid.
 | **Acceleration** | The largest change of speed per second (m/s²), so it can't stop or turn on the spot. |
 | **Radius** | The clearance it keeps from walls on paths, in m. 0 uses the collider's half width. |
 | **Behaviour** (Idle) | **Stand**: stays at its start position, facing its start direction, and walks back there after a chase. **Wander**: walks to random reachable points within **Wander Radius** of its start. **Patrol**: walks between the gameobjects listed in **Patrol Points** in a loop. |
-| **Patrol Points** | Names of the gameobjects to walk between, separated by commas, in order. Markers without a collider work well. |
+| **Patrol Points** | Drop Hierarchy gameobjects to append waypoints in order. Clear to rebuild the route. Stored as comma-separated names; markers without a collider work well. |
 | **Wait Time** | Seconds it waits at each wander or patrol point. Each wait varies by up to half of this either way. |
-| **Target** | Name of the gameobject it watches for. |
+| **Target** | Drop the gameobject it watches for from the Hierarchy; stored by name. |
 | **Sight Range** / **Field of View** | How far it sees (m) and how wide its view cone is (degrees, centred on +Y). |
 | **Hearing Range** | Within this distance it notices the target in any direction. Walls still block it. |
 | **Eye Height** | Height above the gameobject's origin where sight rays start. |

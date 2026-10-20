@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,7 +15,32 @@ public partial class ScriptBehaviourComponentViewModel : ComponentViewModel
 {
     public IReadOnlyList<ScriptDefinition> AvailableScripts { get; } = ScriptRegistry.All.ToArray();
     [ObservableProperty] private ScriptDefinition? _selectedScript;
-    [ObservableProperty] private string _scriptId = string.Empty;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ReferenceLabel))] private string _scriptId = string.Empty;
+    public string? ReferenceLabel => string.IsNullOrEmpty(ScriptId) ? null :
+        ScriptRegistry.Find(ScriptId)?.DisplayName ?? $"Missing ({ScriptId})";
+
+    // Script assets are compiled types, not arbitrary C# helper files or Vista XML/CSS.
+    public static ScriptDefinition? ScriptFromAsset(string? path)
+    {
+        if (!string.Equals(Path.GetExtension(path), ".cs", StringComparison.OrdinalIgnoreCase)) return null;
+        string name = Path.GetFileNameWithoutExtension(path)!;
+        var matches = ScriptRegistry.All.Where(s => s.ScriptType?.Name == name).ToArray();
+        return matches.Length == 1 ? matches[0] : null;
+    }
+
+    public bool AssignAsset(string path)
+    {
+        if (ScriptFromAsset(path) is not { } script) return false;
+        SelectedScript = script;
+        ScriptId = script.Id;
+        return true;
+    }
+
+    public void Clear()
+    {
+        SelectedScript = null;
+        ScriptId = string.Empty;
+    }
 
     /// <summary>The selected script's serialized fields ([SerializeField] / public), minus [HideInInspector] ones.</summary>
     public ObservableCollection<ScriptFieldViewModel> Fields { get; } = new();
@@ -41,7 +68,7 @@ public partial class ScriptBehaviourComponentViewModel : ComponentViewModel
             script.ScriptId = value;
             script.ClearFields();
         });
-        // Rebuild right away: the reconciler leaves a focused inspector alone, and the picker has focus.
+        // Rebuild right away: the reconciler leaves a focused inspector alone.
         if (value != _fieldsScriptId)
         {
             _stored = new Dictionary<string, JsonElement>();
@@ -49,7 +76,7 @@ public partial class ScriptBehaviourComponentViewModel : ComponentViewModel
         }
     }
 
-    /// <summary>The engine's latest scene snapshot, for gameobject field pickers.</summary>
+    /// <summary>The engine's latest scene snapshot, for gameobject reference labels and drops.</summary>
     internal IReadOnlyList<EditorObjectSnapshot>? SceneObjects => Owner.Bridge?.Snapshot;
 
     internal void PushField(string name, JsonElement value) =>

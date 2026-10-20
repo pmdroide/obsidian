@@ -99,10 +99,10 @@ public partial class MainWindow : Window
                 RoutingStrategies.Bubble, handledEventsToo: true);
         }
 
-        // Hierarchy -> Assets drag saves a gameobject as a prefab (like Unity). Same handledEventsToo reason.
+        // Run before TreeView selection: dragging a reference must keep its Inspector target visible.
         var hierarchyTree = this.FindControl<TreeView>("HierarchyTreeView");
         hierarchyTree?.AddHandler(InputElement.PointerPressedEvent, HierarchyTree_PointerPressed,
-            RoutingStrategies.Bubble, handledEventsToo: true);
+            RoutingStrategies.Tunnel, handledEventsToo: true);
 
         // Inspector focus tracking. When the user is typing in a NumericUpDown,
         // dragging a Slider, or interacting with a ColorPicker inside the inspector,
@@ -172,7 +172,10 @@ public partial class MainWindow : Window
     // Content-relative .mat path (Assets -> a Hierarchy row or the Material component assigns it).
     private static readonly DataFormat<string> MaterialAssetFormat =
         DataFormat.CreateInProcessFormat<string>("obsidian/materialAsset");
-    // A Hierarchy gameobject's view model (Hierarchy -> Assets saves it as a prefab).
+
+    private static readonly DataFormat<string> ScriptAssetFormat =
+        DataFormat.CreateInProcessFormat<string>("obsidian/scriptAsset");
+    // A Hierarchy gameobject's view model (reference assignment, or drop into Assets to create a prefab).
     private static readonly DataFormat<SceneObjectViewModel> GameObjectFormat =
         DataFormat.CreateInProcessFormat<SceneObjectViewModel>("obsidian/gameObject");
 
@@ -325,14 +328,98 @@ public partial class MainWindow : Window
 
     private void PrefabField_DragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = e.DataTransfer.Contains(PrefabAssetFormat) ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
+        ReferenceDragOver(sender, e, e.DataTransfer.Contains(PrefabAssetFormat));
     }
 
     private void PrefabField_Drop(object? sender, DragEventArgs e)
     {
+        (sender as ReferenceSlot)?.SetDropTarget(false);
         if ((sender as Control)?.DataContext is ScriptPrefabFieldViewModel field &&
             e.DataTransfer.TryGetValue(PrefabAssetFormat) is { Length: > 0 } path) field.Assign(path);
+        e.Handled = true;
+    }
+
+    private static void ReferenceDragOver(object? sender, DragEventArgs e, bool accepts)
+    {
+        e.DragEffects = accepts ? DragDropEffects.Copy : DragDropEffects.None;
+        (sender as ReferenceSlot)?.SetDropTarget(accepts);
+        e.Handled = true;
+    }
+
+    private void Reference_DragLeave(object? sender, DragEventArgs e) =>
+        (sender as ReferenceSlot)?.SetDropTarget(false);
+
+    private SceneObjectViewModel? DroppedGameObject(object? sender, DragEventArgs e)
+    {
+        var obj = e.DataTransfer.TryGetValue(GameObjectFormat);
+        if (obj is not { Kind: Engine.Editor.EditorObjectKind.BasicEntity, EngineId: not null } ||
+            DataContext is not MainWindowViewModel vm || !vm.SceneObjects.Contains(obj)) return null;
+        if ((sender as Control)?.DataContext is ParticleSubEmitterRowViewModel &&
+            !obj.Components.Any(c => c.TypeId == ParticleSystemComponent.TypeId)) return null;
+        return obj;
+    }
+
+    private void GameObjectReference_DragOver(object? sender, DragEventArgs e) =>
+        ReferenceDragOver(sender, e, DroppedGameObject(sender, e) != null);
+
+    private void GameObjectReference_Drop(object? sender, DragEventArgs e)
+    {
+        (sender as ReferenceSlot)?.SetDropTarget(false);
+        if (DroppedGameObject(sender, e) is { } obj)
+        {
+            switch ((sender as Control)?.DataContext)
+            {
+                case ScriptGameObjectFieldViewModel field:
+                    field.Assign(obj.EngineId!.Value);
+                    break;
+                case NpcComponentViewModel npc when (sender as Control)?.Tag as string == "PatrolPoints":
+                    npc.PatrolPoints = string.IsNullOrWhiteSpace(npc.PatrolPoints) ? obj.Name : npc.PatrolPoints + ", " + obj.Name;
+                    break;
+                case NpcComponentViewModel npc:
+                    npc.Target = obj.Name;
+                    break;
+                case ParticleSubEmitterRowViewModel emitter:
+                    emitter.Target = obj.Name;
+                    break;
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void ScriptAsset_DragOver(object? sender, DragEventArgs e) =>
+        ReferenceDragOver(sender, e, ScriptBehaviourComponentViewModel.ScriptFromAsset(e.DataTransfer.TryGetValue(ScriptAssetFormat)) != null);
+
+    private void ScriptAsset_Drop(object? sender, DragEventArgs e)
+    {
+        (sender as ReferenceSlot)?.SetDropTarget(false);
+        if ((sender as Control)?.DataContext is ScriptBehaviourComponentViewModel script &&
+            e.DataTransfer.TryGetValue(ScriptAssetFormat) is { } path) script.AssignAsset(path);
+        e.Handled = true;
+    }
+
+    private void LodModel_DragOver(object? sender, DragEventArgs e) =>
+        ReferenceDragOver(sender, e, e.DataTransfer.Contains(ModelKeyFormat));
+
+    private void LodModel_Drop(object? sender, DragEventArgs e)
+    {
+        (sender as ReferenceSlot)?.SetDropTarget(false);
+        if ((sender as Control)?.DataContext is LodLevelViewModel level &&
+            e.DataTransfer.TryGetValue(ModelKeyFormat) is { Length: > 0 } model) level.Model = model;
+        e.Handled = true;
+    }
+
+    private void Reference_Clear(object? sender, RoutedEventArgs e)
+    {
+        switch ((sender as Control)?.DataContext)
+        {
+            case ScriptGameObjectFieldViewModel field: field.Clear(); break;
+            case ScriptPrefabFieldViewModel field: field.Clear(); break;
+            case ScriptBehaviourComponentViewModel script: script.Clear(); break;
+            case LodLevelViewModel level: level.Clear(); break;
+            case NpcComponentViewModel npc when (sender as Control)?.Tag as string == "PatrolPoints": npc.PatrolPoints = ""; break;
+            case NpcComponentViewModel npc: npc.Target = ""; break;
+            case ParticleSubEmitterRowViewModel emitter: emitter.Target = ""; break;
+        }
         e.Handled = true;
     }
 
@@ -494,6 +581,8 @@ public partial class MainWindow : Window
             dt.Add(DataTransferItem.Create(TextureAssetFormat, node.RelativePath));
         else if (node?.Kind == AssetKind.Prefab)
             dt.Add(DataTransferItem.Create(PrefabAssetFormat, node.RelativePath));
+        else if (node?.Kind == AssetKind.Script && ScriptBehaviourComponentViewModel.ScriptFromAsset(node.RelativePath) != null)
+            dt.Add(DataTransferItem.Create(ScriptAssetFormat, node.RelativePath));
         else if (node?.Kind == AssetKind.Material)
         {
             // A click shows the material in the Inspector; dragging it onto a gameobject assigns it.
@@ -548,18 +637,20 @@ public partial class MainWindow : Window
 
     private async void HierarchyTree_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Same immediate-drag pattern as the Assets panel: a left press on a gameobject row starts a drag the
-        // Assets panel accepts (new prefab). The row's lock/visibility buttons keep their clicks.
+        // Delay selection until a click finishes, keeping the destination Inspector visible during a drag.
+        // The row's lock/visibility buttons and expansion toggles keep their clicks.
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (e.Source is not Visual v || IsInside<Button>(v)) return;
+        if (e.Source is not Visual v || IsInside<Button>(v) || IsInside<Avalonia.Controls.Primitives.ToggleButton>(v)) return;
         if (FindDataContext<SceneObjectViewModel>(v) is not { Kind: Engine.Editor.EditorObjectKind.BasicEntity, EngineId: not null } obj) return;
         if (DataContext is not MainWindowViewModel vm) return;
+        e.Handled = true;
         var dt = new DataTransfer();
         dt.Add(DataTransferItem.Create(GameObjectFormat, obj));
         vm.SetAssetDragActive(true);
         try
         {
-            await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+            var effect = await DragDrop.DoDragDropAsync(e, dt, DragDropEffects.Copy);
+            if (effect == DragDropEffects.None && vm.SceneObjects.Contains(obj)) vm.SelectedSceneObject = obj;
         }
         finally
         {

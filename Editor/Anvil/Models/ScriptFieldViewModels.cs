@@ -194,7 +194,7 @@ public sealed partial class ScriptColorFieldViewModel : ScriptFieldViewModel
 public sealed record GameObjectOption(int Id, string Label);
 
 /// <summary>
-/// A BasicEntity field: picks a gameobject of the scene by ID. The choices follow the latest engine
+/// A BasicEntity field: references a gameobject of the scene by ID. Labels follow the latest engine
 /// snapshot each time the value is shown; a stored ID no longer in the scene shows as Missing.
 /// </summary>
 public sealed partial class ScriptGameObjectFieldViewModel : ScriptFieldViewModel
@@ -202,9 +202,20 @@ public sealed partial class ScriptGameObjectFieldViewModel : ScriptFieldViewMode
     public static GameObjectOption None { get; } = new(0, "None");
     private readonly ScriptBehaviourComponentViewModel _owner;
     public ObservableCollection<GameObjectOption> Options { get; } = new() { None };
-    [ObservableProperty] private GameObjectOption? _value = None;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ReferenceLabel))] private GameObjectOption? _value = None;
+    public string? ReferenceLabel => Value is { Id: not 0 } ? Value.Label : null;
 
     public ScriptGameObjectFieldViewModel(ScriptBehaviourComponentViewModel c, ScriptFieldInfo i) : base(c, i) => _owner = c;
+
+    public bool Assign(int id)
+    {
+        if (_owner.SceneObjects?.Any(o => o.Id == id && o.Kind == EditorObjectKind.BasicEntity) != true) return false;
+        RefreshOptions(id);
+        Value = Options.First(o => o.Id == id);
+        return true;
+    }
+
+    public void Clear() => Value = None;
 
     protected override void Show(object value)
     {
@@ -243,14 +254,15 @@ public sealed record PrefabOption(string? Path, string Label)
 }
 
 /// <summary>
-/// A Prefab field: picks a .prefab file in Content (or one dropped from Assets). A stored path whose file is
+/// A Prefab field: accepts a .prefab file dropped from Assets. A stored path whose file is
 /// gone shows as Missing.
 /// </summary>
 public sealed partial class ScriptPrefabFieldViewModel : ScriptFieldViewModel
 {
     public static PrefabOption None { get; } = new(null, "None");
     public ObservableCollection<PrefabOption> Options { get; } = new() { None };
-    [ObservableProperty] private PrefabOption? _value = None;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ReferenceLabel))] private PrefabOption? _value = None;
+    public string? ReferenceLabel => Value?.Path != null ? Value.Label : null;
 
     public ScriptPrefabFieldViewModel(ScriptBehaviourComponentViewModel c, ScriptFieldInfo i) : base(c, i) { }
 
@@ -267,6 +279,8 @@ public sealed partial class ScriptPrefabFieldViewModel : ScriptFieldViewModel
         RefreshOptions(path);
         Value = Options.First(o => Engine.Logic.Prefab.SamePath(o.Path, path));
     }
+
+    public void Clear() => Value = None;
 
     // The Content folder is listed at most every two seconds: Show runs on every snapshot.
     private static IReadOnlyList<string> _files = Array.Empty<string>();

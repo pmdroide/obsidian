@@ -23,7 +23,7 @@ The documentation website lives in `Docs/website`. Its shared neutral light/dark
 |---|---|---|
 | `Engine/Engine.csproj` | `Engine.exe` (WinExe, `net10.0-windows`) | MonoGame `Game`, renderer, scene, physics, scripts, editor bridge |
 | `Vista/Vista.csproj` | library | XML/CSS UI (AngleSharp DOM, drawn with `SpriteBatch`), referenced by Engine |
-| `ContentPipeline/ContentPipeline.csproj` | `Obsidian.ContentPipeline.dll` (net8.0) | `SkinnedModelProcessor` for mgcb. It is built first, but Engine does **not** reference it (`ReferenceOutputAssembly="false"`). `Content.mgcb` loads it with `/reference:../../ContentPipeline/bin/...` |
+| `ContentPipeline/ContentPipeline.csproj` | `Obsidian.ContentPipeline.dll` (net8.0) | `SkinnedModelProcessor` for mgcb (an FBX without a skinned mesh gets the nodes its clips animate as the skeleton: animation-only clip sources). It is built first, but Engine does **not** reference it (`ReferenceOutputAssembly="false"`). `Content.mgcb` loads it with `/reference:../../ContentPipeline/bin/...` |
 | `Editor/Anvil/Anvil.csproj` | `Anvil.exe` (Avalonia 12) | Editor. It references `Engine.csproj` and runs the engine **in-process** |
 | `Tests/Components` | console app | Integration checks (`InternalsVisibleTo Include="Components"` gives it engine internals) |
 | `Tools/McpInstaller/McpInstaller.csproj` | `anvil-mcp.exe` (.NET 10 Windows console) | Standalone harness configuration installer; Tomlyn parses Codex TOML. No Engine/Anvil assembly dependency. |
@@ -748,6 +748,8 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 ```
 
 **Inspector and workspace panels**
+
+- Reference fields use `Controls/ReferenceSlot` (read-only label, empty hint, valid-drop highlight and clear button). `MainWindow` transfers Hierarchy `GameObjectFormat` payloads to script gameobject fields, NPC Target/Patrol Points and particle sub-emitters (only objects with a Particle System). Assets transfers mesh keys to LOD levels, prefab paths to script prefab fields, and registered C# behaviour paths through `ScriptAssetFormat` to Script Behaviour attachments. `ScriptFromAsset` resolves the filename to a unique registered `ScriptType.Name`; helpers, XML/CSS and unregistered scripts are rejected. Hierarchy drags intercept pointer presses before selection, preserving the destination Inspector; an unsuccessful drag/click selects the source afterward. Mutations still use the attachment's `InstanceId` and `EnqueueMutateComponent`. Gameobject script fields retain scene IDs and missing labels; NPC/particle targets retain their existing name-based storage. Patrol drops append names in order; Clear removes the route. Water and WetSurface use normal Shader selection and property editing; the example preset buttons/commands were removed, and water physics requires assigning the Water role explicitly.
 
 - Long component descriptions live in `controls:HelpButton.Description` beside the component or subsection heading in `MainWindow.axaml`, rather than as footer paragraphs. `HelpButton` (`Editor/Anvil/Controls/HelpButton.cs`) uses the existing compact button styling and a wrapped tooltip (360 px maximum width), opens on hover or click/keyboard activation, and dismisses on Escape, lost focus or detachment. Help clicks are handled so they do not bubble into the Expander header. Related notes share a button; particle Shape/Sub Emitters/Lights/Volumetric and the material Shader section keep their own contextual help. Dynamic status/error messages remain in the panel.
 

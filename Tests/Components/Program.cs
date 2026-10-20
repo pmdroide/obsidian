@@ -156,6 +156,20 @@ Check(!editor.HasClip, "non-audio assets are rejected");
 // Exercise the view's drop handlers with the exact in-process format used by Assets.
 // The handlers do not require an initialized window or the embedded graphics viewport.
 var window = (MainWindow)RuntimeHelpers.GetUninitializedObject(typeof(MainWindow));
+var referenceSlot = new Anvil.Controls.ReferenceSlot { Placeholder = "Drop a gameobject here" };
+Check(referenceSlot.FindControl<TextBlock>("SlotLabel")!.Text == "Drop a gameobject here" &&
+      !referenceSlot.FindControl<Button>("ClearButton")!.IsVisible, "empty reference slots show a drop hint");
+referenceSlot.Value = "Crate (#12)";
+referenceSlot.SetDropTarget(true);
+Check(referenceSlot.FindControl<TextBlock>("SlotLabel")!.Text == "Crate (#12)" &&
+      referenceSlot.FindControl<Button>("ClearButton")!.IsVisible &&
+      referenceSlot.FindControl<Border>("SlotBorder")!.Classes.Contains("dropTarget"),
+    "reference slots display assigned labels, clear actions and valid-drop highlighting");
+referenceSlot.Value = null;
+referenceSlot.SetDropTarget(false);
+Check(!referenceSlot.FindControl<Button>("ClearButton")!.IsVisible &&
+      !referenceSlot.FindControl<Border>("SlotBorder")!.Classes.Contains("dropTarget"),
+    "clearing a reference restores the empty slot");
 var audioFormat = (DataFormat<string>)typeof(MainWindow).GetField("AudioAssetFormat", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
 var dropTarget = new Border { DataContext = editor };
 var transfer = new DataTransfer();
@@ -260,7 +274,8 @@ Check(textureDrag.DragEffects == DragDropEffects.Copy && surface.NormalTexture =
     "texture drop assigns the selected material slot through the component bridge");
 Check(owner.HasMaterialComponent && entity.Components.Count == 2 && ReferenceEquals(owner.Material, surfaceEditor),
     "Material can coexist with Audio and cannot be added twice");
-surfaceEditor.WaterExampleCommand.Execute(null);
+surfaceEditor.MaterialType = (int)MaterialEffect.MaterialTypes.Water;
+owner.Role = GameObjectRole.Water;
 surfaceEditor.Color = Avalonia.Media.Color.FromRgb(13, 89, 115);
 surfaceEditor.Opacity = 0.42;
 surfaceEditor.WaveSpeed = 1.7;
@@ -269,7 +284,7 @@ surfaceEditor.WaveStrength = 0.35;
 Publish();
 Check(surface.Shader == MaterialShader.Water && Math.Abs(surface.Red - 13 / 255f) < 0.0001 &&
     Math.Abs(surface.Opacity - 0.42f) < 0.0001 && Math.Abs(surface.WaveSpeed - 1.7f) < 0.0001,
-    "water example and inspector controls reach the engine");
+    "water shader selection and inspector controls reach the engine");
 var surfaceClone = ((BasicEntity)entity.Clone).Components.OfType<MaterialComponent>().Single();
 surfaceClone.WaveSpeed = 5;
 surfaceClone.BaseColorTexture = "Textures/other.png";

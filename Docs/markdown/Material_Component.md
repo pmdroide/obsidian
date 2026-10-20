@@ -1,7 +1,7 @@
 # Material component, water and wet surfaces
 
 Select a mesh in Anvil, then choose **Add Component > Material**. Use **Basic**
-for an opaque surface, or **Apply Water Example** for a teal water preset. For a
+for an opaque surface, or select **Water** in **Shader** for animated water. For a
 quick surface, add a Cube and flatten its Z scale; water ripples run on the XY
 plane because the engine uses Z as up.
 
@@ -12,8 +12,7 @@ controls opacity, wave scale, wave speed, wave height, and ripple strength; its
 color sets the water's body tint. **Wave Height** is the crest-to-trough height of
 the swell that moves the surface, in metres (0 keeps it flat). **Ripple Strength**
 adds finer waves to the shading only. Set speed to zero to freeze the waves. The
-example button resets tint, roughness, and water settings, and gives the object the
-**Water** role so Buoyancy bodies float on it.
+**Water** role must also be assigned to the gameobject so Buoyancy bodies float on it.
 
 **Textures** provides Base Color, Normal, Roughness, Metallic, Mask, and
 Displacement slots. Click a slot to choose an image inside `Engine/Content`, or
@@ -122,8 +121,8 @@ in material assets (`RainDrops`).
 
 **WetSurface** (Shader list) turns a ground material such as bricks, cobblestone or
 stone/dirt into a rain-soaked one, like a road after a shower. It works with any
-Base Color / Normal / Roughness maps; **Apply Wet Floor Example** sets it up fully
-soaked. The look is written into the G-buffer, so it lights like a Basic material:
+Base Color / Normal / Roughness maps; set **Wetness** to 1 for a fully soaked
+surface. The look is written into the G-buffer, so it lights like a Basic material:
 
 - **Damp:** the surface darkens like wet stone and turns glossier; cavities (dark
   parts of the Base Color, or the low parts of the Displacement map) soak first.

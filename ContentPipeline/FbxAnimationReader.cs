@@ -65,6 +65,20 @@ namespace Obsidian.ContentPipeline
             return result;
         }
 
+        /// <summary>Names of the nodes any clip in the file animates.</summary>
+        public static HashSet<string> AnimatedNodes(string path)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            using var importer = new AssimpContext();
+            importer.SetConfig(new Assimp.Configs.FBXPreservePivotsConfig(false));
+            Scene scene = importer.ImportFile(path, PostProcessSteps.None);
+            if (scene == null || !scene.HasAnimations) return names;
+            foreach (Animation animation in scene.Animations)
+                foreach (NodeAnimationChannel channel in animation.NodeAnimationChannels)
+                    names.Add(channel.NodeName);
+            return names;
+        }
+
         private static string UniqueName(Dictionary<string, AnimationContent> taken, string name)
         {
             string unique = name;

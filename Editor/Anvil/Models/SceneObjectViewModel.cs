@@ -169,25 +169,6 @@ public partial class MaterialInfo : ComponentViewModel
     partial void OnTilingUChanged(double value) => Push(c => ((MaterialComponent)c).TilingU = (float)value);
     partial void OnTilingVChanged(double value) => Push(c => ((MaterialComponent)c).TilingV = (float)value);
 
-    [RelayCommand]
-    private void WaterExample()
-    {
-        MaterialType = (int)Engine.Recources.MaterialEffect.MaterialTypes.Water;
-        Color = Color.FromRgb(13, 89, 115);
-        Roughness = 0.08; Opacity = 0.65;
-        WaveScale = 0.3; WaveSpeed = 1; WaveStrength = 0.2; WaveHeight = 0.5;
-        Clarity = 4; Foam = 0.5;
-        // The example is a whole water body: floating objects need the Water role too.
-        Owner.Role = GameObjectRole.Water;
-    }
-
-    [RelayCommand]
-    private void WetFloorExample()
-    {
-        MaterialType = (int)Engine.Recources.MaterialEffect.MaterialTypes.WetSurface;
-        Wetness = 1; PuddleAmount = 0.5; PuddleSize = 3; WeatherWetness = true;
-    }
-
     public override void Apply(GameComponent component, bool freezeFields)
     {
         base.Apply(component, freezeFields);

@@ -1,5 +1,7 @@
 # Current Issues
 
+- NPC targets/patrol points and particle sub-emitter targets still resolve by gameobject name. Their new drop slots preserve this format: duplicate names remain ambiguous, renaming requires dropping the target again, and patrol marker names cannot contain commas. Script gameobject fields use scene IDs and survive renames.
+
 - Turning off CPU culling stops moved objects from updating.
 - Material batching is off by default.
 The final image is drawn twice per frame.

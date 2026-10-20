@@ -36,7 +36,7 @@ Lights, decals and the camera can't be prefabs. Only gameobjects can.
 
   public sealed class SpawnerScript : ScriptBehaviour
   {
-      public Prefab Enemy;                       // pick it in the Inspector or drag it from Assets
+      public Prefab Enemy;                       // drag it from Assets into the Inspector slot
 
       public override void Start()
       {

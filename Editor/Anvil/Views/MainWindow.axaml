@@ -200,8 +200,6 @@
                                 <ComboBoxItem>Foliage</ComboBoxItem>
                             </ComboBox>
                         </Grid>
-                        <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
-                        <Button Content="Apply Wet Floor Example" Command="{Binding WetFloorExampleCommand}" HorizontalAlignment="Stretch" />
                         <StackPanel Spacing="8" IsVisible="{Binding IsWetSurface}">
                             <TextBlock Text="Wetness (dry weather)" Classes="muted" FontSize="11" />
                             <Slider Minimum="0" Maximum="1" Value="{Binding Wetness, Mode=TwoWay}" />
@@ -3632,10 +3630,12 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WanderRadius, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="500" Increment="0.5" FormatString="0.##" />
                                                     </Grid>
-                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsPatrol}" ToolTip.Tip="Names of the gameobjects to walk between, separated by commas, in order (a loop).">
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsPatrol}" ToolTip.Tip="Drop gameobjects from the Hierarchy to append patrol points in order (a loop). Clear to start a new route.">
                                                         <TextBlock Grid.Column="0" Text="Patrol Points" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding PatrolPoints, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                                 PlaceholderText="Post 1, Post 2, Post 3" />
+                                                        <controls:ReferenceSlot Grid.Column="1" Value="{Binding PatrolPoints}" Placeholder="Drop patrol points here"
+                                                                                Tag="PatrolPoints" Clear="Reference_Clear"
+                                                                                DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                     </Grid>
                                                     <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Seconds spent at each wander or patrol point.">
                                                         <TextBlock Grid.Column="0" Text="Wait Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
@@ -3643,10 +3643,12 @@
                                                                        Minimum="0" Maximum="120" Increment="0.25" FormatString="0.##" />
                                                     </Grid>
                                                     <TextBlock Text="PERCEPTION" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
-                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Name of the gameobject it watches for.">
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Drop the gameobject to watch for from the Hierarchy.">
                                                         <TextBlock Grid.Column="0" Text="Target" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                                 PlaceholderText="Player" />
+                                                        <controls:ReferenceSlot Grid.Column="1" Value="{Binding Target}" Placeholder="Drop a gameobject here"
+                                                                                Clear="Reference_Clear"
+                                                                                DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                     </Grid>
                                                     <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
                                                         <TextBlock Grid.Column="0" Text="Sight Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
@@ -3737,9 +3739,11 @@
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="m:LodLevelViewModel" x:DataType="m:LodLevelViewModel">
                                                                 <Grid ColumnDefinitions="*,80,Auto" ColumnSpacing="4" Margin="0,0,0,4">
-                                                                    <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
-                                                                              ItemsSource="{Binding ModelKeys}" SelectedItem="{Binding Model, Mode=TwoWay}"
-                                                                              PlaceholderText="Pick a model" ToolTip.Tip="Model drawn from this distance on" />
+                                                                    <controls:ReferenceSlot Grid.Column="0" Value="{Binding Model}" Placeholder="Drop a model here"
+                                                                                            ToolTip.Tip="Drop a mesh from Assets for this level of detail"
+                                                                                            Clear="Reference_Clear"
+                                                                                            DragDrop.AllowDrop="True" DragDrop.DragOver="LodModel_DragOver"
+                                                                                            DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="LodModel_Drop" />
                                                                     <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Distance, Mode=TwoWay}"
                                                                                    Minimum="0.1" Maximum="100000" Increment="5" FormatString="0.#"
                                                                                    ToolTip.Tip="Camera distance (metres) from which this model draws" />
@@ -4255,8 +4259,11 @@
                                                                                 <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
                                                                                           ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SubEmitterTriggers}"
                                                                                           SelectedItem="{Binding Trigger, Mode=TwoWay}" ToolTip.Tip="When it emits" />
-                                                                                <TextBox Grid.Column="1" Classes="field" Text="{Binding Target, Mode=TwoWay}" Watermark="Gameobject name"
-                                                                                         ToolTip.Tip="Gameobject with the Particle System that emits (Play On Awake off, Rate 0)" />
+                                                                                <controls:ReferenceSlot Grid.Column="1" Value="{Binding Target}" Placeholder="Drop a particle system here"
+                                                                                                        ToolTip.Tip="Drop a Hierarchy gameobject with a Particle System (Play On Awake off, Rate 0)"
+                                                                                                        Clear="Reference_Clear"
+                                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                                        DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                                                 <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
                                                                             </Grid>
                                                                             <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="4">
@@ -4517,15 +4524,11 @@
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
                                                     <TextBlock Text="Script" Classes="muted" FontSize="11" />
-                                                    <ComboBox Classes="field" HorizontalAlignment="Stretch"
-                                                              ItemsSource="{Binding AvailableScripts}"
-                                                              SelectedItem="{Binding SelectedScript, Mode=TwoWay}">
-                                                        <ComboBox.ItemTemplate>
-                                                            <DataTemplate x:DataType="scripting:ScriptDefinition">
-                                                                <TextBlock Text="{Binding DisplayName}" />
-                                                            </DataTemplate>
-                                                        </ComboBox.ItemTemplate>
-                                                    </ComboBox>
+                                                    <controls:ReferenceSlot Value="{Binding ReferenceLabel}" Placeholder="Drop a script from Assets here"
+                                                                            ToolTip.Tip="Drop a registered C# Script Behaviour from Assets > Scripts"
+                                                                            Clear="Reference_Clear"
+                                                                            DragDrop.AllowDrop="True" DragDrop.DragOver="ScriptAsset_DragOver"
+                                                                            DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="ScriptAsset_Drop" />
                                                     <TextBlock Text="{Binding ScriptId}" Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <!-- Serialized fields: public / [SerializeField] fields of the script (Engine.Scripting.ScriptFields).
                                                          Each row is label + editor (picked by the field view model's type) + reset. -->
@@ -4589,35 +4592,18 @@
                                                                 </Button>
                                                             </DataTemplate>
                                                             <DataTemplate DataType="m:ScriptGameObjectFieldViewModel" x:DataType="m:ScriptGameObjectFieldViewModel">
-                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
-                                                                          ItemsSource="{Binding Options}"
-                                                                          SelectedItem="{Binding Value, Mode=TwoWay}">
-                                                                    <ComboBox.ItemTemplate>
-                                                                        <DataTemplate x:DataType="m:GameObjectOption">
-                                                                            <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                                        </DataTemplate>
-                                                                    </ComboBox.ItemTemplate>
-                                                                </ComboBox>
+                                                                <controls:ReferenceSlot Value="{Binding ReferenceLabel}" Placeholder="Drop a gameobject here"
+                                                                                        ToolTip.Tip="Drop a gameobject from the Hierarchy"
+                                                                                        Clear="Reference_Clear"
+                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                        DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                             </DataTemplate>
                                                             <DataTemplate DataType="m:ScriptPrefabFieldViewModel" x:DataType="m:ScriptPrefabFieldViewModel">
-                                                                <!-- Pick a prefab, or drag one from Assets onto the box. -->
-                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
-                                                                          ItemsSource="{Binding Options}"
-                                                                          SelectedItem="{Binding Value, Mode=TwoWay}"
-                                                                          DragDrop.AllowDrop="True"
-                                                                          DragDrop.DragOver="PrefabField_DragOver"
-                                                                          DragDrop.Drop="PrefabField_Drop">
-                                                                    <ComboBox.ItemTemplate>
-                                                                        <DataTemplate x:DataType="m:PrefabOption">
-                                                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                                <controls:LucideIcon Icon="Package" Width="12" Height="12"
-                                                                                                     Foreground="{StaticResource AnvilPrefabBrush}"
-                                                                                                     IsVisible="{Binding IsPrefab}" />
-                                                                                <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                                            </StackPanel>
-                                                                        </DataTemplate>
-                                                                    </ComboBox.ItemTemplate>
-                                                                </ComboBox>
+                                                                <controls:ReferenceSlot Value="{Binding ReferenceLabel}" Placeholder="Drop a prefab here"
+                                                                                        ToolTip.Tip="Drop a prefab from Assets"
+                                                                                        Clear="Reference_Clear"
+                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="PrefabField_DragOver"
+                                                                                        DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="PrefabField_Drop" />
                                                             </DataTemplate>
                                                         </ItemsControl.DataTemplates>
                                                         <ItemsControl.ItemTemplate>

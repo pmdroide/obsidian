@@ -17,8 +17,8 @@ The sample is `Engine/Content/Scenes/WaterTest.obsc` (see the end of this page).
 
 1. Add a Cube, scale it to the size of the pool (the top face is the surface) and
    place it so its top is where the water should be.
-2. Add Component > **Material**, then **Apply Water Example**. This sets the Water
-   shader and gives the gameobject the **Water** role.
+2. Add Component > **Material**, select **Water** in **Shader**, and assign the
+   gameobject the **Water** role in the Inspector.
 3. Tune the look in the material: colour, Wave Height, Wave Scale, Clarity, Foam.
    See [Material_Component.md](Material_Component.md).
 

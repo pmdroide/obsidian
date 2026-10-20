@@ -26,6 +26,10 @@ namespace Obsidian.ContentPipeline
         public override ModelContent Process(NodeContent input, ContentProcessorContext context)
         {
             BoneContent skeleton = MeshHelper.FindSkeleton(input);
+            string source = input.Identity?.SourceFilename;
+            // Animation-only files (Mixamo "Without Skin"): no mesh skin marks the bones, so the
+            // importer leaves the rig as plain nodes. The nodes the clips animate become the skeleton.
+            if (skeleton == null && IsFbx(source)) skeleton = PromoteAnimatedNodes(input, source, context);
             if (skeleton == null)
             {
                 context.Logger.LogWarning(null, input.Identity, "No skeleton found; building as a static model.");
@@ -36,8 +40,7 @@ namespace Obsidian.ContentPipeline
             // (and those of its non-bone parents) into the vertices.
             FlattenMeshTransforms(input, skeleton);
 
-            string source = input.Identity?.SourceFilename;
-            if (ReadFbxAnimationsWithAssimp && string.Equals(Path.GetExtension(source), ".fbx", StringComparison.OrdinalIgnoreCase))
+            if (ReadFbxAnimationsWithAssimp && IsFbx(source))
                 ReplaceAnimations(input, skeleton, source, context);
 
             // Applies the Scale/Rotation parameters to meshes, bones and animation keys alike.
@@ -64,6 +67,55 @@ namespace Obsidian.ContentPipeline
             context.Logger.LogMessage("Skinned model: {0} bones, {1} clip(s).", bones.Count, data.Clips.Count);
             model.Tag = data;
             return model;
+        }
+
+        private static bool IsFbx(string path) => string.Equals(Path.GetExtension(path), ".fbx", StringComparison.OrdinalIgnoreCase);
+
+        // Turns the topmost node the file's clips animate (and everything below it) into bones. Null when nothing is animated.
+        private static BoneContent PromoteAnimatedNodes(NodeContent input, string source, ContentProcessorContext context)
+        {
+            HashSet<string> animated;
+            try
+            {
+                animated = FbxAnimationReader.AnimatedNodes(source);
+            }
+            catch (Exception ex)
+            {
+                context.Logger.LogWarning(null, input.Identity, "Reading animated nodes with Assimp failed ({0}).", ex.Message);
+                return null;
+            }
+            if (animated.Count == 0) return null;
+
+            // Breadth first: the shallowest animated node is the root of the rig.
+            var queue = new Queue<NodeContent>(input.Children);
+            while (queue.Count > 0)
+            {
+                NodeContent node = queue.Dequeue();
+                if (!animated.Contains(node.Name))
+                {
+                    foreach (NodeContent child in node.Children) queue.Enqueue(child);
+                    continue;
+                }
+                NodeContentCollection siblings = node.Parent.Children;
+                int index = siblings.IndexOf(node);
+                siblings.RemoveAt(index);
+                BoneContent root = ToBone(node);
+                siblings.Insert(index, root);
+                context.Logger.LogMessage("No skinned mesh: using the animated node '{0}' as the skeleton root.", root.Name);
+                return root;
+            }
+            return null;
+        }
+
+        private static BoneContent ToBone(NodeContent node)
+        {
+            var bone = new BoneContent { Name = node.Name, Identity = node.Identity, Transform = node.Transform };
+            foreach (KeyValuePair<string, AnimationContent> animation in node.Animations) bone.Animations.Add(animation.Key, animation.Value);
+            foreach (KeyValuePair<string, object> data in node.OpaqueData) bone.OpaqueData.Add(data.Key, data.Value);
+            List<NodeContent> children = node.Children.ToList();
+            node.Children.Clear();
+            foreach (NodeContent child in children) bone.Children.Add(ToBone(child));
+            return bone;
         }
 
         // Clips go on the skeleton root so base.Process transforms them with the bones.

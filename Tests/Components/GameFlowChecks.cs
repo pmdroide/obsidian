@@ -38,13 +38,18 @@ internal static class GameFlowChecks
         Check(menu.MainCamera.GetComponent<ScriptBehaviourComponent>() is { ScriptId: MainMenuScript.ScriptId, Enabled: true } &&
               ScriptRegistry.Find(MainMenuScript.ScriptId) != null,
             "the MainMenu scene's camera runs the registered Main Menu script");
-        // Materials need a graphics device, so the core's material is read from the file itself.
-        var core = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(mainMenuFile))!["Entities"]!.AsArray()
-            .Single(e => (string?)e!["Name"] == "Ember Core")!["Material"]!;
-        Check(menu.BasicEntities.Count(e => e.Name.StartsWith("Monolith")) == 9 &&
-              (int)core["MaterialType"]! == (int)MaterialEffect.MaterialTypes.Emissive && (float)core["EmissiveStrength"]! > 0 &&
-              menu.DirectionalLights.Single().CastShadows && menu.Environment.DayNightCycle,
-            "the MainMenu scene has the monolith ring, the emissive core and a shadowed sun on the day/night cycle");
+        // Materials need a graphics device, so the neon's material is read from the file itself.
+        var menuEntities = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(mainMenuFile))!["Entities"]!.AsArray();
+        var neon = menuEntities.Single(e => (string?)e!["Name"] == "Neon Tube")!["Material"]!;
+        // The skinned player isn't built without a graphics device either.
+        var player = menuEntities.Single(e => (string?)e!["Name"] == "Player")!;
+        var dance = player["Components"]!.AsArray().Single(c => (string?)c!["Type"] == AnimatorComponent.TypeId)!["Data"]!;
+        Check((string?)player["ModelKey"] == "PlayerYBot" && (string?)dance["ClipSource"] == "GameObjects/Player/Silly Dancing" &&
+              menu.PointLights.Single(l => l.Name == "Backlight").CastShadows &&
+              menu.BasicEntities.Any(e => e.GetComponent<FogVolumeComponent>() != null) &&
+              (int)neon["MaterialType"]! == (int)MaterialEffect.MaterialTypes.Emissive &&
+              menu.DirectionalLights.Count == 0 && !menu.Environment.DayNightCycle,
+            "the MainMenu scene has the dancing player, a shadowed backlight in a fog volume, an emissive neon and no sun");
         string ui = GameInfo.ResolveContentFile("UI/MainMenu");
         Check(File.Exists(ui + ".xml") && File.Exists(ui + ".css"), "the menu's Vista document ships next to the scene");
 

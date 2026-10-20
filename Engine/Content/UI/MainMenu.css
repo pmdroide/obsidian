@@ -64,42 +64,43 @@
 
 /* ---------------------------------------------------------------- title */
 
+/* Bottom left, so the backlit character in the middle of the scene stays clear. */
 #wordmark {
-    top: 36%;
+    left: 150px;
+    bottom: 236px;
+    width: 1000px;
     height: 120px;
     font-family: display;
-    text-align: center;
+    text-align: left;
     letter-spacing: 30px;
     color: #F4EFE7;
     text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 
 #wordmark-rule {
-    top: 36%;
-    margin-top: 132px;
-    left: 50%;
-    margin-left: -72px;
+    left: 154px;
+    bottom: 222px;
     width: 144px;
     height: 2px;
     background-color: #E9A94B;
 }
 
 #tagline {
-    top: 36%;
-    margin-top: 156px;
+    left: 154px;
+    bottom: 174px;
+    width: 1000px;
     height: 24px;
     font-family: caption;
-    text-align: center;
+    text-align: left;
     text-transform: uppercase;
     letter-spacing: 9px;
     color: rgba(241, 236, 228, 0.62);
 }
 
 #press {
-    left: 50%;
-    margin-left: -230px;
+    left: 150px;
     width: 460px;
-    bottom: 150px;
+    bottom: 84px;
     height: 58px;
     font-family: caption;
     text-align: center;
