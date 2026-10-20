@@ -62,6 +62,13 @@ scene (`Environment` in the `.obsc`).
 
 - **Sky mode:** the default sky, a 360° panorama (**Choose skybox…**), or the
   day/night cycle (starting hour, cycle length).
+- **Skybox > Sun glare / Sun size:** a panorama is an ordinary (LDR) image, so its sun
+  is no brighter than a white cloud. The scene's brightest directional light marks where
+  the sun is: aim it from the panorama's sun and the sky there is pushed into HDR (the
+  image's own bright pixels plus a sun disc and glare), so looking at it blooms like the
+  real sun. Glare 0 shows the image as it is. Only the visible sky gets it, not
+  reflections (the light already draws the sun's highlight); thick fog in front of the
+  sky dims it, like the sun through fog.
 - **Sky / Sun, moon and stars / Clouds:** look of the procedural sky.
 - **Exposure > Day (EV) / Night (EV):** offsets added to the Post Processing exposure,
   blended by daylight. They only apply while the day/night cycle is on.

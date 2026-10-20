@@ -193,6 +193,20 @@ namespace Engine.Renderer.RenderModules
             p["StarBrightness"]?.SetValue(settings.StarBrightness);
         }
 
+        /// <summary>The image skybox's sun: direction towards it, the light's colour, strength (0 = off) and size.</summary>
+        public void SetSkyboxSun(Vector3 towardsSun, Color color, float strength, float size)
+        {
+            var p = _deferredEnvironmentShader.Parameters;
+            if (towardsSun.LengthSquared() < 1e-8f) strength = 0;
+            else towardsSun.Normalize();
+            p["SkySunDirection"]?.SetValue(towardsSun);
+            p["SkySunColor"]?.SetValue(ToLinear(color));
+            p["SkySunStrength"]?.SetValue(strength);
+            // The disc, then the cone the image's own bright pixels are boosted in (a few degrees: the light is rarely exact)
+            p["SkySunDisc"]?.SetValue(DiscEdges(0.0316f, 0.0200f, size));
+            p["SkySunCone"]?.SetValue(DiscEdges(0.12f, 0.05f, size));
+        }
+
         private static Vector3 ToLinear(Color c) =>
             new Vector3(MathF.Pow(c.R / 255f, 2.2f), MathF.Pow(c.G / 255f, 2.2f), MathF.Pow(c.B / 255f, 2.2f));
 

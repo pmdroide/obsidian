@@ -1,5 +1,17 @@
 # Changelog
 
+## Added: Bright sun for image skyboxes (2026-10-20)
+
+- A 360° panorama skybox is an LDR image, so its sun was no brighter than a white cloud and never bloomed. Now, without the day/night cycle, the scene's brightest enabled directional light marks the sun: aim it from the panorama's sun and looking there blooms like looking at the real sun.
+  - `DeferredEnvironmentMap.fx` `AddSkySun` (main view sky only, not captures): the image's near-white pixels in a cone around the light are boosted ×150 into HDR, plus a ×400 sun disc (dimmer where the image has cloud over it) and glare, tinted by the light's colour. Bloom and the tonemapper do the rest.
+  - `EnvironmentSky.Apply` → `DeferredEnvironmentMapRenderModule.SetSkyboxSun` (direction, colour, strength, disc/cone sizes). Also applies to the default image sky.
+  - New saved settings `EnvironmentSettings.SkyboxSunBrightness` (0–10, default 1, 0 = off) and `SkyboxSunSize` (0.25–4). Anvil: Environment > Skybox > **Sun glare** / **Sun size**.
+- Docs: `Docs/markdown/Scene_Lighting_and_Fog.md`, `Engine_Wiring.md` (render steps 1 and 14). README version 1.3.1. ISSUES: no skybox sun in planar reflections/captures; thick fog hides it.
+- Checks: all component checks pass; checked visually with `Engine.exe --scene Scenes/LookDev.obsc --shot` looking at the sun (with and without fog).
+
+- Claude
+
+
 ## Added: Liquid in bottles, reverse engineered from Half-Life: Alyx (2026-10-19)
 
 - **Liquid component** (`liquid`). A bottle, glass or jar shows liquid that stays level as it tilts, lies on its side or turns upside down, leans and lags when it moves, wobbles and ripples when shaken and settles over 20 s, with a meniscus, a water line, foam and bubbles. Runs in Edit (the gizmo sloshes it) and Play; held while paused. Visual only.

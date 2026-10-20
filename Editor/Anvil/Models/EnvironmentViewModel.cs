@@ -43,6 +43,8 @@ public partial class EnvironmentViewModel : ObservableObject
     [ObservableProperty] private double _starBrightness = 1;
     [ObservableProperty] private double _dayExposure = -1;
     [ObservableProperty] private double _nightExposure = -2.5;
+    [ObservableProperty] private double _skyboxSunBrightness = 1;
+    [ObservableProperty] private double _skyboxSunSize = 1;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasWeather))]
     private int _selectedWeather;
@@ -196,6 +198,8 @@ public partial class EnvironmentViewModel : ObservableObject
     partial void OnStarBrightnessChanged(double value) => Push(s => s.StarBrightness = (float)value);
     partial void OnDayExposureChanged(double value) => Push(s => s.DayExposure = (float)value);
     partial void OnNightExposureChanged(double value) => Push(s => s.NightExposure = (float)value);
+    partial void OnSkyboxSunBrightnessChanged(double value) => Push(s => s.SkyboxSunBrightness = (float)value);
+    partial void OnSkyboxSunSizeChanged(double value) => Push(s => s.SkyboxSunSize = (float)value);
     partial void OnSelectedWeatherChanged(int value)
     {
         // The ComboBox reports -1 while its items are being replaced.
@@ -267,6 +271,8 @@ public partial class EnvironmentViewModel : ObservableObject
         StarBrightness = settings.StarBrightness;
         DayExposure = settings.DayExposure;
         NightExposure = settings.NightExposure;
+        SkyboxSunBrightness = settings.SkyboxSunBrightness;
+        SkyboxSunSize = settings.SkyboxSunSize;
     }
 
     private static Microsoft.Xna.Framework.Color ToXna(Color c) => new(c.R, c.G, c.B);

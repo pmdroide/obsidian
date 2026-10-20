@@ -91,6 +91,12 @@ float2 MoonDisc = float2(0.9996, 0.9998);
 float SunBrightness = 1;
 float MoonBrightness = 1;
 float StarBrightness = 1;
+//Image skybox sun (EnvironmentSettings.SkyboxSun*): towards the brightest directional light, linear light colour
+float3 SkySunDirection = float3(0, 0, 1);
+float3 SkySunColor = float3(1, 1, 1);
+float SkySunStrength = 0;
+float2 SkySunDisc = float2(0.9995, 0.9998);
+float2 SkySunCone = float2(0.9928, 0.9988);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
@@ -208,6 +214,22 @@ float3 SampleSky(float3 viewDir)
 	return skyColor;
 }
 
+//An image sky is LDR, so its sun is no brighter than a white cloud. Around the directional light, push the image's
+//near-white pixels into HDR and add a disc + glare, so looking at the light blooms like the real sun. Only the visible
+//sky gets it: in captures the directional light already draws the sun's highlight, and the disc would add fill light.
+float3 AddSkySun(float3 skyColor, float3 viewDir)
+{
+	if (DayNightCycle || SkySunStrength <= 0) return skyColor;
+	float cosSun = dot(normalize(viewDir), SkySunDirection);
+	float peak = max(skyColor.r, max(skyColor.g, skyColor.b));
+	float bright = smoothstep(0.7f, 1.0f, peak);
+	skyColor *= 1 + smoothstep(SkySunCone.x, SkySunCone.y, cosSun) * bright * 150 * SkySunStrength;
+	//The disc shows dimmer where the image has cloud over the sun. Bloom spreads it into the glare you squint at.
+	float disc = smoothstep(SkySunDisc.x, SkySunDisc.y, cosSun) * lerp(0.25f, 1, smoothstep(0.4f, 0.9f, peak));
+	float glare = pow(saturate(cosSun), 2048) * 25 + pow(saturate(cosSun), 256) * 2 + pow(saturate(cosSun), 32) * 0.15f;
+	return skyColor + (disc * 400 + glare) * SkySunColor * SkySunStrength;
+}
+
 // Resolves the noisy SSR target: rgb = reflected colour, a = coverage (0 where the ray missed).
 // Each pixel's jittered ray either hits or misses, so neighbours on the same surface are averaged
 // (5x5, depth-aware): hit colours weighted by coverage, coverage itself averaged. This turns the
@@ -294,7 +316,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
     if (normalData.x + normalData.y <= 0.001f)
     {
             output.Diffuse = float4(0, 0, 0, 0);
-			output.Specular = CaptureMode ? float4(0, 0, 0, 0) : float4(SampleSky(input.ViewDir), 0) * 0.5f;
+			output.Specular = CaptureMode ? float4(0, 0, 0, 0) : float4(AddSkySun(SampleSky(input.ViewDir), input.ViewDir), 0) * 0.5f;
             return output;
     }
 

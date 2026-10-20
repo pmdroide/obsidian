@@ -1421,6 +1421,19 @@
                                         IsEnabled="{Binding CanChooseSkybox}" HorizontalAlignment="Stretch" />
                                 <Button Content="Reset to default" Command="{Binding ResetSkyboxCommand}"
                                         HorizontalAlignment="Stretch" />
+                                <TextBlock Text="Sun" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                <TextBlock Text="Aim the Directional Light from the panorama's sun: looking at it then glows like the real sun."
+                                           TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Sun glare" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="5" Value="{Binding SkyboxSunBrightness, Mode=TwoWay}" MinHeight="18" />
+                                    <TextBlock Grid.Column="2" Text="{Binding SkyboxSunBrightness, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Sun size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="1" Minimum="0.25" Maximum="4" Value="{Binding SkyboxSunSize, Mode=TwoWay}" MinHeight="18" />
+                                    <TextBlock Grid.Column="2" Text="{Binding SkyboxSunSize, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
                             </StackPanel>
                             <StackPanel Spacing="8" IsVisible="{Binding IsDayNightCycle}">
                                 <TextBlock Text="Animated sky and sun lighting. The cycle runs in both Edit and Play."

@@ -34,6 +34,13 @@ namespace Engine.Logic
         public float DayExposure { get; set; } = -1f;
         public float NightExposure { get; set; } = -2.5f;
 
+        // Image skybox sun: around where the scene's strongest directional light comes from, the sky's own bright sun
+        // pixels are pushed into HDR and a disc + glare is added, so looking at the light blooms like looking at the sun.
+        /// <summary>Scales the skybox sun's HDR boost, disc and glare; 0 = the image as it is.</summary>
+        public float SkyboxSunBrightness { get; set; } = 1;
+        /// <summary>Scales the skybox sun's disc and the cone its pixels are boosted in.</summary>
+        public float SkyboxSunSize { get; set; } = 1;
+
         // Weather (rain, sandstorm, snow), drawn in both Edit and Play. See WeatherProfile for each type's look.
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public WeatherType Weather { get; set; } = WeatherType.None;
@@ -129,6 +136,8 @@ namespace Engine.Logic
             StarBrightness = Limit(StarBrightness, 0, 3, 1);
             DayExposure = Limit(DayExposure, -4, 4, -1f);
             NightExposure = Limit(NightExposure, -4, 4, -2.5f);
+            SkyboxSunBrightness = Limit(SkyboxSunBrightness, 0, 10, 1);
+            SkyboxSunSize = Limit(SkyboxSunSize, 0.25f, 4, 1);
             if (!Enum.IsDefined(Weather)) Weather = WeatherType.None;
             WeatherIntensity = Limit(WeatherIntensity, 0, 1, 0.7f);
             WeatherHaze = Limit(WeatherHaze, 0, 1, 0.6f);
