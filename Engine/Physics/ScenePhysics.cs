@@ -72,6 +72,8 @@ namespace Engine.Physics
         private readonly List<Ragdoll> _ragdolls = new List<Ragdoll>();
         // Panes of Breakable Glass components; their frame colliders are in _staticOwners under the owning gameobject.
         private readonly List<GlassShatter> _glass = new List<GlassShatter>();
+        // Gameobjects with a Breakable component (their pieces once broken).
+        private readonly List<FractureShatter> _fractures = new List<FractureShatter>();
         private static int _lastCollisionGroup;
 
         private int _frame;
@@ -312,6 +314,9 @@ namespace Engine.Physics
             for (int i = _glass.Count - 1; i >= 0; i--)
                 if (_glass[i].Owner.PhysicsFrame != _frame) RemoveGlass(_glass[i]);
             for (int i = 0; i < _glass.Count; i++) _glass[i].BeginFrame();
+            for (int i = _fractures.Count - 1; i >= 0; i--)
+                if (_fractures[i].Owner.PhysicsFrame != _frame) RemoveFracture(_fractures[i]);
+            for (int i = 0; i < _fractures.Count; i++) _fractures[i].BeginFrame();
 
             if (!simulate)
             {
@@ -320,7 +325,7 @@ namespace Engine.Physics
                 _inWater.Clear();
                 return;
             }
-            if (_attached.Count == 0 && _touches.Count == 0 && _ragdolls.Count == 0 && _glass.Count == 0) return;
+            if (_attached.Count == 0 && _touches.Count == 0 && _ragdolls.Count == 0 && _glass.Count == 0 && _fractures.Count == 0) return;
 
             float step = Math.Min(dt, MaxStep);
             // Without a step there are no fresh contacts, so the current touches stand.
@@ -334,10 +339,12 @@ namespace Engine.Physics
                     PullPose(_attached[i]);
             for (int i = 0; i < _ragdolls.Count; i++) _ragdolls[i].AfterStep();
             for (int i = 0; i < _glass.Count; i++) _glass[i].AfterStep(step);
+            for (int i = 0; i < _fractures.Count; i++) _fractures[i].AfterStep(step);
 
             UpdateTouches();
             // Hits from this step's contacts break the panes now, before the events reach the scripts.
             for (int i = 0; i < _glass.Count; i++) _glass[i].ApplyPending();
+            for (int i = 0; i < _fractures.Count; i++) _fractures[i].ApplyPending();
             DispatchContactEvents();
             UpdateWaterContacts(time);
             DispatchWaterEvents();
@@ -364,6 +371,8 @@ namespace Engine.Physics
                 if (b.Ragdoll != null) NotifyRagdoll(b.Ragdoll, contact.BodyB, contact.Swapped(), a, contact.BodyA);
                 if (a.Glass != null) NotifyGlass(a.Glass, contact, b, contact.BodyB);
                 if (b.Glass != null) NotifyGlass(b.Glass, contact.Swapped(), a, contact.BodyA);
+                if (a.Fracture != null) NotifyFracture(a.Fracture, contact, b, contact.BodyB);
+                if (b.Fracture != null) NotifyFracture(b.Fracture, contact.Swapped(), a, contact.BodyA);
 
                 Touch touch = FindTouch(a, b);
                 if (touch != null && touch.IsTrigger != contact.IsTrigger)
@@ -429,6 +438,14 @@ namespace Engine.Physics
             catch (Exception ex) { EditorBridge.Log($"Breakable Glass of '{glass.Owner.Name}' threw on contact: {ex.Message}"); }
         }
 
+        /// <summary>Tells a breakable what hit it and how hard (its component decides whether it breaks).</summary>
+        private static void NotifyFracture(FractureShatter fracture, PhysicsContact seenFromIt, BasicEntity other, BepuPhysics.BodyHandle? otherBody)
+        {
+            if (fracture.Hit == null || fracture.IsDisposed || fracture.IsBroken) return;
+            try { fracture.Hit(seenFromIt, other, MassOf(other, otherBody)); }
+            catch (Exception ex) { EditorBridge.Log($"Breakable '{fracture.Owner.Name}' threw on contact: {ex.Message}"); }
+        }
+
         /// <summary>Mass of a moving body (a dynamic gameobject or a limp ragdoll part); 0 for anything immovable.</summary>
         private static float MassOf(BasicEntity e, BepuPhysics.BodyHandle? body)
         {
@@ -489,6 +506,28 @@ namespace Engine.Physics
             if (glass == null || !_glass.Remove(glass)) return;
             glass.Dispose();
             if (glass.Owner.Glass == glass) glass.Owner.Glass = null;
+        }
+
+        /// <summary>
+        /// The pieces of <paramref name="owner"/> (Breakable component). Replaces any it had. Once it breaks, the
+        /// gameobject's own collider goes.
+        /// </summary>
+        internal FractureShatter CreateFracture(BasicEntity owner, Renderer.Helper.MeshMaterialLibrary library)
+        {
+            if (owner.Fracture != null) RemoveFracture(owner.Fracture);
+            var fracture = new FractureShatter(this, _physics, owner, library, ++_lastCollisionGroup);
+            owner.Fracture = fracture;
+            owner.PhysicsFrame = _frame;
+            _fractures.Add(fracture);
+            return fracture;
+        }
+
+        /// <summary>Removes a breakable's pieces and shows the gameobject again.</summary>
+        internal void RemoveFracture(FractureShatter fracture)
+        {
+            if (fracture == null || !_fractures.Remove(fracture)) return;
+            fracture.Dispose();
+            if (fracture.Owner.Fracture == fracture) fracture.Owner.Fracture = null;
         }
 
         /// <summary>A static convex collider that rays and contacts report as <paramref name="owner"/> (glass shards in the frame).</summary>
@@ -597,8 +636,8 @@ namespace Engine.Physics
             bool hasGeometry = e.Model != null || FallbackGeometry != null;
             // A limp ragdoll's parts stand in for the gameobject's own collider.
             bool limp = e.Ragdoll is { IsActive: true, IsDisposed: false };
-            // So do the shards of a cracked pane.
-            bool shattered = e.Glass is { IsBroken: true, IsDisposed: false };
+            // So do the shards of a cracked pane and the pieces of a broken Breakable.
+            bool shattered = e.Glass is { IsBroken: true, IsDisposed: false } || e.Fracture is { IsBroken: true, IsDisposed: false };
             PhysicsBodyType desired = !hasGeometry || e.Role == GameObjectRole.Water || limp || shattered ? PhysicsBodyType.None : e.PhysicsType;
             float mass = e.Mass;
             bool trigger = desired != PhysicsBodyType.None && e.Physics?.IsTrigger == true;

@@ -17,6 +17,7 @@ namespace Engine.Scripting;
 ///   Interact  E / X: use the Interactable under the crosshair (a ray from the camera)
 ///   Attack    hold left mouse / RT: carry a light object      F   throw it (through a window to break it)
 ///             on Breakable Glass: shoot it (Half-Life: Alyx style shatter at the crosshair)
+///             on a Breakable (vase, zombie head): shoot it to pieces (up to 40 m)
 ///   Q         shove what the crosshair is on (impulse at the hit point)
 ///   R         reset the scene
 /// Movement sets the body's velocity with a limited acceleration, so the solver does the pushing:
@@ -40,6 +41,14 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
     private const float CarryGain = 12f, CarryMaxSpeed = 14f, CarryBreakDistance = 4f;
     private const float ThrowSpeed = 14f, ShoveMaxImpulse = 600f, ShoveMaxSpeedChange = 8f;
     private const float FallLimit = -15f;
+    private const float ShootRange = 40f;     // Breakables (vases, zombie heads) can be shot from further away
+
+    /// <summary>Title of the HUD panel (the sample scenes that reuse this player set their own).</summary>
+    [Tooltip("Title of the HUD panel")]
+    public string Title = "Collision Test";
+    /// <summary>First line of the feed when Play starts.</summary>
+    [Tooltip("First line of the feed when Play starts")]
+    public string Intro = "Push a crate into the green goal zone.";
 
     private Vector3 _spawn;
     private float _yaw, _pitch;      // degrees; yaw 0 looks along +X
@@ -62,8 +71,9 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
         _touching.Clear();
 
         CollisionTestFeed.Clear();
-        CollisionTestFeed.Post("Push a crate into the green goal zone.");
+        if (!string.IsNullOrWhiteSpace(Intro)) CollisionTestFeed.Post(Intro);
         _ui = GameUI.Open(DocumentPath);
+        _ui?.SetText("#title", Title ?? "");
         UpdateCamera();
     }
 
@@ -206,23 +216,35 @@ public sealed class CollisionTestPlayerScript : ScriptBehaviour
         bool canCarry = _carried == null && movable != null && aimHit.Distance <= CarryReach;
         BreakableGlassComponent glass = _carried == null && aimed && interactable == null
             ? aimHit.GameObject?.GetComponent<BreakableGlassComponent>() : null;
+        // Breakables win over carrying: Attack shoots a vase, Q still shoves it off the table.
+        RaycastHit shotHit = default;
+        bool shotAimed = _carried == null && interactable == null && Raycast(ray, ShootRange, out shotHit);
+        BreakableComponent breakable = shotAimed ? shotHit.GameObject?.GetComponent<BreakableComponent>() : null;
+        if (breakable is { Enabled: false } or { IsBroken: true }) breakable = null;
+        if (breakable != null) canCarry = false;
 
         SetHovered(interactable != null ? useHit.GameObject : canCarry ? movable : null);
 
         // BindingText shows the key or button of the device the player is using ("E" or "X").
         if (_carried != null) _prompt = $"Release {BindingText("Attack")}  drop     F  throw";
         else if (interactable != null) _prompt = $"{BindingText("Interact")}  {interactable.Prompt}";
+        else if (breakable != null) _prompt = movable != null
+            ? $"{BindingText("Attack")}  shoot {shotHit.GameObject.Name}     Q  shove it"
+            : $"{BindingText("Attack")}  shoot {shotHit.GameObject.Name}";
         else if (canCarry && movable.Mass <= CarryMaxMass) _prompt = $"Hold {BindingText("Attack")}  carry {movable.Name}";
         else if (movable != null) _prompt = $"Q  shove {movable.Name} ({movable.Mass:0} kg)";
         else if (glass != null) _prompt = $"{BindingText("Attack")}  shoot {aimHit.GameObject.Name}";
         else _prompt = "";
-        _crosshairActive = interactable != null || movable != null || glass != null;
+        _crosshairActive = interactable != null || movable != null || glass != null || breakable != null;
 
         if (interactable != null && WasActionPressed("Interact"))
             Interact(useHit);
 
         if (WasActionPressed("Attack") && glass != null && glass.Shatter(aimHit, ray.Direction, GlassStress.Ballistic, speed: 5f))
             CollisionTestFeed.Post($"Shot {aimHit.GameObject.Name}: {glass.ShardCount} panels left in the frame");
+
+        if (WasActionPressed("Attack") && breakable != null && breakable.Break(shotHit, ray.Direction, force: 3.5f))
+            CollisionTestFeed.Post($"Shot {shotHit.GameObject.Name}: {breakable.PieceCount} pieces");
 
         if (WasActionPressed("Attack") && canCarry)
         {

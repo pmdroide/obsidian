@@ -65,6 +65,7 @@ public static class ComponentEditorRegistry
         Register(PostProcessVolumeComponent.TypeId, owner => new PostProcessVolumeComponentViewModel(owner));
         Register(AoProxyComponent.TypeId, owner => new AoProxyComponentViewModel(owner));
         Register(BreakableGlassComponent.TypeId, owner => new BreakableGlassComponentViewModel(owner));
+        Register(BreakableComponent.TypeId, owner => new BreakableComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

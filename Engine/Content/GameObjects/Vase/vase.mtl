@@ -1,0 +1,3 @@
+# Vase glaze (Assets.VaseMaterial replaces it at load)
+newmtl Clay
+Kd 0.65 0.32 0.2

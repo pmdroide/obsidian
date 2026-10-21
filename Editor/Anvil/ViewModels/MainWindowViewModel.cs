@@ -374,6 +374,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
         AddableObjects.Add(new AddableObjectType("Decal", _ => AddDecal(), _bridge));
         AddableObjects.Add(new AddableObjectType("Liquid Bottle", _ => AddLiquidBottle(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Breakable Vase", _ => AddBreakableVase(), _bridge));
         AddableObjects.Add(new AddableObjectType("Tree", _ => AddTree(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
@@ -617,6 +618,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge == null) return;
         _bridge.EnqueueAddBasicEntity("Bottle", _bridge.SpawnPoint, "Bottle", componentTypes: new[] { LiquidComponent.TypeId });
+    }
+
+    /// <summary>The built-in Vase on a Dynamic body with a Breakable component (smashes when it falls or is shot).</summary>
+    [RelayCommand]
+    private void AddBreakableVase()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("Vase", _bridge.SpawnPoint, "Vase", componentTypes: new[] { PhysicsComponent.TypeId, BreakableComponent.TypeId });
     }
 
     [RelayCommand]

@@ -1,0 +1,184 @@
+"""Style profiles (styles/<name>.json) and the family adjustments applied after the PBR estimate."""
+import json
+import re
+from pathlib import Path
+
+import numpy as np
+
+from ..imageops import gaussian_blur_wrap, luminance, normalize01
+
+STYLES_DIR = Path(__file__).resolve().parent
+
+
+class Style:
+    def __init__(self, data):
+        self.data = data
+        self.name = data["name"]
+        self.common = data["common"]
+        self.families = data["families"]
+
+    def family(self, name):
+        return self.families[name]
+
+    def detect_family(self, prompt):
+        """Keyword -> family, by whole words, walking the families in file order (first hit wins). Falls back to
+        the profile's fallback family."""
+        tokens = re.findall(r"[a-z0-9]+", prompt.lower())
+        words = set(tokens)
+        text = " " + " ".join(tokens) + " "
+        for name, cfg in self.families.items():
+            for keyword in cfg["keywords"]:
+                if " " in keyword:
+                    if " " + keyword + " " in text:
+                        return name
+                elif keyword in words:
+                    return name
+        return self.common["fallback_family"]
+
+    def resolve_family(self, requested, prompt):
+        if requested in (None, "", "auto"):
+            return self.detect_family(prompt)
+        if requested not in self.families:
+            raise KeyError(requested)
+        return requested
+
+    def prompt_for_diffusion(self, prompt, family):
+        return prompt + self.families[family]["prompt_suffix"] + self.common["prompt_suffix"]
+
+    def negative_for_diffusion(self, negative):
+        return self.common["negative_prompt"] + (", " + negative if negative else "")
+
+
+def available_styles():
+    return sorted(p.stem for p in STYLES_DIR.glob("*.json"))
+
+
+def load_style(name):
+    path = STYLES_DIR / (name + ".json")
+    if not path.is_file():
+        raise KeyError(name)
+    with open(path, "r", encoding="utf-8") as f:
+        return Style(json.load(f))
+
+
+def describe_styles():
+    out = []
+    for name in available_styles():
+        style = load_style(name)
+        out.append({"name": style.name, "description": style.data.get("description", ""),
+                    "families": list(style.families.keys())})
+    return out
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Adjustments
+# ---------------------------------------------------------------------------------------------------------------------
+
+def _mean_luma255(rgb, mask=None):
+    lum = luminance(rgb) * 255.0
+    return float(lum[mask].mean()) if mask is not None else float(lum.mean())
+
+
+def fit_mean_luminance(rgb, lo, hi, mask=None, max_gain=8.0):
+    """Scales sRGB colours (0..1) so the mean luminance (0..255) lands inside [lo, hi]. Black stays black."""
+    if mask is not None and not mask.any():
+        return rgb
+    mean = _mean_luma255(rgb, mask)
+    if mean <= 1e-6 or lo <= mean <= hi:
+        return rgb
+    target = lo + 5.0 if mean < lo else hi - 5.0
+    gain = float(np.clip(target / mean, 1.0 / max_gain, max_gain))
+    scaled = np.clip(rgb * gain, 0.0, 1.0)
+    if mask is None:
+        return scaled
+    return np.where(mask[..., None], scaled, rgb)
+
+
+def clamp_pixel_luminance(rgb, lo, hi, mask=None):
+    """Brings pixels whose luminance (0..255) is outside [lo, hi] back to the edge by scaling them (black stays)."""
+    lum = luminance(rgb) * 255.0
+    gain = np.ones_like(lum)
+    low = (lum > 1e-6) & (lum < lo)
+    high = lum > hi
+    gain[low] = lo / lum[low]
+    gain[high] = hi / lum[high]
+    if mask is not None:
+        gain = np.where(mask, gain, 1.0)
+    return np.clip(rgb * gain[..., None], 0.0, 1.0)
+
+
+def cap_saturation(rgb, max_sat):
+    peak = rgb.max(axis=-1)
+    low = rgb.min(axis=-1)
+    sat = np.where(peak > 1e-6, (peak - low) / np.maximum(peak, 1e-6), 0.0)
+    k = np.where(sat > max_sat, max_sat / np.maximum(sat, 1e-6), 1.0)
+    # Pull the channels towards the brightest one: keeps hue and value, and HSV saturation becomes sat * k.
+    peak = peak[..., None]
+    return np.clip(peak - (peak - rgb) * k[..., None], 0.0, 1.0)
+
+
+def remap_roughness(r_norm, lo_hi, min_std=0.0):
+    """Maps 0..1 onto the family's range. A map that varies a little is stretched so its deviation reaches
+    min_std * 1.5 (a texture with no variation at all stays flat, and validation says so)."""
+    lo, hi = lo_hi
+    rough = lo + (hi - lo) * np.clip(r_norm, 0.0, 1.0)
+    std = float(rough.std())
+    if min_std > 0 and 1e-6 < std < min_std * 1.5:
+        mean = float(rough.mean())
+        rough = np.clip(mean + (rough - mean) * (min_std * 1.5 / std), lo, hi)
+    return rough
+
+
+def wear_mask(height, size, coverage=0.28):
+    """Where the paint has chipped off: the convex spots and edges of the height field (a 0/1 mask)."""
+    convexity = height - gaussian_blur_wrap(height, max(2.0, size / 64.0))
+    convexity = gaussian_blur_wrap(convexity, 1.0)
+    threshold = np.percentile(convexity, 100.0 * (1.0 - coverage))
+    return convexity > threshold
+
+
+def apply_style(style, family, est, force_dielectric=False):
+    """Applies the family's rules to the estimator output. Returns the final albedo (sRGB, floats 0..1),
+    roughness and metalness; normal, height and AO are left to the caller."""
+    common, cfg = style.common, style.family(family)
+    size = est["height"].shape[0]
+    albedo = est["albedo"].astype(np.float64) / 255.0
+    r_norm = est["roughness_norm"]
+    mode = "none" if force_dielectric else cfg["metal"]
+    dlo, dhi = common["dielectric_albedo_mean"]
+    clo, chi = common["dielectric_albedo_clip"]
+    metal_color = np.array(common["metal_color"])
+    min_std = common["roughness_min_std"]
+
+    if mode == "none":
+        albedo = cap_saturation(albedo, common["max_saturation"])
+        albedo = fit_mean_luminance(albedo, dlo, dhi)
+        albedo = clamp_pixel_luminance(albedo, clo + 1, chi - 1)
+        metal = np.zeros(albedo.shape[:2])
+        rough = remap_roughness(r_norm, cfg["roughness"], min_std)
+    elif mode == "all":
+        mlo, mhi = common["metal_albedo_luminance"]
+        albedo = fit_mean_luminance(albedo, mlo, mhi)
+        albedo = clamp_pixel_luminance(albedo, mlo, mhi)
+        metal = np.ones(albedo.shape[:2])
+        rough = remap_roughness(r_norm, cfg["roughness"], min_std)
+    else:  # "mask": painted metal
+        exposed = wear_mask(est["height"], size)
+        paint = ~exposed
+        tone = 0.9 + 0.2 * normalize01(luminance(albedo))
+        steel = np.clip(metal_color[None, None, :] * tone[..., None], 0.0, 1.0)
+        mlo, mhi = common["metal_albedo_luminance"]
+        steel = clamp_pixel_luminance(steel, mlo, mhi)
+        albedo = cap_saturation(albedo, common["max_saturation"])
+        albedo = fit_mean_luminance(albedo, dlo, dhi, mask=paint)
+        albedo = clamp_pixel_luminance(albedo, clo + 1, chi - 1, mask=paint)
+        albedo = np.where(exposed[..., None], steel, albedo)
+        metal = exposed.astype(np.float64)
+        rough = np.where(exposed, remap_roughness(r_norm, cfg["metal_roughness"], min_std),
+                         remap_roughness(r_norm, cfg["paint_roughness"], min_std))
+    return albedo, rough, metal
+
+
+def suggest(style, family):
+    cfg = style.family(family)
+    return {"tiling": round(1.0 / cfg["scale_m"], 3), "material_type": cfg["material_type"], "family": family}

@@ -615,9 +615,10 @@ namespace Engine.Renderer
                     camera, _renderTargetCubeMap, directionalLights, gameTime, _renderTargetDepth, _view, _g_FarClip);
 
                 // Particle System components: fire, smoke, sparks... fading into the depth they read.
-                // Splash droplets have no gameobject and are passed alongside.
+                // Splash droplets and the bursts of broken Breakables have no gameobject and are passed alongside.
                 _particleRenderModule.Draw(_graphicsDevice, entities, camera, _view, _viewProjection,
-                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip, splashes?.VisibleSystems(), pointLights);
+                    _renderTargetCubeMap, directionalLights, _renderTargetDepth, _g_FarClip,
+                    EngineParticles(splashes, GameFlow.SceneLogic?.BreakBursts), pointLights);
 
                 // Rain, sandstorm or snow: haze and particles over the opaque and transparent scene.
                 // Paused (pause menu): the particles hang in the air.
@@ -1698,6 +1699,17 @@ namespace Engine.Renderer
             return _subsurfaceScatterRenderModule.Draw(_graphicsDevice, input, input, meshMaterialLibrary, _viewProjection );
         }
         
+        // Engine-owned particle systems (splash droplets, break bursts) in one list for the particle pass.
+        private readonly List<Components.ParticleSystemComponent> _engineParticles = new();
+
+        private IReadOnlyList<Components.ParticleSystemComponent> EngineParticles(Particles.WaterSplashes splashes, Particles.BreakBursts bursts)
+        {
+            _engineParticles.Clear();
+            if (splashes != null) _engineParticles.AddRange(splashes.VisibleSystems());
+            if (bursts != null) _engineParticles.AddRange(bursts.VisibleSystems());
+            return _engineParticles;
+        }
+
         private void ReconstructDepth()
         {
             if (_viewProjectionHasChanged)

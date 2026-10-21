@@ -1,5 +1,56 @@
 # Changelog
 
+## Added: AI texture generator, phases 0 and A (2026-10-21)
+
+Groundwork for generating Source 2-style PBR material sets from a prompt (plan: `Docs/Research/AiTextures/PLAN.md`, progress: `PROGRESS.md`). Nothing is wired into Anvil yet (phases B and C).
+
+- **`Tools/TexGen`**: a local Python generator (`python -m texgen generate|check|styles`), numpy + Pillow only, no network. stdout is JSON lines (`progress`/`warning`/`done`/`error`), exit codes 0 ok, 1 internal, 2 arguments, 3 model/dependency missing, 4 seam check failed, 5 `--strict` style validation failed.
+  - Pipeline: RGB source -> classic PBR estimate (delighting, height, two-scale normals with reoriented blending, roughness from local contrast) -> `source2` style -> post-processing -> validation -> atomic write (`OUT.tmp` then rename).
+  - Output per material: `<slug>_BaseColor/Normal/Roughness/AO/Height.png` (+ `_Metallic.png` only when some pixel is metal), `texgen.json` (schema 1) and `_debug/` (`source_rgb.png`, `height16.png`, `validation.json`). Normals are DirectX / Y- by default (`--normal-convention`).
+  - Backends: `fake` (periodic procedural noise, tileable by construction) and `classic` (`--input-rgb`); `sdxl_classic` / `sdxl_chord` are only reported by `check` (phase E).
+  - `styles/source2.json`: 11 families (keyword auto-detection), roughness ranges, normal strength, tile scale, painted metal with a wear mask, saturation cap and luminance fitting. `validate.py` warns per broken rule (`albedo_too_dark`, `metal_albedo_dark`, `roughness_flat`, ...).
+  - Seam check: the tile border's gradient against the 95th percentile of the other column/row gradients (the plan's mean-gradient ratio misfired on brick and tile joints).
+- `ContentManifest.RegisterGeneratedTextures`: Content.mgcb entries for generated maps with `ColorKeyEnabled=False`, `PremultiplyAlpha=False`, mipmaps on. Anvil's own texture import is unchanged.
+- Normal convention test (plan task 0.2): `Tools/TexGen/lab/generate_normal_convention_test.py` writes `Content/Scenes/NormalConventionTest.obsc` / `_B.obsc` (Bricks next to a green-inverted copy, `Bricks_Normal_FlipG.png` added to Content.mgcb). The captures were inconclusive (the sun barely shows), so DirectX stays the working default until a person confirms it.
+- Checks: `Tests/Components/TexGenChecks.cs` (mgcb entries; `--graphics` builds a grayscale and an RGB PNG with the real mgcb: `.r` = 128 arrives, magenta stays opaque) and 48 Python `unittest`s (`Tools/TexGen/tests`).
+- Docs: `Docs/Research/AiTextures/` (plan, progress, environment), `Engine_Wiring.md`, CLAUDE.md repo map. README version 1.4.1.
+- `.gitignore`: `Tools/TexGen/{models,third_party,cache,.venv}/`, `texgen.json`, `__pycache__/`.
+- Claude
+
+## Added: Breakables: vases that smash, zombie heads that pop (2026-10-20)
+
+- **Breakable component** (`breakable`). It breaks any closed model into real 3D pieces during Play: a vase knocked off a table, a pot that is shot, a zombie's head.
+  - When Play starts, the model is cut into Pieces on a worker thread. The cuts are closed with caps in the Interior colour (clay, red flesh).
+  - A hit above Impact Speed/Momentum (a Dynamic gameobject falling on the floor counts) or a script's `Break(...)` hides the gameobject, removes its collider and throws the pieces from the hit as physics bodies. They shrink away after Debris Lifetime (at most 200 in the scene).
+  - Effects: Dust (puff and grit) or Blood (spray, mist, splats on the floor).
+  - **Follow** a gameobject or one of its bones: the head rides on `mixamorig:Head`. When it breaks, **Collapse Bone** shrinks the character's own head away and **Ragdoll On Break** makes the body go limp.
+  - Scripts: `Break()`, `Break(point, direction, force)`, `Break(hit, direction)`, `Restore()`, `IsBroken`, `PieceCount`, `IsReady`, `Broken` event.
+- New engine files:
+  - `Engine/Physics/MeshFracture.cs`: 3D Voronoi mesh fracture, plane clipping, caps with holes, both windings.
+  - `Engine/Physics/FractureShatter.cs`: model readback, piece bodies and meshes, interior material, lifetime.
+  - `Engine/Components/BreakableComponent.cs`.
+  - `Engine/Animation/BoneCollapse.cs`: applied by the Animator, the Ragdoll and `BonePose` skinning.
+  - `Engine/Particles/BreakBursts.cs`: `MainSceneLogic.BreakBursts`, drawn with the splash droplets.
+- `ScenePhysics`: `CreateFracture`/`RemoveFracture`, contacts reach breakables from `UpdateTouches`, and a broken breakable has no collider. `BasicEntity`: `Fracture`, `CollapsedBones`, `PartMaterial`.
+- New built-in models:
+  - **Vase** (`Assets.Vase`, a 41 cm glazed vase with walls; `GameObjects/Vase/Source/generate_vase.cs`).
+  - **Head** (`Assets.Head`, a 25 cm solid head, face towards -Y; `GameObjects/Head/Source/generate_head.cs`).
+  - Both are in Content.mgcb and kept by Delete Project.
+- Anvil: Breakable inspector (`BreakableComponentViewModel`, with a Follow drop slot), GameObject > Effects > **Breakable Vase** (also in the Hierarchy + menu).
+- Sample `Content/Scenes/BreakableTest.obsc` (added to the scene list): a table and a high shelf of vases, big urns, and three Y Bot zombies with breakable heads. `CollisionTestPlayerScript` now shoots Breakables with Attack (up to 40 m) and has `Title`/`Intro` fields.
+- Docs: `Docs/markdown/Breakables.md`, `Engine_Wiring.md` (BasicEntity fields, physics update, Breakables section, task row), CLAUDE.md repo map. README version 1.4.0. ISSUES: the Breakables limitations.
+- Checks: new `Tests/Components/BreakableChecks.cs`:
+  - closed pieces that add up to the mesh (box, hollow pot with ring caps, reversed winding), determinism;
+  - bone collapse;
+  - component, editor and save round trip;
+  - Play: script break, pieces fall and vanish, Restore, a dropped vase breaks on the floor and a resting one doesn't, follow, Stop;
+  - the sample scene.
+
+  `GameObjectMenuChecks` counts the new menu entry. All 1614 component checks pass. `--graphics`: animation, bone and ragdoll skinning pass; the run stops at the known PauseChecks failure (ISSUES). Checked visually with `Engine.exe --scene ... --play --shot`: dropped vases burst into glazed shell shards, and a ball dropped on a walking zombie's head pops it in blood, collapses the head and ragdolls the body.
+
+- Claude
+
+
 ## Changed: MainMenu scene shows the game (2026-10-20)
 
 - `Content/Scenes/MainMenu.obsc` is now a showcase instead of the monolith ring: the player (Y Bot) dances to the new `GameObjects/Player/Silly Dancing.fbx` clip in a dark, closed, hazy room, backlit by a warm shadow-casting light that glows through a Fog Volume, with a front fill, a teal fill, a green neon tube, balloons, a beach ball, trash bags and a dim figure dancing slowly at the back. No sun.

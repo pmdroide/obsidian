@@ -37,6 +37,14 @@ namespace Engine.Recources
         // Its part draws with BottleGlassMaterial (Forward Shaded); add a Liquid component to fill it.
         public ModelDefinition Bottle;
         public MaterialEffect BottleGlassMaterial;
+        // 0.41 m glazed vase with 8-10 mm walls, Z up, base at the origin, one closed shell (GameObjects/Vase, made by
+        // Source/generate_vase.cs). Add a Breakable component to smash it into curved shards.
+        public ModelDefinition Vase;
+        public MaterialEffect VaseMaterial;
+        // 25 cm solid human head, centre at the origin, Z up, face towards -Y (GameObjects/Head, made by
+        // Source/generate_head.cs): a Breakable zombie head that rides on a character's head bone.
+        public ModelDefinition Head;
+        public MaterialEffect HeadMaterial;
 
         public Texture2D IconLight;
         public Texture2D IconEnvmap;
@@ -163,6 +171,10 @@ namespace Engine.Recources
 
             Tree = LoadTree(content, graphicsDevice);
             Bottle = LoadBottle(content, graphicsDevice);
+            Vase = LoadSolid(content, graphicsDevice, "GameObjects/Vase/vase", "vase",
+                VaseMaterial = CreateMaterial(new Color(150, 64, 40), 0.35f, 0));
+            Head = LoadSolid(content, graphicsDevice, "GameObjects/Head/head", "head",
+                HeadMaterial = CreateMaterial(new Color(118, 128, 98), 0.7f, 0));
 
             IconDecal = content.Load<Texture2D>("System/Editor/icon_decal");
             IconLight = content.Load<Texture2D>("System/Editor/icon_light");
@@ -354,6 +366,24 @@ namespace Engine.Recources
             catch (Exception ex)
             {
                 EditorBridge.Log("Assets: failed to load the tree model: " + ex.Message);
+                return null;
+            }
+        }
+
+        // A generated model whose every part draws with one material.
+        private ModelDefinition LoadSolid(ContentManager content, GraphicsDevice graphicsDevice, string path, string name, MaterialEffect material)
+        {
+            try
+            {
+                var definition = new ModelDefinition(content, path, graphicsDevice);
+                foreach (ModelMesh mesh in definition.Model.Meshes)
+                    foreach (ModelMeshPart part in mesh.MeshParts)
+                        part.Effect = material;
+                return definition;
+            }
+            catch (Exception ex)
+            {
+                EditorBridge.Log($"Assets: failed to load the {name} model: " + ex.Message);
                 return null;
             }
         }
@@ -662,6 +692,8 @@ namespace Engine.Recources
             TreeBarkMaterial?.Dispose();
             TreeLeavesMaterial?.Dispose();
             BottleGlassMaterial?.Dispose();
+            VaseMaterial?.Dispose();
+            HeadMaterial?.Dispose();
             NoiseMap?.Dispose();
             SkyTexture?.Dispose();
             if (ErrorModelMaterial != ErrorMaterial) ErrorModelMaterial?.Dispose();

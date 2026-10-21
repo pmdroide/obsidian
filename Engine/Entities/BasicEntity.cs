@@ -68,6 +68,12 @@ namespace Engine.Entities
         internal Ragdoll Ragdoll;
         // The Breakable Glass component's shards (ScenePhysics.CreateGlass); null without one.
         internal GlassShatter Glass;
+        // The Breakable component's pieces (ScenePhysics.CreateFracture); null without one.
+        internal FractureShatter Fracture;
+        // Bones shrunk to a point while skinning (a Breakable head that broke off this body); runtime only.
+        internal readonly HashSet<string> CollapsedBones = new(StringComparer.Ordinal);
+        // Bumped when CollapsedBones changes, so skins re-pose.
+        internal int CollapsedBonesVersion;
         // Collision group shared by this gameobject's own body and its ragdoll parts; 0 until it has a ragdoll.
         internal int CollisionGroup;
 
@@ -292,6 +298,13 @@ namespace Engine.Entities
             WorldTransform.World = Matrix.CreateScale(Scale) * RotationMatrix * Matrix.CreateTranslation(Position);
             WorldTransform.Scale = Scale;
             WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
+        }
+
+        /// <summary>The material the library draws a model part with (<paramref name="index"/> = its order in the model).</summary>
+        internal MaterialEffect PartMaterial(ModelMeshPart part, int index)
+        {
+            if (_materialInstances.Count > 0) return _materialInstances[Math.Min(index, _materialInstances.Count - 1)];
+            return Material ?? part?.Effect as MaterialEffect ?? FirstPartMaterial();
         }
 
         private MaterialEffect FirstPartMaterial()

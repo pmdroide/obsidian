@@ -45,6 +45,7 @@ public static class ComponentRegistry
         Register<PostProcessVolumeComponent>(PostProcessVolumeComponent.TypeId, "Post Process Volume");
         Register<AoProxyComponent>(AoProxyComponent.TypeId, "AO Proxy");
         Register<BreakableGlassComponent>(BreakableGlassComponent.TypeId, "Breakable Glass");
+        Register<BreakableComponent>(BreakableComponent.TypeId, "Breakable");
         Register<LiquidComponent>(LiquidComponent.TypeId, "Liquid");
     }
 

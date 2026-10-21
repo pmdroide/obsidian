@@ -381,6 +381,9 @@ public partial class MainWindow : Window
                 case ParticleSubEmitterRowViewModel emitter:
                     emitter.Target = obj.Name;
                     break;
+                case BreakableComponentViewModel breakable:
+                    breakable.FollowObject = obj.Name;
+                    break;
             }
         }
         e.Handled = true;
@@ -419,6 +422,7 @@ public partial class MainWindow : Window
             case NpcComponentViewModel npc when (sender as Control)?.Tag as string == "PatrolPoints": npc.PatrolPoints = ""; break;
             case NpcComponentViewModel npc: npc.Target = ""; break;
             case ParticleSubEmitterRowViewModel emitter: emitter.Target = ""; break;
+            case BreakableComponentViewModel breakable: breakable.FollowObject = ""; break;
         }
         e.Handled = true;
     }

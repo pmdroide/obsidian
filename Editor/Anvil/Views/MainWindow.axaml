@@ -650,6 +650,8 @@
                                       Command="{Binding AddDecalCommand}" />
                             <MenuItem Header="Liquid Bottle"
                                       Command="{Binding AddLiquidBottleCommand}" />
+                            <MenuItem Header="Breakable Vase"
+                                      Command="{Binding AddBreakableVaseCommand}" />
                         </MenuItem>
                         <MenuItem Header="Nature">
                             <MenuItem Header="Tree"
@@ -3462,6 +3464,107 @@
                                                               ToolTip.Tip="Cracked panels lean slightly, so reflections break up along the cracks" />
                                                     <CheckBox Content="Solid Shards" IsChecked="{Binding SolidShards, Mode=TwoWay}" FontSize="11"
                                                               ToolTip.Tip="Shards left in the frame stop bodies" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:BreakableComponentViewModel" x:DataType="m:BreakableComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Sparkles" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Breaks this gameobject into pieces during Play: a vase knocked off a table, a pot that is shot, a zombie's head. When Play starts its model is cut into Pieces (3D Voronoi; closed models give closed pieces whose cut faces show the Interior colour). A contact above Impact Speed and Momentum (a Dynamic gameobject falling on the floor counts) or a script's GetComponent&lt;BreakableComponent&gt;().Break(point, direction) hides it and throws the pieces out at Break Force, with a burst of dust or blood. Follow rides on another gameobject or one of its bones (drop the zombie, Bone mixamorig:Head): when it breaks the bone shrinks away and the body's Ragdoll goes limp. Add a Physics component so bullets and bodies can hit it. Stop puts it back." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <TextBlock Text="Breaking" Classes="muted" FontSize="10" FontWeight="SemiBold" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="How many pieces it breaks into (2..64)">
+                                                        <TextBlock Grid.Column="0" Text="Pieces" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Pieces, Mode=TwoWay}"
+                                                                       Minimum="2" Maximum="64" Increment="1" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Speed (m/s) a contact must have to break it; 0 = only scripts break it">
+                                                        <TextBlock Grid.Column="0" Text="Impact Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Momentum (kg·m/s) of the contact: the lighter body's share of the masses x speed (its own mass when it falls on the floor)">
+                                                        <TextBlock Grid.Column="0" Text="Impact Momentum" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactMomentum, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Speed (m/s) the pieces fly apart with; hits add some of their own">
+                                                        <TextBlock Grid.Column="0" Text="Break Force" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BreakForce, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="40" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Seconds the pieces last before they shrink away (at most 200 in the scene)">
+                                                        <TextBlock Grid.Column="0" Text="Debris Lifetime" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding DebrisLifetime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Kilograms per cubic metre of the pieces when the gameobject isn't Dynamic (a Dynamic one shares its mass out)">
+                                                        <TextBlock Grid.Column="0" Text="Density" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Density, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="20000" Increment="100" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Colour of the faces the break cuts (clay, plaster, flesh). See-through materials stay themselves inside">
+                                                        <TextBlock Grid.Column="0" Text="Interior" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding InteriorColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:BreakableComponentViewModel" Color="{Binding InteriorColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <TextBlock Text="Effect" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="What it throws out besides the pieces">
+                                                        <TextBlock Grid.Column="0" Text="Effect" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:BreakableComponentViewModel.Effects}"
+                                                                  SelectedItem="{Binding Effect, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Colour of the dust or blood" IsVisible="{Binding HasEffect}">
+                                                        <TextBlock Grid.Column="0" Text="Effect Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding EffectColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:BreakableComponentViewModel" Color="{Binding EffectColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Scales how many particles the effect throws" IsVisible="{Binding HasEffect}">
+                                                        <TextBlock Grid.Column="0" Text="Amount" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EffectAmount, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Text="Follow" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Drop a gameobject from the Hierarchy to ride on during Play, keeping the offset it has now (a head on a zombie)">
+                                                        <TextBlock Grid.Column="0" Text="Follow" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <controls:ReferenceSlot Grid.Column="1" Value="{Binding FollowObject}" Placeholder="Drop a gameobject here"
+                                                                                Clear="Reference_Clear"
+                                                                                DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" IsVisible="{Binding IsFollowing}"
+                                                          ToolTip.Tip="Bone of the followed gameobject to ride on, e.g. mixamorig:Head (its Armature in the Hierarchy lists them); empty = the gameobject itself">
+                                                        <TextBlock Grid.Column="0" Text="Bone" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding FollowBone, Mode=TwoWay}" Watermark="mixamorig:Head" />
+                                                    </Grid>
+                                                    <CheckBox Content="Collapse Bone" IsChecked="{Binding CollapseBone, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsFollowing}"
+                                                              ToolTip.Tip="When it breaks, the bone (and the bones under it) shrink away on the followed gameobject" />
+                                                    <CheckBox Content="Ragdoll On Break" IsChecked="{Binding RagdollOnBreak, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsFollowing}"
+                                                              ToolTip.Tip="When it breaks, the followed gameobject's Ragdoll goes limp and is pushed along the hit" />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>

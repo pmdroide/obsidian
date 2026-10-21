@@ -1,0 +1,7 @@
+{
+  "pythonExe": "Tools/TexGen/.venv/Scripts/python.exe",
+  "texgenRoot": "Tools/TexGen",
+  "cacheRoot": "Tools/TexGen/cache",
+  "defaultBackend": "fake",
+  "timeoutSeconds": 600
+}

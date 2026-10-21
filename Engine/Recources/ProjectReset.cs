@@ -43,6 +43,8 @@ namespace Engine.Recources
             "GameObjects/Cloth",            // Assets.Cloth
             "GameObjects/Tree",             // Assets.Tree (+ its bark/leaf textures and generator)
             "GameObjects/Bottle",           // Assets.Bottle (+ its generator)
+            "GameObjects/Vase",             // Assets.Vase (+ its generator)
+            "GameObjects/Head",             // Assets.Head (+ its generator)
             "GameObjects/Error",            // fallback model for failed imports
             "GameObjects/error.png",        // fallback material texture
             "GameObjects/sky.dds",          // default sky

@@ -74,13 +74,28 @@ namespace Engine.Recources
         /// Adds build entries for every buildable path not already in the manifest.
         /// Returns the paths that were added.
         /// </summary>
-        public static IReadOnlyList<string> Register(IEnumerable<string> relPaths)
+        public static IReadOnlyList<string> Register(IEnumerable<string> relPaths) =>
+            Register(relPaths, ManifestPath, rel => EntryTemplates[Path.GetExtension(rel)]);
+
+        /// <summary>
+        /// Like <see cref="Register(IEnumerable{string})"/> for generated PBR maps (texture files only): no colour key
+        /// (a magenta pixel must stay opaque), no premultiplied alpha, mipmaps on. Goes to the manifest at
+        /// <paramref name="manifestPath"/>.
+        /// </summary>
+        public static IReadOnlyList<string> RegisterGeneratedTextures(IEnumerable<string> relPaths, string manifestPath = null) =>
+            Register(relPaths.Where(p => TextureExtensions.Contains(Path.GetExtension(p ?? string.Empty))),
+                manifestPath ?? ManifestPath, rel => GeneratedTextureEntry());
+
+        private static readonly HashSet<string> TextureExtensions =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".dds" };
+
+        private static IReadOnlyList<string> Register(IEnumerable<string> relPaths, string manifestPath, Func<string, string[]> template)
         {
             var added = new List<string>();
             var candidates = relPaths.Select(Normalize).Where(IsBuildable).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if (candidates.Count == 0) return added;
 
-            Edit(lines =>
+            Edit(manifestPath, lines =>
             {
                 var existing = new HashSet<string>(
                     lines.Where(l => l.StartsWith(BeginPrefix, StringComparison.Ordinal))
@@ -92,7 +107,7 @@ namespace Engine.Recources
                     if (!existing.Add(rel)) continue;
                     if (lines.Count > 0 && lines[lines.Count - 1].Length != 0) lines.Add(string.Empty);
                     lines.Add(BeginPrefix + rel);
-                    lines.AddRange(EntryTemplates[Path.GetExtension(rel)]);
+                    lines.AddRange(template(rel));
                     lines.Add(BuildPrefix + rel);
                     added.Add(rel);
                 }
@@ -224,6 +239,19 @@ namespace Engine.Recources
             "/processorParam:Scale=1",
             "/processorParam:SwapWindingOrder=False",
             "/processorParam:TextureFormat=Compressed",
+        };
+
+        private static string[] GeneratedTextureEntry() => new[]
+        {
+            "/importer:TextureImporter",
+            "/processor:TextureProcessor",
+            "/processorParam:ColorKeyColor=255,0,255,255",
+            "/processorParam:ColorKeyEnabled=False",
+            "/processorParam:GenerateMipmaps=True",
+            "/processorParam:PremultiplyAlpha=False",
+            "/processorParam:ResizeToPowerOfTwo=False",
+            "/processorParam:MakeSquare=False",
+            "/processorParam:TextureFormat=Color",
         };
 
         private static string[] TextureEntry() => new[]

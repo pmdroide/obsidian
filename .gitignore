@@ -76,3 +76,10 @@ Builds/
 
 # Other
 Docs/Research/Source2Look/screenshots
+# AI texture generator (Tools/TexGen)
+Tools/TexGen/models/
+Tools/TexGen/third_party/
+Tools/TexGen/cache/
+Tools/TexGen/.venv/
+Tools/TexGen/texgen.json
+__pycache__/

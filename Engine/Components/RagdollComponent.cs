@@ -198,7 +198,7 @@ public sealed class RagdollComponent : GameComponent
     private void OnPosed()
     {
         if (_skin == null || _ragdoll == null) return;
-        _skin.Update(_ragdoll.SkinTransforms);
+        _skin.Update(BoneCollapse.Apply(_owner, _ragdoll.Rig.Skeleton, _ragdoll.SkinTransforms));
         _owner.WorldTransform.Skin = _skin;
         // Skinned vertices moved: redo culling and redraw shadow maps this frame.
         _owner.WorldTransform.HasChanged = true;

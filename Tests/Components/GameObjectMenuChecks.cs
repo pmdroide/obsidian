@@ -4,6 +4,7 @@ using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Logic;
+using Engine.Physics;
 using Engine.Recources;
 using Microsoft.Xna.Framework;
 
@@ -14,7 +15,7 @@ internal static class GameObjectMenuChecks
     {
         var bounds = new BoundingBox(-Vector3.One, Vector3.One);
         var assets = new Assets { Cube = new ModelDefinition(null, bounds), IsoSphere = new ModelDefinition(null, bounds),
-            Tree = new ModelDefinition(null, bounds), Bottle = new ModelDefinition(null, bounds) };
+            Tree = new ModelDefinition(null, bounds), Bottle = new ModelDefinition(null, bounds), Vase = new ModelDefinition(null, bounds) };
         // Decals need a texture registered on Assets to be saved; a texture without a GraphicsDevice is enough here.
         assets.DefaultDecal = (Microsoft.Xna.Framework.Graphics.Texture2D)System.Runtime.CompilerServices.RuntimeHelpers
             .GetUninitializedObject(typeof(Microsoft.Xna.Framework.Graphics.Texture2D));
@@ -64,6 +65,13 @@ internal static class GameObjectMenuChecks
               ReferenceEquals(bottle.ModelDefinition, assets.Bottle) && bottle.Components.Single() is LiquidComponent { Enabled: true },
             "GameObject > Effects > Liquid Bottle creates the built-in glass bottle (its own material) with a Liquid component");
 
+        vm.AddBreakableVaseCommand.Execute(null);
+        Drain();
+        Check(logic.BasicEntities.Count == entities + 6 && logic.BasicEntities[^1] is { Name: "Vase", Material: null } vase &&
+              ReferenceEquals(vase.ModelDefinition, assets.Vase) && vase.GetComponent<PhysicsComponent>() is { BodyType: PhysicsBodyType.Dynamic } &&
+              vase.GetComponent<BreakableComponent>() is { Enabled: true },
+            "GameObject > Effects > Breakable Vase creates the built-in vase on a Dynamic body with a Breakable component");
+
         int decals = logic.Decals.Count;
         Vector3 spawn = bridge.SpawnPoint;
         vm.AddDecalCommand.Execute(null);
@@ -74,11 +82,11 @@ internal static class GameObjectMenuChecks
             "GameObject > Effects > Decal creates an enabled 2 m decal box projecting the default texture down -Z");
         DecalTextureChecks(logic.Decals[^1]);
 
-        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Decal", "Liquid Bottle", "Tree" }),
+        Check(vm.AddableObjects.Select(o => o.DisplayName).SequenceEqual(new[] { "Cube", "Sphere", "Directional Light", "Point Light", "Spot Light", "Particle System", "Decal", "Liquid Bottle", "Breakable Vase", "Tree" }),
             "the Hierarchy + menu offers the same objects as the GameObject menu");
         foreach (var option in vm.AddableObjects) option.AddCommand.Execute(null);
         Drain();
-        Check(logic.BasicEntities.Count == entities + 10 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4 &&
+        Check(logic.BasicEntities.Count == entities + 12 && logic.DirectionalLights.Count == suns + 2 && logic.PointLights.Count == points + 4 &&
               logic.Decals.Count == decals + 2,
             "every Hierarchy + menu entry creates its object");
 
