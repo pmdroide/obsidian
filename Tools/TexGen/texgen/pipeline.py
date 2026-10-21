@@ -11,7 +11,7 @@ from PIL import Image
 
 from . import PIPELINE_VERSION, protocol, postprocess, seams
 from .backends import BackendUnavailable, check_backend, classic_pbr, fake_rgb
-from .imageops import luminance
+from .imageops import luminance, make_tileable
 from .styles import style as style_module
 from .validate import validate
 
@@ -62,6 +62,11 @@ def make_rgb(params, family, style, size):
             raise TexGenError("input_required", "the classic backend needs --input-rgb", 2)
         return load_input_rgb(params["input_rgb"], size)
     ok, code, message = check_backend(backend)
+    if ok and backend in ("sdxl_classic", "sdxl_chord"):
+        from .backends import sdxl_rgb  # lazy: torch + diffusers
+        return sdxl_rgb.generate(
+            style.prompt_for_diffusion(params["prompt"], family), style.negative_for_diffusion(params["negative_prompt"]),
+            params["seed"], size, on_step=lambda f: protocol.progress("diffusion", 0.1 + 0.2 * f))
     raise BackendUnavailable(code or "backend_not_implemented", message)
 
 
@@ -88,9 +93,19 @@ def run(params, out_dir):
     protocol.progress("load", 0.0)
     protocol.progress("diffusion", 0.1)
     rgb = make_rgb(params, family, style, size)
+    # A photo (--input-rgb) rarely tiles: make it tile before estimating, or the seam check rejects every one of them.
+    source_tiled = False
+    if params["input_rgb"] and params["seam_check"] and not seams.passes(
+            seams.seam_score(luminance(rgb.astype(np.float64) / 255.0))):
+        rgb = make_tileable(rgb)
+        source_tiled = True
 
     protocol.progress("estimation", 0.3)
-    est = classic_pbr.estimate(rgb, cfg["normal_strength"])
+    if params["backend"] == "sdxl_chord":
+        from .backends import chord_pbr  # lazy: torch + the CHORD clone
+        est = chord_pbr.estimate(rgb, cfg["normal_strength"])
+    else:
+        est = classic_pbr.estimate(rgb, cfg["normal_strength"])
 
     protocol.progress("style", 0.5)
     albedo, rough, metal = style_module.apply_style(style, family, est, params["force_dielectric"])
@@ -149,6 +164,7 @@ def run(params, out_dir):
         "colorspace": {"basecolor": "srgb", "normal": "linear", "roughness": "linear", "metallic": "linear",
                        "ao": "linear", "height": "linear"},
         "seam_score": round(seam, 4),
+        "source_made_tileable": source_tiled,
         "validation": validation,
         "suggested": style_module.suggest(style, family),
         "created_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

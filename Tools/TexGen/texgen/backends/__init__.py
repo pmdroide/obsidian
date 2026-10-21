@@ -28,11 +28,17 @@ def check_backend(name):
     if missing:
         return False, "dependency_missing", "missing Python packages: " + ", ".join(missing)
     model_dir = MODELS_DIR / "sdxl"
-    if not model_dir.is_dir() or not any(model_dir.iterdir()):
-        return False, "model_missing", "no model weights in " + str(model_dir)
-    if name == "sdxl_chord" and not (TEXGEN_ROOT / "third_party" / "chord").is_dir():
-        return False, "model_missing", "CHORD is not installed in " + str(TEXGEN_ROOT / "third_party" / "chord")
+    if not (model_dir / "model_index.json").is_file():
+        return False, "model_missing", "no diffusers model (model_index.json) in " + str(model_dir)
     import torch  # noqa: lazy, GPU backends only
     if not torch.cuda.is_available():
         return False, "cuda_unavailable", "torch cannot see a CUDA device"
-    return False, "backend_not_implemented", "the %s backend arrives with phase E of the plan" % name
+    if name == "sdxl_chord":
+        from . import chord_pbr
+        extra = [p for p in ("omegaconf", "torchvision", "imageio") if importlib.util.find_spec(p) is None]
+        if extra:
+            return False, "dependency_missing", "CHORD needs Python packages: " + ", ".join(extra)
+        absent = chord_pbr.missing_files()
+        if absent:
+            return False, "model_missing", "CHORD files missing: " + ", ".join(absent)
+    return True, "", "%s is ready (%s)" % (name, torch.cuda.get_device_name(0))

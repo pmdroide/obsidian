@@ -61,9 +61,14 @@ internal static class TexGenMcpChecks
             tools.GenerateMaterial("mat-3", "mcp test stone", seed: 22, resolution: 128);
             Check(Wait(service, "mat-3", drain).Material!.MaterialPath != path, "another seed gives another material");
 
-            tools.GenerateMaterial("mat-4", "x", backend: "sdxl_classic", resolution: 128);
-            var failed = Wait(service, "mat-4", drain);
-            Check(failed.State == "failed" && !string.IsNullOrEmpty(failed.Error) && failed.Material == null, "an unavailable backend fails with the reason: " + failed.Error);
+            // Where the GPU backend is installed it would really generate: only check the unavailable case where it is one.
+            if (service.MaterialRunner.CheckBackendsAsync(new[] { "sdxl_classic" }).GetAwaiter().GetResult()["sdxl_classic"] != null)
+            {
+                tools.GenerateMaterial("mat-4", "x", backend: "sdxl_classic", resolution: 128);
+                var failed = Wait(service, "mat-4", drain);
+                Check(failed.State == "failed" && !string.IsNullOrEmpty(failed.Error) && failed.Material == null, "an unavailable backend fails with the reason: " + failed.Error);
+            }
+            else Console.WriteLine("SKIP: unavailable backend check (sdxl_classic is installed here)");
 
             Expect(() => service.GetOperation("never-sent"), "OPERATION_NOT_FOUND", "an unknown operation is reported");
             service.Stop();

@@ -65,5 +65,13 @@ class EstimatorTests(unittest.TestCase):
         self.assertLess(seams.seam_score(self.est["normal"]), 1.5)
 
 
+    def test_a_nearly_uniform_input_stays_nearly_flat(self):
+        rng = np.random.default_rng(3)
+        flat = np.clip(110 + rng.normal(0, 2.0, (self.size, self.size, 1)), 0, 255).repeat(3, axis=2).astype(np.uint8)
+        flat_height = classic_pbr.estimate(flat, 2.5)["height"]
+        self.assertLess(float(flat_height.max() - flat_height.min()), 0.35)
+        self.assertGreater(float(self.est["height"].max() - self.est["height"].min()), 2 * float(flat_height.max() - flat_height.min()))
+
+
 if __name__ == "__main__":
     unittest.main()

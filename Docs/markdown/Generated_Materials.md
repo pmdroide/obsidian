@@ -28,10 +28,10 @@ The dialog tells you when the generator can't run and why.
 | Avoid | Optional negative prompt (used by the diffusion backends). |
 | Seed | The same prompt, seed, size, backend and family always give the same material. **Random** picks a new one. |
 | Size | 256, 512, 1024 or 2048 pixels, square. |
-| Backend | Only the backends that work on this machine are listed. `fake` is a procedural stand-in (no GPU); the Stable Diffusion backends come with phase E of the plan. |
-| Family | `auto` reads the prompt (a keyword picks the family); or choose stone, brick, concrete, tile, plaster, wood, metal, painted_metal, fabric, ground or organic. Each family has its own roughness range, normal strength and real-world tile size. |
+| Backend | Only the backends that work on this machine are listed. `fake` is a procedural stand-in (no GPU); `sdxl_classic` (Stable Diffusion XL, see below) appears once it is installed. |
+| Family | `auto` reads the prompt (a keyword picks the family); or choose stone, brick, concrete, tile, plaster, wood, metal, painted_metal, fabric, ground or organic. Each family has its own albedo brightness band and saturation cap, roughness range, normal strength and real-world tile size. |
 | Force dielectric | No metal at all, even for a metal prompt. |
-| Use photo... | Turn a photo or an existing texture into a PBR set (the classic estimator). It should already tile: a photo with a visible seam is refused. |
+| Use photo... | Turn a photo or an existing texture into a PBR set (the classic estimator). A photo that doesn't tile is made tileable first (its middle is kept, the borders are blended with shifted copies of itself); a photo with strong features near its edges shows ghosting in that band, so a crop that already tiles is best. |
 
 Press **Generate**: a progress bar shows the stage (diffusion, estimation, style, postprocess, validate, write), **Cancel** stops it, and the maps appear as thumbnails (Base color, Normal, Roughness, AO, Height, and Metallic when there is metal) straight from the cache folder. Style warnings are listed under the progress bar; they mean a value is outside the Source 2 ranges (for example `albedo_too_dark`) and the result is still usable.
 
@@ -68,14 +68,15 @@ Tools\TexGen\.venv\Scripts\python -m texgen check --backend fake
 Tools\TexGen\.venv\Scripts\python -m texgen styles
 ```
 
-stdout is JSON lines only (`progress`, `warning`, `done`, `error`). Exit codes: 0 ok, 1 internal error, 2 bad arguments, 3 model or dependency missing, 4 seam check failed, 5 style validation failed (`--strict`). Tests: `Tools\TexGen\.venv\Scripts\python -m unittest discover Tools/TexGen/tests` and `Tests/Components/TexGenChecks*.cs`.
+stdout is JSON lines only (`progress`, `warning`, `done`, `error`). Exit codes: 0 ok, 1 internal error, 2 bad arguments, 3 model or dependency missing, 4 seam check failed (a generated image that doesn't tile; `--input-rgb` photos are made tileable instead, unless `--no-seam-check` keeps them as they are), 5 style validation failed (`--strict`). Tests: `Tools\TexGen\.venv\Scripts\python -m unittest discover Tools/TexGen/tests` and `Tests/Components/TexGenChecks*.cs`.
 
 ## Where to tune
 
 | Change | Where |
 |---|---|
-| Value ranges, families, keywords, roughness, tile sizes | `Tools/TexGen/texgen/styles/source2.json` and `style.py` |
-| Delighting, height, normals, roughness estimate | `Tools/TexGen/texgen/backends/classic_pbr.py` |
+| Value ranges, families, keywords, roughness, tile sizes | `Tools/TexGen/texgen/styles/source2.json` and `style.py` (`albedo_mean` / `albedo_clip` / `max_saturation` per family override the `common` ones; highlights roll off towards the clip in `compress_highlights`) |
+| Making photos tileable | `make_tileable` in `Tools/TexGen/texgen/imageops.py` |
+| Delighting, height, normals, roughness estimate | `Tools/TexGen/texgen/backends/classic_pbr.py` (`soften_shadows` keeps contact shadows shallow, `MAX_SLOPE` caps the normals) |
 | AO, metal, PNG writing | `Tools/TexGen/texgen/postprocess.py` |
 | Warnings | `Tools/TexGen/texgen/validate.py` |
 | Id, runner, import | `Engine/Recources/TextureGeneration/` |
@@ -83,9 +84,43 @@ stdout is JSON lines only (`progress`, `warning`, `done`, `error`). Exit codes: 
 
 When a change alters results, bump **both** `PIPELINE_VERSION` in `Tools/TexGen/texgen/__init__.py` and `MaterialGenerationId.PipelineVersion`, so old cache entries aren't reused.
 
+## Checking a material in the MaterialLab
+
+`Engine.exe --scene Scenes/MaterialLab.obsc --material Materials/Generated/<x>.mat --shot lab.png` (or `--import-generated Tools/TexGen/cache/<id>` to import and view a fresh set) shows it on a tiled floor, a cube and a sphere next to a grey and a chrome reference. Regenerate the scene with `python Tools/TexGen/lab/generate_material_lab.py`. Calibration against CC0 references: `Docs/Research/AiTextures/D2_CALIBRATION.md`.
+
+## Checking the Source 2 look (`Source2MaterialTest`)
+
+MaterialLab's warm low sun tints every material orange. To judge a material against Half-Life: Alyx, use the wall scene, framed and lit like the HLA screenshots (a 3 x 2 m wall of 1 m slabs, a high neutral sun from behind the camera, a dim fill, a bright sky ambient; the Poly Haven bricks, an 18 % grey card, a white card and a chrome sphere beside it):
+
+```powershell
+Engine\bin\Debug\net10.0-windows\Engine.exe --scene Scenes/Source2MaterialTest.obsc --import-generated Tools/TexGen/cache/<id> --tiling 1 --shot wall.png
+Tools\TexGen\.venv\Scripts\python Tools/TexGen/lab/compare_source2_look.py Tools/TexGen/cache/<id> --hla brick --shot wall.png
+```
+
+`--tiling 1` makes each slab repeat the texture exactly once, so a seam between slabs means the texture doesn't tile (without it the material's real-world tiling, e.g. 0.667 for brick, makes the slabs disagree). The compare script prints the albedo's luminance and saturation next to an HLA surface's (brick, plaster, wood, concrete, tile, checker; cut from `Docs/Research/Source2Look/screenshots` at run time) and the family band, and writes `HLA crop | albedo | capture` to `<cache>/_debug/source2_compare.png`. Regenerate the scene with `python Tools/TexGen/lab/generate_source2_material_test.py`.
+
+## Stable Diffusion backend (`sdxl_classic`)
+
+Real text-to-texture, local and offline (the code never downloads anything). Needs an NVIDIA GPU:
+
+1. Install the GPU packages in the venv, with the torch build that matches your CUDA driver: `Tools\TexGen\.venv\Scripts\python -m pip install -r Tools/TexGen/requirements-gpu.txt` (see https://pytorch.org for the right torch wheel).
+2. Put an SDXL model in diffusers format (`model_index.json`, `unet/`, `vae/`, ...) in `Tools/TexGen/models/sdxl/` (git-ignored). The license of the weights is yours to check.
+3. `Tools\TexGen\.venv\Scripts\python -m texgen check --backend sdxl_classic` must report `done`; the Generate Material dialog then lists the backend.
+
+The image is generated at 1024 px (25 steps, DPM++ 2M, float16, seeded) with every convolution of the UNet and the VAE padding circularly so it wraps, then goes through the same estimator and `source2` style as the other backends. ## CHORD backend (`sdxl_chord`)
+
+Same SDXL image, but the PBR maps come from CHORD (Ubisoft La Forge) instead of the classic estimator: better roughness, softer and more natural normals. **Its license is research-only (Ubisoft Machine Learning License, copyleft): check it before shipping anything made with it.** Needs, besides the SDXL setup:
+
+1. `git clone https://github.com/ubisoft/ubisoft-laforge-chord Tools/TexGen/third_party/chord`
+2. Ask for access at https://huggingface.co/Ubisoft/ubisoft-laforge-chord, `hf auth login`, then `hf download Ubisoft/ubisoft-laforge-chord --local-dir Tools/TexGen/third_party/chord/weights`
+3. `pip install torchvision omegaconf imageio` in the venv (torchvision from the same CUDA index as torch).
+4. The Stable Diffusion 2.1 configs and tokenizer (a few KB, no weights), so nothing is fetched at run time: `hf download sd2-community/stable-diffusion-2-1-base --local-dir Tools/TexGen/third_party/chord/sd21 --include unet/config.json --include vae/config.json --include text_encoder/config.json --include "tokenizer/*" --include "scheduler/*" --include model_index.json`
+
+`texgen check --backend sdxl_chord` must say ready. It takes about 45 s per material on an RTX 3060 (model load plus one 1280 px pass). The open weights don't predict a height map; it is derived from the albedo.
+
 ## Limits
 
-- The `fake` backend is a placeholder look. Real text-to-texture needs the Stable Diffusion backends (phase E of `Docs/Research/AiTextures/PLAN.md`: GPU, local model weights, offline).
+- The `fake` backend is a placeholder look. Real text-to-texture needs the `sdxl_classic` backend (GPU, local model weights); it is written and tested without a GPU, and has been run on SDXL base 1.0 (fp16) on an RTX 3060; it tends to draw many small elements per tile (see the scale note in `ISSUES.md`).
 - CHORD (an optional, better RGB-to-PBR model) is research-only licensed: don't use it in a commercial game without checking its license.
 - mgcb builds mip maps with a box filter on the stored values, without linearizing the albedo or renormalizing normals, so distant surfaces darken and flatten slightly.
 - The height map is 8-bit in Content (the 16-bit version stays in `Tools/TexGen/cache/<id>/_debug`).

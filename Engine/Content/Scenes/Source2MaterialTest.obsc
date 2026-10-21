@@ -1,0 +1,672 @@
+{
+  "Version": 2,
+  "Name": "Source2MaterialTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "MaterialLab.Target Wall 00",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.0,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9542888e-e5c5-58d7-b944-bd8558622d44",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "34b3460e-f9ad-5662-adb3-3262dd10dfc1",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 2,
+      "Name": "MaterialLab.Target Wall 01",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.0,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "466ed255-cd98-5063-b339-505d54cb0914",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "8127b1f4-0384-54a5-961b-419129cedf67",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 3,
+      "Name": "MaterialLab.Target Wall 10",
+      "ModelKey": "Cube",
+      "Position": [
+        0.0,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b8bfe440-58c6-5e4e-8f59-80e996c6d439",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "fd6c107a-1f9d-5767-b2a2-b8ade0f357a1",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 4,
+      "Name": "MaterialLab.Target Wall 11",
+      "ModelKey": "Cube",
+      "Position": [
+        0.0,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8a679688-3cbf-5111-80e7-f81940e6284a",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "4b78ff1b-2977-5a74-af6b-0d9d6af99f1e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 5,
+      "Name": "MaterialLab.Target Wall 20",
+      "ModelKey": "Cube",
+      "Position": [
+        1.0,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0d75c7bb-0761-5039-a4b7-20c6107d0be4",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "6e89e47a-8a12-5ae6-8161-97e3037061ec",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 6,
+      "Name": "MaterialLab.Target Wall 21",
+      "ModelKey": "Cube",
+      "Position": [
+        1.0,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "47583752-234c-5b29-930c-336f46f71385",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "780eda65-b00b-5a58-b7d7-863d03089b50",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 7,
+      "Name": "MaterialLab.Target Sphere",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0.9,
+        -0.9,
+        0.35
+      ],
+      "Scale": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "412ed66a-b871-5362-ab0c-bea9c42c66c7",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "ce4e2818-1921-5a5b-bdee-b9ee05cc7bbb",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Source2Test Reference Bricks 0",
+      "ModelKey": "Cube",
+      "Position": [
+        2.15,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b26eb0e2-2742-532c-9257-cebea5af3f36",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 1.0,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "MaterialPath": "Materials/Reference/Poly_Bricks.mat",
+            "MaterialType": 0,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Bricks_Height.jpg"
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "ea4f7ec4-eb64-57f0-85b2-e63902f74a0c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 9,
+      "Name": "Source2Test Reference Bricks 1",
+      "ModelKey": "Cube",
+      "Position": [
+        2.15,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "8f9df2d7-60d0-54bd-98ba-cc8d3d68b6f7",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 1.0,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "MaterialPath": "Materials/Reference/Poly_Bricks.mat",
+            "MaterialType": 0,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg",
+            "DisplacementTexture": "GameObjects/Textures/Ground/Bricks_Height.jpg"
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "13145f2d-0680-559f-baab-eecc8e395398",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        -0.5,
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 10,
+      "Name": "Source2Test Grey Card 18",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.95,
+        -0.3,
+        0.6
+      ],
+      "Scale": [
+        0.2,
+        0.02,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9102eeea-9e44-551c-807d-e0791279a769",
+          "Data": {
+            "Red": 0.46135612950044164,
+            "Green": 0.46135612950044164,
+            "Blue": 0.46135612950044164,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "Source2Test White Card 80",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.45,
+        -0.3,
+        0.6
+      ],
+      "Scale": [
+        0.2,
+        0.02,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "dce5a5fb-b467-553e-8e48-3d3b9bfe42cf",
+          "Data": {
+            "Red": 0.9063317533440594,
+            "Green": 0.9063317533440594,
+            "Blue": 0.9063317533440594,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "Source2Test Reference Chrome",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -2.2,
+        -0.9,
+        0.25
+      ],
+      "Scale": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "52490e8d-3833-598e-8cf0-d57391f6b80e",
+          "Data": {
+            "Red": 0.77,
+            "Green": 0.78,
+            "Blue": 0.78,
+            "Roughness": 0.05,
+            "Metallic": 1.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Source2Test Floor",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -2.0,
+        -0.02
+      ],
+      "Scale": [
+        4.0,
+        2.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b6137a0f-e080-5888-ae0b-4e39837d63fa",
+          "Data": {
+            "Red": 0.48452920448170694,
+            "Green": 0.48452920448170694,
+            "Blue": 0.48452920448170694,
+            "Roughness": 0.85,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "a8b525ea-784a-54c1-83d2-16f3f621d4f8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Source2Test Reflection Probe",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -2.0,
+        1.5
+      ],
+      "Scale": [
+        5,
+        4,
+        2.5
+      ],
+      "Components": [
+        {
+          "Type": "reflection-probe",
+          "InstanceId": "9435d3bb-5be0-5da3-ac40-0ef380463cdd",
+          "Data": {
+            "BlendDistance": 0.5,
+            "BoxProjection": false,
+            "Priority": 0,
+            "Resolution": 128,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 900,
+      "Name": "Fill Light",
+      "Position": [
+        -2.2,
+        -1.6,
+        0.6
+      ],
+      "Radius": 7,
+      "Color": [
+        242,
+        244,
+        255,
+        255
+      ],
+      "Intensity": 0.8,
+      "CastShadows": false,
+      "SourceRadius": 0.3
+    }
+  ],
+  "SpotLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 903,
+      "Name": "Sun",
+      "Direction": [
+        0.3,
+        0.55,
+        -0.78
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        253,
+        250,
+        255
+      ],
+      "Intensity": 25,
+      "CastShadows": true,
+      "ShadowSize": 16,
+      "ShadowDepth": 40,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      -1.5,
+      1.0
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.6,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 13,
+    "MaxAutoExposure": 2
+  },
+  "MainCamera": {
+    "Position": [
+      0.15,
+      -3.6,
+      1.15
+    ],
+    "Forward": [
+      -0.04,
+      1.0,
+      -0.05
+    ],
+    "FieldOfView": 0.9,
+    "Components": []
+  }
+}

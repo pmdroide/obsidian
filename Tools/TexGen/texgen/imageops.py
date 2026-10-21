@@ -51,3 +51,28 @@ def normalize01(a, lo_pct=1.0, hi_pct=99.0):
 
 def to_u8(a):
     return np.clip(np.rint(np.asarray(a, dtype=np.float64) * 255.0), 0, 255).astype(np.uint8)
+
+
+def make_tileable(rgb_u8, band=0.3):
+    """A photo that doesn't tile -> one that does, keeping the middle of the photo as it is. Four copies are blended: the
+    photo, and copies shifted by half its size in X, in Y and in both. Near the left/right border only X-shifted copies
+    show (their border columns are neighbours in the photo, so they wrap cleanly), near the top/bottom only Y-shifted
+    ones; each copy's own break (in its middle) sits where its weight is zero. `band` is how far the fade reaches from
+    each border, as a fraction of half the size. The blend is variance-preserving (Heitz & Neyret 2018), so the faded
+    band keeps the photo's contrast instead of washing out."""
+    a = rgb_u8.astype(np.float64) / 255.0
+    h, w = a.shape[:2]
+
+    def ramp(n):
+        d = np.minimum(np.arange(n), n - 1 - np.arange(n)) / max(1.0, (n / 2.0) * band)
+        t = np.clip(d, 0.0, 1.0)
+        return t * t * (3.0 - 2.0 * t)
+
+    wx = ramp(w)[None, :, None]
+    wy = ramp(h)[:, None, None]
+    copies = (a, np.roll(a, w // 2, axis=1), np.roll(a, h // 2, axis=0), np.roll(a, (h // 2, w // 2), axis=(0, 1)))
+    weights = (wx * wy, (1 - wx) * wy, wx * (1 - wy), (1 - wx) * (1 - wy))
+    mean = a.reshape(-1, 3).mean(axis=0)
+    mixed = sum((c - mean) * k for c, k in zip(copies, weights))
+    norm = np.sqrt(sum(k * k for k in weights))
+    return to_u8(np.clip(mean + mixed / norm, 0.0, 1.0))

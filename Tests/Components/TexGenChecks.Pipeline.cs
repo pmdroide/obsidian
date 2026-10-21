@@ -10,21 +10,21 @@ internal static partial class TexGenChecks
     private static void RunIds()
     {
         var p = new TexGenParams { Prompt = "mossy cobblestone", Seed = 1234 };
-        Check(MaterialGenerationId.Canonical(p) == "v1|fake|source2|auto|1024|1234|0||mossy cobblestone|",
+        Check(MaterialGenerationId.Canonical(p, "1") == "v1|fake|source2|auto|1024|1234|0||mossy cobblestone|",
             "the canonical id string follows PLAN.md 2.4");
-        Check(MaterialGenerationId.Compute(p) == "9f5ffcc47f1a39a9", "id of 'mossy cobblestone' seed 1234 matches the Python SHA-256 vector");
+        Check(MaterialGenerationId.Compute(p, "1") == "9f5ffcc47f1a39a9", "id of 'mossy cobblestone' seed 1234 matches the Python SHA-256 vector");
         var other = new TexGenParams
         {
             Prompt = "  rusty steel plate ", NegativePrompt = "blurry", Seed = -7, Resolution = 512, Backend = "classic",
             Family = "metal", ForceDielectric = true, InputRgbSha256 = string.Concat(Enumerable.Repeat("ab", 32)),
         };
-        Check(MaterialGenerationId.Compute(other) == "3daaf8e94a2cb2cc", "id with every field set (trimmed prompt, negative seed, hash) matches the Python vector");
-        Check(MaterialGenerationId.Compute(p, "2") == "facd687b99f01bb6", "another pipeline version gives another id");
+        Check(MaterialGenerationId.Compute(other, "1") == "3daaf8e94a2cb2cc", "id with every field set (trimmed prompt, negative seed, hash) matches the Python vector");
+        Check(MaterialGenerationId.Compute(p, "2") == "facd687b99f01bb6" && MaterialGenerationId.Compute(p, "3") == "92745eedd4e48170" && MaterialGenerationId.Compute(p) != MaterialGenerationId.Compute(p, "3"), "another pipeline version gives another id (the current one is 4)");
         Check(MaterialGenerationId.Compute(new TexGenParams { Prompt = "mossy cobblestone ", Seed = 1234 }) == MaterialGenerationId.Compute(p),
             "whitespace around the prompt does not change the id");
         Check(MaterialGenerationId.Compute(new TexGenParams { Prompt = "mossy cobblestone", Seed = 1235 }) != MaterialGenerationId.Compute(p),
             "a different seed changes the id");
-        Check(MaterialGenerationId.Compute(new TexGenParams { Prompt = "pedra \u00e1spera", Seed = 1 }) == "9a8bd8e2613652e3", "non-ASCII prompts hash as UTF-8");
+        Check(MaterialGenerationId.Compute(new TexGenParams { Prompt = "pedra \u00e1spera", Seed = 1 }, "1") == "9a8bd8e2613652e3", "non-ASCII prompts hash as UTF-8");
         Check(MaterialGenerationId.Slug("Mossy  Cobblestone!") == "mossy_cobblestone" && MaterialGenerationId.Slug("!!!") == "material" &&
               MaterialGenerationId.Slug(new string('a', 80)).Length == 32, "slugs follow texgen's rule");
     }
@@ -182,8 +182,13 @@ internal static partial class TexGenChecks
             var again = runner.GenerateAsync(p).GetAwaiter().GetResult();
             Check(again.Success && again.FromCache, "a valid cache entry is returned without running Python");
 
-            var bad = runner.GenerateAsync(new TexGenParams { Prompt = "x", Seed = 1, Resolution = 128, Backend = "sdxl_classic" }).GetAwaiter().GetResult();
-            Check(!bad.Success && bad.ExitCode == 3 && !string.IsNullOrEmpty(bad.ErrorCode), "an unavailable backend fails with exit 3 and a code: " + bad.ErrorCode);
+            // Where the GPU backend is installed it would really generate: only check the unavailable case where it is one.
+            if (runner.CheckBackendsAsync(new[] { "sdxl_classic" }).GetAwaiter().GetResult()["sdxl_classic"] != null)
+            {
+                var bad = runner.GenerateAsync(new TexGenParams { Prompt = "x", Seed = 1, Resolution = 128, Backend = "sdxl_classic" }).GetAwaiter().GetResult();
+                Check(!bad.Success && bad.ExitCode == 3 && !string.IsNullOrEmpty(bad.ErrorCode), "an unavailable backend fails with exit 3 and a code: " + bad.ErrorCode);
+            }
+            else Console.WriteLine("SKIP: unavailable backend check (sdxl_classic is installed here)");
             var noPhoto = runner.GenerateAsync(new TexGenParams { Prompt = "x", Seed = 1, Resolution = 128, Backend = "classic" }).GetAwaiter().GetResult();
             Check(!noPhoto.Success && noPhoto.ExitCode == 2, "a classic request without a photo fails with exit 2");
 

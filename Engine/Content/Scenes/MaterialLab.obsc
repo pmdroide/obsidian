@@ -1,0 +1,898 @@
+{
+  "Version": 2,
+  "Name": "MaterialLab",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "MaterialLab.Target Floor 00",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.5,
+        -1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "dd64bf9a-1b10-5c04-ae4c-872a535b824d",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "daee22a0-512d-5cf2-b7e4-d191bef1edc2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "MaterialLab.Target Floor 01",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.5,
+        -0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "2f1280c1-4358-54e7-8c21-945bc4656848",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "f40d2fd1-2ba5-5944-84d7-1a7f27a34d17",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "MaterialLab.Target Floor 02",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.5,
+        0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5f9bf4dc-147f-53b7-953c-1c0eae11f192",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "a1285753-bc2d-5101-b3b9-f532b6e6a86c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "MaterialLab.Target Floor 03",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.5,
+        1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "2cb4fd32-8332-5b22-a1a0-b38237865d46",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "5135a382-8b53-543f-8529-6fa7776ba504",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "MaterialLab.Target Floor 10",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.5,
+        -1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "0848fa1e-f5cf-5541-8725-5b918e177889",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "3c2dc262-6926-593d-a3a6-4d76ae7bb39a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "MaterialLab.Target Floor 11",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.5,
+        -0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "5052e2f5-efa5-5bef-bf71-45c7cad528c2",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "8feb3f59-516e-546e-b095-e97cd10d52f9",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "MaterialLab.Target Floor 12",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.5,
+        0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4ab4c45a-b9d6-5a0f-875f-20b00eafec71",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "142ef87d-dd7c-5c04-9725-85933a21cc2e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "MaterialLab.Target Floor 13",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.5,
+        1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "a5f3dcb3-e6cb-5b34-a93b-7e844c314751",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "41301057-4bc8-5484-8ae4-67a77ff8ea8c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "MaterialLab.Target Floor 20",
+      "ModelKey": "Cube",
+      "Position": [
+        0.5,
+        -1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "c1646a8f-36d0-5ffa-a1a4-478485ca9185",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "bec2ad70-281d-5c70-87b8-2f821e5488ea",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "MaterialLab.Target Floor 21",
+      "ModelKey": "Cube",
+      "Position": [
+        0.5,
+        -0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "fcd02668-f2a5-5b5d-afee-cd2a93adeed4",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "0dc34539-c3c4-56b6-960b-c422d5689b9b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "MaterialLab.Target Floor 22",
+      "ModelKey": "Cube",
+      "Position": [
+        0.5,
+        0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4b1e9eaf-0e5c-5cad-ad1f-ef7276d023b1",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "b3af8f71-ab2d-5a8f-8402-8554b3650068",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "MaterialLab.Target Floor 23",
+      "ModelKey": "Cube",
+      "Position": [
+        0.5,
+        1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "4bd7bfb4-005a-5bc3-bb55-65c180e84bba",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "3ac2850e-71ab-5bee-bb42-4d37e43d77ba",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "MaterialLab.Target Floor 30",
+      "ModelKey": "Cube",
+      "Position": [
+        1.5,
+        -1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "f6fd2487-b07f-5d5d-9976-b20ddc09854e",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "19e5b47a-075f-53a8-897c-4d921e7ddee1",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "MaterialLab.Target Floor 31",
+      "ModelKey": "Cube",
+      "Position": [
+        1.5,
+        -0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "53d2e184-f37b-59d7-ab01-6bb809d1296b",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "2a9b1552-588b-5316-8507-c87f2b227070",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "MaterialLab.Target Floor 32",
+      "ModelKey": "Cube",
+      "Position": [
+        1.5,
+        0.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "a9cc31b0-8ffa-5042-b54d-19d87a2d0bac",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "e61b925f-4769-5e7b-94d9-6fb7a1beba17",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "MaterialLab.Target Floor 33",
+      "ModelKey": "Cube",
+      "Position": [
+        1.5,
+        1.5,
+        -0.02
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "eb40c8d3-fd6c-525e-972e-8254b4bd187b",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "20ae774a-d39f-5f77-be28-55838752390f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "MaterialLab.Target Cube",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.9,
+        0.5,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "89b3ad50-28a6-5cd5-98dd-5f4027669ef0",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "89c1d6f8-3104-573f-875e-7a6a2cf467a8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "MaterialLab.Target Sphere",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0.45,
+        0.5,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "7700212c-4bfe-5062-a632-6e62652352b6",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "physics",
+          "InstanceId": "4f5ddb79-78ce-594e-9bb1-5a2aa25785a7",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "MaterialLab Reference Grey",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        1.25,
+        -0.2,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "ee35fd48-f707-5e23-bc25-270df851f0c6",
+          "Data": {
+            "Red": 0.7353569830524495,
+            "Green": 0.7353569830524495,
+            "Blue": 0.7353569830524495,
+            "Roughness": 0.5,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "MaterialLab Reference Metal",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        1.25,
+        -1.0,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "97ab2e9c-3f1f-55c5-9a80-58c82b511b81",
+          "Data": {
+            "Red": 0.77,
+            "Green": 0.78,
+            "Blue": 0.78,
+            "Roughness": 0.05,
+            "Metallic": 1.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "MaterialLab Reflection Probe",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        2.0
+      ],
+      "Scale": [
+        6,
+        6,
+        3
+      ],
+      "Components": [
+        {
+          "Type": "reflection-probe",
+          "InstanceId": "e1ee4953-0e41-5327-a55b-5ae37c67b4b4",
+          "Data": {
+            "BlendDistance": 0.5,
+            "BoxProjection": false,
+            "Priority": 0,
+            "Resolution": 128,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 900,
+      "Name": "Side Light",
+      "Position": [
+        -2.4,
+        -1.6,
+        0.7
+      ],
+      "Radius": 8,
+      "Color": [
+        255,
+        236,
+        214,
+        255
+      ],
+      "Intensity": 3,
+      "CastShadows": true,
+      "ShadowResolution": 1024,
+      "SourceRadius": 0.05
+    }
+  ],
+  "SpotLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 903,
+      "Name": "Sun",
+      "Direction": [
+        0.55,
+        0.45,
+        -0.7
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        247,
+        235,
+        255
+      ],
+      "Intensity": 60,
+      "CastShadows": true,
+      "ShadowSize": 20,
+      "ShadowDepth": 40,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      1.0
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.25,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15,
+    "MaxAutoExposure": 3
+  },
+  "MainCamera": {
+    "Position": [
+      0.2,
+      -4.6,
+      2.5
+    ],
+    "Forward": [
+      -0.02,
+      0.88,
+      -0.47
+    ],
+    "FieldOfView": 0.9,
+    "Components": []
+  }
+}

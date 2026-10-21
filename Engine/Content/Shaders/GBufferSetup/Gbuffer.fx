@@ -821,13 +821,13 @@ PixelShaderOutput DrawTextureDisplacement_PixelShader(DrawNormals_VSOut input)
 
     float3x3 worldToTangent = input.WorldToTangentSpace;
 
-    float3 tangentPos = mul(input.Position.xyz, worldToTangent);
-    float3 tangentCamera = mul(Camera, worldToTangent);
-    
-    float3 viewDir = normalize(tangentPos - tangentCamera);
+    // The rows are the tangent frame in world space, so mul(frame, v) takes a world vector into tangent space. The view
+    // direction comes from the world position (SV_POSITION is in pixels, which smeared the texture across the screen).
+    float3 viewDir = normalize(mul(worldToTangent, input.WorldPos - Camera));
     //POM
     float height = DisplacementMap.Sample(TextureSampler, input.TexCoord).r;
-    float2 p = viewDir.xy / viewDir.z * height * 0.01f;
+    // z is negative (the view looks into the surface); limited so grazing angles don't throw the lookup far away
+    float2 p = viewDir.xy / min(viewDir.z, -0.25f) * -height * 0.01f;
 
     float2 texCoordPOM = input.TexCoord - p;
 

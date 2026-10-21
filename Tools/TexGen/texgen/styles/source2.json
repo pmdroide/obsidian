@@ -1,9 +1,9 @@
 {
   "name": "source2",
-  "description": "Half-Life: Alyx / Source 2 authoring discipline: delit albedo, PBR value ranges, worn painted metal, two-scale normals, soft AO.",
+  "description": "Half-Life: Alyx / Source 2 authoring discipline: delit albedo, per-family PBR value ranges, worn painted metal, two-scale normals, soft AO.",
   "common": {
     "prompt_suffix": ", seamless tileable texture, top-down orthographic, flat even diffuse lighting, no shadows, no perspective",
-    "negative_prompt": "perspective, shadows, highlights, specular reflections, text, watermark, vignette, cartoon",
+    "negative_prompt": "perspective, shadows, highlights, specular reflections, text, watermark, vignette, cartoon, stylized, painterly, oversaturated, vivid colours, clean, brand new",
     "dielectric_albedo_mean": [50, 220],
     "dielectric_albedo_clip": [25, 245],
     "clip_fraction": 0.005,
@@ -17,23 +17,27 @@
   "families": {
     "brick": {
       "keywords": ["brick", "masonry"],
-      "prompt_suffix": ", photographed surface, worn, realistic, subtle grime",
-      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 2.5, "scale_m": 1.5, "material_type": "Basic"
+      "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
+      "albedo_mean": [70, 125], "albedo_clip": [25, 200], "max_saturation": 0.6,
+      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.5, "material_type": "Basic"
     },
     "tile": {
       "keywords": ["tile", "ceramic", "mosaic"],
-      "prompt_suffix": ", photographed surface, worn, realistic, subtle grime",
-      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 2.0, "scale_m": 1.0, "material_type": "Basic"
+      "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
+      "albedo_mean": [50, 200], "albedo_clip": [20, 235], "max_saturation": 0.65,
+      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.0, "material_type": "Basic"
     },
     "concrete": {
       "keywords": ["concrete", "cement", "asphalt", "pavement"],
-      "prompt_suffix": ", photographed surface, worn, realistic, subtle grime",
-      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 2.0, "scale_m": 2.0, "material_type": "Basic"
+      "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
+      "albedo_mean": [85, 160], "albedo_clip": [25, 210], "max_saturation": 0.3,
+      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.0, "material_type": "Basic"
     },
     "plaster": {
       "keywords": ["plaster", "stucco", "drywall", "render wall", "painted wall"],
-      "prompt_suffix": ", photographed surface, worn, realistic, subtle grime",
-      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 2.0, "scale_m": 2.0, "material_type": "Basic"
+      "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
+      "albedo_mean": [90, 210], "albedo_clip": [30, 235], "max_saturation": 0.45,
+      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.0, "material_type": "Basic"
     },
     "painted_metal": {
       "keywords": ["paint", "painted", "chipped", "rust", "rusty", "corroded", "enamel"],
@@ -44,32 +48,36 @@
     "metal": {
       "keywords": ["metal", "steel", "iron", "aluminum", "aluminium", "copper", "brass", "bronze", "chrome", "gold", "silver", "titanium", "tin"],
       "prompt_suffix": ", bare metal, scratches, realistic",
-      "roughness": [0.2, 0.6], "metal": "all", "normal_strength": 1.0, "scale_m": 0.75, "material_type": "Basic"
+      "roughness": [0.08, 0.6], "metal": "all", "normal_strength": 1.0, "scale_m": 0.75, "material_type": "Basic"
     },
     "wood": {
       "keywords": ["wood", "plank", "timber", "oak", "pine", "parquet", "log", "board", "bamboo"],
       "prompt_suffix": ", aged wood, realistic grain",
+      "albedo_mean": [45, 140], "albedo_clip": [15, 200], "max_saturation": 0.7,
       "roughness": [0.45, 0.85], "metal": "none", "normal_strength": 1.5, "scale_m": 1.0, "material_type": "Basic"
     },
     "fabric": {
       "keywords": ["fabric", "cloth", "cotton", "linen", "canvas", "carpet", "wool", "leather", "denim", "velvet", "burlap"],
       "prompt_suffix": ", realistic, natural",
-      "roughness": [0.7, 1.0], "metal": "none", "normal_strength": 2.0, "scale_m": 1.0, "material_type": "Basic"
+      "roughness": [0.7, 1.0], "metal": "none", "normal_strength": 0.9, "scale_m": 1.0, "material_type": "Basic"
     },
     "stone": {
       "keywords": ["stone", "cobble", "cobblestone", "rock", "granite", "marble", "slate", "pebble", "flagstone", "sandstone", "limestone"],
-      "prompt_suffix": ", photographed surface, worn, realistic, subtle grime",
-      "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 2.5, "scale_m": 1.5, "material_type": "Basic"
+      "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
+      "albedo_mean": [60, 160], "albedo_clip": [20, 215], "max_saturation": 0.45,
+      "roughness": [0.4, 0.9], "metal": "none", "normal_strength": 1.0, "scale_m": 1.5, "material_type": "Basic"
     },
     "ground": {
       "keywords": ["dirt", "soil", "mud", "sand", "gravel", "grass", "ground", "snow", "earth", "clay", "path"],
       "prompt_suffix": ", realistic, natural",
-      "roughness": [0.7, 1.0], "metal": "none", "normal_strength": 2.0, "scale_m": 1.5, "material_type": "Basic"
+      "albedo_mean": [50, 130], "albedo_clip": [15, 200], "max_saturation": 0.55,
+      "roughness": [0.5, 0.95], "metal": "none", "normal_strength": 0.9, "scale_m": 1.5, "material_type": "Basic"
     },
     "organic": {
       "keywords": ["moss", "leaf", "leaves", "bark", "skin", "scales", "fur", "bone", "coral", "vine", "organic"],
       "prompt_suffix": ", realistic, natural",
-      "roughness": [0.7, 1.0], "metal": "none", "normal_strength": 2.0, "scale_m": 1.0, "material_type": "Basic"
+      "albedo_mean": [40, 150], "albedo_clip": [15, 210], "max_saturation": 0.7,
+      "roughness": [0.7, 1.0], "metal": "none", "normal_strength": 0.9, "scale_m": 1.0, "material_type": "Basic"
     }
   }
 }

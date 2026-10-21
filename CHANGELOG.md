@@ -1,5 +1,51 @@
 # Changelog
 
+## Changed: generated materials follow the Source 2 look, fixed parallax, Source2MaterialTest scene (2026-10-21)
+
+- **Texture generator, pipeline version 4** (`PIPELINE_VERSION` and `MaterialGenerationId.PipelineVersion` = "4"): per-family albedo brightness bands, clip and saturation caps in `styles/source2.json` (brick [70, 125] sRGB luma, concrete [85, 160], ...; the validator uses them too), highlights roll off instead of clipping (`compress_highlights`), masonry prompts ask for aged, muted surfaces and the negative prompt rejects stylised/oversaturated/clean ones. `classic`: an `--input-rgb` photo that doesn't tile is made tileable (`imageops.make_tileable`, `texgen.json` `source_made_tileable`) instead of being refused; contact shadows become shallow (`soften_shadows`) and normal slopes are capped (`limit_slope`). HLA brick test: CHORD albedo 148 -> 120 luma (HLA ~98), classic seam 10.1 -> 0.72, classic normal tilt p99 0.78 -> 0.54.
+- **Fixed parallax**: `DrawTextureDisplacement` (`Gbuffer.fx`) computed the view direction from SV_POSITION (pixels) instead of the world position, smearing every material with a height map (generated materials, the Poly Haven references) in curved streaks across the screen.
+- **New scene `Scenes/Source2MaterialTest.obsc`** (`Tools/TexGen/lab/generate_source2_material_test.py`): a 3 x 2 m wall of 1 m slabs lit softly and neutrally like the HLA screenshots, next to the Poly Haven bricks, 18 % grey/white cards and a chrome sphere. `Tools/TexGen/lab/compare_source2_look.py` compares a generated albedo with HLA screenshot crops (brick, plaster, wood, concrete, tile, checker) and writes a side-by-side image.
+- `LookDevCapture --tiling <t>`: overrides the tiling of the `MaterialLab.Target*` gameobjects so each lab slab repeats the texture exactly once.
+- Checks: `Tools/TexGen/tests/test_style.py` `Source2LookTests`, `test_cli.py` (photos are made tileable), `TexGenChecks.Pipeline.cs` (version 4 id). Docs: `Generated_Materials.md`, `Engine_Wiring.md`, `D2_CALIBRATION.md`, `PROGRESS.md`, `ISSUES.md`. Obsidian 1.5.2.
+- Claude
+
+## Tested: generated materials against a Half-Life: Alyx screenshot (2026-10-21)
+
+- Cropped the brick wall of `Docs/Research/Source2Look/screenshots/Captura de ecrã 2026-10-17 202630.png` and ran it through `classic` (`--input-rgb`) and a matching prompt through `sdxl_chord`, then captured both in `Scenes/MaterialLab.obsc` next to Poly_Bricks (overview + cube close-up; shots in `Tools/TexGen/cache/_shots/hla_brick/`, imports removed afterwards).
+- Result: `classic` keeps HLA's colour but over-carves the photo's contact shadows and doesn't tile; `sdxl_chord` tiles but is ~2.5x too bright and too vivid to read as Source 2. The style has no per-family albedo target; proposal in `Docs/Research/AiTextures/D2_CALIBRATION.md` > Source 2 look check (not applied). No code changed; README version unchanged (Obsidian 1.5.1).
+- Claude
+
+## Added: CHORD backend for the texture generator (2026-10-21)
+
+Phase E2 of `Docs/Research/AiTextures/PLAN.md` (the CHORD license, research-only, was accepted by the user).
+
+- **`sdxl_chord` backend** (`Tools/TexGen/texgen/backends/chord_pbr.py`): the SDXL image goes through CHORD (single-step diffusion, base colour / normal / roughness / metalness), wrapped 128 px around the border so the maps tile; height comes from the albedo; the `source2` style applies afterwards. Offline: the Stable Diffusion 2.1 configs come from `third_party/chord/sd21` and the weights from `third_party/chord/weights` (CHORD's default config key points at a repository that no longer exists). The checkpoint's transformers 4.x key names are translated for the installed 5.x.
+- CHORD writes DirectX / Y- normals (checked against Poly Haven's maps). Against them its roughness follows the real one far better than the classic estimator (Cobblestone correlation 0.81 vs ~0) and its normals are softer.
+- `texgen check --backend sdxl_chord` checks the packages (omegaconf, torchvision, imageio), the CHORD files and CUDA. Setup in `Docs/markdown/Generated_Materials.md`.
+- The "unavailable backend" checks (`test_cli.py`, `TexGenChecks.Pipeline.cs`, `TexGenMcpChecks.cs`) now skip where the GPU backends are installed.
+- Claude
+
+## Added: Stable Diffusion backend for the texture generator and pipeline version 3 (2026-10-21)
+
+Phase E1 of `Docs/Research/AiTextures/PLAN.md`, plus the metal calibration of phase D.
+
+- **`sdxl_classic` backend** (`Tools/TexGen/texgen/backends/sdxl_rgb.py`): SDXL through diffusers from `Tools/TexGen/models/sdxl`, offline (`local_files_only`), float16, DPM++ 2M, 25 steps, seeded; every Conv2d of the UNet and VAE pads circularly so the image tiles. Its prompts are the `source2` family and common suffixes; progress is reported per step. `texgen check` reports it ready when the packages, the weights and CUDA exist. Verified on an RTX 3060 with SDXL base 1.0 (fp16): "red brick wall" tiles (seam score 0.37, no style warnings) and renders correctly in the MaterialLab; the loader uses `variant="fp16"` for fp16-only folders and `check` now requires `model_index.json`. Setup steps are in `Docs/markdown/Generated_Materials.md`. `sdxl_chord` stays unavailable until the CHORD license is decided (E2).
+- **Pipeline version 3**: the classic estimator's height now follows the input's contrast (`HEIGHT_REFERENCE_STD`), so a nearly flat photo (polished steel) no longer turns into bumps (Metal063 normal tilt 0.54 -> 0.18; the reference is 0.006); the `metal` roughness floor drops from 0.2 to 0.08. Version 2 (earlier today) had lowered the normal strengths and the stone/ground roughness. `PIPELINE_VERSION` and `MaterialGenerationId.PipelineVersion` are "3", so older cache entries aren't reused.
+- Checks: `Tools/TexGen/tests/test_sdxl.py`, a flat-input estimator test; the id vectors in `TexGenChecks.Pipeline.cs` pin version 1 where they were computed.
+- Docs: `Generated_Materials.md`, `D2_CALIBRATION.md`, `PROGRESS.md`, `ISSUES.md`. README versions unchanged (Obsidian 1.5.1).
+- Claude
+
+## Added: MaterialLab scene and a calibration of the texture generator (2026-10-21)
+
+Phase D of the AI texture generator (`Docs/Research/AiTextures/PLAN.md`).
+
+- **`Content/Scenes/MaterialLab.obsc`** (generated by `Tools/TexGen/lab/generate_material_lab.py`): a floor of 16 one-metre slabs (so tiling seams show), a cube and a sphere, a neutral grey (0.5 linear) and a chrome reference sphere, a sun, a side point light and a reflection probe. Everything named `MaterialLab.Target*` takes the material under test.
+- `LookDevCapture`: `--material <.mat>` applies a material to the targets; `--import-generated <texgen cache folder>` imports a generated set through `GeneratedMaterialImporter` first. `--reference-mats` of the lab script writes `Materials/Reference/Poly_{Bricks,Cobblestone,RockyDirt}.mat` (CC0 Poly Haven sets already in Content).
+- **Fix: `IsoSphere` had no tangents** (`GenerateTangentFrames=False` in `Content.mgcb`), so any material with a normal map on a sphere crashed the renderer ("vertex declaration does not include all the elements required"). It is now built with tangent frames.
+- `Tools/TexGen/lab/calibrate_references.py` + `Docs/Research/AiTextures/D2_CALIBRATION.md`: the `classic` backend against the references. Albedo is preserved and the DirectX / Y- normal convention matches the references; generated normals are 2-3x too strong and stone/dirt roughness too high. The adjustments were then applied to `source2.json` (normal strength about 1.0/0.9, lower stone/ground roughness) and the pipeline version is now 2 (`PIPELINE_VERSION` and `MaterialGenerationId.PipelineVersion`; the id test vectors pin version 1 explicitly), which also makes old cache entries unusable; mean normal tilt dropped from 0.50-0.76 to 0.29-0.52 against 0.16-0.37 in the references.
+- README versions: Obsidian 1.5.1, Editor 1.5.0.
+- Claude
+
 ## Added: Generate Material in Anvil and the materials_generate MCP tool (2026-10-21)
 
 Phase C of the AI texture generator (`Docs/Research/AiTextures/PLAN.md`): generated materials can now be made from the editor and from an assistant.

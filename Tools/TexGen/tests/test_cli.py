@@ -53,7 +53,7 @@ class GenerateTests(unittest.TestCase):
             self.assertEqual(meta["params"]["seed"], 1234)
             self.assertEqual(meta["params"]["backend"], "fake")
             self.assertEqual(meta["normal_convention"], "directx")
-            self.assertEqual(meta["pipeline_version"], "1")
+            self.assertEqual(meta["pipeline_version"], "4")
             self.assertEqual(meta["colorspace"]["basecolor"], "srgb")
             self.assertIn("tiling", meta["suggested"])
             self.assertLess(meta["seam_score"], 1.5)
@@ -92,6 +92,8 @@ class GenerateTests(unittest.TestCase):
             self.assertFalse(Path(out).exists())
 
     def test_gpu_backend_without_dependencies_exits_3(self):
+        if run_cli("check", "--backend", "sdxl_classic")[0] == 0:
+            self.skipTest("sdxl_classic is installed here; the unavailable case can't be checked")
         with tempfile.TemporaryDirectory() as tmp:
             code, events, _ = run_cli("generate", "--prompt", "x", "--seed", "1", "--out", str(Path(tmp) / "x"),
                                       "--backend", "sdxl_classic", "--resolution", "128")
@@ -114,13 +116,17 @@ class GenerateTests(unittest.TestCase):
             Image.fromarray(ramp).save(tmp / "ramp.png")
             code, events, _ = run_cli("generate", "--prompt", "ramp", "--seed", "1", "--out", str(tmp / "bad"),
                                       "--backend", "classic", "--input-rgb", str(tmp / "ramp.png"), "--resolution", "128")
-            self.assertEqual(code, 4)
-            self.assertEqual(events[-1]["code"], "seam_failed")
-            self.assertFalse((tmp / "bad").exists())
+            # Since pipeline version 4 a photo that doesn't tile is made tileable first instead of being rejected.
+            self.assertEqual(code, 0, events)
+            meta = json.loads((tmp / "bad" / "texgen.json").read_text(encoding="utf-8"))
+            self.assertTrue(meta["source_made_tileable"])
+            self.assertLess(meta["seam_score"], 1.5)
             code, _, _ = run_cli("generate", "--prompt", "ramp", "--seed", "1", "--out", str(tmp / "forced"),
                                  "--backend", "classic", "--input-rgb", str(tmp / "ramp.png"), "--resolution", "128",
                                  "--no-seam-check")
             self.assertEqual(code, 0)
+            meta = json.loads((tmp / "forced" / "texgen.json").read_text(encoding="utf-8"))
+            self.assertFalse(meta["source_made_tileable"], "--no-seam-check keeps the photo as it is")
 
     def test_strict_exits_5_when_a_style_rule_breaks(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -165,9 +171,12 @@ class MiscCommandTests(unittest.TestCase):
             code, events, _ = run_cli("check", "--backend", backend)
             self.assertEqual((code, len(events), events[0]["event"]), (0, 1, "done"))
         code, events, _ = run_cli("check", "--backend", "sdxl_chord")
-        self.assertEqual((code, len(events), events[0]["event"]), (3, 1, "error"))
-        self.assertIn(events[0]["code"], ("dependency_missing", "model_missing", "cuda_unavailable",
-                                          "backend_not_implemented"))
+        self.assertEqual(len(events), 1)
+        if code == 0:  # installed here: a single "done"
+            self.assertEqual(events[0]["event"], "done")
+        else:
+            self.assertEqual((code, events[0]["event"]), (3, "error"))
+            self.assertIn(events[0]["code"], ("dependency_missing", "model_missing", "cuda_unavailable"))
 
 
 if __name__ == "__main__":

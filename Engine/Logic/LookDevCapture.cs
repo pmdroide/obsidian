@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using Engine.Components;
 using Engine.Editor;
 using Engine.Entities;
 using Engine.Recources;
@@ -14,7 +15,8 @@ namespace Engine.Logic
     /// frame as a PNG, without the intro, the editor overlays or the debug stats, then quits. For comparing the look
     /// against reference captures and before/after a renderer change:
     /// <code>Engine.exe --scene Scenes/LookDev.obsc --shot lookdev.png [--camera px,py,pz,tx,ty,tz] [--frames 90]
-    ///     [--size 1280x720] [--rendermode IndirectDiffuse] [--play] [--bake [--save]]</code>
+    ///     [--size 1280x720] [--rendermode IndirectDiffuse] [--play] [--bake [--save]]
+    ///     [--material Materials/X.mat | --import-generated Tools/TexGen/cache/ID] [--tiling 1]</code>
     /// --bake bakes the scene's probe volume first (Inspector > Lighting > Bake) and --save writes the scene with it.
     /// --set g_name=value (repeatable) sets a GameSettings field or property, e.g. --set g_occlusionculling=true.
     /// Paths are relative to the Content folder (scene) or the working directory (shot).
@@ -32,6 +34,15 @@ namespace Engine.Logic
         public static Renderer.Renderer.RenderModes? RenderMode { get; private set; }
         public static bool Bake { get; private set; }
         public static bool Save { get; private set; }
+        /// <summary>--material: a material asset (.mat) every gameobject named "MaterialLab.Target*" gets before the capture.</summary>
+        public static string MaterialPath { get; private set; }
+        /// <summary>--import-generated: a texgen cache folder imported as a material asset first (builds with mgcb), then used like --material.</summary>
+        public static string ImportGeneratedPath { get; private set; }
+        /// <summary>--tiling: UV tiling the "MaterialLab.Target*" gameobjects get instead of the material's own (a generated
+        /// material carries its real-world scale, e.g. 0.667 for brick), so each 1 m lab slab repeats the texture exactly once
+        /// and a seam between slabs means the texture doesn't tile.</summary>
+        public static float? Tiling { get; private set; }
+        public const string MaterialTargetPrefix = "MaterialLab.Target";
         private static MainSceneLogic _sceneLogic;
         private static readonly System.Collections.Generic.List<(string Name, string Value)> Overrides = new();
         private static bool _bakeStarted;
@@ -54,6 +65,13 @@ namespace Engine.Logic
                     case "--play": Play = true; break;
                     case "--bake": Bake = true; break;
                     case "--save": Save = true; break;
+                    case "--material": MaterialPath = next; i++; break;
+                    case "--import-generated": ImportGeneratedPath = next; i++; break;
+                    case "--tiling":
+                        if (float.TryParse(next, NumberStyles.Float, CultureInfo.InvariantCulture, out float tiling) && tiling > 0)
+                            Tiling = tiling;
+                        i++;
+                        break;
                     case "--set":
                         int eq = next?.IndexOf('=') ?? -1;
                         if (eq > 0) Overrides.Add((next.Substring(0, eq), next.Substring(eq + 1)));
@@ -137,10 +155,38 @@ namespace Engine.Logic
                 return false;
             }
             _sceneLogic = sceneLogic;
+            ApplyMaterial(sceneLogic);
             if (Bake) _bakeStarted = sceneLogic.Lighting.StartBake(sceneLogic.ActiveScene);
             if (Play) sceneLogic.PlayMode.Play();
             PlaceCamera(sceneLogic);
             return true;
+        }
+
+        // MaterialLab (Docs/Research/AiTextures/PLAN.md D1): the material under test goes on the "MaterialLab.Target*" gameobjects.
+        private static void ApplyMaterial(MainSceneLogic sceneLogic)
+        {
+            string material = MaterialPath;
+            if (!string.IsNullOrEmpty(ImportGeneratedPath))
+            {
+                try { material = new GeneratedMaterialImporter().Import(Path.GetFullPath(ImportGeneratedPath)); }
+                catch (Exception e) { EditorBridge.Log("LookDevCapture: --import-generated: " + e.Message); return; }
+            }
+            if (string.IsNullOrEmpty(material)) return;
+            int count = 0;
+            foreach (BasicEntity entity in sceneLogic.BasicEntities.ToArray())
+                if (entity.Name != null && entity.Name.StartsWith(MaterialTargetPrefix, StringComparison.Ordinal) &&
+                    MaterialAsset.Assign(entity, material))
+                {
+                    count++;
+                    // A local override of the linked copy: the link only re-copies when the .mat file changes.
+                    var component = entity.GetComponent<MaterialComponent>();
+                    if (Tiling is float tiling && component != null)
+                    {
+                        component.TilingU = component.TilingV = tiling;
+                        component.OnChanged(entity);
+                    }
+                }
+            EditorBridge.Log($"LookDevCapture: material {material} on {count} gameobjects" + (Tiling is float t ? $", tiling {t}" : ""));
         }
 
         public static void PlaceCamera(MainSceneLogic sceneLogic)

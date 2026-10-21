@@ -28,7 +28,13 @@ Plano: [PLAN.md](PLAN.md). Ambiente: [ENVIRONMENT.md](ENVIRONMENT.md).
 - [x] C3 Ferramenta MCP `materials_generate`
 - [x] C4 Documentação
 
-D, E: por fazer.
+## Fase D — Validação visual
+- [x] D1 Cena `MaterialLab.obsc` + `--material` / `--import-generated`
+- [ ] D2 Calibração: ajustes aplicados (pipeline version 2, [D2_CALIBRATION.md](D2_CALIBRATION.md)); referência metálica medida (propostas por aplicar: height por contraste, piso de roughness dos metais); checkpoint visual humano feito
+
+## Fase E — Backends GPU
+- [x] E1 `sdxl_rgb.py`: verificado em GPU (RTX 3060, SDXL base 1.0 fp16): "red brick wall" seed 1 gerou, seam score 0.37, sem avisos, e foi visto no MaterialLab
+- [x] E2 CHORD: licença aceite pelo utilizador (2026-10-21); `backends/chord_pbr.py` + backend `sdxl_chord` verificados em GPU (ver notas)
 
 ## Notas da execução (2026-10-21)
 
@@ -64,3 +70,32 @@ D, E: por fazer.
 - MCP: `materials_generate` + `editor_get_operation` (jobs em `EditorAutomationService`). `assignToId` não tem teste automatizado (precisa de um gameobject na cena).
 - Documentação: `Docs/markdown/Generated_Materials.md`, `Editor_MCP.md`.
 - Próximos passos: 0.2 (decisão humana sobre o normal map), fase D (MaterialLab, calibração com referências CC0) e fase E (backends GPU).
+
+**Fase D (2026-10-21)**
+- `Tools/TexGen/lab/generate_material_lab.py [--reference-mats]` gera `Content/Scenes/MaterialLab.obsc` (chão de 16 lajes de 1 m, cubo, esfera, referências cinzenta 0.5 linear e cromo, sol, luz lateral, reflection probe) e `Materials/Reference/Poly_*.mat`. `LookDevCapture` ganhou `--material` (aplica a todos os `MaterialLab.Target*`) e `--import-generated <cache>` (importa pelo importador real e usa).
+- **Descoberta**: o plano dizia que os modelos incorporados trazem tangentes; o `IsoSphere` não trazia (`GenerateTangentFrames=False`), e qualquer material com normal map nele fazia rebentar o renderer (vertex declaration sem tangentes). Corrigido em `Content.mgcb`. Ficam sem tangentes `sphere.x`, `dragon_uv_smooth.fbx` e as setas do editor (em `ISSUES.md`).
+- D1 verificado: capturas de `Poly_Bricks`, `Poly_Cobblestone` e de um material gerado importado pelo mgcb real (13 s): sem NaN nem preto, textura repetida sem costuras visíveis, referências visíveis. O material de teste importado foi removido a seguir (Content.mgcb reposto, pasta e `.xnb` apagados).
+- D2 (agente): ver [D2_CALIBRATION.md](D2_CALIBRATION.md). Os ajustes ao `source2.json` estão propostos, não aplicados. Falta a referência metálica e o checkpoint visual.
+
+**Fase D, seguimento (2026-10-21)**
+- Ajustes do `source2.json` aplicados (versão 2). Referência metálica Metal063 medida: o estimador deixava uma entrada quase plana cheia de relevo, por isso a height passou a seguir o contraste da entrada (`HEIGHT_REFERENCE_STD`) e o piso de roughness de `metal` desceu para 0.08 (versão 3). Inclinação do normal no Metal063: 0.54 -> 0.18 (referência 0.006); nas texturas de pedra/terra baixou também (Bricks 0.22, RockyDirt 0.38 contra 0.16/0.37). `PIPELINE_VERSION` e `MaterialGenerationId.PipelineVersion` = "3".
+
+**Fase E (2026-10-21)**
+- Máquina: RTX 3060 12 GB, mas o venv não tem `torch`/`diffusers` e `models/` não existe; a instalação de pacotes e os pesos são passos humanos (o código não acede à rede).
+- `texgen/backends/sdxl_rgb.py`: `make_tileable` (todas as `Conv2d` da UNet e do VAE com `padding_mode="circular"`), `load_pipeline` (`StableDiffusionXLPipeline.from_pretrained(models/sdxl, float16, local_files_only=True)`, DPM++ 2M), `generate` (25 passos, gerador CUDA com a seed, progresso por passo, 1024 px e reduz se pedido menos). `check_backend` devolve ok para `sdxl_classic` quando tudo existe; `sdxl_chord` fica `backend_not_implemented` (E2).
+- **As APIs de diffusers/torch usadas não foram executadas** (não estão instaladas): vêm do conhecimento do código, não de documentação instalada. A primeira execução real em GPU pode precisar de ajustes (nomes de argumentos do `callback_on_step_end`, etc.).
+- Testes: `tests/test_sdxl.py` (ligação com a geração substituída: prompts do estilo e progresso; `make_tileable` com um modelo minúsculo em CPU, saltado sem torch).
+
+**E1 verificado (2026-10-21)**
+- Torch CUDA instalado, SDXL em `models/sdxl` (fp16; faltava o `model_index.json`, por isso `check` passou a exigi-lo). `python -m texgen generate --backend sdxl_classic --prompt "red brick wall" --seed 1` gerou a textura sem alterações ao código além do `variant="fp16"`.
+- No MaterialLab (importação real) o relevo e a iluminação estão corretos e o chão repete sem costuras visíveis. Observação: o SDXL desenha um muro inteiro (muitas fiadas de tijolos pequenos) e o `suggested.tiling` da família brick (0.667) dá tijolos com ~5 cm; falta uma instrução de escala no prompt (por exemplo "close-up, 6 bricks across") ou outro `scale_m`.
+
+**E2 CHORD (2026-10-21)**
+- Código lido em `third_party/chord` (README, `test.py`, `chord/module/chord.py`, `stable_diffusion.py`). O modelo carrega as configs/tokenizer do SD 2.1 do Hub (`RedbeardNZ/stable-diffusion-2-1-base`, que já não existe); `hf_key` do `chord.yaml` aceita uma pasta local, por isso o backend usa `third_party/chord/sd21` (espelho público `sd2-community/stable-diffusion-2-1-base`, só configs e tokenizer) e não toca na rede. Os pesos vêm de `third_party/chord/weights/chord_v1.safetensors`.
+- `texgen/backends/chord_pbr.py`: o checkpoint tem as chaves do transformers 4.x (`text_encoder.text_model.*`); com o 5.x do venv as chaves são traduzidas ao carregar (sem downgrade). A imagem é repetida 128 px à volta (1024 -> 1280), passa pelo CHORD em bfloat16 e é cortada ao centro. As saídas abertas são basecolor, normal, roughness e metalness (**sem height**: sai do albedo como no `classic`). O estilo `source2` aplica-se depois como no `classic`; o metalness do CHORD é binário mas o estilo decide-o pela família.
+- Convenção do normal do CHORD: DirectX / Y-. Medido contra os mapas Poly Haven (correlação do verde +0.58 / +0.61 / +0.35 em Bricks / Cobblestone / RockyDirt) e convertido para Y+ internamente.
+- Contra as mesmas referências a roughness acompanha melhor que o `classic` (Cobblestone: média 0.58 vs 0.58, correlação 0.81; o `classic` tinha ~0). A inclinação do normal é mais suave (0.08 / 0.12 / 0.05 contra 0.16 / 0.28 / 0.37 das referências).
+- Tempo na RTX 3060: ~19 s a carregar, ~25 s por imagem a 1280 px. "red brick wall" seed 1: seam 0.34, sem avisos, relevo mais suave que o do `classic` no MaterialLab.
+- Dependências instaladas no venv: torchvision 0.26.0+cu128, omegaconf, imageio. `texgen check --backend sdxl_chord` verifica pacotes, ficheiros do CHORD e CUDA.
+- Os testes que esperavam "backend indisponível" (`test_cli.py`, `TexGenChecks.Pipeline.cs`, `TexGenMcpChecks.cs`) saltam onde o SDXL está instalado.
+- 2026-10-21 (Claude): comparação com o look do Source 2 (HLA). Pipeline version 4: bandas de albedo / saturação por família, highlights com roll-off, prompts "aged, muted", fotos `--input-rgb` tornadas tileable, sombras de contacto suavizadas e declive das normais limitado no `classic`. Corrigido o parallax do G-buffer (usava SV_POSITION). Cena nova `Scenes/Source2MaterialTest.obsc` + `lab/compare_source2_look.py`; `LookDevCapture --tiling`. Detalhes em [D2_CALIBRATION.md](D2_CALIBRATION.md) > Source 2 look check.

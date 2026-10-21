@@ -127,5 +127,51 @@ class ValidateTests(unittest.TestCase):
         self.assertIn("ao_too_dark", codes)
 
 
+class Source2LookTests(unittest.TestCase):
+    """Pipeline version 4: per-family albedo bands, highlight roll-off, tileable photos, softened contact shadows
+    (Docs/Research/AiTextures/D2_CALIBRATION.md > Source 2 look check)."""
+
+    def test_family_band_overrides_the_common_one(self):
+        self.assertEqual(STYLE.albedo_mean("brick"), [70, 125])
+        self.assertEqual(STYLE.albedo_mean("fabric"), STYLE.common["dielectric_albedo_mean"])
+
+    def test_bright_brick_is_brought_into_the_brick_band(self):
+        rgb = fake_rgb.generate("brick", 3, 128, "brick").astype(np.float64)
+        bright = np.clip(rgb * 1.8 + 40, 0, 255).astype(np.uint8)
+        maps, _ = finish(bright, "brick")
+        mean = float(st.luminance(maps["albedo"] / 255.0).mean() * 255)
+        self.assertTrue(70 <= mean <= 125, mean)
+        self.assertNotIn("albedo_too_bright", [w["code"] for w in validate(maps, STYLE, "brick")])
+
+    def test_highlights_roll_off_but_keep_their_order(self):
+        ramp = np.linspace(0.5, 1.0, 64)
+        rgb = np.dstack([ramp, ramp, ramp])[None, ...].repeat(4, axis=0)[:, 0]
+        out = st.compress_highlights(rgb, 200.0)
+        lum = st.luminance(out) * 255
+        self.assertLessEqual(float(lum.max()), 200.0)
+        self.assertTrue((np.diff(lum[0]) >= -1e-9).all(), "brighter stays brighter")
+        self.assertAlmostEqual(float(lum[0, 0]), 0.5 * 255, places=6)
+
+    def test_a_photo_that_does_not_tile_is_made_tileable(self):
+        from texgen import seams
+        from texgen.imageops import make_tileable
+        y, x = np.mgrid[0:128, 0:128] / 127.0
+        photo = (np.dstack([x, y, x * y]) * 255).astype(np.uint8)
+        self.assertFalse(seams.passes(seams.seam_score(photo.mean(-1))))
+        tiled = make_tileable(photo)
+        self.assertTrue(seams.passes(seams.seam_score(tiled.mean(-1))))
+        # No break inside either: the shifted copies' own seams (in their middle) must be faded out everywhere.
+        g = tiled.mean(-1)
+        self.assertTrue(seams.passes(seams.seam_score(np.roll(g, (64, 64), axis=(0, 1)))))
+        self.assertLess(float(np.abs(g[56:72, 56:72] - photo.mean(-1)[56:72, 56:72]).max()), 1.0, "the middle stays the photo")
+
+    def test_contact_shadows_become_shallow(self):
+        gray = np.full((64, 64), 0.5)
+        gray[30:32, :] = 0.02
+        soft = classic_pbr.soften_shadows(gray)
+        self.assertGreater(float(soft.min()), 0.02 + 0.1)
+        self.assertEqual(float(soft[0, 0]), 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()

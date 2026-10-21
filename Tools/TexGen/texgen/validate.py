@@ -20,13 +20,13 @@ def validate(maps, style, family):
 
     if dielectric.any():
         d = lum[dielectric]
-        lo, hi = common["dielectric_albedo_mean"]
-        clip_lo, clip_hi = common["dielectric_albedo_clip"]
+        lo, hi = style.albedo_mean(family)
+        clip_lo, clip_hi = style.albedo_clip(family)
         frac = common["clip_fraction"]
         if d.mean() < lo:
-            out.append(_w("albedo_too_dark", "dielectric albedo mean luminance %.0f is below %d" % (d.mean(), lo)))
+            out.append(_w("albedo_too_dark", "dielectric albedo mean luminance %.0f is below %d for %s" % (d.mean(), lo, family)))
         if d.mean() > hi:
-            out.append(_w("albedo_too_bright", "dielectric albedo mean luminance %.0f is above %d" % (d.mean(), hi)))
+            out.append(_w("albedo_too_bright", "dielectric albedo mean luminance %.0f is above %d for %s" % (d.mean(), hi, family)))
         if (d < clip_lo).mean() > frac:
             out.append(_w("albedo_clipped_dark", "more than %.1f%% of the dielectric albedo is darker than %d"
                           % (frac * 100, clip_lo)))

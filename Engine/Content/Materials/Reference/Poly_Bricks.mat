@@ -1,0 +1,22 @@
+{
+  "Version": 1,
+  "Material": {
+    "MaterialType": 0,
+    "Red": 1,
+    "Green": 1,
+    "Blue": 1,
+    "Roughness": 1,
+    "Metallic": 0,
+    "CastShadows": true,
+    "TilingU": 1,
+    "TilingV": 1,
+    "Enabled": true,
+    "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+    "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal.jpg",
+    "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg",
+    "DisplacementTexture": "GameObjects/Textures/Ground/Bricks_Height.jpg",
+    "MetallicTexture": "",
+    "MaskTexture": "",
+    "AmbientOcclusionTexture": ""
+  }
+}

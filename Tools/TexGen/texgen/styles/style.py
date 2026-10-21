@@ -20,6 +20,16 @@ class Style:
     def family(self, name):
         return self.families[name]
 
+    def albedo_mean(self, family):
+        """Dielectric albedo mean luminance band (sRGB 0..255): the family's own, else the common one."""
+        return self.families[family].get("albedo_mean", self.common["dielectric_albedo_mean"])
+
+    def albedo_clip(self, family):
+        return self.families[family].get("albedo_clip", self.common["dielectric_albedo_clip"])
+
+    def max_saturation(self, family):
+        return self.families[family].get("max_saturation", self.common["max_saturation"])
+
     def detect_family(self, prompt):
         """Keyword -> family, by whole words, walking the families in file order (first hit wins). Falls back to
         the profile's fallback family."""
@@ -107,6 +117,22 @@ def clamp_pixel_luminance(rgb, lo, hi, mask=None):
     return np.clip(rgb * gain[..., None], 0.0, 1.0)
 
 
+def compress_highlights(rgb, hi, knee=40.0, mask=None):
+    """Rolls pixel luminance (0..255) above `hi - knee` off towards `hi` (tanh), scaling the colour so hue stays: bright
+    patches (white plaster, glare an image generator painted in) keep their detail instead of clipping flat at `hi`."""
+    lum = luminance(rgb) * 255.0
+    start = hi - knee
+    over = lum > start
+    if mask is not None:
+        over &= mask
+    if not over.any():
+        return rgb
+    target = start + knee * np.tanh((lum[over] - start) / knee)
+    gain = np.ones_like(lum)
+    gain[over] = target / lum[over]
+    return np.clip(rgb * gain[..., None], 0.0, 1.0)
+
+
 def cap_saturation(rgb, max_sat):
     peak = rgb.max(axis=-1)
     low = rgb.min(axis=-1)
@@ -137,6 +163,15 @@ def wear_mask(height, size, coverage=0.28):
     return convexity > threshold
 
 
+def fit_dielectric(albedo, dlo, dhi, clo, chi, mask=None):
+    """Mean luminance into [dlo, dhi], highlights rolled off below chi, shadows lifted to clo. The roll-off lowers the
+    mean a little, so the mean is fitted once more if it dropped out of the band."""
+    albedo = fit_mean_luminance(albedo, dlo, dhi, mask=mask)
+    albedo = compress_highlights(albedo, chi - 1, mask=mask)
+    albedo = fit_mean_luminance(albedo, dlo, dhi, mask=mask)
+    return clamp_pixel_luminance(albedo, clo + 1, chi - 1, mask=mask)
+
+
 def apply_style(style, family, est, force_dielectric=False):
     """Applies the family's rules to the estimator output. Returns the final albedo (sRGB, floats 0..1),
     roughness and metalness; normal, height and AO are left to the caller."""
@@ -145,15 +180,15 @@ def apply_style(style, family, est, force_dielectric=False):
     albedo = est["albedo"].astype(np.float64) / 255.0
     r_norm = est["roughness_norm"]
     mode = "none" if force_dielectric else cfg["metal"]
-    dlo, dhi = common["dielectric_albedo_mean"]
-    clo, chi = common["dielectric_albedo_clip"]
+    dlo, dhi = style.albedo_mean(family)
+    clo, chi = style.albedo_clip(family)
+    max_sat = style.max_saturation(family)
     metal_color = np.array(common["metal_color"])
     min_std = common["roughness_min_std"]
 
     if mode == "none":
-        albedo = cap_saturation(albedo, common["max_saturation"])
-        albedo = fit_mean_luminance(albedo, dlo, dhi)
-        albedo = clamp_pixel_luminance(albedo, clo + 1, chi - 1)
+        albedo = cap_saturation(albedo, max_sat)
+        albedo = fit_dielectric(albedo, dlo, dhi, clo, chi)
         metal = np.zeros(albedo.shape[:2])
         rough = remap_roughness(r_norm, cfg["roughness"], min_std)
     elif mode == "all":
@@ -169,9 +204,8 @@ def apply_style(style, family, est, force_dielectric=False):
         steel = np.clip(metal_color[None, None, :] * tone[..., None], 0.0, 1.0)
         mlo, mhi = common["metal_albedo_luminance"]
         steel = clamp_pixel_luminance(steel, mlo, mhi)
-        albedo = cap_saturation(albedo, common["max_saturation"])
-        albedo = fit_mean_luminance(albedo, dlo, dhi, mask=paint)
-        albedo = clamp_pixel_luminance(albedo, clo + 1, chi - 1, mask=paint)
+        albedo = cap_saturation(albedo, max_sat)
+        albedo = fit_dielectric(albedo, dlo, dhi, clo, chi, mask=paint)
         albedo = np.where(exposed[..., None], steel, albedo)
         metal = exposed.astype(np.float64)
         rough = np.where(exposed, remap_roughness(r_norm, cfg["metal_roughness"], min_std),
