@@ -10,7 +10,7 @@ using Microsoft.Xna.Framework.Graphics;
 /// entries for generated maps (task 0.3); <see cref="RunGraphics"/> builds a grayscale PNG with the real mgcb and checks
 /// what reaches the texture.
 /// </summary>
-internal static class TexGenChecks
+internal static partial class TexGenChecks
 {
     private const string Header =
         "\n#----------------------------- Global Properties ----------------------------#\n\n" +
@@ -18,6 +18,16 @@ internal static class TexGenChecks
         "#---------------------------------- Content ---------------------------------#\n";
 
     public static void Run()
+    {
+        RunManifest();
+        RunIds();
+        RunProtocol();
+        RunSettings();
+        RunImporter();
+        RunRunner();
+    }
+
+    private static void RunManifest()
     {
         string root = NewTempFolder();
         try

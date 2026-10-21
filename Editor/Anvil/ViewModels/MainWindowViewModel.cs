@@ -850,6 +850,43 @@ public partial class MainWindowViewModel : ViewModelBase
         });
     }
 
+    // -------- Generated materials (Assets > Generate Material..., Tools/TexGen) --------
+
+    /// <summary>GameObject > Generate Material for Selection...: the dialog, with the result applied to the selection.</summary>
+    [RelayCommand]
+    private Task OpenGenerateMaterialForSelectionAsync(Window? owner) =>
+        owner == null ? Task.CompletedTask : ShowGenerateMaterialAsync(owner, forSelection: true);
+
+    /// <summary>
+    /// Opens the Generate Material dialog. It stays open after an import (one prompt can give several materials); each
+    /// import shows up in the Assets panel and the Inspector, and with <paramref name="forSelection"/> is applied to
+    /// the selected gameobject.
+    /// </summary>
+    public async Task ShowGenerateMaterialAsync(Window owner, bool forSelection)
+    {
+        if (_bridge == null) return;
+        SceneObjectViewModel? target = null;
+        if (forSelection)
+        {
+            target = SelectedObject;
+            if (target?.EngineId == null || target.Kind != EditorObjectKind.BasicEntity)
+            {
+                AddConsoleEntry(ConsoleLevel.Warn, "Select a gameobject to generate a material for it.", "Anvil:Materials");
+                return;
+            }
+        }
+        var dialogModel = new GenerateMaterialViewModel(_bridge, target?.EngineId, target?.Name);
+        dialogModel.Imported += path =>
+        {
+            RefreshAssetTree();
+            OpenMaterialAsset(path);
+            AddConsoleEntry(ConsoleLevel.Log, target == null
+                ? $"Generated material {path}. Drag it onto a gameobject in the Hierarchy to use it."
+                : $"Generated material {path} and applied it to \"{target.Name}\".", "Anvil:Materials");
+        };
+        await new Views.GenerateMaterialWindow { DataContext = dialogModel }.ShowDialog(owner);
+    }
+
     /// <summary>Content folder a drop on <paramref name="node"/> goes to: the folder itself, a file's folder, or null (Prefabs).</summary>
     public static string? FolderFor(AssetNode? node) =>
         node == null ? null

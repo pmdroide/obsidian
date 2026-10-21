@@ -922,6 +922,33 @@ namespace Engine.Editor
             });
         }
 
+        /// <summary>Tests swap this for an importer working in a temporary Content folder.</summary>
+        internal Func<GeneratedMaterialImporter> GeneratedMaterialImporterFactory = () => new GeneratedMaterialImporter();
+
+        public void EnqueueImportGeneratedMaterial(string cacheDir, Action<string, string> onCompleted, int? assignToId = null)
+        {
+            Log($"EnqueueImportGeneratedMaterial '{cacheDir}'");
+            _pendingOps.Enqueue(() =>
+            {
+                try
+                {
+                    string material = GeneratedMaterialImporterFactory().Import(cacheDir);
+                    if (assignToId.HasValue)
+                    {
+                        BasicEntity entity = _scene == null ? null : LookupEntityById(assignToId.Value);
+                        if (entity != null) MaterialAsset.Assign(entity, material);
+                        else Log($"ImportGeneratedMaterial: gameobject {assignToId} is gone, the material was only imported");
+                    }
+                    onCompleted?.Invoke(material, null);
+                }
+                catch (Exception ex)
+                {
+                    Log("ImportGeneratedMaterial threw: " + ex);
+                    onCompleted?.Invoke(null, ex.Message);
+                }
+            });
+        }
+
         public void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted)
         {
             var requestedScene = _scene?.ActiveScene;

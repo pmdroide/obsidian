@@ -1,0 +1,162 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Anvil.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="Anvil.Views.GenerateMaterialWindow"
+        x:DataType="vm:GenerateMaterialViewModel"
+        Icon="/Assets/Icon.ico"
+        Title="Generate Material"
+        Width="680"
+        SizeToContent="Height"
+        MaxHeight="900"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource AnvilPanelBackgroundBrush}"
+        FontFamily="{StaticResource AnvilFontFamily}"
+        Foreground="{StaticResource AnvilTextPrimaryBrush}">
+
+    <Design.DataContext>
+        <vm:GenerateMaterialViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="TextBox.field">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="80" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20" Spacing="14">
+
+            <TextBlock Text="Describe the surface. It is generated locally (Tools/TexGen) as a tileable PBR set in the Source 2 style and imported as a material asset you can drag onto gameobjects."
+                       Classes="hint" />
+
+            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Grid.Row="0" Text="Prompt" Classes="label" />
+                <TextBox Grid.Row="0" Grid.Column="1" Classes="field" Text="{Binding Prompt, Mode=TwoWay}"
+                         PlaceholderText="mossy cobblestone, rusty steel plate, red brick wall..." />
+
+                <TextBlock Grid.Row="1" Text="Avoid" Classes="label" />
+                <TextBox Grid.Row="1" Grid.Column="1" Classes="field" Text="{Binding NegativePrompt, Mode=TwoWay}"
+                         PlaceholderText="optional: things the image must not show" />
+
+                <TextBlock Grid.Row="2" Text="Seed" Classes="label" />
+                <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Classes="field" Text="{Binding SeedText, Mode=TwoWay}" />
+                    <Button Grid.Column="1" Content="Random" Command="{Binding RandomSeedCommand}" />
+                </Grid>
+
+                <TextBlock Grid.Row="3" Text="Size" Classes="label" />
+                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ResolutionChoices}"
+                          SelectedItem="{Binding SelectedResolution, Mode=TwoWay}" />
+
+                <TextBlock Grid.Row="4" Text="Backend" Classes="label" />
+                <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding Backends}"
+                          SelectedItem="{Binding SelectedBackend, Mode=TwoWay}" IsEnabled="{Binding UsesBackendChoice}" />
+
+                <TextBlock Grid.Row="5" Text="Family" Classes="label" />
+                <ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding Families}"
+                          SelectedItem="{Binding SelectedFamily, Mode=TwoWay}" />
+            </Grid>
+
+            <CheckBox Content="Force dielectric (no metal)" IsChecked="{Binding ForceDielectric, Mode=TwoWay}" />
+
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <Button Content="Use photo..." Command="{Binding BrowsePhotoCommand}"
+                        ToolTip.Tip="Turn a photo or an existing texture into a PBR set instead of generating from the prompt (it should tile)" />
+                <TextBlock Grid.Column="1" Text="{Binding PhotoPath}" IsVisible="{Binding HasPhoto}" VerticalAlignment="Center"
+                           FontSize="11" TextTrimming="CharacterEllipsis" Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                <Button Grid.Column="2" Content="Clear" Command="{Binding ClearPhotoCommand}" IsVisible="{Binding HasPhoto}" MinWidth="60" />
+            </Grid>
+
+            <TextBlock Text="{Binding AssignText}" IsVisible="{Binding HasAssignText}" Classes="hint" />
+
+            <!-- Progress and status -->
+            <StackPanel Spacing="6">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" Height="6" IsVisible="{Binding IsBusy}" />
+                <TextBlock Text="{Binding StageText}" IsVisible="{Binding IsBusy}" Classes="hint" />
+                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" FontSize="11"
+                           IsVisible="{Binding !StatusIsError}" Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" FontSize="11"
+                           IsVisible="{Binding StatusIsError}" Foreground="{StaticResource AnvilErrorBrush}" />
+            </StackPanel>
+
+            <!-- Style warnings -->
+            <StackPanel Spacing="4" IsVisible="{Binding HasWarnings}">
+                <TextBlock Text="Style warnings" Classes="section" Foreground="{StaticResource AnvilWarnBrush}" />
+                <ItemsControl ItemsSource="{Binding Warnings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource AnvilTextSecondaryBrush}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Previews of the generated maps -->
+            <StackPanel Spacing="6" IsVisible="{Binding HasResult}">
+                <TextBlock Text="Generated maps" Classes="section" />
+                <ItemsControl ItemsSource="{Binding Previews}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MapPreview">
+                            <StackPanel Margin="0,0,8,8" Spacing="2">
+                                <Border BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" CornerRadius="3" ClipToBounds="True">
+                                    <Image Source="{Binding Image}" Width="96" Height="96" Stretch="UniformToFill" />
+                                </Border>
+                                <TextBlock Text="{Binding Name}" Classes="hint" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cancel" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}" />
+                <Button Content="Generate" Command="{Binding GenerateCommand}" IsVisible="{Binding IsIdle}" />
+                <Button Content="Regenerate" Command="{Binding RegenerateCommand}" IsVisible="{Binding IsIdle}"
+                        ToolTip.Tip="Generate again with a new seed" />
+                <Button Content="Import" Command="{Binding ImportCommand}" IsVisible="{Binding IsIdle}"
+                        ToolTip.Tip="Add this material to the project (Materials/Generated)" />
+                <Button Content="Close" IsCancel="True" Click="Close_Click" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

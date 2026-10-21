@@ -341,6 +341,13 @@ namespace Engine.Editor
         void EnqueueMutatePost(Action<Logic.PostProcessSettings> mutate);
         /// <summary>Import a PNG/JPEG panorama. Callback returns an error, or null on success.</summary>
         void EnqueueImportSkybox(string sourcePath, Action<string> onCompleted);
+        /// <summary>
+        /// Turn a texgen output folder (<c>Tools/TexGen/cache/&lt;id&gt;</c>) into a material asset
+        /// (<see cref="Recources.GeneratedMaterialImporter"/>) on the game thread: the maps go to Content, mgcb builds them
+        /// and a .mat is written. With <paramref name="assignToId"/> the material is also linked to that gameobject.
+        /// The callback gets the .mat's Content-relative path, or null and an error.
+        /// </summary>
+        void EnqueueImportGeneratedMaterial(string cacheDir, Action<string, string> onCompleted, int? assignToId = null);
 
         // ---- Render pipeline (Anvil > Render Pipeline): user render features, Renderer.Features.RenderFeatures ----
 

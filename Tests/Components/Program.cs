@@ -648,6 +648,8 @@ ClassificationChecks.Run();
 McpChecks.Run();
 MaterialAssetChecks.Run();
 TexGenChecks.Run();
+TexGenChecks.RunBridge(bridge, Publish);
+TexGenMcpChecks.Run(bridge, Publish);
 PauseChecks.Run();
 BuildChecks.Run();
 if (args.Contains("--input-native")) InputDeviceChecks.RunNative();

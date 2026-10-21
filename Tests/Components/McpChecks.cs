@@ -217,8 +217,8 @@ internal static class McpChecks
             try
             {
                 var tools = client.ListToolsAsync().GetAwaiter().GetResult();
-                Check(tools.Count == 12 && tools.Any(t => t.Name == "scene_set_transform") && tools.Any(t => t.Name == "editor_get_operation"),
-                    "official SDK client discovers the twelve tools over Streamable HTTP");
+                Check(tools.Count == 13 && tools.Any(t => t.Name == "materials_generate") && tools.Any(t => t.Name == "scene_set_transform") && tools.Any(t => t.Name == "editor_get_operation"),
+                    "official SDK client discovers the thirteen tools over Streamable HTTP");
                 var status = complete(client.CallToolAsync("editor_get_status"));
                 Check(status.IsError != true && Text(status).Contains(generation), "real MCP status call returns the current scene generation");
                 Check(EditorBridge.GetLogEntries(beforeStart).Count(e => e.Message.Contains("Client activity received")) == 1,

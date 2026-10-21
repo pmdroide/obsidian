@@ -1,6 +1,6 @@
 # Anvil Editor MCP Server
 
-Anvil exposes twelve tools through a local Streamable HTTP MCP server. The server uses the official C# SDK, pinned to `ModelContextProtocol.AspNetCore 2.2.0`, and operates on the running editor's engine through `IEditorBridge`. It does not require an LLM API key.
+Anvil exposes thirteen tools through a local Streamable HTTP MCP server. The server uses the official C# SDK, pinned to `ModelContextProtocol.AspNetCore 2.2.0`, and operates on the running editor's engine through `IEditorBridge`. It does not require an LLM API key.
 
 ## Enable and connect
 
@@ -263,6 +263,7 @@ The command syntax was checked against installed Claude Code 2.1.220 and Codex C
 | `scene_add_component` | `requestId`, `sceneGeneration`, `objectId`, `componentType`. Returns the attachment instance ID. |
 | `scene_save` | `requestId`, `sceneGeneration`, optional `path`. Saves the current file, or Save As to a source `Scenes/*.obsc` path. |
 | `editor_set_play_mode` | `requestId`, `sceneGeneration`, `mode` set to `play` or `stop`. Waits for the requested transition. |
+| `materials_generate` | `requestId`, `prompt`, optional `seed`, `family`, `backend`, `resolution` (64-2048, power of two), `negativePrompt`, `forceDielectric`, `assignToId`. Generates a tileable Source 2-style PBR material with the local texgen tool and imports it as `Materials/Generated/<name>.mat`. Returns at once with `pending`; poll `editor_get_operation` with the same `requestId` until `completed` (`material.materialPath`, `cacheId`, `fromCache`, style `warnings`) or `failed`. Without `seed` it is derived from `requestId`, so a retry is the same material. Requires writes enabled; at most two generations run at once. See [Generated_Materials.md](Generated_Materials.md). |
 
 All commands require writes enabled. Scene edits, selection and saves require **Edit mode**. Play runs scripts; Stop restores the edited scene and discards runtime changes. Transform/object/component changes mark the scene dirty and do not save automatically.
 

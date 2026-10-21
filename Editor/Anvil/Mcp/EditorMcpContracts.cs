@@ -43,4 +43,8 @@ public sealed record EditorObject(int Id, string Name, string Kind, EditorVector
 public sealed record EditorObjectPage(EditorStatus Status, int Total, int Offset, int? NextOffset, IReadOnlyList<EditorObject> Objects);
 public sealed record EditorWriteResult(string RequestId, EditorStatus Status, int? ObjectId,
     Guid? ComponentInstanceId, EditorObject? Object);
-public sealed record EditorOperationStatus(string RequestId, string State, EditorWriteResult? Result, string? Error);
+public sealed record MaterialGenerationWarning(string Code, string Message);
+/// <summary>A generated material: the imported .mat's Content-relative path, the cache id and the style warnings.</summary>
+public sealed record MaterialGenerationResult(string MaterialPath, string? CacheId, bool FromCache, IReadOnlyList<MaterialGenerationWarning> Warnings);
+public sealed record EditorOperationStatus(string RequestId, string State, EditorWriteResult? Result, string? Error,
+    MaterialGenerationResult? Material = null);

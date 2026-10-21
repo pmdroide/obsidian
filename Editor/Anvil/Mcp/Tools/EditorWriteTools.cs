@@ -1,7 +1,11 @@
+using System;
 using System.ComponentModel;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Engine.Editor;
+using Engine.Recources;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
@@ -46,5 +50,27 @@ public sealed class EditorWriteTools(EditorAutomationService editor)
     {
         if (mode != "play" && mode != "stop") throw new McpException("INVALID_ARGUMENT: mode must be play or stop.");
         return editor.WriteAsync(requestId, new() { Command = EditorAutomationCommand.SetPlayMode, SceneGeneration = sceneGeneration, Play = mode == "play" }, cancellationToken);
+    }
+
+    [McpServerTool(Name = "materials_generate", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Generate a tileable PBR material (Source 2 style) from a text prompt with the local texgen tool and import it as Materials/Generated/<name>.mat. Returns at once with state pending; poll editor_get_operation with the same requestId until completed (result.material.materialPath, style warnings) or failed. Omit seed for a stable one derived from requestId; family is auto or stone, brick, concrete, tile, plaster, wood, metal, painted_metal, fabric, ground, organic. backend: fake, sdxl_classic or sdxl_chord (default from texgen.json; unavailable ones fail with the reason). resolution is a power of two from 64 to 2048. assignToId links the material to that gameobject. Identical retries rejoin the same job. Requires writes enabled.")]
+    public EditorOperationStatus GenerateMaterial(string requestId, string prompt, int? seed = null, string? family = null, string? backend = null,
+        int resolution = 1024, string? negativePrompt = null, bool forceDielectric = false, int? assignToId = null)
+    {
+        if (string.IsNullOrWhiteSpace(prompt) || prompt.Length > 500 || negativePrompt?.Length > 500)
+            throw new McpException("INVALID_ARGUMENT: prompt must contain 1 to 500 characters (negativePrompt at most 500).");
+        if (resolution < 64 || resolution > 2048 || (resolution & (resolution - 1)) != 0)
+            throw new McpException("INVALID_ARGUMENT: resolution must be a power of two from 64 to 2048.");
+        if (backend == "classic") throw new McpException("INVALID_ARGUMENT: the classic backend needs a photo; use fake, sdxl_classic or sdxl_chord.");
+        if (family != null && family != "auto" && !System.Text.RegularExpressions.Regex.IsMatch(family, "^[a-z_]{1,32}$"))
+            throw new McpException("INVALID_ARGUMENT: family must be auto or one of the families texgen lists.");
+        // Without a seed, the same requestId always means the same material.
+        int chosenSeed = seed ?? (BitConverter.ToInt32(SHA256.HashData(Encoding.UTF8.GetBytes(requestId ?? "")), 0) & 0x7fffffff);
+        var request = new TexGenParams
+        {
+            Prompt = prompt.Trim(), NegativePrompt = negativePrompt?.Trim() ?? "", Seed = chosenSeed, Resolution = resolution,
+            Backend = backend ?? editor.DefaultMaterialBackend, Family = family ?? "auto", ForceDielectric = forceDielectric,
+        };
+        return editor.StartMaterialGeneration(requestId!, request, assignToId);
     }
 }

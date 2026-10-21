@@ -665,6 +665,10 @@
                         <!-- Saves the selection's surface and the textures it shows as Content/Materials/<name>.mat. -->
                         <MenuItem Header="Create Material from Selection"
                                   Command="{Binding CreateMaterialFromObjectCommand}" />
+                        <!-- Generates a tileable PBR material from a prompt (Tools/TexGen) and applies it to the selection. -->
+                        <MenuItem Header="Generate Material for Selection..."
+                                  Command="{Binding OpenGenerateMaterialForSelectionCommand}"
+                                  CommandParameter="{Binding $parent[Window]}" />
                     </MenuItem>
                     <MenuItem Header="Game Settings"
                               Command="{Binding OpenGameSettingsCommand}"
@@ -5038,6 +5042,8 @@
                                                           IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Material}" />
                                                 <MenuItem Header="Create Material" Click="AssetCreateMaterial_Click"
                                                           ToolTip.Tip="A new material asset (.mat) in this folder; edit it in the Inspector and drag it onto gameobjects" />
+                                                <MenuItem Header="Generate Material..." Click="AssetGenerateMaterial_Click"
+                                                          ToolTip.Tip="Generate a tileable PBR material from a text prompt (or a photo) with the local texture generator" />
                                                 <MenuItem Header="Delete" Click="AssetDelete_Click" />
                                             </ContextMenu>
                                         </StackPanel.ContextMenu>

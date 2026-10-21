@@ -1,5 +1,35 @@
 # Changelog
 
+## Added: Generate Material in Anvil and the materials_generate MCP tool (2026-10-21)
+
+Phase C of the AI texture generator (`Docs/Research/AiTextures/PLAN.md`): generated materials can now be made from the editor and from an assistant.
+
+- **Generate Material dialog** (`GenerateMaterialViewModel`, `Views/GenerateMaterialWindow`): Assets right-click > **Generate Material...** and GameObject > **Generate Material for Selection...** (the imported material is also applied to the selection).
+  - Prompt, Avoid, Seed (+ Random), Size, Backend, Family, Force dielectric, and **Use photo...** (classic backend). Backends and families come from `texgen check` / `texgen styles`: only the ones that work here are listed, and the dialog says why a backend isn't.
+  - Runs `TexGenRunner` off the UI thread with a progress bar (stage + %), Cancel, and the style warnings; thumbnails of the generated maps are read from the cache folder, not through the engine.
+  - **Regenerate** rolls a new seed; **Import** goes through `EnqueueImportGeneratedMaterial` and the dialog stays open, so one prompt gives several independent `.mat` files. Each import refreshes Assets and opens the material in the Inspector.
+- **`materials_generate`** MCP tool (13 tools now): returns a pending operation at once; `editor_get_operation` reports `completed` with `material.materialPath`, `cacheId`, `fromCache` and the warnings, or `failed` with texgen's reason. Retries with the same `requestId` rejoin the job, a different payload under the same id is a `REQUEST_ID_CONFLICT`, at most two jobs run at once, and writes must be enabled. `EditorOperationStatus` gained an optional `Material`.
+- `TexGenRunner.QueryAsync`, `CheckBackendsAsync` and `ListStylesAsync` run the short texgen commands.
+- Docs: new `Docs/markdown/Generated_Materials.md`; `Editor_MCP.md`; `Engine_Wiring.md`; CLAUDE.md repo map and recipe. README versions: Obsidian 1.5.0, Editor 1.5.0.
+- Checks: `Tests/Components/TexGenMcpChecks.cs` (read-only refusal, argument validation, completion with the real generator, cache reuse, retries, conflicts, an unavailable backend, unknown operation); the MCP client check now expects 13 tools. The dialog was driven in Anvil: generate with the `fake` backend, thumbnails, Import (mgcb build, `.xnb` copied, `.mat` opened in the Inspector) and the material on a cube.
+- Claude
+
+## Added: AI texture generator, phase B: runner, importer and bridge (2026-10-21)
+
+The engine side of generated materials (`Docs/Research/AiTextures/PLAN.md` B1-B4). Anvil's dialog and the MCP tool are phase C.
+
+- New `Engine/Recources/TextureGeneration/`:
+  - `MaterialGenerationId`: the material id (first 16 hex characters of SHA-256 of `v<pipeline>|backend|style|family|resolution|seed|dielectric|input hash|prompt|negative`), `PipelineVersion` (keep equal to `PIPELINE_VERSION` in `Tools/TexGen/texgen/__init__.py`) and the file-name `Slug`. Test vectors come from Python's `hashlib`.
+  - `TexGenProtocol`: parses texgen's JSON lines (`Progress`, `Warning`, `Done`, `Error`; anything else is `Unknown`).
+  - `TexGenSettings`: reads `Tools/TexGen/texgen.json` (python, cache folder, default backend, timeout); a missing or damaged file gives the defaults.
+  - `TexGenRunner.GenerateAsync`: runs `python -m texgen generate` off the game thread, reports events, kills the process tree on cancel or timeout, and returns an existing valid `cache/<id>` without running Python. Errors carry texgen's code and exit code (`python_missing` when the venv is absent).
+  - `GeneratedMaterialSet`: reads and validates a cache folder (five maps, Metallic optional, `texgen.json` schema 1).
+  - `GeneratedMaterialImporter`: copies the maps to `Content/Materials/Generated/<slug>_<id>/`, registers them with `ContentManifest.RegisterGeneratedTextures`, runs mgcb, copies the `.xnb` next to the exe and writes `Materials/Generated/<slug>_<id>.mat` (five texture slots, Metallic map only when the set has metal, tiling and shader type from the suggestion). A failed build rolls the manifest and the folder back; importing the same id twice doesn't duplicate entries.
+- `IEditorBridge.EnqueueImportGeneratedMaterial(cacheDir, onCompleted, assignToId)`: imports on the game thread and optionally links the material to a gameobject (`MaterialAsset.Assign`).
+- Checks: `Tests/Components/TexGenChecks.Pipeline.cs` (ids, protocol, settings, importer with a fake mgcb in a temporary Content folder, the real runner with the venv - generation, cache hit, unavailable backend, missing photo, cancel, missing Python - and the bridge).
+- Docs: `Engine_Wiring.md`, CLAUDE.md repo map, `PROGRESS.md`. README version 1.4.2.
+- Claude
+
 ## Added: AI texture generator, phases 0 and A (2026-10-21)
 
 Groundwork for generating Source 2-style PBR material sets from a prompt (plan: `Docs/Research/AiTextures/PLAN.md`, progress: `PROGRESS.md`). Nothing is wired into Anvil yet (phases B and C).

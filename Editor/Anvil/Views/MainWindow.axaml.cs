@@ -241,6 +241,11 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm) vm.CreateMaterialAsset((sender as Control)?.DataContext as AssetNode);
     }
 
+    private async void AssetGenerateMaterial_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm) await vm.ShowGenerateMaterialAsync(this, forSelection: false);
+    }
+
     // Assets context menu > Assign to Selection (a material).
     private void AssetAssignMaterial_Click(object? sender, RoutedEventArgs e)
     {

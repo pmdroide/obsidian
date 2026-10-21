@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Engine.Editor;
+using Engine.Recources;
 using ModelContextProtocol;
 
 namespace Anvil.Mcp;
@@ -82,10 +83,77 @@ public sealed class EditorAutomationService
             target.Name == null ? null : EditorObject.From(target));
     }
 
+    // ---- Material generation (materials_generate): a long job, polled with editor_get_operation ----
+
+    private sealed record MaterialJob(string Fingerprint, Task<MaterialGenerationResult> Task);
+    private readonly Dictionary<string, MaterialJob> _materialJobs = new(StringComparer.Ordinal);
+    private const int MaxPendingMaterialJobs = 2;
+
+    /// <summary>The generator runner; created on first use. Tests assign one with their own settings.</summary>
+    public TexGenRunner? MaterialRunner { get; set; }
+
+    /// <summary>The backend used when materials_generate names none (texgen.json defaultBackend).</summary>
+    public string DefaultMaterialBackend => (MaterialRunner ??= new TexGenRunner()).Settings.DefaultBackend;
+
+    /// <summary>
+    /// Starts (or, for an identical retry, rejoins) a generation: texgen runs off the game thread, then the result is
+    /// imported through the bridge. Returns at once with state "pending"; poll <see cref="GetOperation"/>.
+    /// </summary>
+    public EditorOperationStatus StartMaterialGeneration(string requestId, TexGenParams request, int? assignToId)
+    {
+        if (string.IsNullOrWhiteSpace(requestId) || requestId.Length > 128)
+            throw new McpException("INVALID_ARGUMENT: requestId must contain 1 to 128 characters. Reuse it only to retry the same command.");
+        lock (_gate)
+        {
+            if (!_enabled) throw new McpException("EDITOR_NOT_READY: MCP is disabled or the editor is shutting down.");
+            if (_bridge == null) throw new McpException("EDITOR_NOT_READY: Waiting for the engine bridge.");
+            if (ReadOnly) throw new McpException("READ_ONLY: Disable Read-only in the editor MCP panel to allow commands.");
+            string fingerprint = JsonSerializer.Serialize(new { request, assignToId }, FingerprintJson);
+            if (_materialJobs.TryGetValue(requestId, out var old))
+            {
+                if (fingerprint != old.Fingerprint) throw new McpException("REQUEST_ID_CONFLICT: requestId was already used for different arguments.");
+            }
+            else
+            {
+                if (_materialJobs.Values.Count(j => !j.Task.IsCompleted) >= MaxPendingMaterialJobs)
+                    throw new McpException("QUEUE_FULL: Two materials are already being generated. Wait for one to finish.");
+                if (_materialJobs.Count >= 64)
+                    _materialJobs.Remove(_materialJobs.First(p => p.Value.Task.IsCompleted).Key);
+                _materialJobs.Add(requestId, new(fingerprint, RunMaterialJobAsync(_bridge, request, assignToId, _lifetime.Token)));
+            }
+        }
+        return GetOperation(requestId);
+    }
+
+    private async Task<MaterialGenerationResult> RunMaterialJobAsync(IEditorBridge bridge, TexGenParams request, int? assignToId, CancellationToken ct)
+    {
+        await Task.Yield();
+        var runner = MaterialRunner ??= new TexGenRunner();
+        var generated = await runner.GenerateAsync(request, null, ct).ConfigureAwait(false);
+        if (!generated.Success)
+            throw new McpException($"{(generated.ErrorCode ?? "GENERATION_FAILED").ToUpperInvariant()}: {generated.ErrorMessage}");
+        var imported = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bridge.EnqueueImportGeneratedMaterial(generated.CacheDir!, (path, error) =>
+        {
+            if (path != null) imported.TrySetResult(path);
+            else imported.TrySetException(new McpException("IMPORT_FAILED: " + (error ?? "unknown error")));
+        }, assignToId);
+        string material = await imported.Task.WaitAsync(TimeSpan.FromMinutes(5), ct).ConfigureAwait(false);
+        return new(material, generated.Id, generated.FromCache,
+            generated.Warnings.Select(w => new MaterialGenerationWarning(w.Code ?? "", w.Message ?? "")).ToArray());
+    }
+
     public EditorOperationStatus GetOperation(string requestId)
     {
         lock (_gate)
         {
+            if (_materialJobs.TryGetValue(requestId, out var job))
+            {
+                if (!job.Task.IsCompleted) return new(requestId, "pending", null, null);
+                if (job.Task.IsCompletedSuccessfully) return new(requestId, "completed", null, null, job.Task.Result);
+                return new(requestId, job.Task.IsCanceled ? "cancelled" : "failed", null,
+                    job.Task.Exception?.GetBaseException().Message ?? "Cancelled before it finished.");
+            }
             if (!_operations.TryGetValue(requestId, out var operation))
                 throw new McpException("OPERATION_NOT_FOUND: No retained command has that requestId. Do not blindly retry an unknown write.");
             if (!operation.Task.IsCompleted) return new(requestId, "pending", null, null);
