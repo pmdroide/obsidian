@@ -26,6 +26,8 @@ namespace Engine.Entities
         public readonly MaterialEffect Material;
         private MeshMaterialLibrary _materialLibrary;
         private readonly List<MaterialEffect> _materialInstances = new();
+        /// <summary>The material the mesh library draws the model with: the Material component's instance, else the gameobject's.</summary>
+        internal MaterialEffect DrawMaterial => _materialInstances.Count > 0 ? _materialInstances[0] : Material ?? FirstPartMaterial();
         // LOD component, as registered: the models of levels 1..n and the camera distances they start at.
         private readonly List<Model> _lodModels = new();
         private readonly List<float> _lodDistances = new();
@@ -64,6 +66,14 @@ namespace Engine.Entities
         internal int PhysicsFrame;
         // The Ragdoll component's bodies (ScenePhysics.CreateRagdoll); null without one.
         internal Ragdoll Ragdoll;
+        // The Breakable Glass component's shards (ScenePhysics.CreateGlass); null without one.
+        internal GlassShatter Glass;
+        // The Breakable component's pieces (ScenePhysics.CreateFracture); null without one.
+        internal FractureShatter Fracture;
+        // Bones shrunk to a point while skinning (a Breakable head that broke off this body); runtime only.
+        internal readonly HashSet<string> CollapsedBones = new(StringComparer.Ordinal);
+        // Bumped when CollapsedBones changes, so skins re-pose.
+        internal int CollapsedBonesVersion;
         // Collision group shared by this gameobject's own body and its ragdoll parts; 0 until it has a ragdoll.
         internal int CollisionGroup;
 
@@ -151,6 +161,16 @@ namespace Engine.Entities
         public bool IsPersistent => Persistent || RuntimePersistent;
 
         /// <summary>
+        /// Inspector > Lightmap Static (saved): the lighting bake gives this gameobject a lightmap (indirect light, AO and the
+        /// static lights' shadows, Source 2 look phase 4.2). It must not move after the bake.
+        /// </summary>
+        public bool LightmapStatic { get; set; }
+
+        /// <summary>Inspector > Lightmap Scale (saved): multiplies the scene's lightmap texel density for this gameobject.</summary>
+        public float LightmapScale { get => _lightmapScale; set => _lightmapScale = float.IsFinite(value) ? System.Math.Clamp(value, 0.01f, 100f) : 1f; }
+        private float _lightmapScale = 1f;
+
+        /// <summary>
         /// Prefab instance: the Content-relative .prefab this gameobject was made from ("Prefabs/Crate.prefab"),
         /// saved with the scene; null for a plain gameobject. See <c>Logic.PrefabUtility</c>.
         /// </summary>
@@ -176,6 +196,8 @@ namespace Engine.Entities
                     LayerId = LayerId,
                     TagId = TagId,
                     Persistent = Persistent,
+                    LightmapStatic = LightmapStatic,
+                    LightmapScale = LightmapScale,
                     // A duplicate of a prefab instance is another instance of that prefab, like Unity.
                     PrefabPath = PrefabPath,
                 };
@@ -276,6 +298,22 @@ namespace Engine.Entities
             WorldTransform.World = Matrix.CreateScale(Scale) * RotationMatrix * Matrix.CreateTranslation(Position);
             WorldTransform.Scale = Scale;
             WorldTransform.InverseWorld = Matrix.Invert(Matrix.CreateTranslation(BoundingBoxOffset * Scale) * RotationMatrix * Matrix.CreateTranslation(Position));
+        }
+
+        /// <summary>The material the library draws a model part with (<paramref name="index"/> = its order in the model).</summary>
+        internal MaterialEffect PartMaterial(ModelMeshPart part, int index)
+        {
+            if (_materialInstances.Count > 0) return _materialInstances[Math.Min(index, _materialInstances.Count - 1)];
+            return Material ?? part?.Effect as MaterialEffect ?? FirstPartMaterial();
+        }
+
+        private MaterialEffect FirstPartMaterial()
+        {
+            if (Model == null) return null;
+            foreach (var mesh in Model.Meshes)
+                foreach (var part in mesh.MeshParts)
+                    if (part.Effect is MaterialEffect material) return material;
+            return null;
         }
 
         public void RegisterInLibrary(MeshMaterialLibrary library)
@@ -403,6 +441,11 @@ namespace Engine.Entities
         public int LodLevel;
         // Foliage Wind component: the vertex shaders sway this mesh in the wind; null = static.
         public FoliageWind Wind;
+        // Planar Reflection component: the mirror image its forward (glass) shader shows this frame; null = the probes.
+        public Renderer.RenderModules.PlanarReflectionView PlanarReflection;
+        // Liquid component: the liquid surface its forward (glass) shader fills this mesh below, and its colours; null = none.
+        public Physics.LiquidSlosh Liquid;
+        public Components.LiquidLook LiquidLook;
 
         public TransformMatrix(Matrix world, int id)
         {

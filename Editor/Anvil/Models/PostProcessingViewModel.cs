@@ -26,12 +26,21 @@ public partial class PostProcessingViewModel : ObservableObject
     private bool _suppress;
 
     // Same order as the engine enums.
-    public string[] TonemapCurves { get; } = { "Hejl 2015 (filmic)", "ACES", "Hable (Uncharted 2)", "Reinhard", "Linear (clamp)" };
-    public string[] MeteringModes { get; } = { "Bright Pixels (Source)", "Average" };
+    public string[] TonemapCurves { get; } = { "Hejl 2015 (filmic)", "ACES", "Hable (Uncharted 2)", "Reinhard", "Linear (clamp)", "Source 2 (Half-Life: Alyx)" };
+    public string[] MeteringModes { get; } = { "Bright Pixels (Source)", "Average", "Source 2 (median)" };
+    public string[] BloomShapes { get; } = { "Soft Knee", "Source 2 (ramp)" };
     public string[] DebugViews { get; } = Enum.GetNames<Renderer.RenderModes>();
 
     // --------- Scene: tonemapping & grading ---------
-    [ObservableProperty] private int _tonemapCurve;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsSource2Curve))] private int _tonemapCurve;
+    public bool IsSource2Curve => TonemapCurve == (int)Engine.Logic.TonemapCurve.Source2;
+    [ObservableProperty] private double _filmicShoulder;
+    [ObservableProperty] private double _filmicLinearStrength;
+    [ObservableProperty] private double _filmicLinearAngle;
+    [ObservableProperty] private double _filmicToeStrength;
+    [ObservableProperty] private double _filmicToeNumerator;
+    [ObservableProperty] private double _filmicToeDenominator;
+    [ObservableProperty] private double _filmicWhitePoint;
     [ObservableProperty] private double _whitePoint;
     [ObservableProperty] private double _exposure;
     [ObservableProperty] private double _sCurveStrength;
@@ -62,6 +71,7 @@ public partial class PostProcessingViewModel : ObservableObject
 
     // --------- Scene: bloom ---------
     [ObservableProperty] private bool _bloomEnabled;
+    [ObservableProperty] private int _bloomShape;
     [ObservableProperty] private double _bloomStart;
     [ObservableProperty] private double _bloomKnee;
     [ObservableProperty] private double _bloomScale;
@@ -146,6 +156,13 @@ public partial class PostProcessingViewModel : ObservableObject
             TonemapCurve = (int)post.Tonemap;
             Exposure = post.Exposure;
             WhitePoint = post.WhitePoint;
+            FilmicShoulder = post.FilmicShoulder;
+            FilmicLinearStrength = post.FilmicLinearStrength;
+            FilmicLinearAngle = post.FilmicLinearAngle;
+            FilmicToeStrength = post.FilmicToeStrength;
+            FilmicToeNumerator = post.FilmicToeNumerator;
+            FilmicToeDenominator = post.FilmicToeDenominator;
+            FilmicWhitePoint = post.FilmicWhitePoint;
             SCurveStrength = post.SCurveStrength;
             ExactSrgb = post.ExactSrgb;
             ColorGrading = post.ColorGrading;
@@ -169,6 +186,7 @@ public partial class PostProcessingViewModel : ObservableObject
             AutoExposureSpeedLightToDark = post.AdaptationSpeedDown;
             AutoExposureCenterWeight = post.CenterWeight;
             BloomEnabled = post.Bloom;
+            BloomShape = (int)post.BloomShape;
             BloomStart = post.BloomStart;
             BloomKnee = post.BloomKnee;
             BloomScale = post.BloomScale;
@@ -259,6 +277,13 @@ public partial class PostProcessingViewModel : ObservableObject
         if (value >= 0 && value < TonemapCurves.Length) PushPost(p => p.Tonemap = (Engine.Logic.TonemapCurve)value);
     }
     partial void OnWhitePointChanged(double value)         => PushPost(p => p.WhitePoint = (float)value);
+    partial void OnFilmicShoulderChanged(double value)     => PushPost(p => p.FilmicShoulder = (float)value);
+    partial void OnFilmicLinearStrengthChanged(double value) => PushPost(p => p.FilmicLinearStrength = (float)value);
+    partial void OnFilmicLinearAngleChanged(double value)  => PushPost(p => p.FilmicLinearAngle = (float)value);
+    partial void OnFilmicToeStrengthChanged(double value)  => PushPost(p => p.FilmicToeStrength = (float)value);
+    partial void OnFilmicToeNumeratorChanged(double value) => PushPost(p => p.FilmicToeNumerator = (float)value);
+    partial void OnFilmicToeDenominatorChanged(double value) => PushPost(p => p.FilmicToeDenominator = (float)value);
+    partial void OnFilmicWhitePointChanged(double value)   => PushPost(p => p.FilmicWhitePoint = (float)value);
     partial void OnExposureChanged(double value)           => PushPost(p => p.Exposure = (float)value);
     partial void OnSCurveStrengthChanged(double value)     => PushPost(p => p.SCurveStrength = (float)value);
     partial void OnExactSrgbChanged(bool value)            => PushPost(p => p.ExactSrgb = value);
@@ -294,6 +319,10 @@ public partial class PostProcessingViewModel : ObservableObject
 
     // Scene: bloom
     partial void OnBloomEnabledChanged(bool value)         => PushPost(p => p.Bloom = value);
+    partial void OnBloomShapeChanged(int value)
+    {
+        if (value >= 0 && value < BloomShapes.Length) PushPost(p => p.BloomShape = (BloomThresholdShape)value);
+    }
     partial void OnBloomStartChanged(double value)         => PushPost(p => p.BloomStart = (float)value);
     partial void OnBloomKneeChanged(double value)          => PushPost(p => p.BloomKnee = (float)value);
     partial void OnBloomScaleChanged(double value)         => PushPost(p => p.BloomScale = (float)value);

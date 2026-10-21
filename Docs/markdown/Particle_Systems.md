@@ -50,7 +50,7 @@ size. Axes are the engine's: **Z is up**, so a Cone emits upwards by default.
 | Rotation over Lifetime | spin, °/s (random between two values) |
 | Collision | Plane (a floor at a world height) or World (every Physics collider, one ray per moving particle); Bounce, Dampen, Lifetime Loss, Radius Scale, Min Kill Speed |
 | Texture Sheet Animation | flipbook: Tiles X/Y, Cycles, Random Start Frame |
-| Sub Emitters | rows of Trigger (Birth, Trail, Collision, Death) + target gameobject name + count, Inherit Velocity/Color |
+| Sub Emitters | rows of Trigger (Birth, Trail, Collision, Death) + target drop slot + count, Inherit Velocity/Color. Drag a Hierarchy gameobject with a Particle System into the target slot; Clear removes it. Targets are stored by name. |
 | Renderer | Render Mode (Billboard, Stretched, Horizontal, Vertical), Blend (Alpha, Additive), Texture, Sort Mode, Brightness (above 1 blooms), Lit (sun + sky shading for smoke/dust), Soft Particles, Camera Fade, Length/Speed Scale (stretched) |
 | Lights | the particles light the scene: Mode (System, Per Particle), Color or Use Particle Color, Intensity, Range, Alpha Affects Intensity, Flicker + Flicker Speed; System: Offset, Cast Shadows; Per Particle: Ratio, Max Lights, Size Affects Range (see below) |
 | Volumetric | draw as a raymarched volume: Source (Particles or Voxels), Draw Particles, Density, Noise Erosion/Scale/Speed, Steps, Refill Time; Particles: Resolution; Voxels: Voxel Size, Volume, Max Radius, Expand Time, Fade Time, Flatten (see below) |

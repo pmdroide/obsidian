@@ -65,6 +65,43 @@ internal static class WetSurfaceChecks
         Check(wetness.Wetness == 0 && wetness.Ripples == 0, "switching scenes snaps to the new scene's weather");
         wetness.Update(sceneB, downpour, double.NaN);
         Check(wetness.Wetness == 0, "invalid frame times leave the wetness alone");
+        CheckGroundFogAndDrops();
+    }
+
+    private static void CheckGroundFogAndDrops()
+    {
+        var rain = new EnvironmentSettings { Weather = WeatherType.Rain, WeatherIntensity = 1, GroundFog = 0.5f };
+        Check(Math.Abs(WeatherProfile.TargetGroundFog(rain) - WeatherProfile.Rain.GroundFog * 0.5f) < 1e-6f &&
+              WeatherProfile.TargetSurfaceDrops(rain) == 1,
+            "rain raises ground mist (scaled by Ground Fog) and beads drops on surfaces");
+        var snow = new EnvironmentSettings { Weather = WeatherType.Snow, WeatherIntensity = 1 };
+        Check(WeatherProfile.TargetGroundFog(snow) > 0 && WeatherProfile.TargetSurfaceDrops(snow) == 0 &&
+              WeatherProfile.TargetGroundFog(new EnvironmentSettings()) == 0 && WeatherProfile.TargetSurfaceDrops(null) == 0,
+            "snow raises a mist without raindrops; clear skies have neither");
+        var off = new EnvironmentSettings { Weather = WeatherType.Rain, WeatherIntensity = 1, GroundFog = 0, SurfaceDrops = 0 };
+        Check(WeatherProfile.TargetGroundFog(off) == 0 && WeatherProfile.TargetSurfaceDrops(off) == 0,
+            "Ground Fog 0 and Rain Drops 0 turn both off");
+
+        var state = new SurfaceWetness();
+        object scene = new object();
+        state.Update(scene, rain, 0);
+        Check(state.GroundFog == WeatherProfile.TargetGroundFog(rain) && state.Drops == 1,
+            "a newly shown rainy scene starts misty and covered in drops");
+        state.Update(scene, new EnvironmentSettings(), 1);
+        Check(state.GroundFog > 0 && state.GroundFog < WeatherProfile.TargetGroundFog(rain) && state.Drops > 0.9f,
+            "after the rain the mist lingers and the drops dry slowly");
+        state.Update(scene, new EnvironmentSettings(), 1000);
+        Check(state.GroundFog == 0 && state.Drops == 0, "they clear in the end");
+
+        var settings = new EnvironmentSettings { GroundFog = 7, GroundFogHeight = -1, GroundFogBase = float.NaN, SurfaceDrops = float.NaN };
+        settings.Normalize();
+        Check(settings.GroundFog == 1 && settings.GroundFogHeight == 0.2f && settings.GroundFogBase == 0 && settings.SurfaceDrops == 1,
+            "ground fog and drop settings are clamped on load");
+
+        var material = new MaterialComponent { RainDrops = false };
+        var loaded = System.Text.Json.JsonSerializer.Deserialize<MaterialComponent>(System.Text.Json.JsonSerializer.Serialize(material));
+        Check(new MaterialComponent().RainDrops && loaded != null && !loaded.RainDrops,
+            "materials get raindrops by default and save turning them off");
     }
 
     private static void CheckEditorAndSaving()
@@ -87,7 +124,8 @@ internal static class WetSurfaceChecks
               material.TilingU == 1 && material.TilingV == 1 && !vm.IsWetSurface,
             "materials start dry, untiled and follow the weather once they are Wet Surface");
 
-        vm.WetFloorExampleCommand.Execute(null);
+        vm.MaterialType = (int)MaterialEffect.MaterialTypes.WetSurface;
+        vm.Wetness = 1;
         vm.PuddleAmount = 0.7;
         vm.PuddleSize = 6;
         vm.WeatherWetness = false;
@@ -97,7 +135,7 @@ internal static class WetSurfaceChecks
         Check(vm.IsWetSurface && material.MaterialType == MaterialEffect.MaterialTypes.WetSurface && material.Wetness == 1 &&
               material.PuddleAmount == 0.7f && material.PuddleSize == 6 && !material.WeatherWetness &&
               material.TilingU == 4 && material.TilingV == 8,
-            "the Wet Floor example and the wet/tiling Inspector fields reach the material component");
+            "WetSurface shader selection and the wet/tiling Inspector fields reach the material component");
 
         material.Wetness = 0.25f;
         material.TilingU = 2;

@@ -66,7 +66,7 @@ namespace Engine.Renderer.Lighting
             Math.Clamp((int)Math.Ceiling(extent / spacing) + 1, MinProbesPerAxis, max);
 
         public static ProbeVolumeData Bake(LightingBakeInput input, LightingSettings s,
-            ProgressCallback progress, CancellationToken ct)
+            ProgressCallback progress, CancellationToken ct, TriangleBvh bvh = null)
         {
             var timer = Stopwatch.StartNew();
 
@@ -89,19 +89,17 @@ namespace Engine.Renderer.Lighting
                 layouts.Add((dMin, dMax, dx, dy, dz, detail.Priority, detail.BlendMargin));
             }
 
-            progress?.Invoke(0, $"Building BVH ({input.TriangleCount:N0} triangles)");
-            var bvh = new TriangleBvh(input.A, input.B, input.C);
+            if (bvh == null)
+            {
+                progress?.Invoke(0, $"Building BVH ({input.TriangleCount:N0} triangles)");
+                bvh = new TriangleBvh(input.A, input.B, input.C);
+            }
             ct.ThrowIfCancellationRequested();
 
             int sampleCount = Math.Max(16, s.SamplesPerProbe);
             int passes = Math.Max(1, s.Bounces);
             Vector3[] directions = FibonacciSphere(sampleCount);
-            Vector3 sky = new Vector3(
-                (float)Math.Pow(MathHelper.Clamp(s.SkyColor.X, 0, 1), 2.2),
-                (float)Math.Pow(MathHelper.Clamp(s.SkyColor.Y, 0, 1), 2.2),
-                (float)Math.Pow(MathHelper.Clamp(s.SkyColor.Z, 0, 1), 2.2)) * Math.Max(0, s.SkyIntensity);
-            //Escaping rays below the horizon see the ground lit by the sky: a dim grey bounce
-            Vector3 ground = new Vector3(Vector3.Dot(sky, new Vector3(0.2126f, 0.7152f, 0.0722f))) * GroundAlbedo;
+            SkyRadiance(s, out Vector3 sky, out Vector3 ground);
 
             //Rays that leave the volume's neighbourhood count as escaped
             float maxDistance = Vector3.Distance(Vector3.Min(min, input.GeometryBounds.Min),
@@ -225,11 +223,22 @@ namespace Engine.Renderer.Lighting
             return current;
         }
 
+        /// <summary>Radiance of rays that escape the scene: the sky above the horizon, and below it open ground lit by the sky.</summary>
+        internal static void SkyRadiance(LightingSettings s, out Vector3 sky, out Vector3 ground)
+        {
+            sky = new Vector3(
+                (float)Math.Pow(MathHelper.Clamp(s.SkyColor.X, 0, 1), 2.2),
+                (float)Math.Pow(MathHelper.Clamp(s.SkyColor.Y, 0, 1), 2.2),
+                (float)Math.Pow(MathHelper.Clamp(s.SkyColor.Z, 0, 1), 2.2)) * Math.Max(0, s.SkyIntensity);
+            //Escaping rays below the horizon see the ground lit by the sky: a dim grey bounce
+            ground = new Vector3(Vector3.Dot(sky, new Vector3(0.2126f, 0.7152f, 0.0722f))) * GroundAlbedo;
+        }
+
         /// <summary>
         /// Irradiance from the scene's lights at a surface point (white albedo), with hard shadows.
         /// Point and spot light attenuation mirrors DeferredPointLight.fx (PointLight.Attenuation).
         /// </summary>
-        private static Vector3 DirectIrradiance(LightingBakeInput input, TriangleBvh bvh, Vector3 p, Vector3 n, float maxDistance)
+        internal static Vector3 DirectIrradiance(LightingBakeInput input, TriangleBvh bvh, Vector3 p, Vector3 n, float maxDistance)
         {
             Vector3 result = Vector3.Zero;
 
@@ -278,7 +287,7 @@ namespace Engine.Renderer.Lighting
         /// Direction, distance and solid angle of an emissive triangle (its lit front side, approximated at its centre) seen
         /// from <paramref name="p"/>. False when <paramref name="p"/> is behind it.
         /// </summary>
-        private static bool EmitterSolidAngle(LightingBakeInput input, int triangle, Vector3 p, out Vector3 direction,
+        internal static bool EmitterSolidAngle(LightingBakeInput input, int triangle, Vector3 p, out Vector3 direction,
             out float distance, out float solidAngle)
         {
             Vector3 a = input.A[triangle], b = input.B[triangle], c = input.C[triangle];

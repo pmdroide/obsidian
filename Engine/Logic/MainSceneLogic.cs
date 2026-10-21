@@ -108,6 +108,9 @@ namespace Engine.Logic
         /// </summary>
         public Particles.WaterSplashes WaterSplashes { get; } = new Particles.WaterSplashes();
 
+        /// <summary>Dust and blood thrown by Breakable gameobjects as they break, drawn by the particle pass.</summary>
+        public Particles.BreakBursts BreakBursts { get; } = new Particles.BreakBursts();
+
         //SDF
         public SdfGenerator _sdfGenerator;
 
@@ -233,6 +236,7 @@ namespace Engine.Logic
             // Blocks dug or placed during Play go back to the generated world.
             Voxels?.OnPlayStopped();
             WaterSplashes.Clear();
+            BreakBursts.Clear();
             GameUI.CloseAll();
             GameFlow.EscapeQuits = true;
             GameFlow.Paused = false;
@@ -287,6 +291,7 @@ namespace Engine.Logic
             // The old scene's voxel world goes with it (the new one is built on the next update).
             Voxels?.Reset();
             WaterSplashes.Clear();
+            BreakBursts.Clear();
 
             // Reset the mesh/material library — new scene re-registers its entities below.
             MeshMaterialLibrary?.Clear();
@@ -395,6 +400,9 @@ namespace Engine.Logic
             // Trees with a Foliage Wind component sway in the scene wind while editing too; the pause menu holds them.
             FoliageWindComponent.UpdateAll(ActiveScene?.BasicEntities,
                 GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds, WeatherProfile.Wind(ActiveScene?.Environment));
+            // Bottles with a Liquid component slosh when moved (editor gizmo included); the pause menu holds them.
+            LiquidComponent.UpdateAll(ActiveScene?.BasicEntities, GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+                _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f));
             // Posed bones (Anvil Hierarchy > Armature) skin their mesh unless an Animator or Ragdoll already does.
             BonePose.UpdateAll(ActiveScene?.BasicEntities);
             // Material components linked to a material asset (.mat) follow edits of the file, in Edit and Play.
@@ -402,6 +410,9 @@ namespace Engine.Logic
             // Splash droplets and water rings; paused (pause menu) they hang where they are.
             WaterSplashes.Update(GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
                 _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f), WeatherProfile.Wind(ActiveScene?.Environment));
+            // Dust and blood of broken Breakables.
+            BreakBursts.Update(GameFlow.Paused ? 0 : (float)gameTime.ElapsedGameTime.TotalSeconds,
+                _scenePhysics?.Gravity ?? new Vector3(0, 0, -9.81f), WeatherProfile.Wind(ActiveScene?.Environment), _scenePhysics);
 
             //VolumeTexture.RotationMatrix = testEntity.WorldTransform.InverseWorld;
             //VolumeTexture.Scale = testEntity.WorldTransform.Scale;

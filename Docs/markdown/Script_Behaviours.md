@@ -1,7 +1,7 @@
 # Script behaviours
 
 Select a mesh gameobject in Anvil, choose **Add Component > Script Behaviour**,
-and pick **Spin Example**. Press **Play** to rotate the object around Z at
+and drag **Assets > Scripts > SpinExampleScript.cs** into the Script slot. Press **Play** to rotate the object around Z at
 45 degrees per second. **Stop** restores its editor transform.
 
 The example appears under **Assets > Scripts > SpinExampleScript.cs**. Double-click
@@ -9,8 +9,13 @@ it to open the actual source file in the existing external editor (VS Code,
 falling back to Notepad). Scripts live under `Engine/Content/Scripts` and are
 copied into build output as editable source assets.
 
+The Script slot accepts registered C# behaviours whose filenames match their type
+names. Helper files and UI XML/CSS are rejected. Rebuild after adding a new
+behaviour; there is no runtime script compiler. Use the slot's clear button to
+remove the script reference, or drop another script to replace it.
+
 Use **Add Component > Script Behaviour** again to attach more scripts to the same
-gameobject. Each attachment has its own script picker, Enabled checkbox and
+gameobject. Each attachment has its own script drop slot, Enabled checkbox and
 Remove Component button. You can also attach the same script more than once;
 each attachment runs a separate instance. Editing or removing one attachment
 leaves the others alone.
@@ -24,6 +29,21 @@ Re-enabling or attaching during Play calls `Start` before the first `Update`.
 Changing the selected script stops the old instance and starts the new one on
 the next Play frame. An exception or missing script ID is logged to the engine
 editor log and stops that instance's updates until restarted or changed.
+
+## Debug logging
+
+`ScriptBehaviour` already provides `Log(message)`. Call it from any behaviour:
+
+```csharp
+public override void Start()
+{
+    Log("Player ready");
+}
+```
+
+Anvil's **Console** shows `[ObjectName] Player ready` (or `[Main Camera]` for camera scripts). Outside a behaviour, use `Engine.Editor.EditorBridge.Log("message")`. Logging works in Debug and Release builds, including standalone games.
+
+Messages are also appended to `anvil-bridge.log` on the Desktop, with `%LOCALAPPDATA%/Anvil/anvil-bridge.log` as a fallback. Debug builds additionally write to the attached debugger. If neither file can be written, recent messages remain available in the Console. File writes and the recent history are synchronized across threads; the history and Console retain at most 1,000 entries. Clearing the Console discards pending messages too.
 
 ## Scripts on the Main Camera
 
@@ -295,14 +315,14 @@ public sealed class DoorButtonScript : ScriptBehaviour
 }
 ```
 
-- **Inspector:** a picker with **None** and every gameobject in the scene, in
-  Hierarchy order. Gameobjects with the same name show their ID, for example
+- **Inspector:** drag a gameobject from the Hierarchy into the field; use the slot's
+  clear button to remove it. Gameobjects with the same name show their ID, for example
   "Crate (#12)".
 - **Saving:** the reference is saved as the target's scene ID. It survives save/load
   and renaming the target.
 - **Before `Start`:** the field holds the gameobject with that ID in the active scene.
 - **Deleted targets:** if the target was deleted, the field is `null` and the Inspector
-  shows **Missing (#id)** until you pick another one or reset the field.
+  shows **Missing (#id)** until you drop another one, clear it or reset the field.
 - **Duplicating:** a duplicated gameobject's references to itself point at the copy.
   Its references to other gameobjects are kept.
 - **Persistent gameobjects:** a scene's reference to its own copy of a persistent
@@ -327,8 +347,8 @@ public sealed class TurretScript : ScriptBehaviour
 }
 ```
 
-- **Inspector:** a picker with **None** and every `.prefab` in Content. Prefabs with the
-  same name show their path. You can also drag a prefab from Assets onto it.
+- **Inspector:** drag a `.prefab` from Assets into the field; use the slot's clear
+  button to remove it. Prefabs with the same name show their path.
 - **Saving:** the prefab's Content path. A file that is gone gives `null` and shows
   **Missing (path)**; one that moved is found again by its name.
 - **From code:** `SetField("Bullet", prefab)` (a `Prefab`, its path or `null`).
@@ -354,7 +374,7 @@ the physics engine uses.
 | `DeltaTime` | Seconds since the last frame. Multiply speeds by it. |
 | `Time` / `FrameCount` | Game-time seconds since this script started (held while paused) / Updates run so far. See [Timers, coroutines and tweens](#timers-coroutines-and-tweens). |
 | `GetComponent<T>()` | First component of type `T` on this gameobject, or `null`. |
-| `Log(message)` | Writes `[ObjectName] message` to the engine/editor log. |
+| `Log(message)` | Writes `[ObjectName] message` to Anvil's Console and the engine/editor log file. |
 | `SceneEnvironment` | The active scene's sky and weather settings (`Weather`, `WeatherIntensity`, `WindSpeed`, ...). Changes are undone when Play stops. See [Weather.md](Weather.md). |
 | `Voxels` | The scene's voxel world (`VoxelWorld`), or `null` when it has none: `GetBlock`, `SetBlock`, `FillSphere`, `FillBox`, `Raycast`, `TryGetSurface`. Edited chunks are remeshed before the next physics step; Stop regenerates the world. Fetch it each frame, because changing a voxel setting replaces it. See [Voxel_World.md](Voxel_World.md). |
 | `Spawn(modelKey, position, name)` | Adds a gameobject from a model key (`"Capsule"`, `"Cube"`, `"IsoSphere"`) for this Play session. Never saved. Returns `null` for an unknown key. |
@@ -423,8 +443,8 @@ does not need to be normalized.
 
 ### Water
 
-Water is a gameobject with the **Water** role (Inspector > Role, or the material's
-**Apply Water Example**). Dynamic bodies that fall in splash on their own. See
+Water is a gameobject with the **Water** role (Inspector > Role) and a material
+using **Shader > Water**. Dynamic bodies that fall in splash on their own. See
 [Water.md](Water.md).
 
 | Member | What it does |

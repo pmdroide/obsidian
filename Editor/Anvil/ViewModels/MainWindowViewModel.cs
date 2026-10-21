@@ -32,13 +32,14 @@ public partial class MainWindowViewModel : ViewModelBase
         new WorkspaceTabViewModel("Lighting", "Lighting"),
         new WorkspaceTabViewModel("Input", "Input Devices"),
         new WorkspaceTabViewModel("Steam", "Steam"),
+        new WorkspaceTabViewModel("Mcp", "MCP"),
         new WorkspaceTabViewModel("Classifications", "Layers, Tags & Roles"),
     };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEngineWorkspaceSelected), nameof(IsWorkspaceEnvironmentView),
         nameof(IsWorkspaceWorldView), nameof(IsWorkspaceRenderPipelineView), nameof(IsWorkspacePostProcessingView),
-        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView), nameof(IsWorkspaceClassificationsView))]
+        nameof(IsWorkspaceLightingView), nameof(IsWorkspaceInputView), nameof(IsWorkspaceSteamView), nameof(IsWorkspaceClassificationsView), nameof(IsWorkspaceMcpView))]
     private WorkspaceTabViewModel? _selectedWorkspaceTab;
 
     public bool IsEngineWorkspaceSelected => SelectedWorkspaceTab?.IsEngine == true;
@@ -49,6 +50,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsWorkspaceLightingView => SelectedWorkspaceTab?.Kind == "Lighting";
     public bool IsWorkspaceInputView => SelectedWorkspaceTab?.Kind == "Input";
     public bool IsWorkspaceSteamView => SelectedWorkspaceTab?.Kind == "Steam";
+    public bool IsWorkspaceMcpView => SelectedWorkspaceTab?.Kind == "Mcp";
+    public McpSettingsViewModel Mcp { get; } = new();
     public bool IsWorkspaceClassificationsView => SelectedWorkspaceTab?.Kind == "Classifications";
     public ClassificationsViewModel Classifications { get; } = new();
 
@@ -315,6 +318,27 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         SelectedWorkspaceTab = WorkspaceTabs[0];
         BuildConsole();
+        RefreshConsoleLogs();
+    }
+
+    private DispatcherTimer? _logTimer;
+    private long _lastLogSequence;
+
+    public void RefreshConsoleLogs()
+    {
+        foreach (var entry in EditorBridge.GetLogEntries(_lastLogSequence))
+        {
+            AddConsoleEntry(ConsoleLevel.Log, entry.Message,
+                entry.Message.StartsWith("MCP:", StringComparison.Ordinal) ? "Anvil:MCP" : "Engine",
+                entry.Timestamp);
+            _lastLogSequence = entry.Sequence;
+        }
+    }
+
+    public void StopConsoleLogging()
+    {
+        _logTimer?.Stop();
+        RefreshConsoleLogs();
     }
 
     // -------- Engine bridge wiring --------
@@ -323,6 +347,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge != null) return;
         _bridge = bridge;
+        _logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _logTimer.Tick += (_, _) => RefreshConsoleLogs();
+        _logTimer.Start();
         bridge.EnqueueSetAudioEnabled(IsAudioEnabled);
         PushStatsVisible();
         PushGridVisible();
@@ -346,6 +373,8 @@ public partial class MainWindowViewModel : ViewModelBase
         AddableObjects.Add(new AddableObjectType("Spot Light", _ => AddSpotLight(), _bridge));
         AddableObjects.Add(new AddableObjectType("Particle System", _ => AddParticleSystem(), _bridge));
         AddableObjects.Add(new AddableObjectType("Decal", _ => AddDecal(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Liquid Bottle", _ => AddLiquidBottle(), _bridge));
+        AddableObjects.Add(new AddableObjectType("Breakable Vase", _ => AddBreakableVase(), _bridge));
         AddableObjects.Add(new AddableObjectType("Tree", _ => AddTree(), _bridge));
 
         // Hand the bridge to the post-processing VM so its setters can
@@ -357,6 +386,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Lighting.AttachBridge(bridge);
         Environment.AttachBridge(bridge);
         Steam.AttachBridge(bridge);
+        Mcp.AttachBridge(bridge);
         InputDevices.AttachBridge(bridge);
         Classifications.AttachBridge(bridge);
         RenderPipeline.LogRequested += (level, message) => AddConsoleEntry(level, message, "Anvil:RenderPipeline");
@@ -525,6 +555,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ClearConsole()
     {
+        // Clear pending history too, so the next timer tick cannot restore old messages.
+        var pending = EditorBridge.GetLogEntries(_lastLogSequence);
+        if (pending.Length > 0) _lastLogSequence = pending[^1].Sequence;
         ConsoleEntries.Clear();
         OnPropertyChanged(nameof(FilteredConsole));
         OnPropertyChanged(nameof(ConsoleLogCount));
@@ -577,6 +610,22 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_bridge == null) return;
         _bridge.EnqueueAddBasicEntity("Tree", _bridge.SpawnPoint, "Tree", componentTypes: new[] { FoliageWindComponent.TypeId });
+    }
+
+    /// <summary>The built-in glass Bottle filled by a Liquid component (sloshes when moved; Inspector &gt; Liquid).</summary>
+    [RelayCommand]
+    private void AddLiquidBottle()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("Bottle", _bridge.SpawnPoint, "Bottle", componentTypes: new[] { LiquidComponent.TypeId });
+    }
+
+    /// <summary>The built-in Vase on a Dynamic body with a Breakable component (smashes when it falls or is shot).</summary>
+    [RelayCommand]
+    private void AddBreakableVase()
+    {
+        if (_bridge == null) return;
+        _bridge.EnqueueAddBasicEntity("Vase", _bridge.SpawnPoint, "Vase", componentTypes: new[] { PhysicsComponent.TypeId, BreakableComponent.TypeId });
     }
 
     [RelayCommand]
@@ -1576,13 +1625,14 @@ public partial class MainWindowViewModel : ViewModelBase
         return true;
     }
 
-    private void AddConsoleEntry(ConsoleLevel level, string message, string source)
+    private void AddConsoleEntry(ConsoleLevel level, string message, string source, DateTime? timestamp = null)
     {
         int id = ConsoleEntries.Count == 0 ? 1 : ConsoleEntries.Max(e => e.Id) + 1;
+        if (ConsoleEntries.Count >= EditorBridge.LogCapacity) ConsoleEntries.RemoveAt(0);
         ConsoleEntries.Add(new ConsoleEntry
         {
             Id = id, Level = level, Message = message, Source = source,
-            Time = DateTime.Now.ToString("HH:mm:ss"),
+            Time = (timestamp ?? DateTime.Now).ToString("HH:mm:ss"),
         });
         OnPropertyChanged(nameof(FilteredConsole));
         OnPropertyChanged(nameof(ConsoleLogCount));

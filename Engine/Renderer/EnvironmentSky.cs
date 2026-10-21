@@ -97,7 +97,17 @@ namespace Engine.Renderer
             module.SetDayNightCycle(settings.DayNightCycle, sunDirection, daylight);
             AmbientScale = 1;
             ExposureOffset = 0;
-            if (!settings.DayNightCycle) return scene.DirectionalLights;
+            if (!settings.DayNightCycle)
+            {
+                // The image sky's sun sits where the brightest directional light comes from.
+                DirectionalLight key = null;
+                foreach (DirectionalLight light in scene.DirectionalLights)
+                    if (light.IsEnabled && light.Intensity > 0 && (key == null || light.Intensity > key.Intensity)) key = light;
+                module.SetSkyboxSun(key != null ? -key.Direction : Vector3.UnitZ, key?.Color ?? Color.White,
+                    key != null ? settings.SkyboxSunBrightness : 0, settings.SkyboxSunSize);
+                return scene.DirectionalLights;
+            }
+            module.SetSkyboxSun(Vector3.UnitZ, Color.White, 0, 1);
             module.SetSkyLook(settings);
             // The tonemapper lifts dark values a lot, so nights need less exposure to read as night.
             ExposureOffset = MathHelper.Lerp(settings.NightExposure, settings.DayExposure, Smoothstep(0, 1, daylight));

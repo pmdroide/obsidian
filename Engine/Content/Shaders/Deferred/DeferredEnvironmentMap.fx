@@ -32,6 +32,12 @@ float3 CameraPositionWS;
 Texture2D SSAOMap;
 bool UseSSAO = true;
 
+//Lightmaps (Source 2 look, phase 4.2): the lightmap pass's target. rgb = baked indirect irradiance (probe units) for the
+//G-buffer normal, a = 1 + baked AO on Lightmap Static surfaces, 0 elsewhere.
+Texture2D LightmapMap;
+bool UseLightmaps = false;
+float LightmapIntensity = 1;
+
 SamplerState LinearClampSampler
 {
     AddressU = CLAMP;
@@ -85,6 +91,12 @@ float2 MoonDisc = float2(0.9996, 0.9998);
 float SunBrightness = 1;
 float MoonBrightness = 1;
 float StarBrightness = 1;
+//Image skybox sun (EnvironmentSettings.SkyboxSun*): towards the brightest directional light, linear light colour
+float3 SkySunDirection = float3(0, 0, 1);
+float3 SkySunColor = float3(1, 1, 1);
+float SkySunStrength = 0;
+float2 SkySunDisc = float2(0.9995, 0.9998);
+float2 SkySunCone = float2(0.9928, 0.9988);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  STRUCTS
@@ -202,6 +214,22 @@ float3 SampleSky(float3 viewDir)
 	return skyColor;
 }
 
+//An image sky is LDR, so its sun is no brighter than a white cloud. Around the directional light, push the image's
+//near-white pixels into HDR and add a disc + glare, so looking at the light blooms like the real sun. Only the visible
+//sky gets it: in captures the directional light already draws the sun's highlight, and the disc would add fill light.
+float3 AddSkySun(float3 skyColor, float3 viewDir)
+{
+	if (DayNightCycle || SkySunStrength <= 0) return skyColor;
+	float cosSun = dot(normalize(viewDir), SkySunDirection);
+	float peak = max(skyColor.r, max(skyColor.g, skyColor.b));
+	float bright = smoothstep(0.7f, 1.0f, peak);
+	skyColor *= 1 + smoothstep(SkySunCone.x, SkySunCone.y, cosSun) * bright * 150 * SkySunStrength;
+	//The disc shows dimmer where the image has cloud over the sun. Bloom spreads it into the glare you squint at.
+	float disc = smoothstep(SkySunDisc.x, SkySunDisc.y, cosSun) * lerp(0.25f, 1, smoothstep(0.4f, 0.9f, peak));
+	float glare = pow(saturate(cosSun), 2048) * 25 + pow(saturate(cosSun), 256) * 2 + pow(saturate(cosSun), 32) * 0.15f;
+	return skyColor + (disc * 400 + glare) * SkySunColor * SkySunStrength;
+}
+
 // Resolves the noisy SSR target: rgb = reflected colour, a = coverage (0 where the ray missed).
 // Each pixel's jittered ray either hits or misses, so neighbours on the same surface are averaged
 // (5x5, depth-aware): hit colours weighted by coverage, coverage itself averaged. This turns the
@@ -288,7 +316,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
     if (normalData.x + normalData.y <= 0.001f)
     {
             output.Diffuse = float4(0, 0, 0, 0);
-			output.Specular = CaptureMode ? float4(0, 0, 0, 0) : float4(SampleSky(input.ViewDir), 0) * 0.5f;
+			output.Specular = CaptureMode ? float4(0, 0, 0, 0) : float4(AddSkySun(SampleSky(input.ViewDir), input.ViewDir), 0) * 0.5f;
             return output;
     }
 
@@ -326,10 +354,17 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
     float3 diffuseWeight = 1 - FresnelSchlickRoughness(f0, NdotV, roughness);
     diffuseAmbient *= diffuseWeight;
 
+	//Lightmapped pixel: its baked light already contains the occlusion around it, so no screen space AO on top
+	float4 lightmap = 0;
+	[branch]
+	if (UseLightmaps && !CaptureMode)
+		lightmap = LightmapMap.Load(texCoordInt);
+	bool lightmapped = lightmap.a > 0.5f;
+
 	float ao = 1;
 
 	[branch]
-	if (UseSDFAO && !CaptureMode)
+	if (UseSDFAO && !CaptureMode && !lightmapped)
 	{
 		float3 random = randomNormal2(input.Position.xy / 2000.0f);
 		if (dot(random, normal) < 0) random = -random;
@@ -339,7 +374,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	}
 
 	[branch]
-	if (UseSSAO && !CaptureMode)
+	if (UseSSAO && !CaptureMode && !lightmapped)
 		ao *= SSAOMap.SampleLevel(LinearClampSampler, input.TexCoord, 0).r;
 
 	//The material's own AO map (albedo alpha) and the AO proxies of dynamic objects: indirect light only
@@ -351,8 +386,18 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	//Baked GI: inside the probe volume the probes' irradiance replaces the cubemap's diffuse term
 	float3 pixelIrradiance = 0;
 	float irradianceWeight = 0;
+	//Baked AO of the lightmap: only for reflections (its irradiance is already occluded)
+	float specularAo = ao;
 	[branch]
-	if (UseProbeVolume)
+	if (lightmapped)
+	{
+		//Lightmap Static surface: the lightmap's irradiance replaces the probes (they are for dynamic objects)
+		diffuseAmbient = lightmap.rgb * LightmapIntensity * diffuseWeight;
+		pixelIrradiance = lightmap.rgb;
+		irradianceWeight = 1;
+		specularAo = ao * saturate(lightmap.a - 1);
+	}
+	else if (UseProbeVolume)
 	{
 		//Sample half a cell out along the normal, so a wall's inner face reads the probes in the
 		//room it faces rather than blending in the ones on the far side of the wall.
@@ -364,7 +409,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	}
 
 	output.Diffuse = float4(diffuseAmbient * ao, 0);
-    output.Indirect = float4(diffuseAmbient * ao, ao);
+    output.Indirect = float4(diffuseAmbient * ao, specularAo);
 
 	[branch]
 	if (CaptureMode)
@@ -380,7 +425,7 @@ PixelShaderOutputIndirect PixelShaderFunctionBasic(VertexShaderOutput input)
 	float4 ssreflectionMap = GetSSR(input.TexCoord);
 	specularReflection = lerp(specularReflection, ssreflectionMap.rgb * specularWeight * EnvironmentMapSpecularStrengthRcp, ssreflectionMap.a);
 
-    float specularOcclusion = SpecularOcclusion(NdotV, ao, roughness);
+    float specularOcclusion = SpecularOcclusion(NdotV, specularAo, roughness);
     output.Specular = float4(specularReflection * EnvironmentMapSpecularStrength * specularOcclusion, 0);
 
     return output;

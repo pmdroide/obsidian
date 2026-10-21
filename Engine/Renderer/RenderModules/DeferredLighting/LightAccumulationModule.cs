@@ -166,9 +166,13 @@ namespace Engine.Renderer.RenderModules
         /// </summary>
         /// <param name="dirLights"></param>
         /// <param name="cameraOrigin"></param>
+        /// <summary>Lightmaps (phase 4.2): a directional light's shadow mask channel (zero = none); see PointLightRenderModule.ShadowMask.</summary>
+        public Func<DirectionalLight, Vector4> DirectionalShadowMaskChannel;
+
         private void DrawDirectionalLights(List<DirectionalLight> dirLights, Vector3 cameraOrigin)
         {
             if (dirLights.Count < 1) return;
+            Shaders.deferredDirectionalLight.Parameters["ShadowMaskMap"]?.SetValue(PointLightRenderModule.ShadowMask);
 
             _graphicsDevice.DepthStencilState = DepthStencilState.Default;
             _graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
@@ -210,6 +214,8 @@ namespace Engine.Renderer.RenderModules
             Shaders.deferredDirectionalLightParameter_LightColor.SetValue(light.ColorV3);
             Shaders.deferredDirectionalLightParameter_LightDirection.SetValue(light.DirectionViewSpace);
             Shaders.deferredDirectionalLightParameter_LightIntensity.SetValue(light.Intensity);
+            Shaders.deferredDirectionalLight.Parameters["ShadowMaskChannel"]?.SetValue(
+                PointLightRenderModule.ShadowMask != null && DirectionalShadowMaskChannel != null ? DirectionalShadowMaskChannel(light) : Vector4.Zero);
             light.ApplyShader();
             _fullScreenTriangle.Draw(_graphicsDevice);
         }

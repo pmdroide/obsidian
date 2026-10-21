@@ -23,6 +23,9 @@ namespace Engine.Renderer.Lighting
         {
             public Vector3 ToLight;   //normalized, from surface towards the light
             public Vector3 Radiance;  //linear colour * intensity
+            //Lightmaps (phase 4.2): which light this is, and whether its shadows go into the lightmap shadow mask
+            public int LightId;
+            public bool BakedShadows;
         }
 
         public struct PointLightInput
@@ -35,6 +38,8 @@ namespace Engine.Renderer.Lighting
             public Vector3 SpotDirection;
             public float SpotCosOuter;
             public float SpotCosInner;
+            public int LightId;
+            public bool BakedShadows;
         }
 
         public Vector3[] A, B, C;
@@ -111,6 +116,27 @@ namespace Engine.Renderer.Lighting
         /// <summary>Emissive triangles (indices), sampled directly as area lights so small bright panels don't turn into noise.</summary>
         public int[] Emitters = Array.Empty<int>();
 
+        /// <summary>
+        /// A gameobject to lightmap (Inspector > Lightmap Static): its model's mesh parts in model space, shared with the other
+        /// instances of the model, and where it stands.
+        /// </summary>
+        public sealed class LightmapInstanceInput
+        {
+            public int EntityId;
+            public string Name;
+            //Instances of one model share their lightmap UV layout (LightmapUnwrap)
+            public object ModelKey;
+            public List<LightmapUnwrap.SourcePart> Parts;
+            public Matrix World;
+            public Vector3 Scale;
+            //Texels per metre for this gameobject (scene density x its Lightmap Scale)
+            public float TexelsPerUnit;
+        }
+
+        public readonly List<LightmapInstanceInput> LightmapInstances = new List<LightmapInstanceInput>();
+        //Gameobjects ticked Lightmap Static that can't take a lightmap (animated, cloth, moving bodies...), for the bake report
+        public readonly List<string> LightmapSkipped = new List<string>();
+
         public readonly List<DirectionalLightInput> DirectionalLights = new List<DirectionalLightInput>();
         public readonly List<PointLightInput> PointLights = new List<PointLightInput>();
 
@@ -128,11 +154,12 @@ namespace Engine.Renderer.Lighting
             public Vector3[] Positions;
             public Vector3[] Normals; //may be null when the vertex format has none
             public Vector2[] TexCoords; //may be null
+            public Vector2[] TexCoords2; //authored lightmap UVs (TEXCOORD1), may be null
             public int[] Indices;
             public MaterialEffect EmbeddedMaterial;
         }
 
-        public static LightingBakeInput Gather(Scene scene)
+        public static LightingBakeInput Gather(Scene scene, bool lightmaps = false)
         {
             var input = new LightingBakeInput();
             var a = new List<Vector3>();
@@ -193,11 +220,37 @@ namespace Engine.Renderer.Lighting
                 foreach (Components.GameComponent attached in entity.Components)
                     if (attached is Components.MaterialComponent m && m.Enabled) { component = m; break; }
 
+                string skipReason = lightmaps && entity.LightmapStatic ? LightmapSkipReason(entity) : null;
+                LightmapInstanceInput lightmapped = lightmaps && entity.LightmapStatic && skipReason == null
+                    ? new LightmapInstanceInput
+                    {
+                        EntityId = entity.Id,
+                        Name = entity.Name,
+                        ModelKey = entity.Model,
+                        Parts = new List<LightmapUnwrap.SourcePart>(),
+                        World = world,
+                        Scale = entity.Scale,
+                        TexelsPerUnit = Math.Max(0.01f, scene.Lighting.LightmapTexelsPerUnit * entity.LightmapScale),
+                    }
+                    : null;
+                if (skipReason != null) input.LightmapSkipped.Add($"{entity.Name}: {skipReason}");
+
                 foreach (MeshPartGeometry part in parts)
                 {
                     Surface surface = component != null
                         ? Surface.From(component)
                         : Surface.From(entity.Material ?? part.EmbeddedMaterial);
+                    lightmapped?.Parts.Add(new LightmapUnwrap.SourcePart
+                    {
+                        Positions = part.Positions,
+                        Normals = part.Normals,
+                        Uv2 = part.TexCoords2,
+                        Indices = part.Indices,
+                        //Only what the G-buffer draws can read a lightmap (LightmapRenderModule matches its depth)
+                        Lightmapped = !surface.IsTransparent && surface.Type != MaterialEffect.MaterialTypes.ForwardShaded &&
+                                      surface.Type != MaterialEffect.MaterialTypes.Water && surface.Type != MaterialEffect.MaterialTypes.Hologram &&
+                                      surface.Type != MaterialEffect.MaterialTypes.ProjectHologram,
+                    });
                     Vector3 partAlbedo = EstimateAlbedo(surface, albedoCache);
                     Vector3 partEmission = surface.EmissiveStrength > 0 && surface.Type == MaterialEffect.MaterialTypes.Emissive
                         ? partAlbedo * Math.Min(surface.EmissiveStrength, 8)
@@ -258,6 +311,7 @@ namespace Engine.Renderer.Lighting
                         bMax = Vector3.Max(bMax, Vector3.Max(p0, Vector3.Max(p1, p2)));
                     }
                 }
+                if (lightmapped != null && lightmapped.Parts.Exists(p => p.Lightmapped)) input.LightmapInstances.Add(lightmapped);
                 input.EntityCount++;
             }
 
@@ -288,6 +342,8 @@ namespace Engine.Renderer.Lighting
                     //The deferred shader lights with -Direction
                     ToLight = -Vector3.Normalize(dir),
                     Radiance = dl.ColorV3 * dl.Intensity,
+                    LightId = dl.Id,
+                    BakedShadows = dl.BakedShadows,
                 });
             }
 
@@ -304,10 +360,28 @@ namespace Engine.Renderer.Lighting
                     SpotDirection = spot?.Direction ?? Vector3.UnitZ,
                     SpotCosOuter = spot?.CosOuter ?? -2,
                     SpotCosInner = spot?.CosInner ?? -1,
+                    LightId = pl.Id,
+                    BakedShadows = pl.BakedShadows,
                 });
             }
 
             return input;
+        }
+
+        /// <summary>
+        /// Why a Lightmap Static gameobject can't have a lightmap, or null when it can: its surfaces must stay where they
+        /// were baked and be drawn from the model's own vertices (the lightmap pass redraws them and matches the G-buffer depth).
+        /// </summary>
+        public static string LightmapSkipReason(BasicEntity entity)
+        {
+            if (entity.GetComponent<Components.AnimatorComponent>() != null || entity.GetComponent<Components.RagdollComponent>() != null)
+                return "animated";
+            if (entity.GetComponent<Components.ClothComponent>() != null) return "cloth";
+            if (entity.GetComponent<Components.FoliageWindComponent>() != null) return "sways in the wind";
+            if (entity.GetComponent<Components.ParticleSystemComponent>() != null) return "particle system";
+            if (entity.Role == GameObjectRole.Water) return "water";
+            if (entity.PhysicsType == global::Engine.Physics.PhysicsBodyType.Dynamic) return "dynamic physics body";
+            return null;
         }
 
         private static List<MeshPartGeometry> ExtractGeometry(Model model)
@@ -335,9 +409,11 @@ namespace Engine.Renderer.Lighting
         {
             VertexDeclaration decl = part.VertexBuffer.VertexDeclaration;
             int stride = decl.VertexStride;
-            int positionOffset = -1, normalOffset = -1, uvOffset = -1;
+            int positionOffset = -1, normalOffset = -1, uvOffset = -1, uv2Offset = -1;
             foreach (VertexElement e in decl.GetVertexElements())
             {
+                if (e.UsageIndex == 1 && e.VertexElementFormat == VertexElementFormat.Vector2 && e.VertexElementUsage == VertexElementUsage.TextureCoordinate)
+                    uv2Offset = e.Offset;
                 if (e.UsageIndex != 0) continue;
                 if (e.VertexElementFormat == VertexElementFormat.Vector2 && e.VertexElementUsage == VertexElementUsage.TextureCoordinate)
                     uvOffset = e.Offset;
@@ -363,6 +439,11 @@ namespace Engine.Renderer.Lighting
             {
                 geo.TexCoords = new Vector2[part.NumVertices];
                 part.VertexBuffer.GetData(baseOffset + uvOffset, geo.TexCoords, 0, part.NumVertices, stride);
+            }
+            if (uv2Offset >= 0)
+            {
+                geo.TexCoords2 = new Vector2[part.NumVertices];
+                part.VertexBuffer.GetData(baseOffset + uv2Offset, geo.TexCoords2, 0, part.NumVertices, stride);
             }
 
             int indexCount = part.PrimitiveCount * 3;
@@ -394,6 +475,7 @@ namespace Engine.Renderer.Lighting
             public Vector2 Tiling;
             public float EmissiveStrength;
             public MaterialEffect.MaterialTypes Type;
+            public bool IsTransparent;
 
             public static Surface From(MaterialEffect material)
             {
@@ -406,6 +488,7 @@ namespace Engine.Renderer.Lighting
                     Tiling = material.TextureTiling,
                     EmissiveStrength = material.EmissiveStrength,
                     Type = material.Type,
+                    IsTransparent = material.IsTransparent,
                 };
             }
 
@@ -427,6 +510,7 @@ namespace Engine.Renderer.Lighting
                     Tiling = new Vector2(Math.Max(component.TilingU, 0.001f), Math.Max(component.TilingV, 0.001f)),
                     EmissiveStrength = component.EmissiveStrength,
                     Type = component.MaterialType,
+                    IsTransparent = component.IsTransparent,
                 };
             }
         }

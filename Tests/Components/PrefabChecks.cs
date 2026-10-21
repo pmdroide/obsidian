@@ -272,6 +272,11 @@ internal static class PrefabChecks
             "the Inspector's Prefab field lists Content prefabs (full paths where names repeat), new ones included");
         fieldVm.Load(new Dictionary<string, System.Text.Json.JsonElement> { [info.Name] = ScriptFields.Encode(info, "Prefabs/Lost.prefab") });
         Check(fieldVm.Value?.Label == "Missing (Prefabs/Lost.prefab)", "a Prefab field whose file is gone shows Missing");
+        fieldVm.Assign("Prefabs/Crate_2.prefab");
+        Check(fieldVm.ReferenceLabel == "Crate_2", "dropping a prefab replaces a missing reference");
+        fieldVm.Clear();
+        Check(fieldVm.Value == ScriptPrefabFieldViewModel.None && fieldVm.ReferenceLabel == null,
+            "clearing a prefab slot restores its empty drop hint");
     }
 
     private static int SelfId(ScriptBehaviourComponent script) =>

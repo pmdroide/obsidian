@@ -429,6 +429,7 @@ public class MonoGameHost : NativeControlHost
 
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
+        (_game?.Bridge as EditorBridge)?.StopAutomation();
         _disposed = true;
 
         try { _bootResizeWatchdog?.Stop(); } catch { }
@@ -550,6 +551,7 @@ public class MonoGameHost : NativeControlHost
         }
         finally
         {
+            (_game?.Bridge as EditorBridge)?.StopAutomation();
             try { _game?.Dispose(); } catch { }
         }
     }

@@ -34,10 +34,11 @@ SamplerState BrdfSampler
     Mipfilter = POINT;
 };
 
-//Cubemap normalisation (vr_cubemap_normalization_max / _roughness_begin): reflections are scaled by the baked
-//irradiance at the pixel over that at the capture point, at most NormalizationMax, fading in up to RoughnessBegin
-float NormalizationMax = 1;
-float NormalizationRoughnessBegin = 0;
+//Cubemap normalisation (vr_cubemap_normalization_max / _roughness_begin, Docs/Research/Source2Look R4): reflections
+//are scaled by the baked irradiance luminance at the pixel over that at the capture point. Darkening is never limited;
+//brightening is capped at 1 up to RoughnessBegin and rises linearly to NormalizationMax at roughness 1 (HLA: 32, 0.1).
+float NormalizationMax = 32;
+float NormalizationRoughnessBegin = 0.1f;
 
 //Capture pass of a cubemap (probe or global): only the baked diffuse light, no reflections, SSR, AO or sky
 bool CaptureMode = false;
@@ -84,9 +85,11 @@ float Normalization(float4 shR, float4 shG, float4 shB, float3 normal, float3 pi
 {
     float4 n = float4(1, normal);
     float3 captureIrradiance = max(float3(dot(shR, n), dot(shG, n), dot(shB, n)), 0);
-    float ratio = min(dot(pixelIrradiance, LumaWeights) / max(dot(captureIrradiance, LumaWeights), 0.0001f), NormalizationMax);
-    float fade = NormalizationRoughnessBegin > 0 ? saturate(roughness / NormalizationRoughnessBegin) : 1;
-    return lerp(1, ratio, fade);
+    float ratio = dot(pixelIrradiance, LumaWeights) / max(dot(captureIrradiance, LumaWeights), 0.0001f);
+    //vr_simple/vr_complex: cap = max(roughness * A + B, 1), A = (max - 1) / (1 - begin), B = max - A
+    float slope = (max(NormalizationMax, 1) - 1) / max(1 - NormalizationRoughnessBegin, 0.001f);
+    float cap = max(roughness * slope + NormalizationMax - slope, 1);
+    return min(ratio, cap);
 }
 
 //Reflection of the environment in direction r (world space) at a surface point: local probes over the global one.

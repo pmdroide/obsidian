@@ -2150,6 +2150,369 @@
         }
       ],
       "IsEnabled": true
+    },
+    {
+      "Id": 45,
+      "Name": "Window Post West",
+      "ModelKey": "Cube",
+      "Position": [
+        -10.3,
+        2,
+        1.2
+      ],
+      "Scale": [
+        0.1,
+        0.1,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0be3ca16-d5b9-5832-8a82-772383db73d2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "1ccb22e8-4d4f-5819-87a7-faf2faaabc75",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.32,
+            "Green": 0.3,
+            "Blue": 0.28,
+            "Roughness": 0.6,
+            "Metallic": 0.2,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 46,
+      "Name": "Window Post East",
+      "ModelKey": "Cube",
+      "Position": [
+        -7.7,
+        2,
+        1.2
+      ],
+      "Scale": [
+        0.1,
+        0.1,
+        1.2
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "78feab7d-832a-5703-8c6c-e79783397c12",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "b1c731d8-7f25-5166-82ba-c4ba90328931",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.32,
+            "Green": 0.3,
+            "Blue": 0.28,
+            "Roughness": 0.6,
+            "Metallic": 0.2,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 47,
+      "Name": "Window Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        -9,
+        2,
+        2.3
+      ],
+      "Scale": [
+        1.4,
+        0.1,
+        0.1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "c834e68c-32f3-5cf6-8eaa-8880e9e5bf48",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "26e181ff-e098-5cb6-8ebb-d05ca7507795",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.32,
+            "Green": 0.3,
+            "Blue": 0.28,
+            "Roughness": 0.6,
+            "Metallic": 0.2,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 48,
+      "Name": "Window Sill",
+      "ModelKey": "Cube",
+      "Position": [
+        -9,
+        2,
+        0.1
+      ],
+      "Scale": [
+        1.4,
+        0.1,
+        0.1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "56983590-6cc1-5b7d-86e0-8cd861337cfe",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "d3ea1418-bcd3-5d5a-88cd-9522e4e9272a",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.32,
+            "Green": 0.3,
+            "Blue": 0.28,
+            "Roughness": 0.6,
+            "Metallic": 0.2,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 49,
+      "Name": "Window Pane",
+      "ModelKey": "Cube",
+      "Position": [
+        -9,
+        2,
+        1.2
+      ],
+      "Scale": [
+        1.2,
+        0.012,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "692d32b6-e68b-50a5-8839-4ace3013f4c3",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "34a1e232-2e80-50c7-81e2-7ad6e3c3623b",
+          "Data": {
+            "Red": 0.55,
+            "Green": 0.68,
+            "Blue": 0.7,
+            "Roughness": 0.03,
+            "Metallic": 0,
+            "CastShadows": false,
+            "Enabled": true,
+            "MaterialType": 5,
+            "IsTransparent": true,
+            "Opacity": 0.3
+          }
+        },
+        {
+          "Type": "breakable-glass",
+          "InstanceId": "30b3093f-c75d-55db-8d3a-7e4287cd2009",
+          "Data": {
+            "CrackSize": 0.381,
+            "HoleRadius": 0.06,
+            "ImpactSpeed": 4,
+            "ImpactMomentum": 2,
+            "DebrisLifetime": 15,
+            "DropLooseShards": true,
+            "Distort": true,
+            "SolidShards": true,
+            "HitTolerance": 2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 50,
+      "Name": "Small Window Frame",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.8,
+        2,
+        0.45
+      ],
+      "Scale": [
+        0.7,
+        0.1,
+        0.45
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9e2989c2-ca76-54dd-8d33-5278abf22918",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "f90c791c-a8d0-5c44-890c-b18a5c59f34c",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.32,
+            "Green": 0.3,
+            "Blue": 0.28,
+            "Roughness": 0.6,
+            "Metallic": 0.2,
+            "EmissiveStrength": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 51,
+      "Name": "Small Window Pane",
+      "ModelKey": "Cube",
+      "Position": [
+        -5.8,
+        2,
+        1.5
+      ],
+      "Scale": [
+        0.6,
+        0.006,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "cc9eb4d6-16f6-5d41-8b04-3744846d3e2e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2,
+            "WaterDrag": 3,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "90548400-0d4f-5be0-8c8d-aa3ae92511e8",
+          "Data": {
+            "Red": 0.55,
+            "Green": 0.68,
+            "Blue": 0.7,
+            "Roughness": 0.03,
+            "Metallic": 0,
+            "CastShadows": false,
+            "Enabled": true,
+            "MaterialType": 5,
+            "IsTransparent": true,
+            "Opacity": 0.3
+          }
+        },
+        {
+          "Type": "breakable-glass",
+          "InstanceId": "a34bc065-f7dc-5596-8493-035844f497f6",
+          "Data": {
+            "CrackSize": 0.2,
+            "HoleRadius": 0.04,
+            "ImpactSpeed": 3,
+            "ImpactMomentum": 2,
+            "DebrisLifetime": 15,
+            "DropLooseShards": true,
+            "Distort": true,
+            "SolidShards": true,
+            "HitTolerance": 2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
     }
   ],
   "PointLights": [],

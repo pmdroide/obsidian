@@ -1,0 +1,6 @@
+# Only for the sdxl_classic / sdxl_chord backends (phase E). Pick the torch build that matches your CUDA driver.
+torch
+diffusers
+transformers
+accelerate
+safetensors

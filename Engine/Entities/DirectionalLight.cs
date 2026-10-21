@@ -23,12 +23,15 @@ namespace Engine.Entities
         private int _shadowResolution;
         private int _cascadeCount = MaxCascades;
         private float _shadowDistance = 150;
-        private float _splitLambda = 0.75f;
+        private float _splitLambda = 0.85f; // HLA csm_split_log_scalar (Docs/Research/Source2Look R5)
 
         /// <summary>Whether the light casts (cascaded) shadows.</summary>
         public bool CastShadows { get => _castShadows; set { if (_castShadows != value) { _castShadows = value; HasChanged = true; } } }
         /// <summary>Legacy fixed shadow box width; kept for older scenes. Cascades follow the camera instead.</summary>
         public float ShadowSize { get; set; }
+
+        /// <summary>Lightmaps (phase 4.2): lightmapped surfaces take this light's shadows from the bake's shadow mask too.</summary>
+        public bool BakedShadows { get; set; } = true;
         /// <summary>How far (m) towards the light shadow casters outside the camera's view are still caught.</summary>
         public float ShadowDepth { get; set; }
         /// <summary>Resolution of one cascade (the atlas holds up to 2 x 2 of them).</summary>
@@ -62,7 +65,7 @@ namespace Engine.Entities
         /// <summary>Distance (m) from the camera where sun shadows end, fading out over the last cascade's last tenth.</summary>
         public float ShadowDistance { get => _shadowDistance; set { _shadowDistance = float.IsFinite(value) ? Math.Clamp(value, 5, 5000) : 150; HasChanged = true; } }
         /// <summary>0 = evenly spaced cascades, 1 = logarithmic (most detail near the camera). Practical split scheme.</summary>
-        public float SplitLambda { get => _splitLambda; set { _splitLambda = float.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.75f; HasChanged = true; } }
+        public float SplitLambda { get => _splitLambda; set { _splitLambda = float.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.85f; HasChanged = true; } }
 
         /// <summary>The cascade atlas: cascade i sits in tile (i % 2, i / 2) of <see cref="ShadowResolution"/> texels.</summary>
         public RenderTarget2D ShadowMap;
@@ -221,6 +224,7 @@ namespace Engine.Entities
             {
                 var clone = new DirectionalLight(Color, Intensity, Direction, Position, CastShadows, ShadowSize, ShadowDepth, ShadowResolution, ShadowFiltering, false);
                 clone.CopyShadowSettings(this);
+                clone.BakedShadows = BakedShadows;
                 return clone;
             }
         }

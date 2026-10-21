@@ -1,0 +1,1447 @@
+{
+  "Version": 2,
+  "Name": "BreakableTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        -0.25
+      ],
+      "Scale": [
+        10,
+        10,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "05273b9d-3d95-528a-99f1-793310d92c00",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "477eaf31-3620-5f3d-9a01-ab65f1ecaca9",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.31,
+            "Blue": 0.33,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Wall North",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        9.75,
+        1.0
+      ],
+      "Scale": [
+        10,
+        0.25,
+        1.0
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e36e5618-4a36-56ff-ae34-f2a44f793df8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "09be0b6a-8e97-564f-82a1-640698bc1fb8",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.21,
+            "Blue": 0.23,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 3,
+      "Name": "Wall South",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -9.75,
+        0.6
+      ],
+      "Scale": [
+        10,
+        0.25,
+        0.6
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "a8533ba8-ce74-5164-b204-0387adefe6e2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "898b7c44-20e5-5e2d-928f-5901aa474f6e",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.21,
+            "Blue": 0.23,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 4,
+      "Name": "Wall East",
+      "ModelKey": "Cube",
+      "Position": [
+        9.75,
+        0,
+        1.0
+      ],
+      "Scale": [
+        0.25,
+        10,
+        1.0
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b833dab1-fb3d-5e95-86d8-81ab5afd5d6a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "4c9b1ee5-eb6b-57af-a327-21c465319894",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.21,
+            "Blue": 0.23,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 5,
+      "Name": "Wall West",
+      "ModelKey": "Cube",
+      "Position": [
+        -9.75,
+        0,
+        1.0
+      ],
+      "Scale": [
+        0.25,
+        10,
+        1.0
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "af08c6e0-1f4b-537b-be94-aaeabe30acba",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "3524c804-62df-5e2e-98b0-eb21a05b0e83",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.21,
+            "Blue": 0.23,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 6,
+      "Name": "Player",
+      "ModelKey": "Capsule",
+      "Position": [
+        0,
+        -6,
+        1
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bc4b26e4-0372-57f7-988c-2f596492e95a",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 80,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "4b50b768-0cb9-5527-a20d-34f2c5c84709",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.31,
+            "Green": 0.64,
+            "Blue": 1.0,
+            "Roughness": 0.45,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "script-behaviour",
+          "InstanceId": "f7fbf555-ce54-5aaa-9676-90bf8bc986a0",
+          "Data": {
+            "ScriptId": "collision-test-player",
+            "Enabled": true,
+            "Fields": {
+              "Title": "Breakables",
+              "Intro": "Shoot the pottery and the zombies (Attack). Q shoves a vase off its shelf."
+            }
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 7,
+      "Name": "Pottery Table",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.2,
+        1.0,
+        0.4
+      ],
+      "Scale": [
+        1.3,
+        0.45,
+        0.4
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "ece8effa-1824-5b29-9850-d8570cedf4fd",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "65e1760e-a49e-5b02-afe9-000849a39fb3",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.36,
+            "Green": 0.23,
+            "Blue": 0.14,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 8,
+      "Name": "Vase - Terracotta",
+      "ModelKey": "Vase",
+      "Position": [
+        -4.1,
+        1.0,
+        0.8
+      ],
+      "Scale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "de4ba672-6be6-56c6-9f54-71e60fd845c8",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 1.6,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "292281d9-d54a-54c1-9d86-61ee784f63c2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.59,
+            "Green": 0.25,
+            "Blue": 0.15,
+            "Roughness": 0.55,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "2c5f19cd-fccb-562b-9dac-3005f426f1fa",
+          "Data": {
+            "Pieces": 12,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 2.0,
+            "BreakForce": 2.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 9,
+      "Name": "Vase - Blue",
+      "ModelKey": "Vase",
+      "Position": [
+        -3.2,
+        1.05,
+        0.8
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "8d2fc6d8-40ff-5454-abbe-d09d13a30288",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 2.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "7d289375-26b7-525f-a58f-16f16fb7c794",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.27,
+            "Blue": 0.62,
+            "Roughness": 0.18,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "3bce88b1-6505-5bc8-883f-c41e9ecb22df",
+          "Data": {
+            "Pieces": 14,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 2.0,
+            "BreakForce": 2.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "Vase - Cream",
+      "ModelKey": "Vase",
+      "Position": [
+        -2.3,
+        0.95,
+        0.8
+      ],
+      "Scale": [
+        0.75,
+        0.75,
+        0.75
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9a4d4f91-a692-520b-a670-61b929cebf28",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 1.2,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "c22b515b-2318-52e5-a0a7-6a8b511334dd",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.86,
+            "Green": 0.81,
+            "Blue": 0.68,
+            "Roughness": 0.25,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "cb2f265f-39bf-5a45-90b6-a6367f7bfd1d",
+          "Data": {
+            "Pieces": 10,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 2.0,
+            "BreakForce": 2.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "High Shelf",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.2,
+        3.2,
+        1.45
+      ],
+      "Scale": [
+        1.0,
+        0.22,
+        0.04
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "13efc5c6-c221-5d78-bdbf-ac98125d3032",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "c687a6c4-10ba-532e-9d80-134f67e16809",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.36,
+            "Green": 0.23,
+            "Blue": 0.14,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 12,
+      "Name": "High Shelf Post",
+      "ModelKey": "Cube",
+      "Position": [
+        -3.2,
+        3.3,
+        0.72
+      ],
+      "Scale": [
+        0.06,
+        0.06,
+        0.72
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "e481adb8-cd91-519f-bec9-87b3e38d5466",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "25a2b5d9-7b6b-53fe-90af-3c6e6fb6bd01",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.3,
+            "Green": 0.2,
+            "Blue": 0.12,
+            "Roughness": 0.6,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 13,
+      "Name": "Vase - Shelf Green",
+      "ModelKey": "Vase",
+      "Position": [
+        -3.6,
+        3.2,
+        1.49
+      ],
+      "Scale": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d2832bcc-e95e-55e0-b5b1-b39592c67f01",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 1.4,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "1e64a30e-cb92-52ea-87c5-628846f78fa8",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.2,
+            "Green": 0.42,
+            "Blue": 0.3,
+            "Roughness": 0.2,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "e0cf8013-bdcc-503f-a21a-167774a30fe1",
+          "Data": {
+            "Pieces": 12,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 2.0,
+            "BreakForce": 2.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 14,
+      "Name": "Vase - Shelf Terracotta",
+      "ModelKey": "Vase",
+      "Position": [
+        -2.8,
+        3.2,
+        1.49
+      ],
+      "Scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "31b02a65-9c67-5b1d-8d27-1433fbbf42ea",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "cf62053b-4b54-5cd7-8d22-37fdfca0d91b",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.59,
+            "Green": 0.25,
+            "Blue": 0.15,
+            "Roughness": 0.55,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "4b0b8e9d-5ea2-5d0f-851b-97b111e29b11",
+          "Data": {
+            "Pieces": 10,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 2.0,
+            "BreakForce": 2.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 15,
+      "Name": "Urn - Large",
+      "ModelKey": "Vase",
+      "Position": [
+        -5.2,
+        -0.6,
+        0.0
+      ],
+      "Scale": [
+        1.8,
+        1.8,
+        1.8
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bf42dc54-524a-5a41-8936-74bef36f1110",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 9.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "a355033e-9cfd-5f82-b788-0e93173f5b0f",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.59,
+            "Green": 0.25,
+            "Blue": 0.15,
+            "Roughness": 0.55,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "17460c25-f996-5c1b-9b06-8958e396a12a",
+          "Data": {
+            "Pieces": 20,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 6.0,
+            "BreakForce": 2.5,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 16,
+      "Name": "Urn - Blue",
+      "ModelKey": "Vase",
+      "Position": [
+        -1.7,
+        -1.2,
+        0.0
+      ],
+      "Scale": [
+        1.4,
+        1.4,
+        1.4
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "25f9c488-73be-53e2-af72-bf58aa1bc7c1",
+          "Data": {
+            "BodyType": "Dynamic",
+            "Mass": 5.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "31e6ffc7-ae54-543b-af72-e724ae9265c2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.12,
+            "Green": 0.27,
+            "Blue": 0.62,
+            "Roughness": 0.18,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "c373a684-170e-557d-810c-811daceabaee",
+          "Data": {
+            "Pieces": 16,
+            "ImpactSpeed": 3.0,
+            "ImpactMomentum": 4.0,
+            "BreakForce": 2.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1500.0,
+            "InteriorColor": [
+              196,
+              168,
+              140,
+              255
+            ],
+            "Effect": "Dust",
+            "EffectColor": [
+              176,
+              160,
+              140,
+              255
+            ],
+            "EffectAmount": 1.0,
+            "FollowObject": "",
+            "FollowBone": "",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 17,
+      "Name": "Zombie 1",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        1.6,
+        3.0,
+        0.0
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "9ff1eaf5-5513-58e8-8d23-041b0744e4a6",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.43,
+            "Green": 0.48,
+            "Blue": 0.36,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "animator",
+          "InstanceId": "ce2f02f9-77ce-5080-944a-7e30cec84957",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 0.45,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "ee8aa9e4-4d4a-55fa-aee1-aa53375a9410",
+          "Data": {
+            "Mass": 70.0,
+            "ActiveOnStart": false,
+            "ImpactThreshold": 0.0,
+            "JointFriction": 0.2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 18,
+      "Name": "Zombie 1 - Head",
+      "ModelKey": "Head",
+      "Position": [
+        1.6,
+        3.005,
+        1.675
+      ],
+      "Scale": [
+        1.18,
+        1.12,
+        1.12
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9d66ca9b-3ba2-5d9a-99d9-064a98363af6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "14f5b0c1-bd19-5f6c-860c-4eed4be1166d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.43,
+            "Green": 0.48,
+            "Blue": 0.36,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "dc0f1425-0843-52a7-a153-5d457d1f4a97",
+          "Data": {
+            "Pieces": 16,
+            "ImpactSpeed": 6.0,
+            "ImpactMomentum": 3.0,
+            "BreakForce": 3.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1100.0,
+            "InteriorColor": [
+              112,
+              18,
+              20,
+              255
+            ],
+            "Effect": "Blood",
+            "EffectColor": [
+              120,
+              8,
+              10,
+              255
+            ],
+            "EffectAmount": 1.2,
+            "FollowObject": "Zombie 1",
+            "FollowBone": "mixamorig:Head",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 19,
+      "Name": "Zombie 2",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        3.6,
+        4.4,
+        0.0
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "229a6303-d8ff-523e-a283-b39d038ce5d2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.43,
+            "Green": 0.48,
+            "Blue": 0.36,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "animator",
+          "InstanceId": "7e7195ff-3ca3-5ac3-84dc-ee336a15eaec",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 0.55,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "5cb77a9c-76cd-5b97-960d-19fa2ccdf799",
+          "Data": {
+            "Mass": 70.0,
+            "ActiveOnStart": false,
+            "ImpactThreshold": 0.0,
+            "JointFriction": 0.2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 20,
+      "Name": "Zombie 2 - Head",
+      "ModelKey": "Head",
+      "Position": [
+        3.6,
+        4.405,
+        1.675
+      ],
+      "Scale": [
+        1.18,
+        1.12,
+        1.12
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "1eb28c9f-8238-591a-82cd-ecd7c2a70298",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "5cb94ee7-55eb-5839-b67c-fb645d1a18b2",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.43,
+            "Green": 0.48,
+            "Blue": 0.36,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "b0657294-7769-5557-96b2-52bd036ba444",
+          "Data": {
+            "Pieces": 16,
+            "ImpactSpeed": 6.0,
+            "ImpactMomentum": 3.0,
+            "BreakForce": 3.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1100.0,
+            "InteriorColor": [
+              112,
+              18,
+              20,
+              255
+            ],
+            "Effect": "Blood",
+            "EffectColor": [
+              120,
+              8,
+              10,
+              255
+            ],
+            "EffectAmount": 1.2,
+            "FollowObject": "Zombie 2",
+            "FollowBone": "mixamorig:Head",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 21,
+      "Name": "Zombie 3",
+      "ModelKey": "PlayerYBot",
+      "Position": [
+        0.2,
+        5.4,
+        0.0
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b4fc8e45-f77d-5139-a2b6-db0f9dd87d5d",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.43,
+            "Green": 0.48,
+            "Blue": 0.36,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "animator",
+          "InstanceId": "9a6cdfc0-0c8b-5a15-979a-7735ee79da26",
+          "Data": {
+            "ClipSource": "GameObjects/Player/Walking",
+            "ClipName": "",
+            "Speed": 0.62,
+            "Loop": true,
+            "InPlace": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "ragdoll",
+          "InstanceId": "edc8b1a5-ec3a-5ed3-bf8c-9d7ab7734f03",
+          "Data": {
+            "Mass": 70.0,
+            "ActiveOnStart": false,
+            "ImpactThreshold": 0.0,
+            "JointFriction": 0.2,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 22,
+      "Name": "Zombie 3 - Head",
+      "ModelKey": "Head",
+      "Position": [
+        0.2,
+        5.405,
+        1.675
+      ],
+      "Scale": [
+        1.18,
+        1.12,
+        1.12
+      ],
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d6118645-e9c0-5e1b-b635-716000495df6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "db0639c7-5af2-583b-a41f-490a9c80f067",
+          "Data": {
+            "MaterialType": 0,
+            "Red": 0.43,
+            "Green": 0.48,
+            "Blue": 0.36,
+            "Roughness": 0.75,
+            "Metallic": 0.0,
+            "EmissiveStrength": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "breakable",
+          "InstanceId": "83fd1730-a62b-51a1-a95f-33733394920a",
+          "Data": {
+            "Pieces": 16,
+            "ImpactSpeed": 6.0,
+            "ImpactMomentum": 3.0,
+            "BreakForce": 3.0,
+            "DebrisLifetime": 12.0,
+            "Density": 1100.0,
+            "InteriorColor": [
+              112,
+              18,
+              20,
+              255
+            ],
+            "Effect": "Blood",
+            "EffectColor": [
+              120,
+              8,
+              10,
+              255
+            ],
+            "EffectAmount": 1.2,
+            "FollowObject": "Zombie 3",
+            "FollowBone": "mixamorig:Head",
+            "CollapseBone": true,
+            "RagdollOnBreak": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 100,
+      "Name": "Sun",
+      "Direction": [
+        0.45,
+        0.55,
+        -0.7
+      ],
+      "Position": [
+        0,
+        0,
+        20
+      ],
+      "Color": [
+        255,
+        246,
+        232,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 30,
+      "ShadowDepth": 80,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      2
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -6,
+      1.7
+    ],
+    "Forward": [
+      0,
+      1,
+      -0.05
+    ],
+    "FieldOfView": 1.2,
+    "Components": []
+  }
+}

@@ -1,0 +1,53 @@
+# ConVar registrations in bin/win64/scenesystem.dll: name, default (r8), flags (r9), ConVar object, help. Iced 1.21 linear sweep of .text.
+csm_bias_override_0	"1"	flags=4000	obj=1802C9D80	
+csm_bias_override_1	"1"	flags=4000	obj=1802C9900	
+csm_bias_override_2	"1"	flags=4000	obj=1802C9C60	
+csm_bias_override_3	"1"	flags=4000	obj=1802C9AB0	
+csm_cascade_viewdir_shadow_bias_scale	"2"	flags=4000	obj=1802C9750	
+csm_cascade0_override_dist	"-1"	flags=4000	obj=1802C9870	
+csm_cascade1_override_dist	"-1"	flags=4000	obj=1802C9BD0	
+csm_cascade2_override_dist	"-1"	flags=4000	obj=1802C9EA0	
+csm_cascade3_override_dist	"-1"	flags=4000	obj=1802C9E10	
+csm_max_num_cascades_override	"-1"	flags=4000	obj=1802C9CF0	
+csm_max_shadow_dist_override	"-1"	flags=4000	obj=1802C9F30	
+csm_res_override_0	"0"	flags=4000	obj=1802CA0E0	
+csm_res_override_1	"0"	flags=4000	obj=1802C9FC0	
+csm_res_override_2	"0"	flags=4000	obj=1802C97E0	
+csm_res_override_3	"0"	flags=4000	obj=1802C9990	
+csm_slope_scale_db_override	"-1"	flags=4000	obj=1802CA050	
+csm_split_log_scalar	"0.85"	flags=4000	obj=1802C9B40	
+csm_viewdir_shadow_bias	"0"	flags=4000	obj=1802C9A20	
+mat_tonemap_bloom_scale	"-1.0"	flags=4000	obj=1802D34F0	
+mat_tonemap_bloom_start_value	"-1.0"	flags=4000	obj=1802D33D0	
+mat_tonemap_debug	"0"	flags=0	obj=1802D3340	
+mat_tonemap_force_accelerate_exposure_down	"-1.0"	flags=4000	obj=1802D2E30	
+mat_tonemap_force_average_lum_min	"-1.0"	flags=4000	obj=1802D3100	Override. Old default was 3.0
+mat_tonemap_force_log_lum_max	"-1.0"	flags=4000	obj=1802D2DA0	
+mat_tonemap_force_log_lum_min	"-1.0"	flags=4000	obj=1802D2D10	
+mat_tonemap_force_max	"-1.0"	flags=4000	obj=1802D32B0	
+mat_tonemap_force_min	"-1.0"	flags=4000	obj=1802D2F50	
+mat_tonemap_force_percent_bright_pixels	"-1.0"	flags=4000	obj=1802D3460	Override. Old value was 1.0
+mat_tonemap_force_percent_target	"-1.0"	flags=4000	obj=1802D2FE0	Override. Old default was 45.
+mat_tonemap_force_rate	"-1.0"	flags=4000	obj=1802D3220	
+mat_tonemap_force_scale	"0.0"	flags=4000	obj=1802D2EC0	
+mat_tonemap_force_use_alpha	"-1.0"	flags=4000	obj=1802D3070	
+mat_tonemap_uncap_exposure	"0"	flags=4000	obj=1802D3190	
+r_aoproxy_cull_dist	"12"	flags=0	obj=1802C0850	Distance to cull the AO proxy as a factor of size
+r_aoproxy_min_dist	"3.0"	flags=0	obj=1802C0730	
+r_aoproxy_min_dist_box	"1"	flags=0	obj=1802C07C0	
+sc_override_shadow_fade_max_dist	"-1"	flags=4000	obj=1802C9290	
+sc_override_shadow_fade_min_dist	"-1"	flags=4000	obj=1802C94A0	
+sc_shadow_depth_bias	"8"	flags=0	obj=1802C9200	
+sc_shadow_depth_bias_clamp	"0.0"	flags=0	obj=1802C9540	
+sc_shadow_depth_bias_state_override	"0"	flags=0	obj=1802C95D0	
+sc_shadow_slopescale_depth_bias	"2.13"	flags=0	obj=1802C9350	
+vr_allow_time_sliced_shadow_map_rendering	"1"	flags=0	obj=1802C8930	Allow time-sliced shadow buffer rendering when enabled via gameinfo.gi
+vr_cubemap_normalization_max	"32.0"	flags=0	obj=1802C8660	
+vr_cubemap_normalization_roughness_begin	"0.1"	flags=0	obj=1802C86F0	
+vr_directional_lightmaps	"1"	flags=0	obj=1802C8530	
+vr_enable_cached_lights	"1"	flags=0	obj=1802C89C0	
+vr_single_light_fast_path_sun_cascade_0_texels_per_world	"8.0"	flags=0	obj=1802C8250	
+vr_single_light_fast_path_sun_cascade_1_texels_per_world	"1.5"	flags=0	obj=1802C8370	
+vr_single_light_fast_path_sun_cascade_vignette	"0.25"	flags=4000	obj=1802C8010	
+vr_single_light_fast_path_sun_size_cull_threshold	"0.5"	flags=4000	obj=1802C7E60	
+vr_unlit_shadow_color	"125 130 135"	flags=0	obj=1802C82E0	

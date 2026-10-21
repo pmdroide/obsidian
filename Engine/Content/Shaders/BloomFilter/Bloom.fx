@@ -21,8 +21,10 @@ float StreakLength = 1;
 
 //Source 2 look (phase 1.3): bloom starts at an exposed brightness (mat_tonemap_bloom_start_value) with a soft knee.
 //The exposure is the one PostProcessing.fx applies: PowExposure times the adapted EV of auto exposure (last frame's).
-float BloomStart = 1.5f;
-float BloomKnee = 0.5f;
+float BloomStart = 1.976f;
+float BloomKnee = 2.3655f;
+//0 = soft knee on the brightest channel, 1 = Source 2 ramp (gaussian_bloom_blur.vfx first mip, Source2Look R3)
+float BloomShape = 1;
 float PowExposure = 1;
 float UseAutoExposure = 0;
 Texture2D ExposureTexture;
@@ -39,11 +41,15 @@ float CurrentExposure()
 //Share of a colour above the bloom start, with a quadratic knee below it
 float BloomContribution(float3 color)
 {
-	float brightness = max(color.r, max(color.g, color.b)) * CurrentExposure();
+	float exposure = CurrentExposure();
 	float knee = max(BloomKnee, 1e-4f);
+	//HLA: weight = saturate((dot(c, (0.3, 0.59, 0.11)) * exposure - threshold) / width), applied to the whole colour
+	float ramp = saturate((dot(color, float3(0.3f, 0.59f, 0.11f)) * exposure - BloomStart) / knee);
+	float brightness = max(color.r, max(color.g, color.b)) * exposure;
 	float soft = clamp(brightness - BloomStart + knee, 0, 2 * knee);
 	soft = soft * soft / (4 * knee);
-	return max(soft, brightness - BloomStart) / max(brightness, 1e-4f);
+	float softKnee = max(soft, brightness - BloomStart) / max(brightness, 1e-4f);
+	return BloomShape > 0.5f ? ramp : softKnee;
 }
 
 struct VertexShaderInput

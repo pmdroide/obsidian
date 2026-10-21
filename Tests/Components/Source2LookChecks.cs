@@ -55,6 +55,30 @@ internal static class Source2LookChecks
         Check(!PostProcessSettings.Settings.Any(p => p.Name == nameof(PostProcessSettings.BlendLutPath)) ||
               !json.Contains(nameof(PostProcessSettings.BlendLutPath)),
             "the runtime LUT blend isn't saved");
+
+        //Research R1-R5: the defaults are Half-Life: Alyx's values
+        var hla = new PostProcessSettings();
+        Check(hla.Tonemap == TonemapCurve.Source2 && hla.Exposure == 0 && hla.FilmicShoulder == 0.15f &&
+              hla.FilmicLinearStrength == 0.5f && hla.FilmicLinearAngle == 0.1f && hla.FilmicToeStrength == 0.2f &&
+              hla.FilmicToeNumerator == 0.02f && hla.FilmicToeDenominator == 0.3f && hla.FilmicWhitePoint == 4,
+            "new scenes use Half-Life: Alyx's filmic curve with its neutral parameters");
+        Check(hla.Metering == ExposureMetering.Source2 && hla.AutoExposureMin == -2 && hla.AutoExposureMax == 3 &&
+              hla.AdaptationSpeedUp == 1.2f && hla.AdaptationSpeedDown == 0.3f && hla.CenterWeight == 0,
+            "new scenes meter exposure like Half-Life: Alyx (median, 0.25 to 8, rate 0.3 / x4 down)");
+        Check(hla.BloomShape == BloomThresholdShape.Source2 && hla.BloomStart == 1.976f && hla.BloomKnee == 2.3655f,
+            "new scenes threshold bloom like Half-Life: Alyx's base profile");
+        Check(GameSettings.g_cubemapnormalizationmax == 32 && GameSettings.g_cubemapnormalizationroughnessbegin == 0.1f &&
+              new DirectionalLight(Color.White, 1, -Vector3.UnitZ).SplitLambda == 0.85f,
+            "cubemap normalisation and cascade splits use Half-Life: Alyx's ConVar defaults");
+        var broken = new PostProcessSettings { FilmicToeDenominator = 0, FilmicWhitePoint = float.NaN, Tonemap = (TonemapCurve)99 };
+        broken.Normalize();
+        Check(broken.FilmicToeDenominator > 0 && broken.FilmicWhitePoint == 4 && broken.Tonemap == TonemapCurve.Source2,
+            "the Source 2 curve can't divide by zero after Normalize");
+        string hlaJson = System.Text.Json.JsonSerializer.Serialize(hla, SceneSerialization.JsonOptions);
+        var hlaBack = System.Text.Json.JsonSerializer.Deserialize<PostProcessSettings>(hlaJson, SceneSerialization.JsonOptions)!;
+        Check(hlaJson.Contains("\"Source2\"") && hlaBack.BloomShape == BloomThresholdShape.Source2 &&
+              hlaBack.Metering == ExposureMetering.Source2 && hlaBack.FilmicShoulder == 0.15f,
+            "the Source 2 settings save by name and load back");
     }
 
     private static void CheckPostVolumes()
@@ -428,10 +452,15 @@ internal static class Source2LookChecks
             field.SetValue(assets, new ModelDefinition(null, bounds));
         var scene = SceneSerialization.LoadFromFile(path, assets);
         var entities = scene.BasicEntities;
-        Check(entities.Count == 53 && entities.Count(e => e.GetComponent<AoProxyComponent>() != null) >= 10 &&
+        Check(entities.Count == 56 && entities.Count(e => e.GetComponent<AoProxyComponent>() != null) >= 10 &&
               entities.Any(e => e.GetComponent<ReflectionProbeComponent>() != null) &&
               entities.Any(e => e.GetComponent<ProbeVolumeComponent>() != null),
             "the LookDev scene loads its spheres, room, reflection probe, detail probe volume and AO proxies");
+        var mirror = entities.SingleOrDefault(e => e.Name == "Mirror Glass Pane");
+        var body = entities.SingleOrDefault(e => e.Name == "Player Body");
+        Check(mirror?.GetComponent<PlanarReflectionComponent>() != null && body?.GetComponent<AnimatorComponent>() != null &&
+              scene.MainCamera.Components.OfType<ScriptBehaviourComponent>().Any(c => c.ScriptId == "camera-body"),
+            "it has the mirror glass with a Planar Reflection and a Player Body the camera carries");
         Check(scene.DirectionalLights.Single().CascadeCount == 4 &&
               scene.PointLights.OfType<SpotLight>().Any(s => s.CookiePath == SpotLight.FlashlightCookie) &&
               scene.PointLights.Any(l => l.SourceLength > 0),
@@ -456,8 +485,15 @@ internal static class Source2LookChecks
         Check(Has(Load("Shaders/Deferred/DeferredEnvironmentMap"), "ProbeData", "ReflectionCubeMap", "ProbeCube0", "BrdfLut", "AoProxyA"),
             "the environment shader blends probe volumes, local reflection probes, the BRDF LUT and AO proxies");
         Check(Has(Load("Shaders/Deferred/Froxel"), "CascadeViewProjection", "ProbeData"), "the fog shader samples the cascades and packed probes");
+        Check(Has(Load("Shaders/Deferred/Lightmap"), "Lightmap", "IrradianceMap", "DirectionMap", "MaskMap", "DepthMap", "NormalMap", "WorldViewProj") &&
+              Has(Load("Shaders/Deferred/DeferredEnvironmentMap"), "LightmapMap", "UseLightmaps", "LightmapIntensity") &&
+              Has(Load("Shaders/Deferred/DeferredPointLight"), "ShadowMaskMap", "ShadowMaskChannel") &&
+              Has(Load("Shaders/Deferred/DeferredDirectionalLight"), "ShadowMaskMap", "ShadowMaskChannel"),
+            "the lightmap pass compiles, and the environment and light shaders read its lightmap and shadow mask");
         Check(Has(Load("Shaders/Forward/Forward"), "LightSourceRadius", "PointShadowAtlas", "LightShadowTiles", "LightShadowSettings",
             "CookieAtlas", "LightCookieRect", "LightCookieRight", "LightCookieUp"), "the forward shader lights glass with sized sources, local shadows and cookies");
+        Check(Has(Load("Shaders/Forward/Forward"), "ReflectionPass", "ClipPlane", "UsePlanarReflection", "PlanarReflectionMap", "PlanarSky", "SkyCubeMap"),
+            "the forward shader draws and reads planar reflections");
         Check(Has(Load("Shaders/GBufferSetup/Gbuffer"), "PreviousWorldViewProj", "AoMap"), "the G-buffer writes velocity and material AO");
         Check(Has(Load("Shaders/TemporalAntiAliasing/TemporalAntiAliasing"), "VelocityMap", "Sharpness"), "TAA reprojects with velocity and sharpens");
         Check(Has(Load("Shaders/PostProcessing/PostProcessing"), "TonemapCurve"), "the final pass picks a tonemap curve");

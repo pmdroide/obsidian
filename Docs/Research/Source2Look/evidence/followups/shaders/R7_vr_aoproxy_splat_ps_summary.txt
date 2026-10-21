@@ -1,0 +1,170 @@
+Valve Compiled Shader 2 (vcs2), version 64
+
+Showing PixelShader: vr_aoproxy_splat_pc_50_ps.vcs
+Editor/Shader compiler stack
+MD5    f40d4520-d0a4-20ed-c020-4098ee4132ae    // PixelShader
+MD5    922d7060-4dff-95b1-cfbf-5411e994ec67    // Common editor/compiler hash shared by multiple different vcs files.
+VariableSourceMax = 17
+
+STATIC COMBOS(1)
+BlockIndex  Name                RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        S_BINDLESS_RUNTIME  0         0         S_BINDLESS_RUNTIME  -1            Static            
+
+DYNAMIC COMBOS(1)
+BlockIndex  Name                    RangeMin  RangeMax  ComboSourceType     FeatureIndex  ComboType  Strings
+[ 0]        D_MULTIVIEW_INSTANCING  0         1         __FROM_ATTRIBUTE__  -1            Dynamic           
+
+VARIABLE DESCRIPTIONS(11)    *dyn-expressions shown separately
+index Name                              VfxType   SourceIndex ContextStateAffectedByVariable MinPrecisionBits RegisterElements ExtConstantBufferId VariableSource         StringData                        RegisterType   UiType  UiGroup command 0|1 DefaultInputTexture UiVisibilityExp
+[ 0]  AddressU                          Int        _          4096                            _                0               1                   __RenderStateLiteral__                                   SamplerState   None                                                           
+[ 1]  AddressV                          Int        _          4096                            _                0               2                   __RenderStateLiteral__                                   SamplerState   None                                                           
+[ 2]  AddressW                          Int        _          4096                            _                0               3                   __RenderStateLiteral__                                   SamplerState   None                                                           
+[ 3]  AoProxyConstantBuffer_t           Cbuffer    _          8192                            _                0               1                   __SetByArtist__        AoProxyConstantBuffer_t           ConstantBuffer None                                                           
+[ 4]  Filter                            Int        _          4096                            _                0               0                   __RenderStateLiteral__                                   SamplerState   None                                                           
+[ 5]  PerViewConstantBuffer_t           Cbuffer    _          8192                            _                0               0                   __SetByArtist__        PerViewConstantBuffer_t           ConstantBuffer None                                                           
+[ 6]  PerViewLightingConstantBufferVr_t Cbuffer    _          8192                            _                0               2                   __SetByArtist__        PerViewLightingConstantBufferVr_t ConstantBuffer None                                                           
+[ 7]  StencilRef                        Int        _          256                             _                4               32                  __RenderStateLiteral__                                   RenderState    None                                                           
+[ 8]  TextureAoConeLUT                  Sampler3D  _          2048                            8               -1               -1                  __SetByArtist__                                          InputTexture   Texture LUT     lut_z000                                       
+[ 9]  g_tSceneDepth                     Sampler2D  _          6144                            _                1               0                   __Attribute__          SceneDepth                        Texture        Texture                                                        
+[10]  g_tTextureAoConeLUT               Sampler3D  _          6144                            _                1               0                   __SetByArtist__                                          Texture        Texture                                                        
+
+VARIABLES - Default values and limits    (type0,type1,arg0,arg1,arg2,arg4,arg5,command0 reprinted)
+(- indicates -infinity, + indicates +infinity, def. = default)
+index Name                              IntDefs    IntMins   IntMaxs   FloatDefs FloatMins FloatMaxs ChannelIndices ImageFormat ImageSuffix DefaultInputTexture DynExp LayerId AllowLayerOverride MaxRes
+[ 0]  AddressU                          (2,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 1]  AddressV                          (2,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 2]  AddressW                          (2,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 3]  AoProxyConstantBuffer_t           (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 4]  Filter                            (20,0,0,0) (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 5]  PerViewConstantBuffer_t           (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 6]  PerViewLightingConstantBufferVr_t (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 7]  StencilRef                        (1,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[ 8]  TextureAoConeLUT                  (1,1,1,0)  (-,-,-,-) (+,+,+,+) (1,1,1,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN     lut_z000                               0       False              0     
+[ 9]  g_tSceneDepth                     (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (-1,-1,-1,-1)  UNKNOWN                                            0       False              0     
+[10]  g_tTextureAoConeLUT               (0,0,0,0)  (-,-,-,-) (+,+,+,+) (0,0,0,0) (-,-,-,-) (+,+,+,+) (0,-1,-1,-1)   RGBA8888                                           0       False              0     
+
+TEXTURE CHANNEL PROCESSORS(1)
+index  name  Channel  inputs      ColorMode
+[ 0]   None  RGB      8 -1 -1 -1   0       
+
+CONSTANT BUFFERS[0]
+PerViewConstantBuffer_t size=816 (816) param-count=50 arg0=0 crc32=1b240212
+         name                                 offset  vertex-size  attrib-count  data-count
+         g_matWorldToProjection                 0       4            4             1       
+         g_matProjectionToWorld                16       4            4             1       
+         g_matWorldToView                      32       4            4             1       
+         g_matViewToProjection                 48       4            4             1       
+         g_vInvProjRow3                        64       4            1             1       
+         g_vClipPlane0                         68       4            1             1       
+         g_flToneMapScalarLinear               72       1            1             1       
+         g_flLightMapScalar                    73       1            1             1       
+         g_flEnvMapScalar                      74       1            1             1       
+         g_flToneMapScalarGamma                75       1            1             1       
+         g_vCameraPositionWs                   76       3            1             1       
+         g_flViewportMinZ                      79       1            1             1       
+         g_vCameraDirWs                        80       3            1             1       
+         g_flViewportMaxZ                      83       1            1             1       
+         g_vCameraUpDirWs                      84       3            1             1       
+         g_flTime                              87       1            1             1       
+         g_vDepthPsToVsConversion              88       3            1             1       
+         g_flNearPlane                         91       1            1             1       
+         g_flFarPlane                          92       1            1             1       
+         g_flLightBinnerFarPlane               93       1            1             1       
+         g_vInvViewportSize                    94       2            1             1       
+         g_vViewportToGBufferRatio             96       2            1             1       
+         g_vMorphTextureAtlasSize              98       2            1             1       
+         g_vInvGBufferSize                    100       4            1             1       
+         g_vViewportOffset                    104       2            1             1       
+         g_vViewportSize                      106       2            1             1       
+         g_vRenderTargetSize                  108       2            1             1       
+         g_flFogBlendToBackground             110       1            1             1       
+         g_flHenyeyGreensteinCoeff            111       1            1             1       
+         g_vFogColor                          112       3            1             1       
+         g_flNegFogStartOverFogRange          115       1            1             1       
+         g_flInvFogRange                      116       1            1             1       
+         g_flFogMaxDensity                    117       1            1             1       
+         g_flFogExponent                      118       1            1             1       
+         g_flMod2xIdentity                    119       1            1             1       
+         g_bRoughnessParams                   120       2            1             1       
+         g_bStereoEnabled                     122       1            1             1       
+         g_flStereoCameraIndex                123       1            1             1       
+         g_vMiddleEyePositionWs               124       3            1             1       
+         g_flPad2                             127       1            1             1       
+         g_matWorldToProjectionMultiview      128       4            4             2       
+         g_vCameraPositionWsMultiview         160       4            1             2       
+         g_vFrameBufferCopyInvSizeAndUvScale  168       4            1             1       
+         g_vCameraAngles                      172       4            1             1       
+         g_vWorldToCameraOffset               176       4            1             1       
+         g_vWorldToCameraOffsetMultiview      180       4            1             2       
+         g_vPerViewConstantExtraData0         188       4            1             1       
+         g_vPerViewConstantExtraData1         192       4            1             1       
+         g_vPerViewConstantExtraData2         196       4            1             1       
+         g_vPerViewConstantExtraData3         200       4            1             1       
+
+CONSTANT BUFFERS[1]
+AoProxyConstantBuffer_t size=8192 (8192) param-count=6 arg0=0 crc32=185174ba
+         name               offset  vertex-size  attrib-count  data-count
+         g_vMinBounds         0       4            1            20       
+         g_vMaxBounds        80       4            1            20       
+         g_vAoProxyParams   160       4            1            20       
+         g_nProxyCounts     240       4            1            20       
+         g_matWorldToProxy  320       4            3           108       
+         g_vProxyScale      1616      4            1           108       
+
+CONSTANT BUFFERS[2]
+PerViewLightingConstantBufferVr_t size=4848 (4848) param-count=45 arg0=1 crc32=61a77d8e
+         name                                     offset  vertex-size  attrib-count  data-count
+         g_vNumLights                               0       4            1             1       
+         g_vMultiviewData                           4       4            1             1       
+         g_vMultiviewViewAndSubviewIndexArray       8       4            1             4       
+         g_vLightParams                            24       4            1           128       
+         g_vLightPosition_flInvRadius             536       4            1           128       
+         g_vLightColor                            1048      4            1           128       
+         g_vLightFalloffParams                    1560      4            1           128       
+         g_vLightDirection                        2072      4            1           128       
+         g_vSpotLightInnerOuterConeCosines        2584      4            1           128       
+         g_matWorldToShadow                       3096      4            4           128       
+         g_vShadow3x3PCFTermC0                    5144      4            1             1       
+         g_vShadow3x3PCFTermC1                    5148      4            1             1       
+         g_vShadow3x3PCFTermC2                    5152      4            1             1       
+         g_vShadow3x3PCFTermC3                    5156      4            1             1       
+         g_vToolsAmbientLightingVr                5160      4            1             1       
+         g_vLightBinCameraPositionWs              5164      4            1             1       
+         g_vLightBinCameraDirWs                   5168      4            1             1       
+         g_vLightBinCameraNearZFarZ               5172      4            1             1       
+         g_matLightBinViewProj                    5176      4            4             1       
+         g_vMultiviewScaleBias                    5192      4            1             4       
+         g_vMultiviewClipEdge0                    5208      4            1             4       
+         g_vMultiviewClipEdge1                    5224      4            1             4       
+         g_flNumViews                             5240      1            1             1       
+         g_flOoNumViews                           5241      1            1             1       
+         g_flNumSubiews                           5242      1            1             1       
+         g_flOoNumSubviews                        5243      1            1             1       
+         g_flNumTotalMultiviews                   5244      1            1             1       
+         g_flOoNumTotalMultiviews                 5245      1            1             1       
+         g_flVrLuminanceOffset                    5246      1            1             1       
+         g_flVrLuminanceScale                     5247      1            1             1       
+         g_vLightmapParams                        5248      4            1             1       
+         g_vScreenSpaceDitherParams               5252      4            1             1       
+         g_matWorldToLightCookie                  5256      4            4           128       
+         g_vSpotLightShadowOffsetScale            7304      4            1           128       
+         g_vSpotLightShadowBounds                 7816      4            1           128       
+         g_vLightProjectiveDepthToLinearDepth     8328      4            1           128       
+         g_vUnlitShadowColor                      8840      4            1             1       
+         g_vAmbientLightingSH                     8844      4            1             3       
+         g_vLightIndexData                        8856      4            1           128       
+         g_vSunLightIndexData                     9368      4            1             1       
+         g_vAmbientOcclusionProxyLightPositions   9372      4            1             4       
+         g_vAmbientOcclusionProxyLightConeAngles  9388      4            1             1       
+         g_vAmbientOcclusionProxyLightStrengths   9392      4            1             1       
+         g_vAmbientOcclusionProxyAmbientStrength  9396      4            1             1       
+         g_vCubemapNormalizationParams            9400      4            1             1       
+
+VERTEX INPUT SIGNATURES(0)
+[none defined]
+
+STATIC COMBOS(1)
+S_BINDLESS_RUNTIME(bin_r)
+
+                 bin_r
+  Z[00000000]      _

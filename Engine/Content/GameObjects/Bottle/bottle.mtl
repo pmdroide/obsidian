@@ -1,0 +1,4 @@
+# Bottle glass (Assets.BottleGlassMaterial replaces it at load)
+newmtl Glass
+Kd 0.8 0.9 0.85
+d 0.3

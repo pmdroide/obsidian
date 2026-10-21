@@ -13,9 +13,9 @@ the selection box keep using the gameobject's own model.
 ## Setting it up
 
 1. Select a gameobject and use **Inspector > Add Component > LOD**. It starts with one empty level at 20 m.
-2. For each level, pick a **Model** (any model key: built-in like `Cube`, or an imported model) and set
+2. For each level, drag a mesh from Assets into **Model** and set
    **From (m)**, the camera distance at which it starts to draw. **Add Level** adds another level twice as
-   far as the farthest one; **Remove** deletes a level.
+   far as the farthest one; **Remove** deletes a level. The slot's clear button removes its model.
 3. Optionally set **Cull Distance**: from there on nothing draws. 0 never culls.
 
 Levels can be listed in any order; they are sorted by distance. A level with no model, an unknown model

@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Anvil.Controls.ReferenceSlot">
+    <UserControl.Styles>
+        <Style Selector="Border.referenceSlot">
+            <Setter Property="Background" Value="{DynamicResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AnvilBorderBrush}" />
+        </Style>
+        <Style Selector="Border.referenceSlot:pointerover, Border.referenceSlot.dropTarget">
+            <Setter Property="BorderBrush" Value="{DynamicResource AnvilSelectedBackgroundBrush}" />
+        </Style>
+    </UserControl.Styles>
+    <Border x:Name="SlotBorder" Classes="referenceSlot" BorderThickness="1" CornerRadius="3" MinHeight="26" Padding="6,2">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <TextBlock x:Name="SlotLabel" FontSize="11" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <Button x:Name="ClearButton" Grid.Column="1" Classes="iconButton" Content="×"
+                    MinWidth="18" MinHeight="18" Padding="2,0" ToolTip.Tip="Clear reference"
+                    AutomationProperties.Name="Clear reference" Click="Clear_Click" />
+        </Grid>
+    </Border>
+</UserControl>

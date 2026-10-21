@@ -142,6 +142,8 @@
                           IsChecked="{Binding IsTransparent, Mode=TwoWay}"
                           FontSize="11" />
                 <CheckBox Content="Cast Shadows" IsChecked="{Binding CastShadows, Mode=TwoWay}" IsVisible="{Binding !IsWater}" FontSize="11" />
+                <CheckBox Content="Rain Drops" IsChecked="{Binding RainDrops, Mode=TwoWay}" IsVisible="{Binding !IsWetSurface}" FontSize="11"
+                          ToolTip.Tip="In the rain, drops bead on the faces the rain reaches and run down walls, and the surface gets a wet sheen. Turn it off for surfaces under a roof. Wet Surface pools puddles instead (Wet in Rain)." />
 
                 <Expander Header="Textures" IsExpanded="True">
                     <StackPanel Spacing="8" Margin="0,8,0,0">
@@ -198,8 +200,6 @@
                                 <ComboBoxItem>Foliage</ComboBoxItem>
                             </ComboBox>
                         </Grid>
-                        <Button Content="Apply Water Example" Command="{Binding WaterExampleCommand}" HorizontalAlignment="Stretch" />
-                        <Button Content="Apply Wet Floor Example" Command="{Binding WetFloorExampleCommand}" HorizontalAlignment="Stretch" />
                         <StackPanel Spacing="8" IsVisible="{Binding IsWetSurface}">
                             <TextBlock Text="Wetness (dry weather)" Classes="muted" FontSize="11" />
                             <Slider Minimum="0" Maximum="1" Value="{Binding Wetness, Mode=TwoWay}" />
@@ -648,6 +648,10 @@
                                       Command="{Binding AddParticleSystemCommand}" />
                             <MenuItem Header="Decal"
                                       Command="{Binding AddDecalCommand}" />
+                            <MenuItem Header="Liquid Bottle"
+                                      Command="{Binding AddLiquidBottleCommand}" />
+                            <MenuItem Header="Breakable Vase"
+                                      Command="{Binding AddBreakableVaseCommand}" />
                         </MenuItem>
                         <MenuItem Header="Nature">
                             <MenuItem Header="Tree"
@@ -675,6 +679,9 @@
                         <MenuItem Header="Steam"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="Steam" />
+                        <MenuItem Header="MCP"
+                                  Command="{Binding OpenWorkspaceTabCommand}"
+                                  CommandParameter="Mcp" />
                         <MenuItem Header="Hierarchy" />
                         <MenuItem Header="Inspector" />
                         <MenuItem Header="Console" />
@@ -1011,6 +1018,45 @@
                         </StackPanel>
                     </ScrollViewer>
 
+                    <ScrollViewer x:Name="WorkspaceMcpPanel" IsVisible="{Binding IsWorkspaceMcpView}"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel DataContext="{Binding Mcp}" x:DataType="m:McpSettingsViewModel"
+                                    Spacing="12" Margin="14,12" MaxWidth="720" HorizontalAlignment="Left">
+                            <TextBlock Text="MCP" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="Connect an AI application to inspect and edit this running scene."
+                                       TextWrapping="Wrap" Classes="muted" />
+                            <CheckBox Content="Enable MCP" IsChecked="{Binding IsEnabled, Mode=TwoWay}" IsEnabled="{Binding !IsBusy}" />
+                            <CheckBox Content="Read-only" IsChecked="{Binding IsReadOnly, Mode=TwoWay}" />
+                            <TextBlock Text="Read-only takes effect immediately. Scene commands require Edit mode; Play and Stop are explicit tools."
+                                       TextWrapping="Wrap" Classes="muted" />
+                            <TextBlock Text="Port" />
+                            <NumericUpDown Value="{Binding Port, Mode=TwoWay}" Minimum="1024" Maximum="65535"
+                                           Increment="1" FormatString="0" IsEnabled="{Binding !IsBusy}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Apply" Command="{Binding ApplyCommand}" IsEnabled="{Binding !IsBusy}" />
+                                <Button Content="Log Status" Command="{Binding LogStatusCommand}" IsEnabled="{Binding !IsBusy}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding ServerStatus}" TextWrapping="Wrap" />
+                            <TextBlock Text="Streamable HTTP endpoint" Classes="muted" />
+                            <SelectableTextBlock Text="{Binding Endpoint}" />
+                            <TextBlock Text="Access token" Classes="muted" />
+                            <TextBox Text="{Binding Token, Mode=OneWay}" IsReadOnly="True" PasswordChar="●" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Copy token" Click="CopyMcpToken_Click" />
+                                <Button Content="Rotate token" Command="{Binding RotateTokenCommand}" IsEnabled="{Binding !IsBusy}" />
+                            </StackPanel>
+                            <TextBlock Text="Use Authorization: Bearer followed by the token in your client's HTTP headers. Apply saves settings and restarts the listener."
+                                       TextWrapping="Wrap" Classes="muted" />
+                            <TextBlock Text="Editor instance" Classes="muted" />
+                            <SelectableTextBlock Text="{Binding InstanceId}" />
+                            <TextBlock Text="User settings" Classes="muted" />
+                            <SelectableTextBlock Text="{Binding SettingsPath}" TextWrapping="Wrap" />
+                            <Separator />
+                            <TextBlock Text="Recent commands" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding RecentOperations}" TextWrapping="Wrap" Classes="muted" />
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <ScrollViewer x:Name="WorkspaceSteamPanel" IsVisible="{Binding IsWorkspaceSteamView}"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel DataContext="{Binding Steam}" x:DataType="m:SteamViewModel"
@@ -1075,6 +1121,22 @@
                                             <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0.1" Maximum="32" Increment="0.05" Value="{Binding WhitePoint, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="S-Curve" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="-1" Maximum="1" Increment="0.01" Value="{Binding SCurveStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6" IsVisible="{Binding IsSource2Curve}">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Shoulder" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0.001" Maximum="4" Increment="0.01" Value="{Binding FilmicShoulder, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Linear Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01" Value="{Binding FilmicLinearStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Linear Angle" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01" Value="{Binding FilmicLinearAngle, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Toe Strength" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.01" Value="{Binding FilmicToeStrength, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Toe Numerator" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.005" Value="{Binding FilmicToeNumerator, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Toe Denominator" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="0.001" Maximum="4" Increment="0.01" Value="{Binding FilmicToeDenominator, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.000" />
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Text="White (stops)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="16" Increment="0.05" Value="{Binding FilmicWhitePoint, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" ToolTip.Tip="Half-Life: Alyx's m_flWhitePoint: the curve is normalised by its value at 2^stops" />
                                         </Grid>
                                         <CheckBox Content="Exact sRGB output" IsChecked="{Binding ExactSrgb, Mode=TwoWay}" ToolTip.Tip="Off = a plain 2.2 gamma (the engine's original output)" />
                                     </StackPanel>
@@ -1163,6 +1225,10 @@
                                     </Expander.Header>
                                     <StackPanel Spacing="6" Margin="12,8,12,12">
                                         <CheckBox Content="Enable Bloom (scene)" IsChecked="{Binding BloomEnabled, Mode=TwoWay}" />
+                                        <Grid ColumnDefinitions="110,*" RowSpacing="6">
+                                            <TextBlock Grid.Column="0" Text="Threshold (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding BloomShapes}" SelectedIndex="{Binding BloomShape, Mode=TwoWay}" ToolTip.Tip="Source 2: the colour fades in from Start over Knee (luma x exposure). Soft Knee: brightest channel above Start." />
+                                        </Grid>
                                         <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Start (scene)" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field" Minimum="0" Maximum="64" Increment="0.05" Value="{Binding BloomStart, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
@@ -1238,7 +1304,7 @@
                                             <TextBlock Grid.Row="5" Grid.Column="0" Text="Probe Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field" Minimum="32" Maximum="1024" Increment="32" Value="{Binding ReflectionProbeSize, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0" />
                                             <TextBlock Grid.Row="6" Grid.Column="0" Text="Normalize Max" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="0" Maximum="4" Increment="0.05" Value="{Binding CubemapNormalizationMax, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Classes="field" Minimum="1" Maximum="64" Increment="1" Value="{Binding CubemapNormalizationMax, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.0" />
                                             <TextBlock Grid.Row="7" Grid.Column="0" Text="Normalize Rough." Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                             <NumericUpDown Grid.Row="7" Grid.Column="1" Classes="field" Minimum="0" Maximum="1" Increment="0.05" Value="{Binding CubemapNormalizationRoughnessBegin, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.00" />
                                         </Grid>
@@ -1355,6 +1421,19 @@
                                         IsEnabled="{Binding CanChooseSkybox}" HorizontalAlignment="Stretch" />
                                 <Button Content="Reset to default" Command="{Binding ResetSkyboxCommand}"
                                         HorizontalAlignment="Stretch" />
+                                <TextBlock Text="Sun" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                <TextBlock Text="Aim the Directional Light from the panorama's sun: looking at it then glows like the real sun."
+                                           TextWrapping="Wrap" Classes="muted" FontSize="11" />
+                                <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Sun glare" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="5" Value="{Binding SkyboxSunBrightness, Mode=TwoWay}" MinHeight="18" />
+                                    <TextBlock Grid.Column="2" Text="{Binding SkyboxSunBrightness, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Sun size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="1" Minimum="0.25" Maximum="4" Value="{Binding SkyboxSunSize, Mode=TwoWay}" MinHeight="18" />
+                                    <TextBlock Grid.Column="2" Text="{Binding SkyboxSunSize, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
                             </StackPanel>
                             <StackPanel Spacing="8" IsVisible="{Binding IsDayNightCycle}">
                                 <TextBlock Text="Animated sky and sun lighting. The cycle runs in both Edit and Play."
@@ -1518,6 +1597,29 @@
                                         <TextBlock Grid.Column="0" Text="Wind towards" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                         <Slider Grid.Column="1" Minimum="0" Maximum="359" Value="{Binding WindDirection, Mode=TwoWay}" MinHeight="18" />
                                         <TextBlock Grid.Column="2" Text="{Binding WindDirection, StringFormat={}{0:0}°}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Ground Fog" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Low mist the weather raises over the ground (dust in a sandstorm). It rises over a few seconds and lingers after the weather." />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding GroundFog, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding GroundFog, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Fog Height (m)" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="How high the mist reaches: it thins to about a third this far above its base" />
+                                        <Slider Grid.Column="1" Minimum="0.2" Maximum="10" Value="{Binding GroundFogHeight, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding GroundFogHeight, StringFormat={}{0:0.0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Fog Base Z" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="World height (Z) of the ground the mist lies on" />
+                                        <NumericUpDown Grid.Column="1" Classes="field" Minimum="-10000" Maximum="10000" Increment="0.5" Value="{Binding GroundFogBase, Mode=TwoWay}" FormatString="0.##" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="90,*,40" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="Rain Drops" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Rain beads on surfaces and runs down walls (materials with Rain Drops ticked). They dry off after the rain." />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding SurfaceDrops, Mode=TwoWay}" MinHeight="18" />
+                                        <TextBlock Grid.Column="2" Text="{Binding SurfaceDrops, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
                                     </Grid>
                                     <TextBlock Text="Wind angle: 0° blows towards +X, 90° towards +Y. A sandstorm always blows at least 7 m/s. With the day/night sky, weather also thickens the clouds and dims the sun."
                                                TextWrapping="Wrap" Classes="muted" FontSize="11" />
@@ -1898,7 +2000,7 @@
                                     <TextBlock Text="{Binding BakedSummary}" FontSize="10.5"
                                                TextWrapping="Wrap" Classes="subtle"
                                                IsVisible="{Binding HasBakedData}" />
-                                    <TextBlock Text="Not baked. Saving the scene stores the bake as a .probes file next to the .obsc."
+                                    <TextBlock Text="Not baked. Saving the scene stores the bake as .probes (and .lightmaps) files next to the .obsc."
                                                FontSize="10.5" TextWrapping="Wrap" Classes="subtle"
                                                IsVisible="{Binding !HasBakedData}" />
                                 </StackPanel>
@@ -1926,6 +2028,70 @@
                                                        Value="{Binding Intensity, Mode=TwoWay}"
                                                        ShowButtonSpinner="False" FormatString="0.00" />
                                     </Grid>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Lightmaps (Source 2 look, phase 4.2) -->
+                            <Expander IsExpanded="True">
+                                <Expander.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <controls:LucideIcon Icon="Grid3x3" />
+                                        <TextBlock Text="Lightmaps" FontSize="11.5"
+                                                   FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Expander.Header>
+                                <StackPanel Spacing="6" Margin="12,8,12,12">
+                                    <CheckBox Content="Use lightmaps"
+                                              IsChecked="{Binding LightmapsEnabled, Mode=TwoWay}"
+                                              ToolTip.Tip="Lightmap Static gameobjects take their indirect light, AO and static lights' shadows from the bake" />
+                                    <CheckBox Content="Bake lightmaps"
+                                              IsChecked="{Binding BakeLightmaps, Mode=TwoWay}"
+                                              ToolTip.Tip="Bake Lighting also bakes lightmaps for gameobjects ticked Inspector > Lightmap Static" />
+                                    <CheckBox Content="Denoise"
+                                              IsChecked="{Binding LightmapDenoise, Mode=TwoWay}" />
+                                    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Texels / m"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="field"
+                                                       Minimum="0.5" Maximum="128" Increment="1"
+                                                       Value="{Binding LightmapTexelsPerUnit, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0.##" />
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Max Size"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Largest lightmap page, texels a side" />
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="field"
+                                                       Minimum="64" Maximum="8192" Increment="256"
+                                                       Value="{Binding LightmapMaxSize, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0" />
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Rays / Texel"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="field"
+                                                       Minimum="16" Maximum="4096" Increment="32"
+                                                       Value="{Binding LightmapSamples, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0" />
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Shadow Rays"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Rays per texel and static light for the soft baked shadows" />
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Classes="field"
+                                                       Minimum="1" Maximum="256" Increment="4"
+                                                       Value="{Binding LightmapShadowSamples, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0" />
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="AO Distance"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Classes="field"
+                                                       Minimum="0.05" Maximum="20" Increment="0.25"
+                                                       Value="{Binding LightmapAoDistance, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0.##" />
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Sun Angle"
+                                                   Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                   ToolTip.Tip="Angular diameter of the sun (degrees): how soft the baked sun shadows are" />
+                                        <NumericUpDown Grid.Row="5" Grid.Column="1" Classes="field"
+                                                       Minimum="0" Maximum="20" Increment="0.25"
+                                                       Value="{Binding SunAngle, Mode=TwoWay}"
+                                                       ShowButtonSpinner="False" FormatString="0.##" />
+                                    </Grid>
+                                    <TextBlock Text="Tick Inspector > Lightmap Static on gameobjects that never move, then Bake Lighting. Lights with Baked Shadows shadow them from the bake."
+                                               FontSize="10.5" TextWrapping="Wrap" Classes="subtle" />
                                 </StackPanel>
                             </Expander>
 
@@ -2397,6 +2563,16 @@
                                         <CheckBox Content="Persistent" IsChecked="{Binding Persistent, Mode=TwoWay}" FontSize="11"
                                                   IsVisible="{Binding HasRole}"
                                                   ToolTip.Tip="Keep this gameobject, with its scripts still running, when a script loads another scene during Play (like Unity's DontDestroyOnLoad)." />
+                                        <!-- Lightmaps (Source 2 look, phase 4.2) -->
+                                        <Grid ColumnDefinitions="Auto,*,64" ColumnSpacing="8" IsVisible="{Binding HasRole}">
+                                            <CheckBox Grid.Column="0" Content="Lightmap Static" IsChecked="{Binding LightmapStatic, Mode=TwoWay}" FontSize="11"
+                                                      ToolTip.Tip="Never moves: Lighting > Bake gives it a lightmap (bounce light, AO and the static lights' soft shadows)." />
+                                            <TextBlock Grid.Column="1" Text="Scale" Classes="muted" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       IsVisible="{Binding LightmapStatic}" ToolTip.Tip="Multiplies the scene's lightmap texels per metre for this gameobject" />
+                                            <NumericUpDown Grid.Column="2" Classes="field" Minimum="0.05" Maximum="100" Increment="0.25"
+                                                           IsVisible="{Binding LightmapStatic}"
+                                                           Value="{Binding LightmapScale, Mode=TwoWay}" ShowButtonSpinner="False" FormatString="0.##" />
+                                        </Grid>
 
                                         <!-- Prefab (Engine.Logic.PrefabUtility): save a plain gameobject as one, or the
                                              instance's link with Apply / Revert / Unpack. -->
@@ -2646,6 +2822,8 @@
                                         </Grid>
                                         <CheckBox Content="Static Shadows" IsChecked="{Binding StaticShadows, Mode=TwoWay}" FontSize="11" IsVisible="{Binding HasRadius}"
                                                   ToolTip.Tip="Drawn once and kept in the shadow atlas" />
+                                        <CheckBox Content="Baked Shadows" IsChecked="{Binding BakedShadows, Mode=TwoWay}" FontSize="11"
+                                                  ToolTip.Tip="On Lightmap Static surfaces this light's shadows come from the lighting bake (soft, even without Cast Shadows). Turn off for lights that move." />
                                         <Grid ColumnDefinitions="90,*" ColumnSpacing="8"
                                               IsVisible="{Binding IsDirectional}">
                                             <TextBlock Grid.Column="0" Text="Cascades" Classes="muted" FontSize="11" VerticalAlignment="Center" />
@@ -2989,6 +3167,116 @@
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
+                                        <DataTemplate DataType="m:LiquidComponentViewModel" x:DataType="m:LiquidComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Wine" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Fills this bottle, glass or jar with liquid, like Half-Life: Alyx: the surface stays level as it tilts, leans and lags when it moves, wobbles when shaken and settles over Settle Time, with foam, bubbles and a water line. The gameobject's material must be Forward Shaded (the built-in Bottle is) and its mesh closed: the fill follows its volume. Works in the editor too (move it with the gizmo, or Shake). Visual only." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="0 = empty, 1 = to the brim (by volume)">
+                                                        <TextBlock Grid.Column="0" Text="Fill" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Fill, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Liquid Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding LiquidColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:LiquidComponentViewModel" Color="{Binding LiquidColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                                                        <TextBlock Grid.Column="0" Text="Foam Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding FoamColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:LiquidComponentViewModel" Color="{Binding FoamColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How much it hides what's behind it: water ~0.3, wine ~0.9, milk 1">
+                                                        <TextBlock Grid.Column="0" Text="Opacity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Opacity, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Roughness of the liquid's top">
+                                                        <TextBlock Grid.Column="0" Text="Roughness" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Roughness, Mode=TwoWay}"
+                                                                       Minimum="0.02" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Glow of the liquid (potions, chemicals)">
+                                                        <TextBlock Grid.Column="0" Text="Emissive" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Emissive, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="20" Increment="0.5" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How easily motion shakes it: 1 = Alyx, 0.5 = syrup, 2 = very runny">
+                                                        <TextBlock Grid.Column="0" Text="Sensitivity" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Sensitivity, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Seconds a shaken liquid takes to calm down (Alyx: 20)">
+                                                        <TextBlock Grid.Column="0" Text="Settle Time s" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SettleTime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How much the surface leans while it moves (Alyx: 1)">
+                                                        <TextBlock Grid.Column="0" Text="Lean" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Lean, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How far the wobble and ripples swing (Alyx: 0.02)">
+                                                        <TextBlock Grid.Column="0" Text="Wobble" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WobbleScale, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="0.5" Increment="0.005" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Wobble speed (Alyx: 1)">
+                                                        <TextBlock Grid.Column="0" Text="Wobble Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WobbleSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How far the surface climbs the glass at its edges (Alyx: 1)">
+                                                        <TextBlock Grid.Column="0" Text="Meniscus" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SurfaceTension, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Brightness of the line where the surface meets the glass">
+                                                        <TextBlock Grid.Column="0" Text="Water Line" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WaterLine, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="How much foam shaking makes: 0 = none, 1 = Alyx, 3 = beer">
+                                                        <TextBlock Grid.Column="0" Text="Foaminess" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Foaminess, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="4" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Seconds the foam and bubbles take to go (Alyx: 30)">
+                                                        <TextBlock Grid.Column="0" Text="Foam Time s" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding FoamSettleTime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Rising bubbles: 0 = still, 1 = fizzy">
+                                                        <TextBlock Grid.Column="0" Text="Fizz" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Fizz, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="4" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Button Content="Shake" Command="{Binding ShakeCommand}" HorizontalAlignment="Stretch" ToolTip.Tip="Knock the liquid to see it slosh and settle" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
                                         <DataTemplate DataType="m:ReflectionProbeComponentViewModel" x:DataType="m:ReflectionProbeComponentViewModel">
                                             <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
                                                 <Expander.Header>
@@ -3104,6 +3392,179 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:PlanarReflectionComponentViewModel" x:DataType="m:PlanarReflectionComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="FlipHorizontal2" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="A real mirror image on a flat glass pane (a Forward material: windows, mirrors, shop glass). The opaque scene in front of it is drawn again from the mirrored camera every frame, so moving objects and the player reflect exactly; the sky and anything beyond Render Distance keep the reflection probes. The surface is the face across the gameobject's thinnest side. At most 2 panes draw a frame, nearest first." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Size of the mirror image against the screen; lower is cheaper and softer">
+                                                        <TextBlock Grid.Column="0" Text="Resolution" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ResolutionScale, Mode=TwoWay}"
+                                                                       Minimum="0.25" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8" ToolTip.Tip="Gameobjects farther than this from the camera (metres) are left out of the mirror image">
+                                                        <TextBlock Grid.Column="0" Text="Render Dist." Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding RenderDistance, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="10000" Increment="10" FormatString="0" />
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:BreakableGlassComponentViewModel" x:DataType="m:BreakableGlassComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Sparkles" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Breaks this flat gameobject like Half-Life: Alyx's shatter glass during Play (the thinnest local side is the pane's normal). The first hit cracks the pane into Voronoi panels of Crack Size, punches a hole and throws its shards; panels no longer joined to the frame fall. Bodies break it above Impact Speed and Momentum and fly on through; scripts call GetComponent&lt;BreakableGlassComponent&gt;().Shatter(point, direction). Add a Static Physics component so things can hit it. Shards use the gameobject's material and vanish after Debris Lifetime (at most 150 in the scene). Stop puts the pane back." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Size of the panels the first hit cracks the pane into (Half-Life: Alyx: 0.381 m)">
+                                                        <TextBlock Grid.Column="0" Text="Crack Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding CrackSize, Mode=TwoWay}"
+                                                                       Minimum="0.05" Maximum="10" Increment="0.05" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Radius of a bullet hole (m); thrown bodies punch holes their own size">
+                                                        <TextBlock Grid.Column="0" Text="Hole Radius" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding HoleRadius, Mode=TwoWay}"
+                                                                       Minimum="0.01" Maximum="2" Increment="0.01" FormatString="0.###" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Speed (m/s) a body must hit with to break it; 0 = only scripts break it">
+                                                        <TextBlock Grid.Column="0" Text="Impact Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Mass x speed (kg·m/s) a body must hit with to break it">
+                                                        <TextBlock Grid.Column="0" Text="Impact Momentum" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactMomentum, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="10000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Seconds fallen shards last (Half-Life: Alyx: 15)">
+                                                        <TextBlock Grid.Column="0" Text="Debris Lifetime" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding DebrisLifetime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="A hit finds a panel within this many times its size around its centre (Half-Life: Alyx: 2)">
+                                                        <TextBlock Grid.Column="0" Text="Hit Tolerance" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding HitTolerance, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <CheckBox Content="Drop Loose Shards" IsChecked="{Binding DropLooseShards, Mode=TwoWay}" FontSize="11"
+                                                              ToolTip.Tip="Panels no longer joined to the pane's border fall" />
+                                                    <CheckBox Content="Distort" IsChecked="{Binding Distort, Mode=TwoWay}" FontSize="11"
+                                                              ToolTip.Tip="Cracked panels lean slightly, so reflections break up along the cracks" />
+                                                    <CheckBox Content="Solid Shards" IsChecked="{Binding SolidShards, Mode=TwoWay}" FontSize="11"
+                                                              ToolTip.Tip="Shards left in the frame stop bodies" />
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:BreakableComponentViewModel" x:DataType="m:BreakableComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="Sparkles" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Breaks this gameobject into pieces during Play: a vase knocked off a table, a pot that is shot, a zombie's head. When Play starts its model is cut into Pieces (3D Voronoi; closed models give closed pieces whose cut faces show the Interior colour). A contact above Impact Speed and Momentum (a Dynamic gameobject falling on the floor counts) or a script's GetComponent&lt;BreakableComponent&gt;().Break(point, direction) hides it and throws the pieces out at Break Force, with a burst of dust or blood. Follow rides on another gameobject or one of its bones (drop the zombie, Bone mixamorig:Head): when it breaks the bone shrinks away and the body's Ragdoll goes limp. Add a Physics component so bullets and bodies can hit it. Stop puts it back." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <TextBlock Text="Breaking" Classes="muted" FontSize="10" FontWeight="SemiBold" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="How many pieces it breaks into (2..64)">
+                                                        <TextBlock Grid.Column="0" Text="Pieces" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Pieces, Mode=TwoWay}"
+                                                                       Minimum="2" Maximum="64" Increment="1" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Speed (m/s) a contact must have to break it; 0 = only scripts break it">
+                                                        <TextBlock Grid.Column="0" Text="Impact Speed" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactSpeed, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Momentum (kg·m/s) of the contact: the lighter body's share of the masses x speed (its own mass when it falls on the floor)">
+                                                        <TextBlock Grid.Column="0" Text="Impact Momentum" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding ImpactMomentum, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="100000" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Speed (m/s) the pieces fly apart with; hits add some of their own">
+                                                        <TextBlock Grid.Column="0" Text="Break Force" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BreakForce, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="40" Increment="0.5" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Seconds the pieces last before they shrink away (at most 200 in the scene)">
+                                                        <TextBlock Grid.Column="0" Text="Debris Lifetime" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding DebrisLifetime, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="600" Increment="1" FormatString="0.#" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Kilograms per cubic metre of the pieces when the gameobject isn't Dynamic (a Dynamic one shares its mass out)">
+                                                        <TextBlock Grid.Column="0" Text="Density" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Density, Mode=TwoWay}"
+                                                                       Minimum="1" Maximum="20000" Increment="100" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Colour of the faces the break cuts (clay, plaster, flesh). See-through materials stay themselves inside">
+                                                        <TextBlock Grid.Column="0" Text="Interior" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding InteriorColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:BreakableComponentViewModel" Color="{Binding InteriorColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <TextBlock Text="Effect" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="What it throws out besides the pieces">
+                                                        <TextBlock Grid.Column="0" Text="Effect" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:BreakableComponentViewModel.Effects}"
+                                                                  SelectedItem="{Binding Effect, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Colour of the dust or blood" IsVisible="{Binding HasEffect}">
+                                                        <TextBlock Grid.Column="0" Text="Effect Color" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left">
+                                                            <Border Width="44" Height="18" CornerRadius="3"
+                                                                    Background="{Binding EffectColor, Converter={StaticResource ColorToBrush}}"
+                                                                    BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="1" />
+                                                            <Button.Flyout>
+                                                                <!-- OwnedFlyout_Opening pins the picker to this field. -->
+                                                                <Flyout Opening="OwnedFlyout_Opening">
+                                                                    <ColorPicker x:DataType="m:BreakableComponentViewModel" Color="{Binding EffectColor, Mode=TwoWay}" />
+                                                                </Flyout>
+                                                            </Button.Flyout>
+                                                        </Button>
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Scales how many particles the effect throws" IsVisible="{Binding HasEffect}">
+                                                        <TextBlock Grid.Column="0" Text="Amount" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EffectAmount, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="5" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <TextBlock Text="Follow" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Drop a gameobject from the Hierarchy to ride on during Play, keeping the offset it has now (a head on a zombie)">
+                                                        <TextBlock Grid.Column="0" Text="Follow" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <controls:ReferenceSlot Grid.Column="1" Value="{Binding FollowObject}" Placeholder="Drop a gameobject here"
+                                                                                Clear="Reference_Clear"
+                                                                                DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" IsVisible="{Binding IsFollowing}"
+                                                          ToolTip.Tip="Bone of the followed gameobject to ride on, e.g. mixamorig:Head (its Armature in the Hierarchy lists them); empty = the gameobject itself">
+                                                        <TextBlock Grid.Column="0" Text="Bone" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding FollowBone, Mode=TwoWay}" Watermark="mixamorig:Head" />
+                                                    </Grid>
+                                                    <CheckBox Content="Collapse Bone" IsChecked="{Binding CollapseBone, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsFollowing}"
+                                                              ToolTip.Tip="When it breaks, the bone (and the bones under it) shrink away on the followed gameobject" />
+                                                    <CheckBox Content="Ragdoll On Break" IsChecked="{Binding RagdollOnBreak, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsFollowing}"
+                                                              ToolTip.Tip="When it breaks, the followed gameobject's Ragdoll goes limp and is pushed along the hit" />
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -3272,10 +3733,12 @@
                                                         <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WanderRadius, Mode=TwoWay}"
                                                                        Minimum="0" Maximum="500" Increment="0.5" FormatString="0.##" />
                                                     </Grid>
-                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsPatrol}" ToolTip.Tip="Names of the gameobjects to walk between, separated by commas, in order (a loop).">
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" IsVisible="{Binding IsPatrol}" ToolTip.Tip="Drop gameobjects from the Hierarchy to append patrol points in order (a loop). Clear to start a new route.">
                                                         <TextBlock Grid.Column="0" Text="Patrol Points" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding PatrolPoints, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                                 PlaceholderText="Post 1, Post 2, Post 3" />
+                                                        <controls:ReferenceSlot Grid.Column="1" Value="{Binding PatrolPoints}" Placeholder="Drop patrol points here"
+                                                                                Tag="PatrolPoints" Clear="Reference_Clear"
+                                                                                DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                     </Grid>
                                                     <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Seconds spent at each wander or patrol point.">
                                                         <TextBlock Grid.Column="0" Text="Wait Time" Classes="muted" FontSize="11" VerticalAlignment="Center" />
@@ -3283,10 +3746,12 @@
                                                                        Minimum="0" Maximum="120" Increment="0.25" FormatString="0.##" />
                                                     </Grid>
                                                     <TextBlock Text="PERCEPTION" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
-                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Name of the gameobject it watches for.">
+                                                    <Grid ColumnDefinitions="92,*" ColumnSpacing="8" ToolTip.Tip="Drop the gameobject to watch for from the Hierarchy.">
                                                         <TextBlock Grid.Column="0" Text="Target" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                                        <TextBox Grid.Column="1" Classes="field" Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                                 PlaceholderText="Player" />
+                                                        <controls:ReferenceSlot Grid.Column="1" Value="{Binding Target}" Placeholder="Drop a gameobject here"
+                                                                                Clear="Reference_Clear"
+                                                                                DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                     </Grid>
                                                     <Grid ColumnDefinitions="92,*" ColumnSpacing="8">
                                                         <TextBlock Grid.Column="0" Text="Sight Range" Classes="muted" FontSize="11" VerticalAlignment="Center" />
@@ -3377,9 +3842,11 @@
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="m:LodLevelViewModel" x:DataType="m:LodLevelViewModel">
                                                                 <Grid ColumnDefinitions="*,80,Auto" ColumnSpacing="4" Margin="0,0,0,4">
-                                                                    <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
-                                                                              ItemsSource="{Binding ModelKeys}" SelectedItem="{Binding Model, Mode=TwoWay}"
-                                                                              PlaceholderText="Pick a model" ToolTip.Tip="Model drawn from this distance on" />
+                                                                    <controls:ReferenceSlot Grid.Column="0" Value="{Binding Model}" Placeholder="Drop a model here"
+                                                                                            ToolTip.Tip="Drop a mesh from Assets for this level of detail"
+                                                                                            Clear="Reference_Clear"
+                                                                                            DragDrop.AllowDrop="True" DragDrop.DragOver="LodModel_DragOver"
+                                                                                            DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="LodModel_Drop" />
                                                                     <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Distance, Mode=TwoWay}"
                                                                                    Minimum="0.1" Maximum="100000" Increment="5" FormatString="0.#"
                                                                                    ToolTip.Tip="Camera distance (metres) from which this model draws" />
@@ -3895,8 +4362,11 @@
                                                                                 <ComboBox Grid.Column="0" Classes="field" HorizontalAlignment="Stretch"
                                                                                           ItemsSource="{x:Static m:ParticleSystemComponentViewModel.SubEmitterTriggers}"
                                                                                           SelectedItem="{Binding Trigger, Mode=TwoWay}" ToolTip.Tip="When it emits" />
-                                                                                <TextBox Grid.Column="1" Classes="field" Text="{Binding Target, Mode=TwoWay}" Watermark="Gameobject name"
-                                                                                         ToolTip.Tip="Gameobject with the Particle System that emits (Play On Awake off, Rate 0)" />
+                                                                                <controls:ReferenceSlot Grid.Column="1" Value="{Binding Target}" Placeholder="Drop a particle system here"
+                                                                                                        ToolTip.Tip="Drop a Hierarchy gameobject with a Particle System (Play On Awake off, Rate 0)"
+                                                                                                        Clear="Reference_Clear"
+                                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                                        DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                                                 <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this row" />
                                                                             </Grid>
                                                                             <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="4">
@@ -4157,15 +4627,11 @@
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
                                                     <TextBlock Text="Script" Classes="muted" FontSize="11" />
-                                                    <ComboBox Classes="field" HorizontalAlignment="Stretch"
-                                                              ItemsSource="{Binding AvailableScripts}"
-                                                              SelectedItem="{Binding SelectedScript, Mode=TwoWay}">
-                                                        <ComboBox.ItemTemplate>
-                                                            <DataTemplate x:DataType="scripting:ScriptDefinition">
-                                                                <TextBlock Text="{Binding DisplayName}" />
-                                                            </DataTemplate>
-                                                        </ComboBox.ItemTemplate>
-                                                    </ComboBox>
+                                                    <controls:ReferenceSlot Value="{Binding ReferenceLabel}" Placeholder="Drop a script from Assets here"
+                                                                            ToolTip.Tip="Drop a registered C# Script Behaviour from Assets > Scripts"
+                                                                            Clear="Reference_Clear"
+                                                                            DragDrop.AllowDrop="True" DragDrop.DragOver="ScriptAsset_DragOver"
+                                                                            DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="ScriptAsset_Drop" />
                                                     <TextBlock Text="{Binding ScriptId}" Classes="muted" FontSize="10" TextWrapping="Wrap" />
                                                     <!-- Serialized fields: public / [SerializeField] fields of the script (Engine.Scripting.ScriptFields).
                                                          Each row is label + editor (picked by the field view model's type) + reset. -->
@@ -4229,35 +4695,18 @@
                                                                 </Button>
                                                             </DataTemplate>
                                                             <DataTemplate DataType="m:ScriptGameObjectFieldViewModel" x:DataType="m:ScriptGameObjectFieldViewModel">
-                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
-                                                                          ItemsSource="{Binding Options}"
-                                                                          SelectedItem="{Binding Value, Mode=TwoWay}">
-                                                                    <ComboBox.ItemTemplate>
-                                                                        <DataTemplate x:DataType="m:GameObjectOption">
-                                                                            <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                                        </DataTemplate>
-                                                                    </ComboBox.ItemTemplate>
-                                                                </ComboBox>
+                                                                <controls:ReferenceSlot Value="{Binding ReferenceLabel}" Placeholder="Drop a gameobject here"
+                                                                                        ToolTip.Tip="Drop a gameobject from the Hierarchy"
+                                                                                        Clear="Reference_Clear"
+                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="GameObjectReference_DragOver"
+                                                                                        DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="GameObjectReference_Drop" />
                                                             </DataTemplate>
                                                             <DataTemplate DataType="m:ScriptPrefabFieldViewModel" x:DataType="m:ScriptPrefabFieldViewModel">
-                                                                <!-- Pick a prefab, or drag one from Assets onto the box. -->
-                                                                <ComboBox Classes="field" HorizontalAlignment="Stretch"
-                                                                          ItemsSource="{Binding Options}"
-                                                                          SelectedItem="{Binding Value, Mode=TwoWay}"
-                                                                          DragDrop.AllowDrop="True"
-                                                                          DragDrop.DragOver="PrefabField_DragOver"
-                                                                          DragDrop.Drop="PrefabField_Drop">
-                                                                    <ComboBox.ItemTemplate>
-                                                                        <DataTemplate x:DataType="m:PrefabOption">
-                                                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                                <controls:LucideIcon Icon="Package" Width="12" Height="12"
-                                                                                                     Foreground="{StaticResource AnvilPrefabBrush}"
-                                                                                                     IsVisible="{Binding IsPrefab}" />
-                                                                                <TextBlock Text="{Binding Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                                            </StackPanel>
-                                                                        </DataTemplate>
-                                                                    </ComboBox.ItemTemplate>
-                                                                </ComboBox>
+                                                                <controls:ReferenceSlot Value="{Binding ReferenceLabel}" Placeholder="Drop a prefab here"
+                                                                                        ToolTip.Tip="Drop a prefab from Assets"
+                                                                                        Clear="Reference_Clear"
+                                                                                        DragDrop.AllowDrop="True" DragDrop.DragOver="PrefabField_DragOver"
+                                                                                        DragDrop.DragLeave="Reference_DragLeave" DragDrop.Drop="PrefabField_Drop" />
                                                             </DataTemplate>
                                                         </ItemsControl.DataTemplates>
                                                         <ItemsControl.ItemTemplate>

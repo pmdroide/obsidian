@@ -77,7 +77,7 @@ internal static class LodChecks
         Check(lod is { CullDistance: 0, CurrentLevel: 0 } && lod.Levels.Count == 1 && lod.Levels[0] is { Model: "", Distance: 20 } &&
               editor.Levels.Count == 1 && !owner.AddableComponents.Single(c => c.DisplayName == "LOD").AddCommand.CanExecute(null),
             "LOD starts with one empty level at 20 m, no culling, and is unique per gameobject");
-        Check(editor.Levels[0].ModelKeys.Contains("Cube"), "a level's model list offers the engine's model keys");
+        Check(editor.Levels[0].ModelKeys.Contains("Cube"), "the LOD editor knows the engine's model keys");
 
         editor.Levels[0].Model = "Cube";
         editor.Levels[0].Distance = 15;
@@ -97,6 +97,12 @@ internal static class LodChecks
         Publish();
         Check(lod.Levels.Count == 1 && lod.Levels[0] is { Model: "Cube", Distance: 30 } && editor.Levels.Count == 1,
             "removing a level removes it in the engine");
+        editor.Levels[0].Clear();
+        Publish();
+        Check(lod.Levels[0] is { Model: "", Distance: 30 } && editor.Levels[0].Model == "",
+            "clearing a LOD model slot reaches the engine and keeps its distance");
+        editor.Levels[0].Model = "Cube";
+        Publish();
 
         lod.Levels.Add(new LodLevel { Model = "Cube", Distance = 60 });
         lod.CullDistance = 200;

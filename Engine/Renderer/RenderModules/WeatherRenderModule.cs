@@ -10,7 +10,8 @@ namespace Engine.Renderer.RenderModules;
 
 /// <summary>
 /// Draws the scene's weather (rain, sandstorm, snow) from <see cref="EnvironmentSettings"/>: a distance haze,
-/// then a box of GPU-animated particles around the camera. Runs after water, before TAA, on the HDR image.
+/// a ground mist (<see cref="SurfaceWetness.GroundFog"/>, which lingers after the weather), then a box of
+/// GPU-animated particles around the camera. Runs after water, before TAA, on the HDR image.
 /// The particle buffers are built once; intensity picks how many of them are drawn.
 /// </summary>
 public sealed class WeatherRenderModule : IDisposable
@@ -19,6 +20,10 @@ public sealed class WeatherRenderModule : IDisposable
     public static readonly float[] GroupSpeeds = { 0.82f, 0.94f, 1.06f, 1.18f };
     // Offsets and the sway clock are wrapped so they never lose float precision.
     private const double TimePeriod = 3600;
+    // Wind drift of the ground mist wisps; the noise in Weather.fx repeats over exactly this distance (MistPeriod).
+    public const double MistDriftPeriod = 2000;
+    // How far along the view the ground mist is integrated (the sky sees this much of it).
+    public const float MistMaxDistance = 300;
 
     private readonly Effect _shader;
     private VertexBuffer _vertices;
@@ -26,6 +31,9 @@ public sealed class WeatherRenderModule : IDisposable
     private int _capacity;
     private readonly double[] _offsets = new double[GroupSpeeds.Length * 3];
     private double _time;
+    // Broad mist banks (x, y) and the faster detail (z, w)
+    private readonly double[] _mistDrift = new double[4];
+    private int _frame;
 
     private struct ParticleVertex : IVertexType
     {
@@ -44,6 +52,8 @@ public sealed class WeatherRenderModule : IDisposable
 
     /// <summary>Particles drawn this frame (0 when the weather is off); for tests and stats.</summary>
     public int LastParticleCount { get; private set; }
+    /// <summary>Was the ground mist drawn this frame? For tests and stats.</summary>
+    public bool LastDrewGroundFog { get; private set; }
 
     /// <summary>Accumulated fall and wind of one speed group, wrapped to the profile's box.</summary>
     public Vector3 GroupOffset(int group) =>
@@ -54,6 +64,13 @@ public sealed class WeatherRenderModule : IDisposable
     {
         double delta = Math.Clamp(elapsedSeconds, 0, 0.25);
         _time = (_time + delta) % TimePeriod;
+        // The mist drifts with the wind, slower than the rain (the air near the ground is sheltered)
+        Vector2 wind = WeatherProfile.Wind(settings);
+        for (int i = 0; i < 4; i++)
+        {
+            double speed = (i < 2 ? 0.35 : 0.55) * (i % 2 == 0 ? wind.X : wind.Y);
+            _mistDrift[i] = Wrap(_mistDrift[i] - speed * delta, MistDriftPeriod);
+        }
         WeatherProfile profile = WeatherProfile.For(settings?.Weather ?? WeatherType.None);
         if (profile == null) return;
         Vector3 velocity = profile.Velocity(settings);
@@ -68,15 +85,21 @@ public sealed class WeatherRenderModule : IDisposable
     private static double Wrap(double value, double period) => ((value % period) + period) % period;
 
     /// <param name="depthMap">Linear G-buffer depth (view Z / -farClip): fades particles into geometry, thickens the haze.</param>
+    /// <param name="wetness">The eased weather state; its ground mist is drawn while it lingers after the weather.</param>
     public void Draw(GraphicsDevice graphics, EnvironmentSettings settings, Camera camera, Matrix view,
         Matrix viewProjection, TextureCube environment, List<DirectionalLight> lights, Texture2D depthMap,
-        float farClip, FullScreenTriangle fullScreenTriangle)
+        float farClip, FullScreenTriangle fullScreenTriangle, SurfaceWetness wetness = null)
     {
         LastParticleCount = 0;
-        if (!WeatherProfile.IsActive(settings) || camera == null) return;
+        LastDrewGroundFog = false;
+        if (camera == null || settings == null) return;
+        float mist = wetness?.GroundFog ?? 0;
+        bool drawMist = mist > 1e-5f && fullScreenTriangle != null;
+        bool active = WeatherProfile.IsActive(settings);
+        if (!active && !drawMist) return;
         WeatherProfile profile = WeatherProfile.For(settings.Weather);
         float intensity = WeatherProfile.Intensity(settings);
-        EnsureBuffers(graphics);
+        _frame = (_frame + 1) % 1024;
 
         Matrix inverseView = Matrix.Invert(view);
         Set("ViewProj", viewProjection);
@@ -100,8 +123,8 @@ public sealed class WeatherRenderModule : IDisposable
         graphics.RasterizerState = RasterizerState.CullNone;
         graphics.BlendState = BlendState.NonPremultiplied;
 
-        // Haze first, so the particles in front of the camera stay crisp on top of it.
-        float strength = intensity * Math.Clamp(float.IsFinite(settings.WeatherHaze) ? settings.WeatherHaze : 0, 0, 1);
+        // Haze first, then the ground mist, so the particles in front of the camera stay crisp on top of both.
+        float strength = active ? intensity * Math.Clamp(float.IsFinite(settings.WeatherHaze) ? settings.WeatherHaze : 0, 0, 1) : 0;
         if (strength > 0 && fullScreenTriangle != null)
         {
             Set("HazeColor", Linear(profile.HazeColor));
@@ -112,7 +135,24 @@ public sealed class WeatherRenderModule : IDisposable
             fullScreenTriangle.Draw(graphics);
         }
 
-        int count = Math.Min(_capacity, (int)Math.Round(profile.MaxParticles * intensity));
+        if (drawMist)
+        {
+            Set("CameraForward", inverseView.Forward);
+            Set("MistDensity", mist);
+            Set("MistBase", settings.GroundFogBase);
+            Set("MistHeight", Math.Clamp(float.IsFinite(settings.GroundFogHeight) ? settings.GroundFogHeight : 1.2f, 0.2f, 20));
+            Set("MistColor", wetness.GroundFogColor);
+            _shader.Parameters["MistDrift"]?.SetValue(new Vector4((float)_mistDrift[0], (float)_mistDrift[1],
+                (float)_mistDrift[2], (float)_mistDrift[3]));
+            Set("MistMaxDistance", MistMaxDistance);
+            Set("FrameIndex", (float)_frame);
+            _shader.CurrentTechnique = _shader.Techniques["GroundFog"];
+            _shader.CurrentTechnique.Passes[0].Apply();
+            fullScreenTriangle.Draw(graphics);
+            LastDrewGroundFog = true;
+        }
+
+        int count = active ? Math.Min(EnsureBuffers(graphics), (int)Math.Round(profile.MaxParticles * intensity)) : 0;
         if (count > 0)
         {
             var offsets = new Vector3[GroupSpeeds.Length];
@@ -145,9 +185,10 @@ public sealed class WeatherRenderModule : IDisposable
         graphics.BlendState = BlendState.Opaque;
     }
 
-    private void EnsureBuffers(GraphicsDevice graphics)
+    /// <returns>The number of particles the buffers hold.</returns>
+    private int EnsureBuffers(GraphicsDevice graphics)
     {
-        if (_vertices != null) return;
+        if (_vertices != null) return _capacity;
         _capacity = Math.Max(WeatherProfile.Rain.MaxParticles,
             Math.Max(WeatherProfile.Sandstorm.MaxParticles, WeatherProfile.Snow.MaxParticles));
         // Fixed seed: the same particle layout every run. Seeds are shuffled, so any prefix is evenly spread.
@@ -168,6 +209,7 @@ public sealed class WeatherRenderModule : IDisposable
         _vertices.SetData(vertices);
         _indices = new IndexBuffer(graphics, IndexElementSize.ThirtyTwoBits, indices.Length, BufferUsage.WriteOnly);
         _indices.SetData(indices);
+        return _capacity;
     }
 
     private static Vector3 Linear(Color color)

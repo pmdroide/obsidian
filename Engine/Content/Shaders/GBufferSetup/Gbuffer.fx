@@ -48,6 +48,8 @@ bool WetSurface = false;
 float4 WetParams = float4(0, 0.5, 0.33, 0);
 // Raindrop ripples in the puddles (0 = still water)
 float Ripples = 0;
+// Raindrops on any material (see ApplyRainDrops): 0 = dry .. 1 = covered (eased, lingers after the rain)
+float RainDrops = 0;
 // (Time, the ripple clock, is declared in helper.fx)
 
 #include "../Common/FoliageWind.fx"
@@ -323,9 +325,120 @@ void ApplyWetSurface(inout Render_IN input, float2 texCoord)
     input.Normal = normalize(lerp(normal, waterNormal, puddle));
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  RAINDROPS ON SURFACES
+
+// One layer of beads, one drop per cell (p in cells). Each cycle the drop lands somewhere else in its cell,
+// swells as it lands, sits, then shrinks away. Returns xy = slope of the water (cell units), z = coverage.
+// stretch > 1 sags the drop downwards (walls).
+float3 BeadLayer(float2 p, float time, float density, float stretch)
+{
+    float2 cell = floor(p);
+    float seed = WetHash(cell + 3.7f);
+    float cycle = time * (0.08f + seed * 0.12f) + seed * 5.0f;
+    float life = frac(cycle);
+    float2 rnd = float2(WetHash(cell + floor(cycle) * 9.17f), WetHash(cell + floor(cycle) * 4.13f + 23.9f));
+    float alive = step(WetHash(cell + floor(cycle) * 6.71f + 11.3f), density);
+    float size = (0.12f + 0.12f * WetHash(cell + floor(cycle) * 2.39f + 57.1f))
+               * saturate(life * 12) * saturate((1 - life) * 4);
+    float2 delta = frac(p) - 0.25f - rnd * 0.5f;
+    delta.y *= lerp(1, 1 / stretch, step(delta.y, 0));
+    float r = length(delta) / max(size, 1e-4f);
+    float inside = saturate((1 - r) * 6) * alive;
+    // Dome: the slope grows towards the rim
+    float2 slope = delta / max(size, 1e-4f) / sqrt(max(1 - r * r, 0.2f));
+    return float3(slope * inside, inside);
+}
+
+// Drips running down a wall in columns (p in metres: x across, y = world Z). Returns xy slope, z = drop, w = trail.
+float4 DripLayer(float2 p, float time, float density)
+{
+    const float width = 0.045f;
+    float column = floor(p.x / width);
+    float seed = WetHash(float2(column, 7.7f));
+    float speed = 0.12f + 0.35f * WetHash(float2(column, 19.3f));
+    const float period = 1.6f;
+    float run = time * speed + seed * period;
+    float alive = step(WetHash(float2(column, floor(run / period) + 31.0f)), density * 0.45f);
+    // Height of the head within its period, falling; the column meanders a little
+    float head = period - fmod(run, period);
+    float y = fmod(p.y, period);
+    y += y < 0 ? period : 0;
+    float x = (frac(p.x / width) - 0.5f) * width + sin(p.y * 9 + seed * 20) * 0.004f;
+    float headSize = 0.006f + 0.004f * seed;
+    float2 delta = float2(x, (y - head) * 0.55f);
+    float r = length(delta) / headSize;
+    float drop = saturate((1 - r) * 5) * alive;
+    float2 slope = delta / headSize / sqrt(max(1 - r * r, 0.2f)) * drop;
+    // The wet trail it leaves above the head, narrowing and drying behind it
+    float above = y - head;
+    float trail = saturate(1 - abs(x) / (headSize * 0.6f)) * step(0, above) * saturate(1 - above / 0.35f) * alive;
+    return float4(slope, drop, trail);
+}
+
+// Rain on any material (except Wet Surface, which has its own puddles): a wet sheen, beads on the faces the
+// rain reaches and drips running down walls. World space, so drops never stretch with the UVs.
+void ApplyRainDrops(inout Render_IN input)
+{
+    float3 viewGeo = normalize(input.GeoNormal);
+    float3 n = normalize(mul((float3x3)View, viewGeo)); // world space (View is orthonormal)
+
+    // Surface coordinates: tops use XY, walls their horizontal axis and Z (so drips fall down)
+    bool top = abs(n.z) > 0.7f;
+    bool facesX = abs(n.x) > abs(n.y);
+    float2 uv = top ? input.WorldPos.xy : float2(facesX ? input.WorldPos.y : input.WorldPos.x, input.WorldPos.z);
+    float3 axisU = top ? float3(1, 0, 0) : (facesX ? float3(0, 1, 0) : float3(1, 0, 0));
+    float3 axisV = top ? float3(0, 1, 0) : float3(0, 0, 1);
+    // Size of a pixel on the surface (before any early out: derivatives need the whole pixel quad).
+    // Drops smaller than ~2 pixels fade into the sheen instead of shimmering.
+    float footprint = max(length(ddx(input.WorldPos)), length(ddy(input.WorldPos)));
+    float detail = 1 - smoothstep(0.0025f, 0.006f, footprint);
+
+    // Undersides stay dry; tops get the most
+    float exposure = smoothstep(-0.45f, 0.05f, n.z);
+    if (exposure <= 0) return;
+
+    float amount = RainDrops * exposure;
+    // Wet sheen: darker porous surfaces, glossier everything
+    input.Color.rgb *= lerp(1, 0.82f, amount * (1 - input.Metallic));
+    input.roughness = lerp(input.roughness, input.roughness * 0.55f, amount);
+    if (detail <= 0) return;
+
+    float wall = 1 - smoothstep(0.55f, 0.85f, abs(n.z));
+    float2 slope = 0;
+    float coverage = 0;
+    // Two sizes of bead; walls hold fewer, sagging ones
+    const float bigCell = 0.05f;
+    const float smallCell = 0.022f;
+    float3 big = BeadLayer(uv / bigCell, Time, RainDrops * lerp(0.55f, 0.3f, wall), lerp(1, 1.8f, wall));
+    float3 small = BeadLayer(uv / smallCell + 17.3f, Time * 1.3f, RainDrops * lerp(0.7f, 0.4f, wall), lerp(1, 1.5f, wall));
+    slope += big.xy + small.xy;
+    coverage = max(big.z, small.z);
+    float trail = 0;
+    [branch]
+    if (wall > 0)
+    {
+        float4 drip = DripLayer(uv, Time, RainDrops * wall);
+        slope += drip.xy;
+        coverage = max(coverage, drip.z);
+        trail = drip.w * wall;
+    }
+    coverage *= detail * exposure;
+    trail *= detail * exposure;
+
+    // A drop is a little lens of water: its own smooth normal, glossy, and darkens what it sits on
+    float3 dropNormal = normalize(n - (axisU * slope.x + axisV * slope.y) * 0.3f);
+    float3 viewDrop = normalize(mul(dropNormal, (float3x3)View));
+    input.Normal = normalize(lerp(input.Normal, viewDrop, coverage));
+    // Not lower: the sun's highlight on a sharper mirror overflows the half-float light buffer
+    input.roughness = lerp(input.roughness, 0.07f, max(coverage, trail * 0.7f));
+    input.Metallic = lerp(input.Metallic, 0, coverage);
+    input.Color.rgb *= lerp(1, 0.93f, max(coverage, trail * 0.5f));
+}
+
 //See BufferSetup.dgml for overview
 PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
-{       
+{
     if (OverrideSurface)
     {
         input.Color.rgb *= SurfaceTint;
@@ -335,6 +448,8 @@ PixelShaderOutput WriteBuffers(Render_IN input, float2 texCoord)
     [branch]
     if (WetSurface)
         ApplyWetSurface(input, texCoord);
+    else if (RainDrops > 0.001f)
+        ApplyRainDrops(input);
     float4 finalValue = input.Color;
 
     //Deferred MRT

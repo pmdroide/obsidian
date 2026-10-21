@@ -210,11 +210,14 @@ See [VistaUI_Architecture.md](VistaUI_Architecture.md) for the supported CSS and
 `Content/Scenes/MainMenu.obsc` is entry 0 of the shipped scene list. It tests that Vista works and looks
 good in a real game flow.
 
-**Scene.** A ring of nine black obsidian monoliths around an emissive ember core on a dark dais, at
-golden hour (17:36, with the day/night cycle at its slowest so the light holds still). The sun is
-low behind the ring at three-quarters, for long shadows and fog shafts. The `Main Menu` script on the
-Main Camera drifts the camera slowly around the ring. In the menus it pushes in and frames the ring to
-the right of the menu column.
+**Scene.** A showcase of how the game looks: the player (`PlayerYBot`) dances (Animator, Source
+`GameObjects/Player/Silly Dancing`, an animation-only Mixamo FBX) in a dark, closed, hazy room. A warm
+light just behind it (with shadows) rims the silhouette and glows through a **Fog Volume**, a cooler
+fill lights its front, and a teal fill, a green neon tube, two balloons, a beach ball, trash bags and a
+dim figure dancing slowly at the back fill the room. No sun; the room's own environment sample lights
+it. The `Main Menu` script on the Main Camera sways the camera slowly in front of the character. On
+the title the character is centred and the wordmark sits bottom left; in the menus the camera aims
+left of it, framing it right of the menu column.
 
 **Flow.**
 

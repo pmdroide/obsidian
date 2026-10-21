@@ -1,5 +1,5 @@
 // Weather: rain streaks, sand grains and snow flakes in a box of particles that follows the camera, plus
-// a distance haze. Particles live on a world-space lattice that repeats every Box metres, so they stay put
+// a distance haze and a ground mist. Particles live on a world-space lattice that repeats every Box metres, so they stay put
 // when the camera moves and wrap around it. Fall and wind are CPU-accumulated offsets per speed group
 // (Engine/Renderer/RenderModules/WeatherRenderModule.cs), so changing the wind never makes them jump.
 // Both passes read the linear G-buffer depth instead of a depth buffer: particles fade into geometry and
@@ -203,6 +203,126 @@ float4 HazePS(HazeOutput input) : SV_TARGET
     float forward = pow(saturate(dot(direction, L)), 6);
     float3 color = HazeColor * (Ambient(direction) + LightColor * (0.06f + 0.5f * forward));
     return float4(color, amount);
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Ground mist: low fog lying on the ground in the rain (and dust in a sandstorm). Density falls off
+// exponentially above MistBase; wind-blown wisps of 2D noise thin it out in patches. The view ray is
+// clipped to the layer and marched in a few steps (jittered per pixel and frame, TAA smooths it).
+// ---------------------------------------------------------------------------------------------------
+
+float3 CameraForward;
+float MistDensity;       //per metre at MistBase
+float MistBase;          //world Z of the ground
+float MistHeight;        //density falls to 1/e this far above the base, metres
+float3 MistColor;        //linear
+float4 MistDrift;        //wind-blown offset of the wisps, metres: xy broad shapes, zw faster detail (wrapped every MistPeriod)
+float MistMaxDistance;   //the sky and far geometry see this much of the layer
+float FrameIndex;        //jitter seed
+
+float MistHash(float2 p)
+{
+    float3 p3 = frac(p.xyx * 0.1031f);
+    p3 += dot(p3, p3.yzx + 33.33f);
+    return frac((p3.x + p3.y) * p3.z);
+}
+
+//Drift wraps every MistPeriod metres (WeatherRenderModule.MistDriftPeriod); each octave repeats after a whole
+//number of its cells over that distance, so the wrap never shows.
+static const float MistPeriod = 2000;
+
+//Value noise that repeats every 'period' cells
+float MistNoise(float2 p, float period)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float2 u = f * f * (3 - 2 * f);
+    float2 i0 = i - period * floor(i / period);
+    float2 i1 = i0 + 1;
+    i1 -= period * floor(i1 / period);
+    return lerp(lerp(MistHash(i0), MistHash(float2(i1.x, i0.y)), u.x),
+                lerp(MistHash(float2(i0.x, i1.y)), MistHash(i1), u.x), u.y);
+}
+
+//Wisps: 0 (clear) .. ~1.6 (thick), 1 on average. Detail fades out with distance (detail 0 = average).
+float MistWisps(float3 p, float detail)
+{
+    //Broad banks drift with the wind, the finer curls faster; height shifts the pattern so the mist has depth.
+    //Scales are 90, 260 and 740 cells per MistPeriod.
+    float2 q = p.xy + MistDrift.xy;
+    float2 r = p.xy + MistDrift.zw;
+    float n = MistNoise(q * 0.045f, 90) * 0.55f;
+    n += MistNoise(r * 0.13f + float2(p.z * 0.35f, 31.7f), 260) * 0.3f;
+    n += MistNoise(r * 0.37f + float2(17.3f, -p.z * 0.6f), 740) * 0.15f;
+    float wisps = saturate((n - 0.25f) * 2.2f) * 1.6f;
+    return lerp(1, wisps, detail);
+}
+
+float MistLayerDensity(float3 p)
+{
+    return MistDensity * exp(-max(p.z - MistBase, 0) / MistHeight);
+}
+
+float4 GroundFogPS(HazeOutput input) : SV_TARGET
+{
+    float depth = HasDepth ? DepthMap.Load(int3(input.Position.xy, 0)).r : 1;
+    float4 far = mul(float4(input.Clip, 1, 1), InverseViewProjection);
+    float3 direction = normalize(far.xyz / far.w - CameraPosition);
+    //Linear depth is view Z; turn it into a distance along this pixel's ray
+    float along = max(dot(direction, CameraForward), 0.01f);
+    float distance = depth >= 0.9999f ? MistMaxDistance : min(depth * FarClip / along, MistMaxDistance);
+
+    //Clip the ray to the slab below the layer's top, where the density has fallen to ~1%
+    float top = MistBase + MistHeight * 4.5f;
+    float t0 = 0;
+    float t1 = distance;
+    if (abs(direction.z) > 1e-4f)
+    {
+        float tTop = (top - CameraPosition.z) / direction.z;
+        if (CameraPosition.z > top)
+        {
+            if (direction.z >= 0) discard;
+            t0 = tTop;
+        }
+        else if (direction.z > 0)
+            t1 = min(t1, tTop);
+    }
+    else if (CameraPosition.z > top) discard;
+    if (t1 <= t0) discard;
+
+    //March: steps packed towards the camera, where the wisps are seen in detail
+    const int Steps = 12;
+    float jitter = MistHash(input.Position.xy + FrameIndex * 17.13f);
+    float opticalDepth = 0;
+    float previous = t0;
+    [loop]
+    for (int i = 0; i < Steps; i++)
+    {
+        float s = (i + jitter) / Steps;
+        float t = lerp(t0, t1, s * s);
+        float next = lerp(t0, t1, ((i + 1.0f) / Steps) * ((i + 1.0f) / Steps));
+        float3 p = CameraPosition + direction * t;
+        float detail = 1 - smoothstep(40, 140, t);
+        opticalDepth += MistLayerDensity(p) * MistWisps(p, detail) * (next - previous);
+        previous = next;
+    }
+    float alpha = 1 - exp(-opticalDepth);
+    clip(alpha - 0.002f);
+
+    //Lit like the haze: sky ambient from below the horizon line, the sun glowing through it
+    float3 L = normalize(LightDirection);
+    float forward = pow(saturate(dot(direction, L)), 6);
+    float3 color = MistColor * (Ambient(direction) + LightColor * (0.08f + 0.6f * forward));
+    return float4(color, alpha);
+}
+
+technique GroundFog
+{
+    pass Pass0
+    {
+        VertexShader = compile vs_5_0 HazeVS();
+        PixelShader = compile ps_5_0 GroundFogPS();
+    }
 }
 
 technique Particles

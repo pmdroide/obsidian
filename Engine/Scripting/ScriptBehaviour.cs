@@ -106,7 +106,7 @@ public abstract partial class ScriptBehaviour
         }
     }
 
-    /// <summary>Writes a line to the engine/editor log.</summary>
+    /// <summary>Writes a line with the object's name to Anvil's Console and the engine/editor log file.</summary>
     protected void Log(string message) =>
         EditorBridge.Log($"[{GameObject?.Name ?? (Camera != null ? "Main Camera" : null)}] {message}");
 

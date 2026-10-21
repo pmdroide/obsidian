@@ -288,6 +288,63 @@
 /processorParam:TextureFormat=DxtCompressed
 /build:GameObjects/Tree/tree.obj
 
+#begin GameObjects/Bottle/bottle.obj
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=DxtCompressed
+/build:GameObjects/Bottle/bottle.obj
+
+#begin GameObjects/Vase/vase.obj
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=DxtCompressed
+/build:GameObjects/Vase/vase.obj
+
+#begin GameObjects/Head/head.obj
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=DxtCompressed
+/build:GameObjects/Head/head.obj
+
 #begin GameObjects/Tree/bark_albedo.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -455,6 +512,12 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:Shaders/Deferred/DeferredPointLight.fx
+
+#begin Shaders/Deferred/Lightmap.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shaders/Deferred/Lightmap.fx
 
 #begin Shaders/Deferred/EnvironmentPrefilter.fx
 /importer:EffectImporter
@@ -813,6 +876,25 @@
 /processorParam:TextureFormat=Compressed
 /build:GameObjects/Player/Walking.fbx
 
+#begin GameObjects/Player/Silly Dancing.fbx
+/importer:FbxImporter
+/processor:SkinnedModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=True
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=90
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=0.01
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:GameObjects/Player/Silly Dancing.fbx
+
 #begin GameObjects/Wolf/Wolf.fbx
 /importer:FbxImporter
 /processor:SkinnedModelProcessor
@@ -999,3 +1081,15 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:GameObjects/Textures/Ground/RockyDirt_Height.jpg
+
+#begin GameObjects/Textures/Ground/Bricks_Normal_FlipG.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:GameObjects/Textures/Ground/Bricks_Normal_FlipG.png

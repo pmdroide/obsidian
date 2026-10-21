@@ -266,6 +266,12 @@ namespace Engine.Physics
             ConvexHull hull;
             try { hull = new ConvexHull(numerics, BufferPool, out center); }
             catch { return false; }
+            // A sliver hull has (almost) no volume: its centre comes out non-finite.
+            if (!float.IsFinite(center.X) || !float.IsFinite(center.Y) || !float.IsFinite(center.Z))
+            {
+                hull.Dispose(BufferPool);
+                return false;
+            }
 
             inertia = hull.ComputeInertia(mass);
             if (!float.IsFinite(inertia.InverseMass) || !float.IsFinite(inertia.InverseInertiaTensor.XX) ||

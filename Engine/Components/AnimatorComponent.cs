@@ -109,6 +109,7 @@ public sealed class AnimatorComponent : GameComponent
     private float _posedTime = float.NaN;
     // BasicEntity.BonePose version of the last upload: posed bones (Anvil Armature) sit on top of the clip.
     private int _posedBones = -1;
+    private int _posedCollapse = -1;
 
     // What plays. Kept from a Play/Stop call made before OnStart (a script listed above the Animator).
     private bool _started, _selected, _stopped, _paused, _finished;
@@ -290,7 +291,8 @@ public sealed class AnimatorComponent : GameComponent
         }
 
         // A finished one-shot (or Speed 0) keeps its last pose without re-skinning.
-        if (_time != _posedTime || _player.InPlace != InPlace || _posedBones != owner.BonePose.Version) Pose();
+        if (_time != _posedTime || _player.InPlace != InPlace || _posedBones != owner.BonePose.Version
+            || _posedCollapse != owner.CollapsedBonesVersion) Pose();
 
         if (reachedEnd && !_finished) Finish();
     }
@@ -299,6 +301,7 @@ public sealed class AnimatorComponent : GameComponent
     {
         _posedTime = _time;
         _posedBones = _owner.BonePose.Version;
+        _posedCollapse = _owner.CollapsedBonesVersion;
         _player.InPlace = InPlace;
         _player.Evaluate(_time);
         if (_fading)
@@ -308,7 +311,7 @@ public sealed class AnimatorComponent : GameComponent
             float t = MathHelper.Clamp(_fadeElapsed / _fadeDuration, 0, 1);
             _player.BlendFrom(_fadePlayer, t * t * (3 - 2 * t));
         }
-        _skin.Update(_player.SkinTransforms);
+        _skin.Update(BoneCollapse.Apply(_owner, _player.Skeleton, _player.SkinTransforms));
         // Skinned vertices moved: redo culling and redraw shadow maps this frame.
         _owner.WorldTransform.HasChanged = true;
     }

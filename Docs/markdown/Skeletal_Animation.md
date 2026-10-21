@@ -145,6 +145,10 @@ selectable proxy the gizmo writes through. Checks: `BoneChecks` in `Tests/Compon
 3. Place it in a scene and add an **Animator**. Use **Source** for clips stored in another FBX, and
    **Actions** to name the clips your scripts switch between.
 
+Animation-only files (Mixamo **Without Skin**, e.g. `GameObjects/Player/Silly Dancing.fbx`) use the
+same entry. Without a skinned mesh, the importer leaves the rig as plain nodes, so the processor makes
+the topmost node the clips animate the skeleton root. Use them as an Animator's Source.
+
 Files imported from the Assets panel use the plain `ModelProcessor`. Change their manifest entry
 to animate them.
 

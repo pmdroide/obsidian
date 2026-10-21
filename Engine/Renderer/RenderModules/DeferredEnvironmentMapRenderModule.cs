@@ -153,6 +153,12 @@ namespace Engine.Renderer.RenderModules
             }
         }
 
+        /// <summary>The background sky's cube map (planar reflections draw it too); null under the day/night cycle's procedural sky.</summary>
+        public TextureCube BackgroundSkyCube => _dayNightCycle || _skyMapTexture != null ? null : _skyCubeMapTexture;
+        /// <summary>The background sky's equirectangular map; null without one or under the day/night cycle.</summary>
+        public Texture2D BackgroundSkyMap => _dayNightCycle ? null : _skyMapTexture;
+        private bool _dayNightCycle;
+
         public Texture2D SkyTexture
         {
             set
@@ -165,6 +171,7 @@ namespace Engine.Renderer.RenderModules
 
         public void SetDayNightCycle(bool enabled, Vector3 sunDirection, float daylight)
         {
+            _dayNightCycle = enabled;
             _deferredEnvironmentShader.Parameters["DayNightCycle"]?.SetValue(enabled);
             _deferredEnvironmentShader.Parameters["SunDirection"]?.SetValue(sunDirection);
             _deferredEnvironmentShader.Parameters["Daylight"]?.SetValue(daylight);
@@ -184,6 +191,20 @@ namespace Engine.Renderer.RenderModules
             p["SunBrightness"]?.SetValue(settings.SunBrightness);
             p["MoonBrightness"]?.SetValue(settings.MoonBrightness);
             p["StarBrightness"]?.SetValue(settings.StarBrightness);
+        }
+
+        /// <summary>The image skybox's sun: direction towards it, the light's colour, strength (0 = off) and size.</summary>
+        public void SetSkyboxSun(Vector3 towardsSun, Color color, float strength, float size)
+        {
+            var p = _deferredEnvironmentShader.Parameters;
+            if (towardsSun.LengthSquared() < 1e-8f) strength = 0;
+            else towardsSun.Normalize();
+            p["SkySunDirection"]?.SetValue(towardsSun);
+            p["SkySunColor"]?.SetValue(ToLinear(color));
+            p["SkySunStrength"]?.SetValue(strength);
+            // The disc, then the cone the image's own bright pixels are boosted in (a few degrees: the light is rarely exact)
+            p["SkySunDisc"]?.SetValue(DiscEdges(0.0316f, 0.0200f, size));
+            p["SkySunCone"]?.SetValue(DiscEdges(0.12f, 0.05f, size));
         }
 
         private static Vector3 ToLinear(Color c) =>
@@ -380,6 +401,17 @@ namespace Engine.Renderer.RenderModules
         /// </summary>
         public void SetProbeVolume(LightingSystem lighting, float intensity, Vector3 capturePosition) =>
             ImageBasedLightingParameters.ApplyProbeVolume(_deferredEnvironmentShader.Parameters, lighting, intensity, capturePosition);
+
+        /// <summary>
+        /// Lightmaps (Source 2 look, phase 4.2): the lightmap pass's screen target (indirect irradiance + baked AO), or null.
+        /// Lightmapped pixels take their indirect diffuse and AO from it instead of the probes and SSAO.
+        /// </summary>
+        public void SetLightmaps(Texture2D lightmapTarget, float intensity)
+        {
+            _deferredEnvironmentShader.Parameters["UseLightmaps"]?.SetValue(lightmapTarget != null);
+            _deferredEnvironmentShader.Parameters["LightmapIntensity"]?.SetValue(intensity);
+            if (lightmapTarget != null) _deferredEnvironmentShader.Parameters["LightmapMap"]?.SetValue(lightmapTarget);
+        }
 
         public void DrawEnvironmentMap(GraphicsDevice graphicsDevice, Camera camera, Matrix view, FullScreenTriangle fullScreenTriangle, EnvironmentSample envSample, GameTime gameTime, bool fireflyReduction, float ffThreshold)
         {

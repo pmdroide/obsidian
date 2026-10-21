@@ -14,4 +14,5 @@
     <Platform Solution="*|x86" Project="x86" />
   </Project>
   <Project Path="Vista/Vista.csproj" />
+  <Project Path="Tools/McpInstaller/McpInstaller.csproj" />
 </Solution>

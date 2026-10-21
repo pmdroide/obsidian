@@ -157,12 +157,19 @@ internal static class ScriptFieldChecks
         Publish();
         Check(!component.Fields.ContainsKey("_count"), "an emptied number box does not store anything");
 
-        editor.SelectedScript = editor.AvailableScripts.Single(s => s.Id == OtherFieldsScript.Id);
+        Check(!editor.AssignAsset("UI/Menu.xml") && !editor.AssignAsset("Scripts/MenuSettings.cs") &&
+              editor.ScriptId == FieldsScript.Id,
+            "script slots reject UI documents and unregistered helper files without changing the attachment");
+        Check(editor.AssignAsset("Scripts/OtherFieldsScript.cs"), "script assets resolve to registered behaviours");
         Check(editor.Fields.Select(f => f.Name).SequenceEqual(new[] { "Height" }),
-            "picking another script shows its fields immediately");
+            "dropping another script shows its fields immediately");
         Publish();
         Check(component.ScriptId == OtherFieldsScript.Id && component.Fields.Count == 0,
             "switching scripts drops the previous script's values");
+        editor.Clear();
+        Publish();
+        Check(component.ScriptId == "" && !editor.HasFields && editor.ReferenceLabel == null,
+            "clearing a script slot removes the behaviour reference and its fields");
 
         // GameObject references
         ScriptRegistry.Register<ReferenceScript>(ReferenceScript.Id, "Test References");
@@ -237,14 +244,15 @@ internal static class ScriptFieldChecks
             Check(targetField.Value?.Id == target.Id && targetField.Value.Label == "Target Cube" && targetField.IsOverridden &&
                   targetField.Options.First() == ScriptGameObjectFieldViewModel.None &&
                   targetField.Options.Any(o => o.Id == holder.Id && o.Label == "Holder"),
-                "the Inspector offers None plus the scene's gameobjects and shows the stored one");
-            targetField.Value = targetField.Options.Single(o => o.Id == entity.Id);
+                "the gameobject slot resolves the stored reference to its scene label");
+            Check(targetField.Assign(entity.Id) && !targetField.Assign(987654) && !targetField.Assign(EditorBridge.MainCameraId),
+                "gameobject drops accept scene entities and reject stale IDs and the camera");
             Publish();
-            Check(refs.GetField<BasicEntity>("Target") == entity, "picking a gameobject in the Inspector reaches the engine");
-            targetField.Value = ScriptGameObjectFieldViewModel.None;
+            Check(refs.GetField<BasicEntity>("Target") == entity, "dropping a gameobject in the Inspector reaches the engine");
+            targetField.Clear();
             Publish();
             Check(refs.GetField<BasicEntity>("Target") == null && targetField.Value == ScriptGameObjectFieldViewModel.None,
-                "picking None clears the reference");
+                "clearing the reference slot clears the gameobject reference");
             refs.SetField("Target", 987654);
             Publish();
             Check(targetField.Value?.Label == "Missing (#987654)", "a stored ID with no gameobject shows as Missing");

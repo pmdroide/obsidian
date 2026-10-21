@@ -9,13 +9,13 @@
     Close the engine/Anvil first, otherwise locked files can't be deleted.
 
 .EXAMPLE
-    .\clean.ps1            # delete
-    .\clean.ps1 -WhatIf    # only list what would be deleted
+    .\Tools\Scripts\clean.ps1            # delete
+    .\Tools\Scripts\clean.ps1 -WhatIf    # only list what would be deleted
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param()
 
-$root = $PSScriptRoot
+$root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 
 $projectDirs = Get-ChildItem -Path $root -Recurse -File -Include *.csproj, *.mgcb |
     Where-Object { $_.FullName -notmatch '[\\/](bin|obj|\.git)[\\/]' } |

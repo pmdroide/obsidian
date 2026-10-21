@@ -22,7 +22,9 @@ floor with AO proxies.
 | Light cookie | Inspector of a spot light: **Cookie** (a built Content texture) | the scene |
 | Light source size | Inspector of a point/spot light: **Source Radius**, **Tube Length** | the scene |
 | Local reflections | Add Component > **Reflection Probe** on a box gameobject | the scene + `.reflections` sidecar |
+| Exact reflections on flat glass (windows, mirrors, the player in them) | Add Component > **Planar Reflection** on a Forward Shaded pane | the scene |
 | Finer baked light in a room | Add Component > **Probe Volume** on a box gameobject, then Inspector > Lighting > Bake | the scene + `<scene>.probes` |
+| Lightmaps (bounce light, AO, soft static shadows) | Inspector > **Lightmap Static** (+ Scale), lights' **Baked Shadows**, Lighting > Lightmaps, then Bake | the scene + `<scene>.lightmaps` |
 | Contact shadows under moving objects | Add Component > **AO Proxy** | the scene |
 | Material ambient occlusion map | Material component > Textures > **Ambient Occlusion** | the scene / `.mat` |
 | Anti-aliasing, shadow atlas, reflection probe size, culling | Post Processing > Anti-Aliasing / Shadows & Reflections | project settings (`GameSettings`) |
@@ -51,13 +53,13 @@ are project-wide renderer settings.
 
 | Setting | What it does |
 |---|---|
-| Tonemap | Curve: **Hejl** (default, the engine's original filmic fit), **Aces**, **Hable** (Uncharted 2), **Reinhard**, **Linear**. HLA's exact curve wasn't recovered (research R1). |
-| Exposure, White Point, S-Curve | Base exposure and curve shape. |
+| Tonemap | Curve: **Source2** (default): Half-Life: Alyx's `post_process` curve. It is Hable's 8-parameter form on 2.8 × the exposed colour, normalised by its value at 2^*White (stops)*, with parameters *Shoulder, Linear Strength, Linear Angle, Toe Strength, Toe Numerator, Toe Denominator* from the `.vpost` profiles; the defaults are HLA's neutral 0.15 / 0.5 / 0.1 / 0.2 / 0.02 / 0.3 / 4. Also **Hejl** (the engine's original filmic fit), **Aces**, **Hable** (Uncharted 2), **Reinhard**, **Linear**. See research R1. |
+| Exposure, White Point, S-Curve | Base exposure in EV (HLA's exposure bias, default 0), White Point (Hejl/Hable/Reinhard only), S-curve. |
 | Exact sRGB | The exact piecewise sRGB encode instead of `pow(x, 1/2.2)`. |
 | Color Grading, LUT | A 32³ strip LUT (Content path). Two volumes with different LUTs cross-fade (`ColorGradingFilter.Combine`). |
 | Saturation, Contrast, Color Filter, Vignette, Chromatic Aberration | Final-pass grading. |
-| Auto Exposure, Metering | **Bright Pixels** (default, Source's tonemap controller): the brightest *Bright Pixel %* of the frame is exposed to *Bright Target*, read off a 64-bin luminance histogram built on the GPU, never darker than *Min Average Luminance*. **Average**: the centre-weighted log average is exposed to *Key*. Min/Max EV, adaptation speeds and centre weight apply to both. |
-| Bloom Start, Knee, Scale | Only what is brighter than *Start* (in exposed units, soft knee) blooms; *Scale* is the bloom's strength. Walls don't bloom; highlights and lamps do. |
+| Auto Exposure, Metering | **Source2** (default, Half-Life: Alyx's log-luminance tonemap system): the frame's median luminance is exposed to *Key* (0.18) as `Key / 2^ln(median)`, so it follows L^-0.69 and dark rooms stay darker. Defaults from the game: EV -2 to +3 (0.25 to 8), adaptation 1.2 / 0.3 per second, no centre weight. **Bright Pixels** (Source 1's tonemap controller): the brightest *Bright Pixel %* of the frame is exposed to *Bright Target*, read off a 64-bin luminance histogram built on the GPU, never darker than *Min Average Luminance*. **Average**: the centre-weighted log average is exposed to *Key*. Min/Max EV, adaptation speeds and centre weight apply to all three. |
+| Bloom Threshold, Start, Knee, Scale | **Source2** (default): the colour blooms by `saturate((luma × exposure - Start) / Knee)`, luma = 0.3/0.59/0.11, as in HLA's bloom shader; defaults are HLA's base profile (1.976, width 2.3655). **Soft Knee**: the brightest channel above *Start* with a quadratic knee below it. *Scale* is the bloom's strength (added before the curve, like HLA's Add mode; still chosen by eye). Walls don't bloom; highlights and lamps do. |
 | Fog Density Scale | Multiplies the scene's volumetric fog (useful in volumes: a dusty room). |
 | Retina Burn | Bright lights leave a fading afterimage (Half-Life: Alyx). 0 = off. |
 
@@ -91,7 +93,7 @@ Numbers and colours interpolate; switches, curves and paths flip at half weight;
 
 ## Sun shadows (cascades)
 
-Directional lights have up to 4 cascades: practical splits between uniform and logarithmic (**Split Lambda**),
+Directional lights have up to 4 cascades: practical splits between uniform and logarithmic (**Split Lambda**, default\n0.85 like HLA's `csm_split_log_scalar`),
 fitted as stable, texel-snapped spheres around each slice of the view up to **Shadow Distance** (default 150 m), packed
 2 × 2 in one atlas (each cascade at most 2048 texels when there are several). The shader biases by texel size along
 the normal and the view direction, blends across cascade borders and fades out at the end. The fog, the forward pass
@@ -133,8 +135,9 @@ fade out between `g_shadowfadestart` and `g_shadowfadeend` metres from the light
   Inspector > **Capture** trigger capture, one probe per frame; at most 4 are blended per view. Captures include the sun's
   shadows only where the camera's cascades reach.
 - **Normalisation**: with baked probes, a reflection is scaled by the baked light at the pixel versus at the
-  capture point (`g_cubemapnormalizationmax`, `g_cubemapnormalizationroughnessbegin`), so chrome in a dark room no
-  longer glows with the sky.
+  capture point, so chrome in a dark room no longer glows with the sky. This is HLA's formula: darkening is never
+  limited; brightening is capped at 1 up to roughness `g_cubemapnormalizationroughnessbegin` (0.1) and rises linearly
+  to `g_cubemapnormalizationmax` (32) at roughness 1 (Post Processing > Normalize Max / Rough.).
 - Diffuse ambient without baked probes comes from the prefiltered global cubemap's last mip. Environment >
   **Diffuse Strength** 0.2 equals the full irradiance.
 
@@ -147,6 +150,28 @@ including filtering and distance fade. Spot cookies tint and shape both diffuse 
 including those on clear glass. Multiple cookies share a cached atlas (up to 512 texels per cookie) prepared before
 scene rendering; projection follows each spotlight's position, cone and rotation.
 
+## Planar reflections (glass panes and mirrors)
+
+Probes are cubemaps from one point, so a flat pane shows what that point saw: wrong parallax, nothing that moves, and
+never the player. Add Component > **Planar Reflection** on a flat Forward Shaded gameobject (glass) gives it the real
+mirror image instead:
+
+- Every frame, before Compose, the opaque scene is drawn again from the camera mirrored about the pane's face (the face
+  across its thinnest local side that the camera sees), through `Forward.fx` (`ReflectionPass`: sun with cascades,
+  point/spot lights, probe volume and reflection probes; clipped to the camera's side of the pane). The mirrored
+  camera keeps the main projection, so the glass reads its image at its own screen position.
+- Pixels nothing was drawn on get the background sky along the mirrored rays (`PlanarSky` technique, at the main
+  view's brightness). Under the day/night cycle's procedural sky they keep the reflection probes.
+- The glass uses the image as its specular reflection (Fresnel and BRDF unchanged), blurred through the image's mips
+  by roughness.
+- Inspector: **Resolution** (0.25-1 of the screen) and **Render Dist.** (metres from the camera). At most 2 panes draw a
+  frame, nearest first; the others keep their probes.
+- Not in the image: decals, SSAO, emissive glow, normal maps, fog, other glass and particles.
+
+LookDev's **Mirror Glass Pane** (in front of a dark wall at (-8, 7.5)) has one; the camera's **Camera Body** script
+keeps the **Player Body** Y Bot under the camera in Play, so you see yourself in it. The older **Glass Pane** keeps the
+probes and tests sun, shadows and fog on forward glass.
+
 ## Baked probes
 
 Inspector > Lighting > **Bake** now:
@@ -156,6 +181,18 @@ Inspector > Lighting > **Bake** now:
 - bakes up to 3 **detail probe volumes** (Probe Volume components: Spacing, Priority, Blend Margin) next to the main
   volume, saved in the same `.probes` file (format v3). Shaders blend them by priority; the main volume fills the rest.
 - treats the ground below the horizon as a grey surface instead of sky blue.
+
+## Lightmaps
+
+Tick **Inspector > Lightmap Static** on geometry that never moves. **Bake Lighting** then also bakes lightmaps for it:
+
+- directional indirect light (sky, bounce and emissive panels);
+- baked AO;
+- a 4-channel **shadow mask** of the static lights. Lights with Baked Shadows get soft baked shadows on those
+  surfaces, even without Cast Shadows, and the sun keeps shadows beyond its cascades.
+
+Lightmapped pixels skip SSAO and the probes, and the probes keep lighting everything that moves. The bake is saved
+as `<scene>.lightmaps`. Settings are in Lighting > Lightmaps. Details: [Lightmaps.md](Lightmaps.md).
 
 ## AO proxies
 
@@ -175,8 +212,9 @@ At most 16 shapes are drawn, nearest first. Direct light is never darkened.
 ## Debug views
 
 Post Processing > Viewport > Debug View (or F1): **IndirectDiffuse** (baked/ambient light only),
-**AmbientOcclusion** (what multiplies the indirect light), **ShadowCascades** (cascade colours over the image), next
-to the existing Diffuse, Specular, SSAO, HDR... modes.
+**AmbientOcclusion** (what multiplies the indirect light), **ShadowCascades** (cascade colours over the image),
+**Lightmap** (the lightmap pass's irradiance) and **ShadowMask** (the baked shadow mask channels), next to the existing
+Diffuse, Specular, SSAO, HDR... modes.
 
 ## Look-dev captures
 
@@ -189,16 +227,20 @@ Engine.exe --scene Scenes/LookDev.obsc --bake --save --shot baked.png   # bake t
 Engine.exe --scene Scenes/LookDev.obsc --shot oc.png --set g_occlusionculling=true
 ```
 
-`--play` starts Play first. The log prints the adapted exposure. `.claude/skills/run-obsidian/lookdev_views.sh`
+`--play` starts Play first (the LookDev camera then carries its Player Body). The log prints the adapted exposure. `.claude/skills/run-obsidian/lookdev_views.sh`
 captures the standard LookDev views. Code: `Engine/Logic/LookDevCapture.cs`.
 
 ## Not done
 
-- **Lightmaps** (plan phase 4.2: UV2, per-texel baking, directional lightmaps, baked shadow masks). The probe volumes
-  are still the only baked diffuse.
-- **Reference captures from Half-Life: Alyx** (plan 0.1) and the REA research follow-ups R1–R7: the defaults
-  (Hejl curve, bloom start 1.5, bright target 0.18 for 2 %, cascade lambda 0.75, AO proxy falloff) are chosen by eye
-  on the LookDev scene, not recovered from the game.
+- Lightmaps are done ([Lightmaps.md](Lightmaps.md)), with these limits:
+  - UV2 is built at bake time instead of on import.
+  - Shadow mask channels are graph-coloured rather than HLA's per-texel light indices.
+  - Dynamic objects get no baked shadow mask.
+- **Reference captures from Half-Life: Alyx** (plan 0.1). The research follow-ups R1–R7 are done
+  (`Docs/Research/Source2Look/README.md`, "Research follow-ups: findings"). Still chosen by eye: Bloom Scale (HLA's
+  base profile uses a Screen blend, which isn't implemented) and the AO proxy falloff. HLA uses a precomputed
+  sphere/cone visibility LUT over 4 directions (R7). Sun shadows keep 150 m and 4 cascades; HLA stops at 1000 units
+  (about 25 m) with 3.
 - Scenes without a valid saved reflection capture generate it at runtime; save the scene to retain it for later loads.
 - An optional depth prepass with normals.
 
@@ -210,10 +252,12 @@ captures the standard LookDev views. Code: `Engine/Logic/LookDevCapture.cs`.
 | Lights | `Deferred/DeferredDirectionalLight.fx`, `Deferred/DeferredPointLight.fx`, `PointLightRenderModule`, `Entities/DirectionalLight.cs`, `PointLight.cs`, `SpotLight.cs` |
 | Shadows | `ShadowMapRenderModule` (`DrawCascades`, `SplitCascades`, `DrawLocalLightShadows`), `Renderer/Lighting/ShadowAtlas.cs` |
 | Reflections | `Renderer/Lighting/EnvironmentPrefilter.cs`, `ReflectionProbes.cs`, `Components/ReflectionProbeComponent.cs`, `DeferredEnvironmentMapRenderModule` + `ImageBasedLightingParameters`, `Deferred/DeferredEnvironmentMap.fx` |
+| Planar reflections | `Components/PlanarReflectionComponent.cs`, `RenderModules/PlanarReflectionRenderModule.cs`, `ForwardRenderModule.DrawReflection/DrawReflectionSky`, `MeshMaterialLibrary.RenderType.Reflection`, `Forward/Forward.fx` (`ReflectionPass`, `PlanarSky`); test body `Content/Scripts/CameraBodyScript.cs` |
 | Bake | `LightingBakeInput`, `ProbeVolumeBaker`, `ProbeVolumeData`, `LightingSystem`, `Components/ProbeVolumeComponent.cs` |
+| Lightmaps | `LightmapUnwrap`, `LightmapBaker`, `LightmapData`, `LightmapResources`, `RenderModules/LightmapRenderModule.cs`, `Deferred/Lightmap.fx` ([Lightmaps.md](Lightmaps.md)) |
 | Post | `Logic/PostProcessSettings.cs`, `PostProcessVolumes.cs`, `PostProfile.cs`, `Components/PostProcessVolumeComponent.cs`, `Renderer.ApplyScenePost`, `AutoExposureFilter` + `AutoExposure.fx`, `BloomFilter` + `Bloom.fx`, `PostProcessing.fx`, `ColorGrading.fx`, `RetinaBurn.fx`, `Fxaa.fx` |
 | TAA | `GBufferRenderModule` (velocity), `TemporalAntialiasingRenderModule`, `TemporalAntiAliasing.fx` |
 | AO proxies | `Components/AoProxyComponent.cs` (`AoProxyShapes`) |
 | Culling | `Renderer/Helper/OcclusionCulling.cs`, `MeshMaterialLibrary.SizeCullThreshold` |
-| Anvil | `PostProcessingViewModel`, `PostProcessVolumeComponentViewModel`, `ReflectionProbeComponentViewModel`, `ProbeVolumeComponentViewModel`, `AoProxyComponentViewModel`, light rows in `SceneObjectViewModel.LightInfo` |
-| Checks | `Tests/Components/Source2LookChecks.cs` (+ `RunGraphics` with `--graphics`), `AutoExposureChecks` (bright-pixel metering) |
+| Anvil | `PostProcessingViewModel`, `PostProcessVolumeComponentViewModel`, `ReflectionProbeComponentViewModel`, `PlanarReflectionComponentViewModel`, `ProbeVolumeComponentViewModel`, `AoProxyComponentViewModel`, light rows in `SceneObjectViewModel.LightInfo` |
+| Checks | `Tests/Components/Source2LookChecks.cs` (+ `RunGraphics` with `--graphics`), `AutoExposureChecks` (bright-pixel metering), `LightmapChecks` |

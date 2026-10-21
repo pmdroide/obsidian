@@ -308,7 +308,7 @@ internal static class AnimationChecks
         Check(File.Exists(Path.Combine(contentRoot, WalkingPath + ".fbx")) &&
               File.Exists(Path.Combine(contentRoot, "GameObjects/Player/Y Bot.fbx")) &&
               manifest.Contains("/reference:../../ContentPipeline/bin/Obsidian.ContentPipeline.dll") &&
-              CountProcessor(manifest, "GameObjects/Player/") == 2 &&
+              CountProcessor(manifest, "GameObjects/Player/") == 3 && // Y Bot, Walking, Silly Dancing
               surface.BaseColorTexture != null && manifest.Contains("#begin " + surface.BaseColorTexture) &&
               manifest.Contains("#begin " + surface.NormalTexture),
             "the Player FBX files build with the SkinnedModelProcessor and the checker maps are in the manifest");

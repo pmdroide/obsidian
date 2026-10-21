@@ -70,6 +70,10 @@ namespace Engine.Physics
             new Dictionary<Model, Geometry>(ReferenceEqualityComparer.Instance);
         // Ragdolls of Ragdoll components; their parts are in _bodyOwners under the owning gameobject.
         private readonly List<Ragdoll> _ragdolls = new List<Ragdoll>();
+        // Panes of Breakable Glass components; their frame colliders are in _staticOwners under the owning gameobject.
+        private readonly List<GlassShatter> _glass = new List<GlassShatter>();
+        // Gameobjects with a Breakable component (their pieces once broken).
+        private readonly List<FractureShatter> _fractures = new List<FractureShatter>();
         private static int _lastCollisionGroup;
 
         private int _frame;
@@ -307,6 +311,12 @@ namespace Engine.Physics
             }
             for (int i = _ragdolls.Count - 1; i >= 0; i--)
                 if (_ragdolls[i].Owner.PhysicsFrame != _frame) RemoveRagdoll(_ragdolls[i]);
+            for (int i = _glass.Count - 1; i >= 0; i--)
+                if (_glass[i].Owner.PhysicsFrame != _frame) RemoveGlass(_glass[i]);
+            for (int i = 0; i < _glass.Count; i++) _glass[i].BeginFrame();
+            for (int i = _fractures.Count - 1; i >= 0; i--)
+                if (_fractures[i].Owner.PhysicsFrame != _frame) RemoveFracture(_fractures[i]);
+            for (int i = 0; i < _fractures.Count; i++) _fractures[i].BeginFrame();
 
             if (!simulate)
             {
@@ -315,7 +325,7 @@ namespace Engine.Physics
                 _inWater.Clear();
                 return;
             }
-            if (_attached.Count == 0 && _touches.Count == 0 && _ragdolls.Count == 0) return;
+            if (_attached.Count == 0 && _touches.Count == 0 && _ragdolls.Count == 0 && _glass.Count == 0 && _fractures.Count == 0) return;
 
             float step = Math.Min(dt, MaxStep);
             // Without a step there are no fresh contacts, so the current touches stand.
@@ -328,8 +338,13 @@ namespace Engine.Physics
                 if (_attached[i].AttachedPhysicsType == PhysicsBodyType.Dynamic)
                     PullPose(_attached[i]);
             for (int i = 0; i < _ragdolls.Count; i++) _ragdolls[i].AfterStep();
+            for (int i = 0; i < _glass.Count; i++) _glass[i].AfterStep(step);
+            for (int i = 0; i < _fractures.Count; i++) _fractures[i].AfterStep(step);
 
             UpdateTouches();
+            // Hits from this step's contacts break the panes now, before the events reach the scripts.
+            for (int i = 0; i < _glass.Count; i++) _glass[i].ApplyPending();
+            for (int i = 0; i < _fractures.Count; i++) _fractures[i].ApplyPending();
             DispatchContactEvents();
             UpdateWaterContacts(time);
             DispatchWaterEvents();
@@ -354,6 +369,10 @@ namespace Engine.Physics
                 if (a == null || b == null || a == b) continue;
                 if (a.Ragdoll != null) NotifyRagdoll(a.Ragdoll, contact.BodyA, contact, b, contact.BodyB);
                 if (b.Ragdoll != null) NotifyRagdoll(b.Ragdoll, contact.BodyB, contact.Swapped(), a, contact.BodyA);
+                if (a.Glass != null) NotifyGlass(a.Glass, contact, b, contact.BodyB);
+                if (b.Glass != null) NotifyGlass(b.Glass, contact.Swapped(), a, contact.BodyA);
+                if (a.Fracture != null) NotifyFracture(a.Fracture, contact, b, contact.BodyB);
+                if (b.Fracture != null) NotifyFracture(b.Fracture, contact.Swapped(), a, contact.BodyA);
 
                 Touch touch = FindTouch(a, b);
                 if (touch != null && touch.IsTrigger != contact.IsTrigger)
@@ -411,6 +430,22 @@ namespace Engine.Physics
             catch (Exception ex) { EditorBridge.Log($"Ragdoll of '{ragdoll.Owner.Name}' threw on contact: {ex.Message}"); }
         }
 
+        /// <summary>Tells a pane what hit it and how hard (its component decides whether it breaks).</summary>
+        private static void NotifyGlass(GlassShatter glass, PhysicsContact seenFromGlass, BasicEntity other, BepuPhysics.BodyHandle? otherBody)
+        {
+            if (glass.Hit == null || glass.IsDisposed) return;
+            try { glass.Hit(seenFromGlass, other, MassOf(other, otherBody)); }
+            catch (Exception ex) { EditorBridge.Log($"Breakable Glass of '{glass.Owner.Name}' threw on contact: {ex.Message}"); }
+        }
+
+        /// <summary>Tells a breakable what hit it and how hard (its component decides whether it breaks).</summary>
+        private static void NotifyFracture(FractureShatter fracture, PhysicsContact seenFromIt, BasicEntity other, BepuPhysics.BodyHandle? otherBody)
+        {
+            if (fracture.Hit == null || fracture.IsDisposed || fracture.IsBroken) return;
+            try { fracture.Hit(seenFromIt, other, MassOf(other, otherBody)); }
+            catch (Exception ex) { EditorBridge.Log($"Breakable '{fracture.Owner.Name}' threw on contact: {ex.Message}"); }
+        }
+
         /// <summary>Mass of a moving body (a dynamic gameobject or a limp ragdoll part); 0 for anything immovable.</summary>
         private static float MassOf(BasicEntity e, BepuPhysics.BodyHandle? body)
         {
@@ -449,6 +484,65 @@ namespace Engine.Physics
             for (int p = 0; p < ragdoll.PartCount; p++) _bodyOwners.Remove(ragdoll.BodyOf(p).Value);
             ragdoll.Dispose();
             if (ragdoll.Owner.Ragdoll == ragdoll) ragdoll.Owner.Ragdoll = null;
+        }
+
+        /// <summary>
+        /// The breakable pane of <paramref name="owner"/> (Breakable Glass component). Replaces any it had. Once it
+        /// cracks, its shards stand in for the gameobject's collider.
+        /// </summary>
+        internal GlassShatter CreateGlass(BasicEntity owner, Renderer.Helper.MeshMaterialLibrary library)
+        {
+            if (owner.Glass != null) RemoveGlass(owner.Glass);
+            var glass = new GlassShatter(this, _physics, owner, library, ++_lastCollisionGroup);
+            owner.Glass = glass;
+            owner.PhysicsFrame = _frame;
+            _glass.Add(glass);
+            return glass;
+        }
+
+        /// <summary>Removes a pane's shards (bodies, colliders, meshes) and shows the gameobject again.</summary>
+        internal void RemoveGlass(GlassShatter glass)
+        {
+            if (glass == null || !_glass.Remove(glass)) return;
+            glass.Dispose();
+            if (glass.Owner.Glass == glass) glass.Owner.Glass = null;
+        }
+
+        /// <summary>
+        /// The pieces of <paramref name="owner"/> (Breakable component). Replaces any it had. Once it breaks, the
+        /// gameobject's own collider goes.
+        /// </summary>
+        internal FractureShatter CreateFracture(BasicEntity owner, Renderer.Helper.MeshMaterialLibrary library)
+        {
+            if (owner.Fracture != null) RemoveFracture(owner.Fracture);
+            var fracture = new FractureShatter(this, _physics, owner, library, ++_lastCollisionGroup);
+            owner.Fracture = fracture;
+            owner.PhysicsFrame = _frame;
+            _fractures.Add(fracture);
+            return fracture;
+        }
+
+        /// <summary>Removes a breakable's pieces and shows the gameobject again.</summary>
+        internal void RemoveFracture(FractureShatter fracture)
+        {
+            if (fracture == null || !_fractures.Remove(fracture)) return;
+            fracture.Dispose();
+            if (fracture.Owner.Fracture == fracture) fracture.Owner.Fracture = null;
+        }
+
+        /// <summary>A static convex collider that rays and contacts report as <paramref name="owner"/> (glass shards in the frame).</summary>
+        internal BepuPhysics.StaticHandle AddOwnedStatic(BasicEntity owner, Vector3[] localPoints, Vector3 position, Quaternion orientation)
+        {
+            BepuPhysics.StaticHandle handle = _physics.AddStaticConvex(localPoints, position, orientation, out _);
+            _staticOwners[handle.Value] = owner;
+            return handle;
+        }
+
+        internal void RemoveOwnedStatic(BepuPhysics.StaticHandle handle)
+        {
+            _staticOwners.Remove(handle.Value);
+            try { _physics.RemoveStatic(handle); }
+            catch (Exception ex) { EditorBridge.Log($"ScenePhysics: removing a glass collider threw: {ex.Message}"); }
         }
 
         private BasicEntity OwnerOf(BepuPhysics.BodyHandle? body, BepuPhysics.StaticHandle? staticHandle)
@@ -542,7 +636,9 @@ namespace Engine.Physics
             bool hasGeometry = e.Model != null || FallbackGeometry != null;
             // A limp ragdoll's parts stand in for the gameobject's own collider.
             bool limp = e.Ragdoll is { IsActive: true, IsDisposed: false };
-            PhysicsBodyType desired = !hasGeometry || e.Role == GameObjectRole.Water || limp ? PhysicsBodyType.None : e.PhysicsType;
+            // So do the shards of a cracked pane and the pieces of a broken Breakable.
+            bool shattered = e.Glass is { IsBroken: true, IsDisposed: false } || e.Fracture is { IsBroken: true, IsDisposed: false };
+            PhysicsBodyType desired = !hasGeometry || e.Role == GameObjectRole.Water || limp || shattered ? PhysicsBodyType.None : e.PhysicsType;
             float mass = e.Mass;
             bool trigger = desired != PhysicsBodyType.None && e.Physics?.IsTrigger == true;
             bool freezeRotation = desired == PhysicsBodyType.Dynamic && e.Physics?.FreezeRotation == true;

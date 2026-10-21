@@ -62,6 +62,16 @@ namespace Engine.Logic
         public float SurfaceWetness;
         /// <summary>Raindrop ripples in puddles at full intensity (0..1).</summary>
         public float PuddleRipples;
+        /// <summary>
+        /// Density (per metre) at the ground of the mist the weather raises at full intensity and Ground Fog 1.
+        /// It thins out with height (<see cref="EnvironmentSettings.GroundFogHeight"/>), rises over
+        /// <see cref="SurfaceWetness.MistRiseSeconds"/> and lingers after the weather.
+        /// </summary>
+        public float GroundFog;
+        /// <summary>sRGB colour of the ground mist.</summary>
+        public Color GroundFogColor = Color.White;
+        /// <summary>Raindrops beading on and running down materials with Rain Drops on, at full intensity (0..1).</summary>
+        public float SurfaceDrops;
 
         /// <summary>Intensity x haze at which <see cref="HazeDistance"/> and <see cref="HazeMax"/> apply.</summary>
         public const float ReferenceHazeStrength = 0.4f;
@@ -84,6 +94,9 @@ namespace Engine.Logic
             SunDim = 0.6f,
             SurfaceWetness = 1,
             PuddleRipples = 1,
+            GroundFog = 0.12f,
+            GroundFogColor = new Color(168, 176, 186),
+            SurfaceDrops = 1,
         };
 
         public static readonly WeatherProfile Sandstorm = new WeatherProfile
@@ -105,6 +118,9 @@ namespace Engine.Logic
             CloudCoverage = 0.5f,
             SunDim = 0.65f,
             SunTint = new Color(255, 178, 112),
+            // Dust dragged along the ground
+            GroundFog = 0.12f,
+            GroundFogColor = new Color(186, 138, 90),
         };
 
         public static readonly WeatherProfile Snow = new WeatherProfile
@@ -125,6 +141,8 @@ namespace Engine.Logic
             CloudCoverage = 0.9f,
             SunDim = 0.5f,
             SurfaceWetness = 0.3f,
+            GroundFog = 0.05f,
+            GroundFogColor = new Color(214, 222, 234),
         };
 
         public static WeatherProfile For(WeatherType type) => type switch
@@ -167,6 +185,16 @@ namespace Engine.Logic
         public static float TargetRipples(EnvironmentSettings settings) =>
             (For(settings?.Weather ?? WeatherType.None)?.PuddleRipples ?? 0) * Intensity(settings);
 
+        /// <summary>Ground mist density at the base (per metre) the scene moves towards under these settings.</summary>
+        public static float TargetGroundFog(EnvironmentSettings settings) =>
+            (For(settings?.Weather ?? WeatherType.None)?.GroundFog ?? 0) * Intensity(settings) *
+            (settings == null || !float.IsFinite(settings.GroundFog) ? 0 : Math.Clamp(settings.GroundFog, 0, 1));
+
+        /// <summary>Strength of the raindrops on surfaces under these settings.</summary>
+        public static float TargetSurfaceDrops(EnvironmentSettings settings) =>
+            (For(settings?.Weather ?? WeatherType.None)?.SurfaceDrops ?? 0) * Intensity(settings) *
+            (settings == null || !float.IsFinite(settings.SurfaceDrops) ? 0 : Math.Clamp(settings.SurfaceDrops, 0, 1));
+
         /// <summary>Cloud cover the day/night sky draws: the weather thickens the scene's clouds.</summary>
         public static float SkyCloudCoverage(EnvironmentSettings settings)
         {
@@ -180,13 +208,19 @@ namespace Engine.Logic
     /// <summary>
     /// Scene-wide wetness of Wet Surface materials. It follows the weather over time: rain soaks the
     /// ground in about <see cref="WetSeconds"/> and it dries in about <see cref="DrySeconds"/>.
-    /// A newly shown scene starts at its weather's wetness instead of drying out or soaking in.
+    /// The ground mist rises and clears the same way (<see cref="MistRiseSeconds"/>/<see cref="MistClearSeconds"/>),
+    /// and so do the raindrops on surfaces (<see cref="DropsSeconds"/>/<see cref="DropsDrySeconds"/>).
+    /// A newly shown scene starts at its weather's state instead of drying out or soaking in.
     /// </summary>
     public sealed class SurfaceWetness
     {
         public const float WetSeconds = 8;
         public const float DrySeconds = 40;
         public const float RippleSeconds = 1.5f;
+        public const float MistRiseSeconds = 12;
+        public const float MistClearSeconds = 30;
+        public const float DropsSeconds = 4;
+        public const float DropsDrySeconds = 25;
 
         private object _scene;
 
@@ -194,6 +228,12 @@ namespace Engine.Logic
         public float Wetness { get; private set; }
         /// <summary>0 still puddles .. 1 heavy raindrop ripples.</summary>
         public float Ripples { get; private set; }
+        /// <summary>Ground mist density at its base, per metre (0 = none).</summary>
+        public float GroundFog { get; private set; }
+        /// <summary>Linear colour of the ground mist; keeps the last weather's colour while it clears.</summary>
+        public Vector3 GroundFogColor { get; private set; } = Vector3.One;
+        /// <summary>0 dry .. 1 surfaces covered in raindrops.</summary>
+        public float Drops { get; private set; }
 
         /// <param name="scene">Identity of the shown scene; a change snaps to the new weather.</param>
         /// <param name="seconds">Elapsed time; 0 (paused) holds the current state.</param>
@@ -201,16 +241,35 @@ namespace Engine.Logic
         {
             float wetness = WeatherProfile.TargetWetness(settings);
             float ripples = WeatherProfile.TargetRipples(settings);
+            float mist = WeatherProfile.TargetGroundFog(settings);
+            float drops = WeatherProfile.TargetSurfaceDrops(settings);
+            WeatherProfile profile = WeatherProfile.For(settings?.Weather ?? WeatherType.None);
+            Vector3 mistColor = profile != null && mist > 0 ? Linear(profile.GroundFogColor) : GroundFogColor;
             if (!ReferenceEquals(scene, _scene))
             {
                 _scene = scene;
                 Wetness = wetness;
                 Ripples = ripples;
+                GroundFog = mist;
+                GroundFogColor = mistColor;
+                Drops = drops;
                 return;
             }
             float dt = double.IsFinite(seconds) ? (float)Math.Max(seconds, 0) : 0;
             Wetness = Approach(Wetness, wetness, dt / (wetness > Wetness ? WetSeconds : DrySeconds));
             Ripples = Approach(Ripples, ripples, dt / RippleSeconds);
+            // Density is per metre: step by the larger density so the timing is the same for every weather
+            float mistScale = Math.Max(Math.Max(mist, GroundFog), 1e-4f);
+            GroundFog = Approach(GroundFog, mist, mistScale * dt / (mist > GroundFog ? MistRiseSeconds : MistClearSeconds));
+            // A new weather's mist takes on its colour over a few seconds
+            GroundFogColor = Vector3.Lerp(GroundFogColor, mistColor, Math.Min(1, dt / 3));
+            Drops = Approach(Drops, drops, dt / (drops > Drops ? DropsSeconds : DropsDrySeconds));
+        }
+
+        private static Vector3 Linear(Color color)
+        {
+            Vector3 c = color.ToVector3();
+            return new Vector3((float)Math.Pow(c.X, 2.2), (float)Math.Pow(c.Y, 2.2), (float)Math.Pow(c.Z, 2.2));
         }
 
         private static float Approach(float value, float target, float step) =>

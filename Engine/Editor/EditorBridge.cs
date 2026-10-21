@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Engine.Animation;
 using Engine.Entities;
@@ -19,7 +20,7 @@ namespace Engine.Editor
     /// and the editor UI (Avalonia UI thread). All public surface is the IEditorBridge
     /// interface; the engine pokes the internal Bind/DrainAndPublish methods.
     /// </summary>
-    public sealed class EditorBridge : IEditorBridge
+    public sealed partial class EditorBridge : IEditorBridge
     {
         private readonly ConcurrentQueue<Action> _pendingOps = new ConcurrentQueue<Action>();
         private global::Engine.InputDevices.InputDeviceMonitor _inputDevices;
@@ -143,18 +144,38 @@ namespace Engine.Editor
             Log($"--- EditorBridge static init pid={Environment.ProcessId} ---");
         }
 
+        public readonly record struct LogEntry(long Sequence, DateTime Timestamp, string Message);
+        public const int LogCapacity = 1000;
+        private static readonly object LogGate = new();
+        private static readonly Queue<LogEntry> RecentLogs = new();
+        private static long _logSequence;
+
+        /// <summary>A copied, bounded log history. Safe to read from the editor UI thread.</summary>
+        public static LogEntry[] GetLogEntries(long afterSequence = 0)
+        {
+            lock (LogGate) return RecentLogs.Where(entry => entry.Sequence > afterSequence).ToArray();
+        }
+
+        /// <summary>Writes in Debug and Release builds, retaining recent lines for Anvil's Console.</summary>
         public static void Log(string msg)
         {
-            string line = $"[{DateTime.Now:HH:mm:ss.fff}] {msg}{Environment.NewLine}";
-            try { File.AppendAllText(LogPath, line); return; }
-            catch { /* fall through to fallback */ }
-            try
+            lock (LogGate)
             {
-                string dir = Path.GetDirectoryName(FallbackLogPath);
-                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-                File.AppendAllText(FallbackLogPath, line);
+                var entry = new LogEntry(++_logSequence, DateTime.Now, msg ?? string.Empty);
+                RecentLogs.Enqueue(entry);
+                if (RecentLogs.Count > LogCapacity) RecentLogs.Dequeue();
+                string line = $"[{entry.Timestamp:HH:mm:ss.fff}] {entry.Message}{Environment.NewLine}";
+                System.Diagnostics.Debug.WriteLine(line);
+                try { File.AppendAllText(LogPath, line); return; }
+                catch { /* fall through to fallback */ }
+                try
+                {
+                    string dir = Path.GetDirectoryName(FallbackLogPath);
+                    if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                    File.AppendAllText(FallbackLogPath, line);
+                }
+                catch { /* file logging never throws; the Console history is still available */ }
             }
-            catch { /* logging never throws */ }
         }
 
         public event Action<IReadOnlyList<EditorObjectSnapshot>> SnapshotUpdated;
@@ -209,10 +230,12 @@ namespace Engine.Editor
             // the file does not appear at LogPath after a run, the bridge
             // never got bound (engine likely failed to boot).
             Log($"Bridge bound — scene={(scene != null)}, editor={(editor != null)}, assets={(assets != null)}, models={_modelKeyList.Count}");
+            _automationReady = scene != null && editor != null && assets != null;
         }
 
         private void OnSceneSwap(Logic.Scene oldScene, Logic.Scene newScene)
         {
+            _automationSceneGeneration = Guid.NewGuid().ToString("N");
             // Clear selection — the old SelectedObject reference is dead.
             if (_editor != null) _editor.SelectedObject = null;
             try { SceneChanged?.Invoke(); }
@@ -405,6 +428,20 @@ namespace Engine.Editor
             completed?.Invoke(success ? null : error);
         });
 
+        public void EnqueueSetLightmap(int entityId, bool lightmapStatic, float lightmapScale)
+        {
+            _pendingOps.Enqueue(() =>
+            {
+                var entity = LookupEntityById(entityId);
+                if (entity == null) return;
+                float scale = entity.LightmapScale;
+                entity.LightmapScale = lightmapScale;
+                if (entity.LightmapStatic == lightmapStatic && entity.LightmapScale == scale) return;
+                entity.LightmapStatic = lightmapStatic;
+                _scene.ActiveScene.IsDirty = true;
+            });
+        }
+
         public void EnqueueSetPersistent(int entityId, bool persistent)
         {
             _pendingOps.Enqueue(() =>
@@ -548,39 +585,33 @@ namespace Engine.Editor
                 }
                 try
                 {
-                    // Guard against a model whose geometry never loaded — show the error mesh
-                    // rather than crashing. Finalise geometry before choosing a material.
-                    if (md.Model == null && _assets.ErrorModel != null)
-                        md = _assets.ErrorModel;
-
-                    // Material selection:
-                    //  - The ERROR mesh uses its own texture set, or error.png if those failed.
-                    //  - A convention-bound import uses its bound material.
-                    //  - An import without bound textures falls back to the visible error.png.
-                    //  - A built-in uses its embedded per-mesh-part materials (null material),
-                    //    so Sponza/Helmets etc. keep their textures.
-                    MaterialEffect material;
-                    if (md == _assets.ErrorModel)
-                        material = (_assets.ErrorModelMaterial ?? _assets.ErrorMaterial)?.Clone();
-                    else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound))
-                        material = bound.Clone();
-                    else if (_assets.DynamicModels.ContainsKey(modelKey))
-                        material = (_assets.ErrorMaterial ?? _assets.BaseMaterial)?.Clone();
-                    else
-                        material = null;
-
-                    BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
-                    if (entity != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(name)) entity.Name = name;
-                        if (scale is { } size) entity.Scale = size;
-                        foreach (string type in componentTypes ?? Array.Empty<string>())
-                            if (ComponentRegistry.Find(type) is { } definition) entity.AddComponent(definition.Create(entity));
-                    }
+                    BasicEntity entity = AddBasicEntityNow(modelKey, md, position, name, scale, componentTypes);
                     Log($"AddBasicEntity ok: id={entity?.Id}");
                 }
                 catch (Exception ex) { Log("AddBasicEntity threw: " + ex); }
             });
+        }
+
+        // Shared by UI and typed automation commands, on the game thread. Exceptions reach the automation caller.
+        private BasicEntity AddBasicEntityNow(string modelKey, ModelDefinition md, Vector3 position, string name,
+            Vector3? scale, IReadOnlyList<string> componentTypes)
+        {
+            if (md.Model == null && _assets.ErrorModel != null) md = _assets.ErrorModel;
+            MaterialEffect material;
+            if (md == _assets.ErrorModel)
+                material = (_assets.ErrorModelMaterial ?? _assets.ErrorMaterial)?.Clone();
+            else if (_assets.TryGetDynamicMaterial(modelKey, out MaterialEffect bound)) material = bound.Clone();
+            else if (_assets.DynamicModels.ContainsKey(modelKey)) material = (_assets.ErrorMaterial ?? _assets.BaseMaterial)?.Clone();
+            else material = null; // Built-ins retain their embedded per-mesh-part materials.
+            BasicEntity entity = _scene.EditorAddBasicEntity(md, material, position);
+            if (entity != null)
+            {
+                if (!string.IsNullOrWhiteSpace(name)) entity.Name = name;
+                if (scale is { } size) entity.Scale = size;
+                foreach (string type in componentTypes ?? Array.Empty<string>())
+                    if (ComponentRegistry.Find(type) is { } definition) entity.AddComponent(definition.Create(entity));
+            }
+            return entity;
         }
 
         public void EnqueueDelete(int id)
@@ -966,9 +997,20 @@ namespace Engine.Editor
         public string GetBakedLightingSummary()
         {
             ProbeVolumeData d = _scene?.ActiveScene?.BakedProbes;
-            if (d == null) return null;
-            return $"{d.CountX}×{d.CountY}×{d.CountZ} probes ({d.ProbeCount:N0}) · {d.SamplesPerProbe} rays · " +
-                   $"{d.Bounces} bounce{(d.Bounces == 1 ? "" : "s")} · baked {d.BakedAtUtc.ToLocalTime():g} in {d.BakeSeconds:0.0} s";
+            LightmapData l = _scene?.ActiveScene?.BakedLightmaps;
+            if (d == null && l == null) return null;
+            string summary = d == null ? "" :
+                $"{d.CountX}×{d.CountY}×{d.CountZ} probes ({d.ProbeCount:N0}) · {d.SamplesPerProbe} rays · " +
+                $"{d.Bounces} bounce{(d.Bounces == 1 ? "" : "s")} · baked {d.BakedAtUtc.ToLocalTime():g} in {d.BakeSeconds:0.0} s";
+            if (l != null)
+            {
+                int texels = 0;
+                foreach (LightmapData.Page page in l.Pages) texels += page.Width * page.Height;
+                summary += (summary.Length > 0 ? "\n" : "") +
+                           $"Lightmaps: {l.Instances.Count} gameobjects · {l.TexelCount:N0} texels on {l.Pages.Count} page{(l.Pages.Count == 1 ? "" : "s")} " +
+                           $"({texels / 1024:N0}k) · {l.Samples} rays · {l.Channels.Count} shadow mask light{(l.Channels.Count == 1 ? "" : "s")} · {l.BakeSeconds:0.0} s";
+            }
+            return summary;
         }
 
         public void EnqueueNewScene()
@@ -1114,6 +1156,8 @@ namespace Engine.Editor
                 catch (Exception ex) { Log("op threw: " + ex); }
             }
 
+            DrainAutomation();
+
             // 2. Cache spawn point for "Add at camera focus".
             if (_scene.Camera != null)
             {
@@ -1205,6 +1249,8 @@ namespace Engine.Editor
                     components: be.Components.Select(ComponentRegistry.Capture).ToArray(),
                     role: be.Role,
                     isPersistent: be.Persistent,
+                    lightmapStatic: be.LightmapStatic,
+                    lightmapScale: be.LightmapScale,
                     prefabPath: be.PrefabPath,
                     prefabOverrides: overrides,
                     prefabMissing: prefabMissing,
@@ -1229,7 +1275,8 @@ namespace Engine.Editor
                     staticShadows: p.StaticShadows,
                     sourceRadius: p.SourceRadius,
                     sourceLength: p.SourceLength,
-                    cookiePath: spot?.CookiePath);
+                    cookiePath: spot?.CookiePath,
+                    bakedShadows: p.BakedShadows);
                 list.Add(new EditorObjectSnapshot(
                     id: p.Id,
                     name: p.Name ?? (p.GetType().Name + " " + p.Id),
@@ -1255,7 +1302,8 @@ namespace Engine.Editor
                     shadowResolution: d.ShadowResolution,
                     cascadeCount: d.CascadeCount,
                     shadowDistance: d.ShadowDistance,
-                    splitLambda: d.SplitLambda);
+                    splitLambda: d.SplitLambda,
+                    bakedShadows: d.BakedShadows);
                 list.Add(new EditorObjectSnapshot(
                     id: d.Id,
                     name: d.Name ?? ("DirectionalLight " + d.Id),

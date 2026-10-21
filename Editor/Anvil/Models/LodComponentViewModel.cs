@@ -123,6 +123,12 @@ public partial class LodLevelViewModel : ObservableObject
         if (Math.Abs(Distance - distance) > 0.0001) Distance = distance;
     }
 
+    public void Clear()
+    {
+        Model = CommittedModel = "";
+        _parent.PushLevels();
+    }
+
     partial void OnModelChanged(string? value)
     {
         // The ComboBox clears its selection while its items change; that isn't a choice.

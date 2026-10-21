@@ -9,7 +9,8 @@ namespace Engine.Scripting;
 
 /// <summary>
 /// The MainMenu sample scene: a Vista menu (Content/UI/MainMenu.xml + .css) over a slow camera
-/// drift around the monoliths. Select Main Camera, then Add Component > Script Behaviour > Main Menu.
+/// sway in front of the dancing player, backlit in a hazy room. Select Main Camera, then Add
+/// Component > Script Behaviour > Main Menu.
 ///
 /// Title ("Press any button") -> Main Menu -> Play / Scenes / Settings / Credits / Quit.
 ///   Keyboard  arrows or WASD, Enter/Space, Esc/Backspace (back)
@@ -47,8 +48,8 @@ public sealed class MainMenuScript : ScriptBehaviour
     private float _leaveTimer = -1f;
     private Action _afterLeave;
 
-    // Camera drift around the ember core.
-    private static readonly Vector3 Center = new(0, 0, 7.5f);
+    // Camera sway in front of the character (its chest, at the scene origin).
+    private static readonly Vector3 Center = new(0, 0, 0.95f);
     private float _radius, _baseAngle, _height, _framing;
 
     public override void Start()
@@ -61,7 +62,7 @@ public sealed class MainMenuScript : ScriptBehaviour
         Build();
 
         Vector3 offset = Position - Center;
-        _radius = Math.Max(10f, new Vector2(offset.X, offset.Y).Length());
+        _radius = Math.Max(2f, new Vector2(offset.X, offset.Y).Length());
         _baseAngle = MathF.Atan2(offset.Y, offset.X);
         _height = Position.Z;
     }
@@ -531,14 +532,14 @@ public sealed class MainMenuScript : ScriptBehaviour
         // 0 on the title (subject centred), 1 in the menus (subject framed right of the menu).
         _framing = MathHelper.Lerp(_framing, _page == Page.Title ? 0f : 1f, 1f - MathF.Exp(-2.2f * DeltaTime));
 
-        float angle = _baseAngle + 0.2f * MathF.Sin(_time * 0.05f);
-        float radius = _radius * (1f - 0.12f * _framing);
-        float height = _height + 0.8f * MathF.Sin(_time * 0.11f);
+        float angle = _baseAngle + 0.1f * MathF.Sin(_time * 0.09f);
+        float radius = _radius * (1f - 0.06f * _framing);
+        float height = _height + 0.06f * MathF.Sin(_time * 0.17f);
         Position = new Vector3(MathF.Cos(angle) * radius, MathF.Sin(angle) * radius, height);
 
         Vector3 toCenter = Vector3.Normalize(Center - Position);
         Vector3 right = Vector3.Normalize(Vector3.Cross(toCenter, Vector3.UnitZ));
-        // Aiming left of the core moves it right on screen, clear of the menu column.
-        LookAt(Center - right * (12f * _framing) + new Vector3(0, 0, 1.5f));
+        // Aiming left of the character moves it right on screen, clear of the menu column.
+        LookAt(Center - right * (0.95f * _framing));
     }
 }

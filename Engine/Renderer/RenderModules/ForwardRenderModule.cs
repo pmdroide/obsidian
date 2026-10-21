@@ -40,14 +40,28 @@ namespace Engine.Renderer.RenderModules
             /// <summary>Sets the froxel fog parameters (Common/FroxelFog.fx) on the effect, or disables the fog.</summary>
             public Action<EffectParameterCollection> ApplyFog;
             public Vector2 Resolution;
+            /// <summary>The background sky (cube, or equirectangular when <see cref="SkyMap"/> is set) for mirror images; none = keep the probes.</summary>
+            public TextureCube SkyCube;
+            public Texture2D SkyMap;
         }
 
         private Effect _shader;
         private EffectPass _pass;
+        private EffectPass _skyPass;
 
         private EffectParameter _worldParam;
         private EffectParameter _worldViewProjParam;
         private EffectParameter _worldViewITParam;
+        private EffectParameter _usePlanarParam;
+        private EffectParameter _planarMapParam;
+        private EffectParameter _planarSizeParam;
+        private PlanarReflectionView _boundPlanar;
+
+        // Liquid component (Physics/LiquidSlosh.cs): per instance
+        private EffectParameter _useLiquidParam, _liquidBackFaceParam, _liquidSurfaceParam, _liquidCentreParam, _liquidAxisParam,
+            _liquidWaveParam, _liquidPhaseAParam, _liquidPhaseBParam, _liquidAmountsParam, _liquidColorParam, _liquidFoamColorParam,
+            _liquidLookParam, _liquidLook2Param;
+        private bool _liquidBound;
 
         private readonly Vector3[] _lightPositionWS = new Vector3[MaxLights];
         private readonly float[] _lightRadius = new float[MaxLights];
@@ -76,7 +90,24 @@ namespace Engine.Renderer.RenderModules
             _worldParam = _shader.Parameters["World"];
             _worldViewProjParam = _shader.Parameters["WorldViewProj"];
             _worldViewITParam = _shader.Parameters["WorldViewIT"];
+            _usePlanarParam = _shader.Parameters["UsePlanarReflection"];
+            _planarMapParam = _shader.Parameters["PlanarReflectionMap"];
+            _planarSizeParam = _shader.Parameters["PlanarReflectionSize"];
+            _useLiquidParam = _shader.Parameters["UseLiquid"];
+            _liquidBackFaceParam = _shader.Parameters["LiquidBackFace"];
+            _liquidSurfaceParam = _shader.Parameters["LiquidSurface"];
+            _liquidCentreParam = _shader.Parameters["LiquidCentre"];
+            _liquidAxisParam = _shader.Parameters["LiquidAxis"];
+            _liquidWaveParam = _shader.Parameters["LiquidWave"];
+            _liquidPhaseAParam = _shader.Parameters["LiquidPhaseA"];
+            _liquidPhaseBParam = _shader.Parameters["LiquidPhaseB"];
+            _liquidAmountsParam = _shader.Parameters["LiquidAmounts"];
+            _liquidColorParam = _shader.Parameters["LiquidColor"];
+            _liquidFoamColorParam = _shader.Parameters["LiquidFoamColor"];
+            _liquidLookParam = _shader.Parameters["LiquidLook"];
+            _liquidLook2Param = _shader.Parameters["LiquidLook2"];
             _pass = _shader.Techniques["Default"].Passes[0];
+            _skyPass = _shader.Techniques["PlanarSky"].Passes[0];
         }
 
         public void Load(ContentManager content, string shaderPath)
@@ -90,8 +121,66 @@ namespace Engine.Renderer.RenderModules
             graphicsDevice.DepthStencilState = DepthStencilState.Default;
 
             EffectParameterCollection p = _shader.Parameters;
-            p["CameraPositionWS"]?.SetValue(context.Camera.Position);
-            p["CameraForwardWS"]?.SetValue(Vector3.Normalize(context.Camera.Forward));
+            SetupFrame(context, context.Camera.Position, context.Camera.Forward);
+            if (context.ApplyFog != null) context.ApplyFog(p);
+            else p["UseFog"]?.SetValue(false);
+            p["ReflectionPass"]?.SetValue(false);
+            UnbindPlanarReflection();
+            UnbindLiquid();
+
+            meshMat.Draw(MeshMaterialLibrary.RenderType.Forward, viewProjection, renderModule: this);
+            UnbindPlanarReflection();
+            return output;
+        }
+
+        /// <summary>
+        /// Draws the opaque scene lit like the forward pass, seen from <paramref name="eye"/> (the camera mirrored about
+        /// <paramref name="clipPlane"/>), into the bound target; pixels behind the plane are clipped. The mesh library's
+        /// <see cref="MeshMaterialLibrary.ReflectionCull"/> must be set for this view.
+        /// </summary>
+        public void DrawReflection(MeshMaterialLibrary meshMat, Matrix viewProjection, Context context, Vector3 eye, Vector3 forward, Plane clipPlane)
+        {
+            EffectParameterCollection p = _shader.Parameters;
+            SetupFrame(context, eye, forward);
+            p["UseFog"]?.SetValue(false);
+            p["ReflectionPass"]?.SetValue(true);
+            p["ClipPlane"]?.SetValue(new Vector4(clipPlane.Normal, clipPlane.D));
+            UnbindLiquid();
+            //The image being drawn must not stay bound as a texture: D3D drops one of the two bindings
+            UnbindPlanarReflection();
+
+            meshMat.Draw(MeshMaterialLibrary.RenderType.Reflection, viewProjection, renderModule: this);
+            p["ReflectionPass"]?.SetValue(false);
+        }
+
+        /// <summary>
+        /// Fills the pixels of the bound mirror image nothing was drawn on (depth still 1) with the background sky seen
+        /// along the mirrored rays, at the brightness the main view shows it. False without a sky texture.
+        /// </summary>
+        public bool DrawReflectionSky(GraphicsDevice graphics, FullScreenTriangle triangle, Matrix viewProjection, Vector3 eye, Context context)
+        {
+            if (context.SkyCube == null && context.SkyMap == null) return false;
+            EffectParameterCollection p = _shader.Parameters;
+            p["InverseViewProjection"]?.SetValue(Matrix.Invert(viewProjection));
+            p["CameraPositionWS"]?.SetValue(eye);
+            p["UseSkyMap2D"]?.SetValue(context.SkyMap != null);
+            if (context.SkyMap != null) p["SkyMap2D"]?.SetValue(context.SkyMap);
+            else p["SkyCubeMap"]?.SetValue(context.SkyCube);
+
+            graphics.BlendState = BlendState.Opaque;
+            graphics.DepthStencilState = DepthStencilState.DepthRead;
+            graphics.RasterizerState = RasterizerState.CullNone;
+            _skyPass.Apply();
+            triangle.Draw(graphics);
+            return true;
+        }
+
+        /// <summary>The camera, lights and image based light shared by the forward and the reflection passes.</summary>
+        private void SetupFrame(Context context, Vector3 eye, Vector3 forward)
+        {
+            EffectParameterCollection p = _shader.Parameters;
+            p["CameraPositionWS"]?.SetValue(eye);
+            p["CameraForwardWS"]?.SetValue(Vector3.Normalize(forward));
             p["Resolution"]?.SetValue(context.Resolution);
             p["AmbientStrength"]?.SetValue(context.AmbientStrength);
 
@@ -100,11 +189,68 @@ namespace Engine.Renderer.RenderModules
             ImageBasedLightingParameters.ApplyGlobal(p, context.GlobalProbe, context.BrdfLut);
             ImageBasedLightingParameters.ApplyProbeVolume(p, context.Lighting, context.LightingIntensity, context.GlobalCapturePosition);
             ImageBasedLightingParameters.ApplyLocalProbes(p, context.LocalProbes, context.Lighting?.GpuData != null && context.Lighting.ProbeData != null ? context.Lighting.GpuData : null);
-            if (context.ApplyFog != null) context.ApplyFog(p);
-            else p["UseFog"]?.SetValue(false);
+        }
 
-            meshMat.Draw(MeshMaterialLibrary.RenderType.Forward, viewProjection, renderModule: this);
-            return output;
+        private void UnbindLiquid()
+        {
+            _liquidBound = false;
+            _useLiquidParam?.SetValue(false);
+            _liquidBackFaceParam?.SetValue(false);
+        }
+
+        private void UnbindPlanarReflection()
+        {
+            _boundPlanar = null;
+            _usePlanarParam?.SetValue(false);
+            _planarMapParam?.SetValue((Texture2D)null);
+        }
+
+        /// <summary>Per instance (MeshMaterialLibrary): the mirror image a Planar Reflection pane shows, or null for the probes.</summary>
+        public void SetPlanarReflection(PlanarReflectionView view)
+        {
+            if (view != null && (!view.Ready || view.Map == null || view.Map.IsDisposed)) view = null;
+            if (view == _boundPlanar) return;
+            _boundPlanar = view;
+            _usePlanarParam?.SetValue(view != null);
+            if (view == null) return;
+            _planarMapParam?.SetValue(view.Map);
+            _planarSizeParam?.SetValue(new Vector3(view.Map.Width, view.Map.Height, view.Map.LevelCount));
+        }
+
+        /// <summary>
+        /// Per instance (MeshMaterialLibrary): the liquid a Liquid component fills this container with, or null. Set
+        /// before the pass is applied; <see cref="ApplyLiquidFaces"/> then switches between its inside and outside.
+        /// </summary>
+        public void SetLiquid(Physics.LiquidSlosh liquid, Components.LiquidLook look)
+        {
+            bool use = liquid != null && !liquid.Empty;
+            if (!use)
+            {
+                if (_liquidBound) _useLiquidParam?.SetValue(false);
+                _liquidBound = false;
+                return;
+            }
+            _liquidBound = true;
+            _useLiquidParam?.SetValue(true);
+            _liquidBackFaceParam?.SetValue(false);
+            _liquidSurfaceParam?.SetValue(new Vector4(liquid.SurfaceUp, liquid.SurfaceHeight));
+            _liquidCentreParam?.SetValue(new Vector4(liquid.Centre, liquid.CosUp));
+            _liquidAxisParam?.SetValue(new Vector4(liquid.Axis, liquid.Height));
+            _liquidWaveParam?.SetValue(new Vector4(liquid.WobbleAmplitude, liquid.WobbleScale, liquid.WobbleWavelength, liquid.SurfaceTension));
+            _liquidPhaseAParam?.SetValue(liquid.RipplePhaseA);
+            _liquidPhaseBParam?.SetValue(new Vector4(liquid.RipplePhaseB, (float)(liquid.Clock % 1000.0), 0));
+            _liquidAmountsParam?.SetValue(new Vector3(liquid.Agitation, liquid.Foam, liquid.Bubbles));
+            _liquidColorParam?.SetValue(look.Color);
+            _liquidFoamColorParam?.SetValue(look.Foam);
+            _liquidLookParam?.SetValue(new Vector4(look.Opacity, look.Roughness, look.Emissive, look.WaterLine));
+            _liquidLook2Param?.SetValue(new Vector4(look.Foaminess, look.Fizz, liquid.Radius, 0));
+        }
+
+        /// <summary>Draws the next liquid container from the inside (back faces: the liquid's top) or the outside.</summary>
+        public void ApplyLiquidFaces(bool backFaces)
+        {
+            _liquidBackFaceParam?.SetValue(backFaces);
+            _pass.Apply();
         }
 
         /// <summary>Prepares cookie textures before scene rendering; rebuilding the atlas switches render targets.</summary>
@@ -219,6 +365,9 @@ namespace Engine.Renderer.RenderModules
             p["Opacity"]?.SetValue(MathHelper.Clamp(material.Opacity, 0, 1));
             p["HasAlbedo"]?.SetValue(hasAlbedo);
             if (hasAlbedo) p["AlbedoMap"]?.SetValue(material.AlbedoMap);
+            //Cut-out materials (foliage) in mirror images
+            p["HasMask"]?.SetValue(material.HasMask);
+            if (material.HasMask) p["MaskMap"]?.SetValue(material.Mask);
             p["TextureTiling"]?.SetValue(material.TextureTiling);
         }
 

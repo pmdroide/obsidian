@@ -6,6 +6,8 @@ namespace Engine.Recources
     {
         //Meshes skipped by occlusion culling this frame (GameSettings.g_occlusionculling)
         public static int OccludedMeshes;
+        //Lightmap Static gameobjects drawn with their lightmap this frame (Source 2 look, phase 4.2)
+        public static int LightmappedMeshes;
         public static int MeshDraws = 0;
         public static int MaterialDraws = 0;
         public static int LightsDrawn = 0;

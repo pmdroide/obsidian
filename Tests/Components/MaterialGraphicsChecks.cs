@@ -37,6 +37,7 @@ internal static class MaterialGraphicsChecks
             }
             FogChecks.RunGraphics(graphics, content);
             MaterialAssetChecks.RunGraphics(graphics, content);
+            TexGenChecks.RunGraphics(graphics, content);
             EnvironmentChecks.RunGraphics(graphics, content);
             WeatherChecks.RunGraphics(graphics, content);
             WetSurfaceChecks.RunGraphics(graphics, content);

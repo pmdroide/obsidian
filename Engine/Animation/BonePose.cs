@@ -35,6 +35,7 @@ namespace Engine.Animation
         private int _evaluatedVersion = -1;
         private SkinnedMeshInstance _skin;
         private int _skinnedVersion = -1;
+        private int _skinnedCollapse = -1;
         private BoneObject[] _proxies = Array.Empty<BoneObject>();
 
         /// <summary>Bumped on every change, so skins know to re-pose.</summary>
@@ -189,7 +190,8 @@ namespace Engine.Animation
                 _skinnedVersion = -1;
                 return;
             }
-            SkinningData skeleton = IsEmpty ? null : SkinningData.From(owner.Model);
+            // A collapsed bone (BoneCollapse) also needs a skin of its own.
+            SkinningData skeleton = IsEmpty && owner.CollapsedBones.Count == 0 ? null : SkinningData.From(owner.Model);
             if (skeleton == null)
             {
                 if (ownSkin)
@@ -200,7 +202,7 @@ namespace Engine.Animation
                 _skinnedVersion = -1;
                 return;
             }
-            if (ownSkin && _skinnedVersion == Version) return;
+            if (ownSkin && _skinnedVersion == Version && _skinnedCollapse == owner.CollapsedBonesVersion) return;
 
             if (_skin == null)
             {
@@ -209,8 +211,9 @@ namespace Engine.Animation
                 _skin = new SkinnedMeshInstance(device, owner.Model);
             }
             if (!_skin.HasSkinnedBuffers) return;
-            _skin.Update(Evaluate(skeleton).SkinTransforms);
+            _skin.Update(BoneCollapse.Apply(owner, skeleton, Evaluate(skeleton).SkinTransforms));
             _skinnedVersion = Version;
+            _skinnedCollapse = owner.CollapsedBonesVersion;
             transform.Skin = _skin;
             // Skinned vertices moved: redo culling and redraw shadow maps this frame.
             transform.HasChanged = true;

@@ -1,0 +1,137 @@
+{
+  "Version": 2,
+  "Name": "NormalConventionTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "As Shipped (DirectX)",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.1,
+        0,
+        -0.01
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        0.01
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "32c819ec-c6c2-5e1d-ba4c-83425c6e57b9",
+          "Data": {
+            "Red": 1.0,
+            "Green": 1.0,
+            "Blue": 1.0,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "TilingU": 2,
+            "TilingV": 2,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 2,
+      "Name": "Green Inverted",
+      "ModelKey": "Cube",
+      "Position": [
+        1.1,
+        0,
+        -0.01
+      ],
+      "Scale": [
+        1.0,
+        1.0,
+        0.01
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "94b189c1-8ae0-57c2-81cf-5b6e1fa39f58",
+          "Data": {
+            "Red": 1.0,
+            "Green": 1.0,
+            "Blue": 1.0,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "TilingU": 2,
+            "TilingV": 2,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal_FlipG.png",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg",
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [],
+  "SpotLights": [],
+  "DirectionalLights": [
+    {
+      "Id": 10,
+      "Name": "Low Sun",
+      "Direction": [
+        0.92,
+        0.0,
+        -0.38
+      ],
+      "Position": [
+        0,
+        0,
+        10
+      ],
+      "Color": [
+        255,
+        247,
+        235,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 20,
+      "ShadowDepth": 40,
+      "ShadowResolution": 1024,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      1.0
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.02,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      -3.0,
+      3.6
+    ],
+    "Forward": [
+      0.0,
+      0.64,
+      -0.77
+    ],
+    "FieldOfView": 0.9,
+    "Components": []
+  }
+}

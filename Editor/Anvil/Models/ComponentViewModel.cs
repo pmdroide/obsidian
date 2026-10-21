@@ -58,10 +58,14 @@ public static class ComponentEditorRegistry
         Register(ParticleSystemComponent.TypeId, owner => new ParticleSystemComponentViewModel(owner));
         Register(FogVolumeComponent.TypeId, owner => new FogVolumeComponentViewModel(owner));
         Register(FoliageWindComponent.TypeId, owner => new FoliageWindComponentViewModel(owner));
+        Register(LiquidComponent.TypeId, owner => new LiquidComponentViewModel(owner));
         Register(ReflectionProbeComponent.TypeId, owner => new ReflectionProbeComponentViewModel(owner));
+        Register(PlanarReflectionComponent.TypeId, owner => new PlanarReflectionComponentViewModel(owner));
         Register(ProbeVolumeComponent.TypeId, owner => new ProbeVolumeComponentViewModel(owner));
         Register(PostProcessVolumeComponent.TypeId, owner => new PostProcessVolumeComponentViewModel(owner));
         Register(AoProxyComponent.TypeId, owner => new AoProxyComponentViewModel(owner));
+        Register(BreakableGlassComponent.TypeId, owner => new BreakableGlassComponentViewModel(owner));
+        Register(BreakableComponent.TypeId, owner => new BreakableComponentViewModel(owner));
     }
 
     public static void Register(string typeId, Func<SceneObjectViewModel, ComponentViewModel> factory) =>

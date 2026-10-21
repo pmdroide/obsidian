@@ -56,6 +56,7 @@ namespace Engine.Logic
             {
                 Settings = scene.Lighting,
                 ProbeDataFile = SaveBakedProbes(scene, path),
+                LightmapDataFile = SaveBakedLightmaps(scene, path),
             };
             string json = JsonSerializer.Serialize(doc, Options);
             File.WriteAllText(path, json);
@@ -87,8 +88,10 @@ namespace Engine.Logic
             // Bakes are saved as "<scene>.probes" (SaveBakedProbes), so the total is known before the JSON names it.
             string expectedProbes = Path.ChangeExtension(path, ".probes");
             string expectedReflections = Path.ChangeExtension(path, ReflectionProbeData.Extension);
+            string expectedLightmaps = Path.ChangeExtension(path, LightmapData.Extension);
             long expectedTotal = sceneBytes + (File.Exists(expectedProbes) ? new FileInfo(expectedProbes).Length : 0) +
-                (File.Exists(expectedReflections) ? new FileInfo(expectedReflections).Length : 0);
+                (File.Exists(expectedReflections) ? new FileInfo(expectedReflections).Length : 0) +
+                (File.Exists(expectedLightmaps) ? new FileInfo(expectedLightmaps).Length : 0);
             byte[] json = ReadAllBytes(path, cancel, read => progress?.Invoke(read, expectedTotal));
             SceneDocument doc;
             try { doc = JsonSerializer.Deserialize<SceneDocument>(json, Options); }
@@ -106,6 +109,24 @@ namespace Engine.Logic
                 cancel.ThrowIfCancellationRequested();
                 file.BakedProbes = LoadBakedProbes(doc.Lighting.ProbeDataFile, path);
                 file.Bytes += probeBytes;
+
+                string lightmapPath = ProbePath(doc.Lighting.LightmapDataFile, path);
+                if (lightmapPath != null)
+                {
+                    cancel.ThrowIfCancellationRequested();
+                    if (!File.Exists(lightmapPath))
+                        EditorBridge.Log($"LoadScene: lightmaps '{lightmapPath}' not found — rebake to restore them");
+                    else
+                        try
+                        {
+                            file.BakedLightmaps = LightmapData.Load(lightmapPath);
+                            file.Bytes += new FileInfo(lightmapPath).Length;
+                        }
+                        catch (Exception ex) when (ex is IOException || ex is InvalidDataException || ex is UnauthorizedAccessException)
+                        {
+                            EditorBridge.Log($"LoadScene: couldn't read lightmaps '{lightmapPath}': {ex.Message}");
+                        }
+                }
             }
             string reflectionPath = ProbePath(doc.ReflectionDataFile, path);
             if (reflectionPath != null)
@@ -148,6 +169,7 @@ namespace Engine.Logic
             public string Path;
             public SceneDocument Document;
             public ProbeVolumeData BakedProbes;
+            public LightmapData BakedLightmaps;
             public Dictionary<Guid, ReflectionProbeData> ReflectionCaptures;
             /// <summary>Size of the scene and its lighting sidecars.</summary>
             public long Bytes;
@@ -243,6 +265,7 @@ namespace Engine.Logic
                     staticShadow: rec.StaticShadow, volumeDensity: rec.VolumetricDensity);
                 pl.SourceRadius = rec.SourceRadius;
                 pl.SourceLength = rec.SourceLength;
+                pl.BakedShadows = rec.BakedShadows;
                 if (rec.Rotation != Quaternion.Identity) pl.RotationMatrix = Matrix.CreateFromQuaternion(rec.Rotation);
                 pl.Name = rec.Name ?? pl.Name;
                 pl.IsEnabled = rec.IsEnabled;
@@ -260,6 +283,7 @@ namespace Engine.Logic
                 sl.SourceRadius = rec.SourceRadius;
                 sl.SourceLength = rec.SourceLength;
                 sl.CookiePath = rec.CookiePath;
+                sl.BakedShadows = rec.BakedShadows;
                 sl.Name = rec.Name ?? sl.Name;
                 sl.IsEnabled = rec.IsEnabled;
                 ClaimId(sl, rec.Id);
@@ -276,6 +300,7 @@ namespace Engine.Logic
                 dl.CascadeCount = rec.CascadeCount;
                 dl.ShadowDistance = rec.ShadowDistance;
                 dl.SplitLambda = rec.SplitLambda;
+                dl.BakedShadows = rec.BakedShadows;
                 dl.Name = rec.Name ?? dl.Name;
                 dl.IsEnabled = rec.IsEnabled;
                 ClaimId(dl, rec.Id);
@@ -332,6 +357,7 @@ namespace Engine.Logic
                 {
                     scene.Lighting = doc.Lighting.Settings ?? new LightingSettings();
                     scene.BakedProbes = _file.BakedProbes;
+                    scene.BakedLightmaps = _file.BakedLightmaps;
                 }
 
                 if (_file.ReflectionCaptures != null)
@@ -381,6 +407,8 @@ namespace Engine.Logic
             be.LayerId = rec.LayerId;
             be.TagId = rec.TagId;
             be.Persistent = rec.Persistent;
+            be.LightmapStatic = rec.LightmapStatic;
+            be.LightmapScale = rec.LightmapScale > 0 ? rec.LightmapScale : 1f;
             be.PrefabPath = string.IsNullOrEmpty(rec.Prefab) ? null : rec.Prefab;
             be.BonePose.Load(rec.BonePose);
             foreach (var record in rec.Components ?? new())
@@ -415,6 +443,8 @@ namespace Engine.Logic
                 LayerId = be.LayerId == "Default" ? null : be.LayerId,
                 TagId = be.TagId == "Untagged" ? null : be.TagId,
                 Persistent = be.Persistent,
+                LightmapStatic = be.LightmapStatic,
+                LightmapScale = be.LightmapScale == 1f ? 0f : be.LightmapScale,
                 ModelKey = modelKey,
                 BonePose = be.BonePose.ToRecord(),
                 Components = be.Components.Select(ComponentRegistry.Capture).ToList(),
@@ -472,6 +502,15 @@ namespace Engine.Logic
             string probePath = Path.ChangeExtension(scenePath, ".probes");
             scene.BakedProbes.Save(probePath);
             return Path.GetFileName(probePath);
+        }
+
+        // Lightmaps live in "<scene>.lightmaps" next to the .obsc, like the probes.
+        private static string SaveBakedLightmaps(Scene scene, string scenePath)
+        {
+            if (scene.BakedLightmaps == null) return null;
+            string lightmapPath = Path.ChangeExtension(scenePath, LightmapData.Extension);
+            scene.BakedLightmaps.Save(lightmapPath);
+            return Path.GetFileName(lightmapPath);
         }
 
         private static string ProbePath(string fileName, string scenePath) =>
@@ -537,6 +576,7 @@ namespace Engine.Logic
                         Rotation = Quaternion.CreateFromRotationMatrix(sl.RotationMatrix),
                         SpotAngle = sl.SpotAngle, InnerSpotAngle = sl.InnerSpotAngle,
                         SourceRadius = sl.SourceRadius, SourceLength = sl.SourceLength, CookiePath = sl.CookiePath,
+                        BakedShadows = sl.BakedShadows,
                     });
                     continue;
                 }
@@ -548,6 +588,7 @@ namespace Engine.Logic
                     ShadowResolution = pl.ShadowResolution, SoftShadowBlurAmount = pl.SoftShadowBlurAmount,
                     StaticShadow = pl.StaticShadows, VolumetricDensity = pl.LightVolumeDensity,
                     SourceRadius = pl.SourceRadius, SourceLength = pl.SourceLength,
+                    BakedShadows = pl.BakedShadows,
                     // Point lights only rotate to aim a tube light
                     Rotation = pl.SourceLength > 0 ? Quaternion.CreateFromRotationMatrix(pl.RotationMatrix) : Quaternion.Identity,
                 });
@@ -564,6 +605,7 @@ namespace Engine.Logic
                     ShadowDepth = dl.ShadowDepth, ShadowResolution = dl.ShadowResolution,
                     ShadowFiltering = (int)dl.ShadowFiltering, ScreenSpaceShadowBlur = dl.ScreenSpaceShadowBlur,
                     CascadeCount = dl.CascadeCount, ShadowDistance = dl.ShadowDistance, SplitLambda = dl.SplitLambda,
+                    BakedShadows = dl.BakedShadows,
                 });
             }
 
@@ -708,6 +750,8 @@ namespace Engine.Logic
             public LightingSettings Settings { get; set; }
             // File name (same folder as the .obsc) of the baked probe volume, or null
             public string ProbeDataFile { get; set; }
+            // File name of the baked lightmaps (Source 2 look, phase 4.2), or null
+            public string LightmapDataFile { get; set; }
         }
 
         public class BasicEntityRecord
@@ -724,6 +768,11 @@ namespace Engine.Logic
             // Only written when true, so scenes without persistent gameobjects don't change.
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool Persistent { get; set; }
+            // Lightmaps (phase 4.2); only written when set, like Persistent. A scale of 0 means 1 (the default).
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+            public bool LightmapStatic { get; set; }
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+            public float LightmapScale { get; set; }
             public string ModelKey { get; set; }
             public Vector3 Position { get; set; }
             public Quaternion Rotation { get; set; } = Quaternion.Identity;
@@ -790,6 +839,8 @@ namespace Engine.Logic
             // Light source shape (Source 2 look, phase 2.4): sphere radius and tube length in metres, 0 = a point.
             public float SourceRadius { get; set; }
             public float SourceLength { get; set; }
+            // Lightmaps (phase 4.2): lightmapped surfaces take this light's shadows from the bake. Missing in older scenes: on.
+            public bool BakedShadows { get; set; } = true;
             // The tube's axis (local X) for point lights; spot lights' cone.
             public Quaternion Rotation { get; set; } = Quaternion.Identity;
         }
@@ -821,6 +872,7 @@ namespace Engine.Logic
             public int CascadeCount { get; set; } = DirectionalLight.MaxCascades;
             public float ShadowDistance { get; set; } = 150f;
             public float SplitLambda { get; set; } = 0.75f;
+            public bool BakedShadows { get; set; } = true;
         }
 
         public class DecalRecord

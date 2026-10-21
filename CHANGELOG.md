@@ -1,5 +1,277 @@
 # Changelog
 
+## Added: AI texture generator, phases 0 and A (2026-10-21)
+
+Groundwork for generating Source 2-style PBR material sets from a prompt (plan: `Docs/Research/AiTextures/PLAN.md`, progress: `PROGRESS.md`). Nothing is wired into Anvil yet (phases B and C).
+
+- **`Tools/TexGen`**: a local Python generator (`python -m texgen generate|check|styles`), numpy + Pillow only, no network. stdout is JSON lines (`progress`/`warning`/`done`/`error`), exit codes 0 ok, 1 internal, 2 arguments, 3 model/dependency missing, 4 seam check failed, 5 `--strict` style validation failed.
+  - Pipeline: RGB source -> classic PBR estimate (delighting, height, two-scale normals with reoriented blending, roughness from local contrast) -> `source2` style -> post-processing -> validation -> atomic write (`OUT.tmp` then rename).
+  - Output per material: `<slug>_BaseColor/Normal/Roughness/AO/Height.png` (+ `_Metallic.png` only when some pixel is metal), `texgen.json` (schema 1) and `_debug/` (`source_rgb.png`, `height16.png`, `validation.json`). Normals are DirectX / Y- by default (`--normal-convention`).
+  - Backends: `fake` (periodic procedural noise, tileable by construction) and `classic` (`--input-rgb`); `sdxl_classic` / `sdxl_chord` are only reported by `check` (phase E).
+  - `styles/source2.json`: 11 families (keyword auto-detection), roughness ranges, normal strength, tile scale, painted metal with a wear mask, saturation cap and luminance fitting. `validate.py` warns per broken rule (`albedo_too_dark`, `metal_albedo_dark`, `roughness_flat`, ...).
+  - Seam check: the tile border's gradient against the 95th percentile of the other column/row gradients (the plan's mean-gradient ratio misfired on brick and tile joints).
+- `ContentManifest.RegisterGeneratedTextures`: Content.mgcb entries for generated maps with `ColorKeyEnabled=False`, `PremultiplyAlpha=False`, mipmaps on. Anvil's own texture import is unchanged.
+- Normal convention test (plan task 0.2): `Tools/TexGen/lab/generate_normal_convention_test.py` writes `Content/Scenes/NormalConventionTest.obsc` / `_B.obsc` (Bricks next to a green-inverted copy, `Bricks_Normal_FlipG.png` added to Content.mgcb). The captures were inconclusive (the sun barely shows), so DirectX stays the working default until a person confirms it.
+- Checks: `Tests/Components/TexGenChecks.cs` (mgcb entries; `--graphics` builds a grayscale and an RGB PNG with the real mgcb: `.r` = 128 arrives, magenta stays opaque) and 48 Python `unittest`s (`Tools/TexGen/tests`).
+- Docs: `Docs/Research/AiTextures/` (plan, progress, environment), `Engine_Wiring.md`, CLAUDE.md repo map. README version 1.4.1.
+- `.gitignore`: `Tools/TexGen/{models,third_party,cache,.venv}/`, `texgen.json`, `__pycache__/`.
+- Claude
+
+## Added: Breakables: vases that smash, zombie heads that pop (2026-10-20)
+
+- **Breakable component** (`breakable`). It breaks any closed model into real 3D pieces during Play: a vase knocked off a table, a pot that is shot, a zombie's head.
+  - When Play starts, the model is cut into Pieces on a worker thread. The cuts are closed with caps in the Interior colour (clay, red flesh).
+  - A hit above Impact Speed/Momentum (a Dynamic gameobject falling on the floor counts) or a script's `Break(...)` hides the gameobject, removes its collider and throws the pieces from the hit as physics bodies. They shrink away after Debris Lifetime (at most 200 in the scene).
+  - Effects: Dust (puff and grit) or Blood (spray, mist, splats on the floor).
+  - **Follow** a gameobject or one of its bones: the head rides on `mixamorig:Head`. When it breaks, **Collapse Bone** shrinks the character's own head away and **Ragdoll On Break** makes the body go limp.
+  - Scripts: `Break()`, `Break(point, direction, force)`, `Break(hit, direction)`, `Restore()`, `IsBroken`, `PieceCount`, `IsReady`, `Broken` event.
+- New engine files:
+  - `Engine/Physics/MeshFracture.cs`: 3D Voronoi mesh fracture, plane clipping, caps with holes, both windings.
+  - `Engine/Physics/FractureShatter.cs`: model readback, piece bodies and meshes, interior material, lifetime.
+  - `Engine/Components/BreakableComponent.cs`.
+  - `Engine/Animation/BoneCollapse.cs`: applied by the Animator, the Ragdoll and `BonePose` skinning.
+  - `Engine/Particles/BreakBursts.cs`: `MainSceneLogic.BreakBursts`, drawn with the splash droplets.
+- `ScenePhysics`: `CreateFracture`/`RemoveFracture`, contacts reach breakables from `UpdateTouches`, and a broken breakable has no collider. `BasicEntity`: `Fracture`, `CollapsedBones`, `PartMaterial`.
+- New built-in models:
+  - **Vase** (`Assets.Vase`, a 41 cm glazed vase with walls; `GameObjects/Vase/Source/generate_vase.cs`).
+  - **Head** (`Assets.Head`, a 25 cm solid head, face towards -Y; `GameObjects/Head/Source/generate_head.cs`).
+  - Both are in Content.mgcb and kept by Delete Project.
+- Anvil: Breakable inspector (`BreakableComponentViewModel`, with a Follow drop slot), GameObject > Effects > **Breakable Vase** (also in the Hierarchy + menu).
+- Sample `Content/Scenes/BreakableTest.obsc` (added to the scene list): a table and a high shelf of vases, big urns, and three Y Bot zombies with breakable heads. `CollisionTestPlayerScript` now shoots Breakables with Attack (up to 40 m) and has `Title`/`Intro` fields.
+- Docs: `Docs/markdown/Breakables.md`, `Engine_Wiring.md` (BasicEntity fields, physics update, Breakables section, task row), CLAUDE.md repo map. README version 1.4.0. ISSUES: the Breakables limitations.
+- Checks: new `Tests/Components/BreakableChecks.cs`:
+  - closed pieces that add up to the mesh (box, hollow pot with ring caps, reversed winding), determinism;
+  - bone collapse;
+  - component, editor and save round trip;
+  - Play: script break, pieces fall and vanish, Restore, a dropped vase breaks on the floor and a resting one doesn't, follow, Stop;
+  - the sample scene.
+
+  `GameObjectMenuChecks` counts the new menu entry. All 1614 component checks pass. `--graphics`: animation, bone and ragdoll skinning pass; the run stops at the known PauseChecks failure (ISSUES). Checked visually with `Engine.exe --scene ... --play --shot`: dropped vases burst into glazed shell shards, and a ball dropped on a walking zombie's head pops it in blood, collapses the head and ragdolls the body.
+
+- Claude
+
+
+## Changed: MainMenu scene shows the game (2026-10-20)
+
+- `Content/Scenes/MainMenu.obsc` is now a showcase instead of the monolith ring: the player (Y Bot) dances to the new `GameObjects/Player/Silly Dancing.fbx` clip in a dark, closed, hazy room, backlit by a warm shadow-casting light that glows through a Fog Volume, with a front fill, a teal fill, a green neon tube, balloons, a beach ball, trash bags and a dim figure dancing slowly at the back. No sun.
+- `MainMenuScript`: the camera sways slowly in front of the character (centre at its chest) instead of orbiting the ring; in the menus it aims left of it so it sits right of the menu column.
+- `UI/MainMenu.css`: the title wordmark, rule, tagline and **Press any button** moved to the bottom left so they don't cover the character.
+- Content pipeline: `Silly Dancing.fbx` added to `Content.mgcb` (SkinnedModelProcessor, Mixamo settings). `SkinnedModelProcessor` now builds **animation-only FBX files** (Mixamo "Without Skin"): with no skinned mesh the importer leaves the rig as plain nodes and the file used to build as a static model with no clips, so the topmost node the clips animate (`FbxAnimationReader.AnimatedNodes`) is turned into the skeleton (`PromoteAnimatedNodes`). Files with a skinned mesh build as before (Y Bot, Walking, Wolf: same bones and clips).
+- Docs: `Scenes_and_Game_Flow.md` (MainMenu sample), `Skeletal_Animation.md` (animation-only files), `Engine_Wiring.md` (ContentPipeline row). README version 1.3.2.
+- Checks: `GameFlowChecks` now checks the new scene (dancing player with the Silly Dancing source, shadowed backlight, fog volume, emissive neon, no sun); `AnimationChecks` counts 3 Player FBX entries. All 1579 component checks pass. Checked visually with `Engine.exe --scene Scenes/MainMenu.obsc --shot ... --play`.
+
+- Claude
+
+
+## Added: Bright sun for image skyboxes (2026-10-20)
+
+- A 360° panorama skybox is an LDR image, so its sun was no brighter than a white cloud and never bloomed. Now, without the day/night cycle, the scene's brightest enabled directional light marks the sun: aim it from the panorama's sun and looking there blooms like looking at the real sun.
+  - `DeferredEnvironmentMap.fx` `AddSkySun` (main view sky only, not captures): the image's near-white pixels in a cone around the light are boosted ×150 into HDR, plus a ×400 sun disc (dimmer where the image has cloud over it) and glare, tinted by the light's colour. Bloom and the tonemapper do the rest.
+  - `EnvironmentSky.Apply` → `DeferredEnvironmentMapRenderModule.SetSkyboxSun` (direction, colour, strength, disc/cone sizes). Also applies to the default image sky.
+  - New saved settings `EnvironmentSettings.SkyboxSunBrightness` (0–10, default 1, 0 = off) and `SkyboxSunSize` (0.25–4). Anvil: Environment > Skybox > **Sun glare** / **Sun size**.
+- Docs: `Docs/markdown/Scene_Lighting_and_Fog.md`, `Engine_Wiring.md` (render steps 1 and 14). README version 1.3.1. ISSUES: no skybox sun in planar reflections/captures; thick fog hides it.
+- Checks: all component checks pass; checked visually with `Engine.exe --scene Scenes/LookDev.obsc --shot` looking at the sun (with and without fog).
+
+- Claude
+
+
+## Added: Liquid in bottles, reverse engineered from Half-Life: Alyx (2026-10-19)
+
+- **Liquid component** (`liquid`). A bottle, glass or jar shows liquid that stays level as it tilts, lies on its side or turns upside down, leans and lags when it moves, wobbles and ripples when shaken and settles over 20 s, with a meniscus, a water line, foam and bubbles. Runs in Edit (the gizmo sloshes it) and Play; held while paused. Visual only.
+  - Like Alyx there is no fluid simulation: the liquid is a plane, and the container's own Forward Shaded glass shows it below the plane.
+  - Scripts: `Fill`, `Agitate(speed)`, `Settle()`, `Agitation`, `FoamAmount`.
+- New code:
+  - `Engine/Physics/LiquidSlosh.cs`: Alyx's server code in Source units, with its convar defaults. A 10 Hz think turns the change of velocity + angular velocity into agitation and foam peaks (`pow(Δ, 0.6)`, additive power 10/1, max 5/200, linear decay over 20/30 s). The down direction is `normalize(gravity − velocity)`, eased 20 % per 0.1 s. The shader's per-instance part (a ~21 rad/s wobble of that direction, the surface height from the fill and the tilt) runs on the CPU.
+  - `Engine/Physics/LiquidVolume.cs`: the fill tables (upright / on its side / upside down, 9 fills each). They're measured from the closed mesh's volume by plane clipping, where Alyx has artists type 3 heights per orientation.
+  - `Engine/Components/LiquidComponent.cs` (+ `LiquidLook`), `TransformMatrix.Liquid`/`LiquidLook`, and `MainSceneLogic.Update` calls `LiquidComponent.UpdateAll`.
+  - `Forward.fx` `UseLiquid` block: Alyx's ripple wave sum and meniscus, soft liquid edge, water line, foam band, rising bubbles. `MeshMaterialLibrary` draws liquid containers from the inside first (back faces show the liquid's top where the view ray crosses it). `ForwardRenderModule.SetLiquid`/`ApplyLiquidFaces`.
+- Built-in **Bottle** model (`Content/GameObjects/Bottle/bottle.obj`, 0.30 m closed glass shell, made by `Source/generate_bottle.cs`; `Assets.Bottle` + `BottleGlassMaterial`). `Engine.csproj` no longer compiles `Content/GameObjects/**/Source/*.cs` (model generators). `ProjectReset` keeps the folder.
+- Anvil: GameObject > Effects > **Liquid Bottle** (also in the Hierarchy "+" menu), Inspector template with colour pickers and a **Shake** button (`LiquidComponentViewModel`).
+- Sample: `Content/Scenes/LiquidTest.obsc`, six bottles on a table: swung beer, tilted wine, knocked water, a potion poured empty and refilled, one on its side, one upside down. Moved by `Content/Scripts/LiquidTestScript.cs` (**Liquid Test**: Swing / Jolt / Pour).
+- Research (`Docs/Research/BottleLiquid/README.md` + `evidence/`): `server.dll` strings and `prop_liquid_*` convar defaults; the disassembled think (`0x1809DC010`) and down-direction routine (`0x1809D94B0`, 8-bit encoding into the render colour's alpha); the liquid materials (`vr_simple_liquid`, `g_vLiquidLevel*MinMidMax`); and the DXBC of the `vr_simple_liquid` vertex and pixel shaders. Done with the project's `re_tool` (Ghidra can't finish `server.dll` in time).
+- Docs: `Docs/markdown/Bottle_Liquid.md`, `Engine_Wiring.md` (frame update, components, forward draw, recipes) and the CLAUDE.md map. README version 1.3.0. ISSUES: the 1 m near plane clips close-up bottles; liquid limits.
+- Checks: `Tests/Components/LiquidChecks.cs` (`-- --liquid` runs them alone) covers the volume tables (box and the real bottle.obj, which is closed with outward faces, 1.01 l), the agitation/foam/down rules, pause, Settle, lying on its side, empty, the component through the bridge and inspector, save/load of colours, cloning and the sample. `GameObjectMenuChecks` covers the new menu entry. All 1569 component checks pass. Checked visually with `Engine.exe --scene Scenes/LiquidTest.obsc --shot` in Edit and Play.
+
+- Claude
+
+
+## Added: Breakable glass, reverse engineered from Half-Life: Alyx (2026-10-19)
+
+- **Breakable Glass component** (`breakable-glass`). A flat gameobject cracks, punches holes and drops shards like Half-Life: Alyx's `func_shatterglass`.
+  - The first hit cracks the pane into Voronoi panels on Valve's jittered grid: 0.381 m cells, sites moved a quarter cell and jittered ±0.49 cells.
+  - Each hit splits the panels it touches into radial pieces. The hole's pieces fly off as physics shards, and panels no longer joined to the frame fall.
+  - Bodies above Impact Speed/Momentum break it and carry on through. Scripts call `Shatter(point, direction, GlassStress.Ballistic/Blunt/Explosive)`, `Restore()` and the `Shattered` event.
+  - Shards use the gameobject's material (texture coordinates fitted to its front face). They live 15 s, with at most 150 in the scene.
+- New code: `Engine/Physics/GlassFracture.cs` (2D fracture math), `GlassShatter.cs` (meshes, frame colliders, debris bodies) and `Engine/Components/BreakableGlassComponent.cs`.
+  - `ScenePhysics`: `CreateGlass`/`RemoveGlass`, owned static colliders, contact hits and collider replacement once cracked.
+  - `BasicEntity.Glass`/`DrawMaterial`.
+  - `PhysicsSystem.TryCreateHull` now rejects sliver hulls whose centre is non-finite (they crashed BEPU's broad phase).
+- Anvil: Inspector template and `BreakableGlassComponentViewModel`.
+- Sample: a window station in `CollisionTest.obsc` (a framed 2.4 x 2 m pane and a small fine-cracking pane). `CollisionTestPlayerScript` shoots Breakable Glass with **Attack**.
+- Research: the REA MCP server timed out, so `server.dll`/`client.dll` were analysed with the project's `re_tool`: strings, convar defaults, and the disassembly of the crack and hit-test functions. Findings are in `Docs/Research/BreakableGlass/README.md` (`hlvr.exe` itself is only the launcher).
+- Docs: `Docs/markdown/Breakable_Glass.md`, `Engine_Wiring.md` (physics flow, entity state, component order) and the CLAUDE.md map. README version 1.2.0.
+- Checks: `Tests/Components/GlassChecks.cs` covers the crack pattern, the fracture, the support check, the component/editor/save, and Play (a script shot, rays through the hole, debris lifetime, Restore, a slow crate that bounces and a fast crate that breaks through, Stop) plus the sample. All 1543 component checks pass. Checked visually with `Engine.exe --play --shot` (a crate dropped through a glass table).
+
+- Claude
+
+## Added: Ground mist in the weather and raindrops on surfaces (2026-10-19)
+
+- **Ground mist.** Rain now raises a low mist that lies on the ground and thins out with height. A sandstorm drags orange dust along the ground, and snow raises a thin pale mist. Wind-blown banks of noise break it into patches that drift with the wind.
+  - New `GroundFog` technique in `Weather.fx`. It marches each view ray (12 jittered steps) through the layer below 4.5 × the fog height, up to the G-buffer depth, and is lit like the haze. `WeatherRenderModule` draws it between the haze and the particles.
+  - The mist rises over about 12 s and clears over about 30 s after the weather stops (`SurfaceWetness.GroundFog`/`GroundFogColor`), so it is also drawn after the weather is set to None.
+  - The wind drift wraps every 2000 m, where the noise repeats exactly, so it never jumps.
+- **Raindrops on surfaces.** In the rain, every material gets a wet sheen, two sizes of beads that land, sit and evaporate, and drips that run down walls leaving a glossy trail. Undersides stay dry.
+  - New `ApplyRainDrops` in `Gbuffer.fx`. Drops are placed in world space and fade out below about 2 pixels so they don't shimmer.
+  - Strength is `SurfaceWetness.Drops`: about 4 s to build up, about 25 s to dry. Wet Surface keeps its puddles instead. Emissive and hologram materials are left alone.
+- Settings:
+  - `WeatherProfile.GroundFog`/`GroundFogColor`/`SurfaceDrops` per weather type.
+  - `EnvironmentSettings.GroundFog` (0.6), `GroundFogHeight` (1.2 m), `GroundFogBase` (Z 0) and `SurfaceDrops` (1), clamped on load.
+  - `MaterialComponent.RainDrops`/`MaterialEffect.RainDrops` (on by default; saved, cloned and part of material assets).
+- Anvil: Environment > Weather has new **Ground Fog**, **Fog Height**, **Fog Base Z** and **Rain Drops** controls. The Material component has a **Rain Drops** checkbox (hidden for Wet Surface).
+- Docs: `Weather.md` (Ground mist and Raindrops sections, settings, drawing, limitations, code map), `Material_Component.md` (Rain drops), `Engine_Wiring.md` (G-buffer and weather rows), the CLAUDE.md weather entry. README version 1.1.0.
+- Checks: `WetSurfaceChecks` covers the mist/drop targets per weather, easing and lingering, clamping, and saving Rain Drops. Component checks pass, and the `--graphics` weather and wet-surface checks pass.
+  - The `--graphics` run then stops at an unrelated pause menu check (see ISSUES.md).
+  - Checked visually with `Engine.exe --scene Scenes/WeatherTest.obsc --shot`. That found and fixed a horizontal seam at the horizon: the drift had been scaled by height.
+
+- Claude
+
+## Changed: Debug Console logging and MCP status logs (2026-10-19)
+
+- Connected the existing `ScriptBehaviour.Log(message)` and `EditorBridge.Log(message)` functions to Anvil's Console, retaining timestamps and a bounded, thread-safe history. Debug builds also write to the debugger; file logging remains available in standalone and Release builds.
+- Added automatic MCP startup, shutdown, failure and first authenticated client activity logs. Added **Log Status** in the MCP panel to report listener state, automation state, bridge attachment, access mode and endpoint without credentials.
+- Kept Console/history sizes bounded, prevented cleared pending logs from returning, and stopped Console polling on window close.
+- Added integration checks for script/Console logging, concurrent messages, bounded history, MCP lifecycle state and credential omission; documented logging in the script, MCP and engine wiring guides.
+- Validation: the MCP integration suite passes (`Tests/Components --mcp`), including the new logging checks; the run compiled Engine, Vista and Anvil using cached packages and the cached MGCB executable.
+
+- Codex
+
+## Added: Planar reflections for glass, and a camera body to test them (2026-10-19)
+
+- The LookDev glass pane reflected the global cubemap captured at the scene's centre. It showed spheres and a room edge that aren't in front of it, and never anything nearby or moving. That pane tests sun, shadows and fog on forward glass, so it is unchanged. A new **Mirror Glass Pane** reflects correctly.
+- New **Planar Reflection** component (`planar-reflection`, `Engine/Components/PlanarReflectionComponent.cs`; Inspector: Resolution, Render Dist.). It goes on a flat Forward Shaded gameobject, whose face across its thinnest side is the mirror.
+- `PlanarReflectionRenderModule` runs before Compose:
+  - Picks the nearest 2 visible panes.
+  - Draws the opaque scene mirrored about each one through `Forward.fx` (new `ReflectionPass`: lit like the forward pass and clipped to the camera's side of the pane) into a mip-mapped `HalfVector4` target.
+  - Fills the empty pixels with the background sky (new `PlanarSky` technique).
+- The glass uses that image as its specular reflection at its screen position, blurred by roughness, instead of the probes. Under the procedural day/night sky, empty pixels keep the probes.
+- `MeshMaterialLibrary` has a new `RenderType.Reflection`. It culls per instance (`ReflectionCull`) and flips the winding. `TransformMatrix.PlanarReflection` carries the image to the forward pass. `Renderer.ForwardContext` builds the forward context for both passes. `DeferredEnvironmentMapRenderModule.BackgroundSkyCube/BackgroundSkyMap` expose the sky.
+- Two bugs found while building it:
+  - Leaving a depth-writing state after the extra pass stopped `ReconstructDepth` from writing depth, so every forward pixel was rejected. The module now saves and restores the device state.
+  - A mirror image still bound as the forward effect's texture was wiped when drawn into. The texture is now unset around both passes.
+- New **Camera Body** script (`camera-body`, `Content/Scripts/CameraBodyScript.cs`). In Play, a character gameobject stands under the camera, turned the way it looks, and plays Idle/Walk/Run by speed.
+- LookDev: added Mirror Glass Wall, Mirror Glass Pane (Planar Reflection, no shadow) and an animated Player Body Y Bot (IDs 54-56; existing IDs and baked data unchanged), plus the Camera Body script on Main Camera. `generate_lookdev.py` writes the same objects. `lookdev_views.sh` captures `mirror` and `mirror_play`.
+- Anvil: `PlanarReflectionComponentViewModel` and its Inspector template.
+- Docs: `Source2_Look.md` (Planar reflections section, table, code map), `Engine_Wiring.md` (components, pass 14b, forward pass, render types, module list) and a CLAUDE.md recipe.
+- Validation:
+  - The solution builds.
+  - All component checks pass. The LookDev check now expects 56 gameobjects plus the mirror, body and camera script.
+  - The `--forward-graphics` checks pass, and the new forward-shader parameter check passes under `--graphics`. That run still stops at the pre-existing `PauseChecks` failure.
+  - Before/after captures confirmed the mirror in Edit and Play, and the original glass and overview are unchanged.
+- Not in mirror images: decals, SSAO, emissive glow, normal maps, fog, other glass and particles. Opaque deferred mirrors (non-glass) don't use it.
+
+- Claude
+
+## Changed: Repository script organization and folder guide (2026-10-19)
+
+- Moved all five root-level scripts into `Tools/Scripts/` and adjusted repository-root resolution so project paths and default build outputs keep working.
+- Fixed the bootstrap script's `necho`/`ndotnet` typos and made it restore/build `Engine.slnx` from the checkout root.
+- Added a README repository tree, folder descriptions and a script reference; updated setup, cleanup, MCP and engine wiring instructions to use the new locations.
+
+- Codex
+
+## Added: Lightmaps, Source 2 look phase 4.2 (2026-10-19)
+
+- Added **Lightmap Static** and **Lightmap Scale** per gameobject (Inspector, saved, cloned, sent through `IEditorBridge.EnqueueSetLightmap`).
+- Added **Baked Shadows** on point/spot/directional lights (saved, default on).
+- Added a Lighting > **Lightmaps** section: Use/Bake lightmaps, Denoise, Texels/m, Max Size, Rays/Texel, Shadow Rays, AO Distance, Sun Angle.
+- Bake Lighting now bakes the probes and then the lightmaps (`LightingSystem.Bake`):
+  - UV2: authored TEXCOORD1 when a model has it, otherwise a per-model chart unwrap at bake time (`LightmapUnwrap`: axis classes, connected charts, self-overlap split, vertex splitting).
+  - Packing: each gameobject packs its charts into a block, and the blocks go into pages.
+  - Per texel (`LightmapBaker`): a cosine-weighted gather (sky, albedo × (direct + probe irradiance) at hits, emissive area lights), baked AO, the dominant direction (directional lightmap), and a 4-channel shadow mask.
+  - The mask covers lights with Baked Shadows: the sun takes channel 0, point/spot lights are graph-coloured so overlapping lights never share a channel.
+  - Then invalid-texel fill, edge-aware denoise and gutter dilation.
+- Saved as `<scene>.lightmaps` (`LightmapData`, deflate-compressed), referenced by `LightingRecord.LightmapDataFile`, shipped by builds and listed by `EditorAutomation`.
+- Runtime:
+  - A new lightmap pass after the decals (`LightmapRenderModule`, `Shaders/Deferred/Lightmap.fx`) redraws lightmapped gameobjects with their UVs as a second vertex stream, depth-matched against the G-buffer in the shader. It writes `_renderTargetLightmap` and `_renderTargetShadowMask`.
+  - `DeferredEnvironmentMap.fx` uses the lightmap instead of the probes and SSAO/SDF AO on those pixels; baked AO goes into specular occlusion, and reflection normalisation uses the lightmap irradiance.
+  - `DeferredPointLight.fx` (`ShadeLight`) and `DeferredDirectionalLight.fx` multiply each light by its mask channel, on top of its shadow map. A light that moved since the bake loses its channel.
+- Added the `Lightmap` and `ShadowMask` debug views. `GameStats.LightmappedMeshes` counts what the pass drew. `DebugScreen` render mode labels now cover every mode (the 3 newest ones were missing).
+- LookDev: the floor (Scale 0.5), the checker, the dark room, the crate, the emissive panel and the glass wall are Lightmap Static. The scene was rebaked and saved: `LookDev.lightmaps` (~1 MB, 168k texels, 5.6 s bake) plus refreshed `.probes`, and the save also wrote `LookDev.reflections`. `generate_lookdev.py` sets the same flags.
+- Docs:
+  - New `Docs/markdown/Lightmaps.md`.
+  - Updated `Source2_Look.md`, the Source2Look research README (4.2 marked done, with the differences from the plan), `Engine_Wiring.md` (module list, pass 9b, light and environment steps, target ownership) and the CLAUDE.md repo map/recipe.
+- Not done:
+  - UV2 isn't generated in the content pipeline.
+  - HLA's per-texel light indices (R6).
+  - Shadow masks for dynamic objects.
+  - Lightmaps on forward/glass surfaces.
+  - Seam stitching and automatic invalidation of stale bakes.
+- Validation:
+  - The solution builds, and all component checks pass, including the new `LightmapChecks` (unwrap, baker on a hand-built scene, channels, sidecar round trip, flags in the scene file and through the bridge, the LookDev bake).
+  - The `--graphics` lightmap shader check passes. That run still stops at the pre-existing `PauseChecks` "the document is filled in" failure.
+  - LookDev was captured before and after the bake, plus the `Lightmap`, `ShadowMask` and `AmbientOcclusion` views.
+  - The new Anvil controls compile, but I didn't look at them in the running editor.
+
+- Claude
+
+## Changed: Source 2 look defaults recovered from Half-Life: Alyx (research R1–R7, 2026-10-19)
+
+- Completed the reverse-engineering follow-ups R1–R7 in `Docs/Research/Source2Look/README.md` ("Research follow-ups: findings").
+- Sources: HLA's `.vpost` profiles, `gameinfo.gi`, the FGDs, and the DXBC of the `post_process`, `tonemap_query`, `gaussian_bloom_blur`, `vr_simple` and `vr_aoproxy_splat` shaders. Also the ConVar registrations and the tonemap, cascade and normalisation code in `scenesystem.dll` and `materialsystem2.dll`.
+- Evidence is in `evidence/followups/`, with hashes. The read-only extraction tool (ValveResourceFormat + Iced + D3DDisassemble) is in `re_tool/`.
+- REA's native providers weren't available, so these are not REA Evidence records.
+- Added the `Source2` tonemap curve: Hable's 8-parameter form on 2.8 × the exposed colour, normalised by H(2^white stops), with new `Filmic*` post settings.
+- Added `Source2` exposure metering: the histogram median exposed as `Key / 2^ln(L)`.
+- Added the `Source2` bloom threshold: a linear ramp on 0.3/0.59/0.11 luma.
+- All three are exposed in Anvil's Post Processing window and in volume overrides.
+- New defaults:
+  - Exposure 0 EV.
+  - Auto exposure −2 to +3 EV, adaptation 1.2 / 0.3 per second, no centre weight.
+  - Bloom start 1.976, width 2.3655.
+  - Cubemap normalisation max 32 / roughness begin 0.1, using HLA's cap formula.
+  - Cascade split lambda 0.85.
+  - Saved scenes keep their own Post values. `LookDev.obsc` now uses the HLA values.
+- Not applied: HLA's ~25 m sun shadow distance, the Screen bloom blend, the AO cone LUT and lightmap packing. All are documented for later.
+- Validation: the solution builds and all component checks pass, including new HLA default/serialization checks. LookDev was captured before and after.
+- The `--graphics` run fails at `PauseChecks` ("the document is filled in"). It fails the same way on unmodified `dev`.
+
+- Claude
+
+## Added: MCP harness installer CLI (2026-10-18)
+
+- Added `anvil-mcp`, an independent .NET 10 Windows console installer with an interactive multi-harness menu and flags for Claude Code, Cursor, Codex and VS Code. Added a source launcher and standalone executable publishing script.
+- Added user/project scopes, private saved-token or environment-reference authentication, custom profile/settings paths, dry-run previews, explicit conflict replacement, idempotent reruns, protected backups and atomic per-file updates.
+- Preserved unrelated JSONC/TOML settings and comments, rejected malformed configurations/concurrent changes, registered the tool in the solution, and documented installation and recovery in MCP/engine wiring docs.
+- Validation: installer builds without warnings; all 37 isolated installer checks pass; the published self-contained executable passes help/dry-run smoke checks; PowerShell syntax, Markdown and patch formatting checks pass. Live harness settings were not changed.
+
+- Codex
+
+## Added: Claude Code and Codex MCP setup instructions (2026-10-18)
+
+- Added PowerShell setup for Claude Code and Codex CLI, project JSON/user TOML examples, desktop/IDE token handling, connection checks, editing prompts and troubleshooting to `Docs/markdown/Editor_MCP.md`.
+- Documented private token references, token rotation and port changes, and linked the client instructions from engine wiring.
+- Validation: checked CLI options against installed Claude Code 2.1.220/Codex CLI 0.160.0 and official Anthropic/OpenAI documentation; checked Markdown structure and patch whitespace. Documentation only; client settings were not changed.
+
+- Codex
+
+## Added: Anvil editor MCP server (2026-10-18)
+
+- Added an application-owned Streamable HTTP MCP host using the official C# SDK 2.2.0, with twelve tools for scene inspection, object transforms/creation, components, selection, save, Play/Stop and operation recovery.
+- Added typed game-thread command completion, a bounded queue, scene generation checks, cancellation, retry deduplication and explicit errors. Shared object creation with existing editor commands and kept MCP dependencies outside standalone games.
+- Added Window > MCP with enable/port controls, immediate read-only policy, user-local token storage, token rotation and recent command outcomes. The host validates credentials, Host/Origin headers, scene paths and request/result limits.
+- Replaced the implementation plan with setup and usage guidance, registered it under the website's Editor topic, and updated engine wiring documentation.
+- Validation: Anvil/component builds, the full component integration suite, focused MCP checks with a real SDK HTTP client, and patch whitespace checks pass. Checks cover save/reload, stale IDs, failed saves, retries, queue limits, cancellation, timeout recovery, shutdown and HTTP access/result limits.
+
+- Codex
+
+## Added: Editor MCP implementation guide (2026-10-18)
+
+- Added `Docs/markdown/Editor_MCP.md` with a proposed local HTTP host, existing bridge integration points, command completion requirements, initial tool contracts, connection controls and an implementation/validation checklist.
+- Linked the guide from the engine wiring documentation and distinguished planned MCP features from existing editor behavior.
+- Validation: reviewed against editor/bridge source and official MCP documentation; checked local Markdown links and patch whitespace. Documentation only; no runtime changes.
+
+- Codex
+
 ## Changed: Compact component help buttons (2026-10-17)
 
 - Moved 23 long component and subsection descriptions into 19 question-mark buttons beside their headings, including physics, animation, probes, volumes, cloth, NPCs, LOD, particles and material shader guidance.

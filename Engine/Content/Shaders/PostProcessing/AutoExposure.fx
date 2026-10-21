@@ -44,7 +44,8 @@ float DeltaTime = 0.016f;
 // 1 snaps to the target (first frame / after re-enabling), 0 adapts over time.
 float Reset = 1;
 
-// Metering: 0 = bright pixels (Source's tonemap controller, Docs/Research/Source2Look phase 1.4), 1 = average.
+// Metering: 0 = bright pixels (Source's tonemap controller, Docs/Research/Source2Look phase 1.4), 1 = average,
+// 2 = Source 2 (Half-Life: Alyx, Source2Look R2): the median of the frame's luminance histogram exposed to KeyValue.
 float Metering = 0;
 // Share of the frame (0..1) that counts as its highlights, and the linear brightness they are exposed to.
 float BrightShare = 0.02f;
@@ -162,8 +163,8 @@ float HistogramPixelShader(float4 pos : SV_POSITION) : SV_TARGET0
 	return above / max(total, 1e-6f);
 }
 
-// log2 luminance that the brightest BrightShare of the frame is above, read off the histogram
-float BrightLogLuminance()
+// log2 luminance that the brightest `shareAbove` of the frame is above, read off the histogram
+float LogLuminanceAbove(float shareAbove)
 {
 	float result = HistogramMin;
 	float previous = HistogramTexture.Load(int3(0, 0, 0)).r;
@@ -171,12 +172,17 @@ float BrightLogLuminance()
 	for (int i = 1; i < HISTOGRAM_BINS; i++)
 	{
 		float share = HistogramTexture.Load(int3(i, 0, 0)).r;
-		if (previous >= BrightShare && share < BrightShare)
-			result = lerp(HistogramLevel(i - 1), HistogramLevel(i), saturate((previous - BrightShare) / max(previous - share, 1e-6f)));
+		if (previous >= shareAbove && share < shareAbove)
+			result = lerp(HistogramLevel(i - 1), HistogramLevel(i), saturate((previous - shareAbove) / max(previous - share, 1e-6f)));
 		previous = share;
 	}
-	if (previous >= BrightShare) result = HistogramMax;
+	if (previous >= shareAbove) result = HistogramMax;
 	return result;
+}
+
+float BrightLogLuminance()
+{
+	return LogLuminanceAbove(BrightShare);
 }
 
 float AdaptPixelShader(float4 pos : SV_POSITION) : SV_TARGET0
@@ -186,7 +192,14 @@ float AdaptPixelShader(float4 pos : SV_POSITION) : SV_TARGET0
 
 	float target = log2(KeyValue) - averageLogLuminance;
 	[branch]
-	if (Metering < 0.5f)
+	if (Metering > 1.5f)
+	{
+		// CTonemapSystem log-luminance mode (scenesystem.dll, HLA's gameinfo.gi Tonemapping_UseLogLuminance): the
+		// histogram holds ln(L), the median bucket is exponentiated with powf(2, x), exposure = KeyValue / 2^ln(L).
+		// So the exposure follows L^-ln2 (~0.69): dark rooms stay darker and bright areas brighter than a full match.
+		target = log2(KeyValue) - LogLuminanceAbove(0.5f) * 0.693147f;
+	}
+	else if (Metering < 0.5f)
 	{
 		// Highlights to the target brightness, but never leave the average darker than MinAverage
 		target = log2(BrightTarget) - BrightLogLuminance();

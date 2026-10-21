@@ -56,6 +56,8 @@ public sealed class MaterialComponent : GameComponent
     public float PuddleSize { get; set; } = 3f;
     /// <summary>Wet Surface only: rain soaks the surface beyond <see cref="Wetness"/> and ripples its puddles.</summary>
     public bool WeatherWetness { get; set; } = true;
+    /// <summary>Rain beads on the surface and runs down it (all shaders but Wet Surface, which pools puddles instead).</summary>
+    public bool RainDrops { get; set; } = true;
     /// <summary>Texture repeats across the mesh UVs, horizontally and vertically.</summary>
     public float TilingU { get; set; } = 1f;
     public float TilingV { get; set; } = 1f;
@@ -153,6 +155,7 @@ public sealed class MaterialComponent : GameComponent
         PuddleAmount = material.PuddleAmount,
         PuddleSize = material.PuddleSize,
         WeatherWetness = material.WeatherWetness,
+        RainDrops = material.RainDrops,
         TilingU = material.TextureTiling.X,
         TilingV = material.TextureTiling.Y,
     };
@@ -179,6 +182,7 @@ public sealed class MaterialComponent : GameComponent
         material.PuddleAmount = Limit(PuddleAmount, 0, 1);
         material.PuddleSize = Limit(PuddleSize, MinPuddleSize, MaxPuddleSize);
         material.WeatherWetness = WeatherWetness;
+        material.RainDrops = RainDrops;
         material.TextureTiling = new Vector2(Limit(TilingU, MinTiling, MaxTiling), Limit(TilingV, MinTiling, MaxTiling));
         content ??= Globals.content;
         ApplyTexture(BaseColorTexture, content, texture => material.AlbedoMap = texture);
