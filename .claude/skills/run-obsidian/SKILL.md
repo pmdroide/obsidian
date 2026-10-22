@@ -89,7 +89,7 @@ The `--graphics` run currently stops at `PauseChecks` ("the document is filled i
 - **Timing the intro skips matters.** An extra Enter after the menu is up goes through "PRESS ANY BUTTON", and the next one activates **Play**, which loads GodRayTest. Two Enters about 1.5 s apart right after `launch` stop at the menu.
 - **`CloseMainWindow` may not close Anvil.** One Anvil kept running after a close request. `quit` waits 5 s, then kills the process and says so. Check with `Get-Process Anvil` before `launch`: `launch` reuses a running instance.
 - **Creating content from the UI writes to the source tree.** For example, Render Pipeline > + New writes `Engine\Content\RenderFeatures\*.fx`/`.xnb` and `Engine\Content\System\RenderFeatures.json`. Delete them from the UI (Delete Feature sends files to the Recycle Bin) and remove the leftover JSON and folder after a test.
-- **Engine logs go to `%USERPROFILE%\Desktop\anvil-bridge.log`**, with `%LOCALAPPDATA%\Anvil\anvil-bridge.log` as the fallback, not to the console. Anvil's Console panel only shows messages the editor posts itself.
+- **Engine logs go to `%LOCALAPPDATA%\Anvil\Logs\anvil-bridge.log`**, with `%TEMP%\Anvil\Logs\anvil-bridge.log` as the fallback. Both folders are created automatically. Engine messages also appear in Anvil's Console panel.
 
 ## Troubleshooting
 

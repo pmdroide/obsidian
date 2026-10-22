@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -537,6 +537,7 @@ public class MonoGameHost : NativeControlHost
                     // Swallow per-frame errors, but log so the user can diagnose
                     // an "Add Object crashes" sort of regression.
                     EditorBridge.Log("RunOneFrame threw: " + ex);
+                    Engine.Logic.CrashHandler.ReportNonFatal(ex, "Anvil RunOneFrame");
                 }
                 
                 Thread.Sleep(1);
@@ -547,6 +548,7 @@ public class MonoGameHost : NativeControlHost
             // Engine threw during construction — release the waiter so the UI
             // thread doesn't hang forever in CreateNativeControlCore.
             EditorBridge.Log("GameThreadProc fatal: " + ex);
+            Engine.Logic.CrashHandler.ReportNonFatal(ex, "Anvil engine construction");
             _handleReady.Set();
         }
         finally

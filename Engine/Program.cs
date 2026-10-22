@@ -12,8 +12,9 @@ namespace Engine
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            Logic.CrashHandler.Install("Obsidian", args);
             try
             {
                 using (var game = new Engine())
@@ -22,8 +23,8 @@ namespace Engine
             catch (Exception ex)
             {
                 // WinExe has no console, so an unhandled exception would otherwise vanish.
-                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "crash.log"), ex.ToString()); }
-                catch { }
+                // Report here (game-thread state still intact), then rethrow so Windows Error Reporting sees it.
+                Logic.CrashHandler.ReportFatal(ex, "Engine main loop");
                 throw;
             }
         }

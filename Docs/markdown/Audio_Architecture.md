@@ -298,7 +298,7 @@ a header mismatch.
 `Initialize` makes this diagnosable: it logs the required version up front, and after init logs
 the actually-loaded DLL version with a **`MATCH` / `MISMATCH`** verdict. On failure it
 distinguishes a *version mismatch* from a *missing DLL*. Logs go to the `EditorBridge` log
-(`anvil-bridge.log` on the Desktop). Use `fmodL.dll` (logging build) for Debug, `fmod.dll` for
+(`%LOCALAPPDATA%/Anvil/Logs/anvil-bridge.log`, with `%TEMP%/Anvil/Logs/anvil-bridge.log` as fallback). Use `fmodL.dll` (logging build) for Debug, `fmod.dll` for
 Release.
 
 ### Graceful degradation

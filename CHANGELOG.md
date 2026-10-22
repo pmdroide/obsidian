@@ -1,5 +1,30 @@
 # Changelog
 
+## Added: crash handler for the engine and Anvil exes (2026-10-22)
+
+- New `Engine/Logic/CrashHandler.cs`, installed at the top of `Engine/Program.cs` and `Editor/Anvil/Program.cs`. Catches unhandled exceptions on any thread, unobserved task exceptions and WinForms window-proc exceptions (no more WinForms continue/quit dialog). A fatal crash writes `%LOCALAPPDATA%/Obsidian/Crashes/<App>-crash-<time>.txt` (version, OS, runtime, memory, command line, exception, last 200 log lines) and a small minidump, keeps writing `crash.log` next to the exe, and shows a native error dialog that can open the crash folder. Keeps the newest 20 reports.
+- Anvil: `MonoGameHost` now also writes a non-fatal report for each distinct exception swallowed from `RunOneFrame` or engine construction (max 10 per session), so editor-side errors aren't only in the log.
+- `OBSIDIAN_NO_CRASH_DIALOG=1` or `--no-crash-dialog` turns the dialog off for automation. Checked with a throwaway exe that crashes on a worker thread (report + 2.5 MB dump written). Docs: `Engine_Wiring.md`, `ISSUES.md`.
+- Obsidian 1.7.0; Editor 1.6.0.
+- Claude
+
+## Changed: Add Component plus button and dedicated Anvil log folders (2026-10-22)
+
+- Replaced the Inspector's Add Component text button with the existing Lucide Plus icon in a compact button. Kept the component menu behavior, visibility, tooltip and accessible Add Component name.
+- `EditorBridge.Log` now writes to `%LOCALAPPDATA%/Anvil/Logs/anvil-bridge.log`, with `%TEMP%/Anvil/Logs/anvil-bridge.log` as fallback. Both directories are created automatically; Console history and non-throwing file logging are preserved. Updated log location documentation and run-obsidian guidance.
+- Obsidian 1.6.3; Editor 1.5.2.
+- Codex
+
+## Changed: generated normal maps get real brick/stone forms; new relief test scene (texgen pipeline version 6) (2026-10-22)
+
+- Why generated normals looked flat: the `classic` estimator took height from luminance alone (brighter = higher), blurred 1.5 px. Against Poly Haven's real normals that correlated ~0 on bricks (light mortar between dark bricks came out *raised*) and turned photo colour noise into an even grain of bumps, with every edge capped at a 40 degree slope. Bricks and cobbles had no raised shape.
+- `classic_pbr.py`: new `solid_phase` splits the surface into two colour phases (Lab 2-means) and treats the thinner, network-like one as the gap (mortar, joints, cracks) whatever its brightness. `structure_height` bevels the solid phase (blurred masks averaged, edges round off over ~16 px, wide faces stay flat). `height_and_structure` mixes it into the luminance height in proportion to a confidence (how cleanly the colours split, and whether one phase really is a network), so dirt/plaster/metal keep the old behaviour and flat inputs stay flat. Confident structure also strengthens the shape normal (`STRUCTURE_RELIEF`) and weakens the luminance grain (`STRUCTURE_GRAIN_CUT`). `MAX_SLOPE` 0.85 -> 1.3 so bevels can be steep. CHORD's derived height map uses it too.
+- Measured on the Poly Haven references (slope correlation with the real normal map, x / y): Bricks 0.05 / 0.07 -> 0.45 / 0.44 (large-scale 0.13 -> 0.76), Cobblestone 0.44 / 0.51 -> 0.53 / 0.61, RockyDirt unchanged (~0.07, no gap network). Median/p90 slopes now close to the references.
+- New `Scenes/NormalReliefTest.obsc` (light from the left) and `NormalReliefTest_Top.obsc` (from above), written by `Tools/TexGen/lab/generate_normal_relief_test.py`: a night-dark scene where each wall has its own grazing point light, so relief shows. Generated material (`MaterialLab.Target*` wall, cube, sphere) next to Poly Haven bricks as shipped and with the green channel inverted. The slabs show the texture upright.
+- Normal map convention (PLAN task 0.2) settled with that scene: with light from above the DirectX bricks show lit tops and dark undersides, the inverted copy looks sunken. The engine reads DirectX / Y-, which texgen already writes.
+- `PIPELINE_VERSION` / `MaterialGenerationId.PipelineVersion` = "6". Checks: new `test_joints_sink_whether_lighter_or_darker_than_the_bricks`, all `Tools/TexGen/tests` and component checks pass. Docs: `Generated_Materials.md`, `Engine_Wiring.md`, `ISSUES.md`, `PROGRESS.md`, `Repo_Map.md`. Obsidian 1.6.2.
+- Claude
+
 ## Changed: generated materials get warm greys and less clean-cut contrast (texgen pipeline version 5) (2026-10-22)
 
 - Why AI materials still didn't read as Source 2: measured against HLA crops and Poly Haven's delit photos, SDXL/CHORD paint greys (plaster, mortar) dead neutral or blue (Lab b* -0.5; HLA 6-12, photos 5-11) and put near-white plaster beside bright brick (large-scale log-luminance spread 0.45; lit HLA brick 0.24, photos 0.04-0.23). The style step only touched brightness and saturation.

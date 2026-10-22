@@ -43,7 +43,7 @@ public override void Start()
 
 Anvil's **Console** shows `[ObjectName] Player ready` (or `[Main Camera]` for camera scripts). Outside a behaviour, use `Engine.Editor.EditorBridge.Log("message")`. Logging works in Debug and Release builds, including standalone games.
 
-Messages are also appended to `anvil-bridge.log` on the Desktop, with `%LOCALAPPDATA%/Anvil/anvil-bridge.log` as a fallback. Debug builds additionally write to the attached debugger. If neither file can be written, recent messages remain available in the Console. File writes and the recent history are synchronized across threads; the history and Console retain at most 1,000 entries. Clearing the Console discards pending messages too.
+Messages are also appended to `%LOCALAPPDATA%/Anvil/Logs/anvil-bridge.log`, with `%TEMP%/Anvil/Logs/anvil-bridge.log` as a fallback. Both log folders are created automatically. Debug builds additionally write to the attached debugger. If neither file can be written, recent messages remain available in the Console. File writes and the recent history are synchronized across threads; the history and Console retain at most 1,000 entries. Clearing the Console discards pending messages too.
 
 ## Scripts on the Main Camera
 

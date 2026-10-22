@@ -64,6 +64,16 @@ class EstimatorTests(unittest.TestCase):
         self.assertLess(seams.seam_score(luminance(self.est["albedo"] / 255.0)), 1.5)
         self.assertLess(seams.seam_score(self.est["normal"]), 1.5)
 
+    def test_joints_sink_whether_lighter_or_darker_than_the_bricks(self):
+        # 4 x 4 bricks with 6 px joints: light mortar between dark bricks, then dark joints between light stones.
+        s = 256
+        yy, xx = np.mgrid[0:s, 0:s]
+        joint = (xx % 64 < 6) | (yy % 64 < 6)
+        rng = np.random.default_rng(5)
+        for brick, mortar in (((120, 50, 40), (200, 195, 185)), ((190, 185, 175), (40, 38, 35))):
+            rgb = np.where(joint[..., None], mortar, brick).astype(np.float64) + rng.normal(0, 4, (s, s, 3))
+            h = classic_pbr.height_from_rgb(np.clip(rgb, 0, 255).astype(np.uint8))
+            self.assertLess(float(h[joint].mean()) + 0.1, float(h[~joint].mean()), str(mortar))
 
     def test_a_nearly_uniform_input_stays_nearly_flat(self):
         rng = np.random.default_rng(3)

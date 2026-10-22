@@ -124,16 +124,15 @@ namespace Engine.Editor
             _hostPointerOverViewport = inside;
         }
 
-        // Diagnostic log paths. Desktop is the primary (easy to find for the user);
-        // %LOCALAPPDATA%\Anvil is the fallback when Desktop writes fail (locked-down
-        // user profiles, redirected folders, OneDrive sync conflicts).
+        // Keep diagnostics in dedicated log folders, with a temp fallback for
+        // profiles where the application data directory cannot be written.
         public static readonly string LogPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Anvil", "Logs",
             "anvil-bridge.log");
 
         public static readonly string FallbackLogPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Anvil",
+            Path.GetTempPath(), "Anvil", "Logs",
             "anvil-bridge.log");
 
         // Static ctor: emit a bootstrap line before any other engine code runs.
@@ -166,7 +165,12 @@ namespace Engine.Editor
                 if (RecentLogs.Count > LogCapacity) RecentLogs.Dequeue();
                 string line = $"[{entry.Timestamp:HH:mm:ss.fff}] {entry.Message}{Environment.NewLine}";
                 System.Diagnostics.Debug.WriteLine(line);
-                try { File.AppendAllText(LogPath, line); return; }
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(LogPath));
+                    File.AppendAllText(LogPath, line);
+                    return;
+                }
                 catch { /* fall through to fallback */ }
                 try
                 {

@@ -1,0 +1,530 @@
+{
+  "Version": 2,
+  "Name": "NormalReliefTest_Top",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "MaterialLab.Target Wall 00",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.8,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "6870439b-9ef0-5676-9fcd-fd956d2c773b",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 2,
+      "Name": "MaterialLab.Target Wall 01",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.8,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "7cd564c7-c100-5410-b233-f17a3ddf2f52",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 3,
+      "Name": "MaterialLab.Target Wall 10",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.7999999999999998,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b1e671ec-3da6-5f5a-8e86-481cbf1d3540",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 4,
+      "Name": "MaterialLab.Target Wall 11",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.7999999999999998,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b3977608-6a72-5e18-ad2b-d5215eebeed8",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 5,
+      "Name": "ReliefTest Bricks DirectX 00",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.09999999999999998,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "6214f6bb-7f9b-5802-9f94-c826301021ad",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 1.0,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg"
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 6,
+      "Name": "ReliefTest Bricks DirectX 01",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.09999999999999998,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "51f873d2-7fcb-573b-ad2c-1c4f9d61ddaa",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 1.0,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal.jpg",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg"
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 7,
+      "Name": "ReliefTest Bricks FlipG 00",
+      "ModelKey": "Cube",
+      "Position": [
+        1.6,
+        -0.02,
+        0.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "723f45ce-c8eb-59cd-8941-e1dfc057e324",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 1.0,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal_FlipG.png",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg"
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 8,
+      "Name": "ReliefTest Bricks FlipG 01",
+      "ModelKey": "Cube",
+      "Position": [
+        1.6,
+        -0.02,
+        1.5
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "1b625b24-84c7-5ac6-baa2-15fa6861bd64",
+          "Data": {
+            "Red": 1,
+            "Green": 1,
+            "Blue": 1,
+            "Roughness": 1.0,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true,
+            "TilingU": 1,
+            "TilingV": 1,
+            "BaseColorTexture": "GameObjects/Textures/Ground/Bricks_BaseColor.jpg",
+            "NormalTexture": "GameObjects/Textures/Ground/Bricks_Normal_FlipG.png",
+            "RoughnessTexture": "GameObjects/Textures/Ground/Bricks_Roughness.jpg"
+          }
+        }
+      ],
+      "IsEnabled": true,
+      "Rotation": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "Id": 9,
+      "Name": "MaterialLab.Target Cube",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.75,
+        -0.75,
+        0.25
+      ],
+      "Scale": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "d706255c-5d20-5673-8967-2a3382de0437",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 10,
+      "Name": "MaterialLab.Target Sphere",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -1.85,
+        -0.75,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "7d93d1c9-a4f5-57b9-92e1-bf60b0c628f5",
+          "Data": {
+            "Red": 0.6,
+            "Green": 0.6,
+            "Blue": 0.6,
+            "Roughness": 0.8,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    },
+    {
+      "Id": 11,
+      "Name": "ReliefTest Floor",
+      "ModelKey": "Cube",
+      "Position": [
+        -0.6,
+        -1.5,
+        -0.02
+      ],
+      "Scale": [
+        3.5,
+        1.6,
+        0.02
+      ],
+      "Components": [
+        {
+          "Type": "material",
+          "InstanceId": "b149be82-29c5-535f-8256-827d113c8b67",
+          "Data": {
+            "Red": 0.03,
+            "Green": 0.03,
+            "Blue": 0.03,
+            "Roughness": 0.9,
+            "Metallic": 0.0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ],
+      "IsEnabled": true
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 900,
+      "Name": "MaterialLab.Target Wall Light",
+      "Position": [
+        -2.3,
+        -0.25,
+        2.6
+      ],
+      "Radius": 4.5,
+      "Color": [
+        255,
+        250,
+        242,
+        255
+      ],
+      "Intensity": 40,
+      "CastShadows": false,
+      "SourceRadius": 0.05
+    },
+    {
+      "Id": 901,
+      "Name": "ReliefTest Bricks DirectX Light",
+      "Position": [
+        -0.09999999999999998,
+        -0.25,
+        2.6
+      ],
+      "Radius": 4.5,
+      "Color": [
+        255,
+        250,
+        242,
+        255
+      ],
+      "Intensity": 40,
+      "CastShadows": false,
+      "SourceRadius": 0.05
+    },
+    {
+      "Id": 902,
+      "Name": "ReliefTest Bricks FlipG Light",
+      "Position": [
+        1.6,
+        -0.25,
+        2.6
+      ],
+      "Radius": 4.5,
+      "Color": [
+        255,
+        250,
+        242,
+        255
+      ],
+      "Intensity": 40,
+      "CastShadows": false,
+      "SourceRadius": 0.05
+    },
+    {
+      "Id": 950,
+      "Name": "Shapes Light",
+      "Position": [
+        -2.3,
+        -0.75,
+        1.0
+      ],
+      "Radius": 2.2,
+      "Color": [
+        255,
+        250,
+        242,
+        255
+      ],
+      "Intensity": 10,
+      "CastShadows": false,
+      "SourceRadius": 0.05
+    }
+  ],
+  "SpotLights": [],
+  "DirectionalLights": [],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      -1.5,
+      1.0
+    ],
+    "SpecularStrength": 0.2,
+    "DiffuseStrength": 0.05,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": true,
+    "TimeOfDay": 0,
+    "CycleDurationMinutes": 100000,
+    "MoonBrightness": 0,
+    "StarBrightness": 0,
+    "CloudCoverage": 0,
+    "NightExposure": 0,
+    "MaxAutoExposure": 1
+  },
+  "MainCamera": {
+    "Position": [
+      -0.6,
+      -3.9,
+      1.05
+    ],
+    "Forward": [
+      0.0,
+      1.0,
+      -0.02
+    ],
+    "FieldOfView": 0.9,
+    "Components": []
+  }
+}

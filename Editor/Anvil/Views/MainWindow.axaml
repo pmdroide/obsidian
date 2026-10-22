@@ -4810,9 +4810,13 @@
 
                                 <!-- AddComponentButton_Click builds a fresh menu for the shown gameobject on every
                                      click; a reused MenuFlyout kept running the first gameobject's commands. -->
-                                <Button Content="Add Component" Margin="12" HorizontalAlignment="Stretch"
+                                <Button Classes="iconButton" Margin="12" HorizontalAlignment="Center"
+                                        Width="28" Height="28" ToolTip.Tip="Add Component"
+                                        AutomationProperties.Name="Add Component"
                                         IsVisible="{Binding CanAddComponents}"
-                                        Click="AddComponentButton_Click" />
+                                        Click="AddComponentButton_Click">
+                                    <controls:LucideIcon Icon="Plus" />
+                                </Button>
 
                                 <!-- Camera -->
                                 <Expander IsExpanded="True"

@@ -53,7 +53,7 @@ class GenerateTests(unittest.TestCase):
             self.assertEqual(meta["params"]["seed"], 1234)
             self.assertEqual(meta["params"]["backend"], "fake")
             self.assertEqual(meta["normal_convention"], "directx")
-            self.assertEqual(meta["pipeline_version"], "5")
+            self.assertEqual(meta["pipeline_version"], "6")
             self.assertEqual(meta["colorspace"]["basecolor"], "srgb")
             self.assertIn("tiling", meta["suggested"])
             self.assertLess(meta["seam_score"], 1.5)

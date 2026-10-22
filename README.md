@@ -40,8 +40,8 @@ cd obsidian
 ### Engine and Editor
 Engine and Editor use the following version format: `MAJOR.MINOR.PATCH`
 
-- Obsidian 1.6.1
-- Editor 1.5.1
+- Obsidian 1.7.0
+- Editor 1.6.0
 
 ### Tools and frameworks
 

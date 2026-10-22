@@ -4,7 +4,7 @@ Plano: [PLAN.md](PLAN.md). Ambiente: [ENVIRONMENT.md](ENVIRONMENT.md).
 
 ## Fase 0 — Inventário e decisões
 - [x] 0.1 Inventário do ambiente
-- [ ] 0.2 Convenção do normal map — cenas e capturas feitas, mas **inconclusivas** (o sol quase não se nota); **aguarda decisão humana** (ver abaixo)
+- [x] 0.2 Convenção do normal map — **DirectX / Y−** confirmado em `Scenes/NormalReliefTest_Top.obsc` (luz pontual rasante de cima: os tijolos DirectX ficam salientes, a cópia com o verde invertido fica afundada)
 - [x] 0.3 Entradas mgcb para materiais gerados
 
 ## Fase A — Gerador `texgen` (Python)

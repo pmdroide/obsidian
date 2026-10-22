@@ -76,7 +76,7 @@ stdout is JSON lines only (`progress`, `warning`, `done`, `error`). Exit codes: 
 |---|---|
 | Value ranges, families, keywords, roughness, tile sizes | `Tools/TexGen/texgen/styles/source2.json` and `style.py` (`albedo_mean` / `albedo_clip` / `max_saturation` / `neutral_warmth` / `macro_contrast` per family override the `common` ones; highlights roll off towards the clip in `compress_highlights`; near-grey pixels are warmed to `neutral_warmth` (Lab b*) in `warm_neutrals`; large-scale contrast is soft-capped at `macro_contrast` in `limit_macro_contrast`) |
 | Making photos tileable | `make_tileable` in `Tools/TexGen/texgen/imageops.py` |
-| Delighting, height, normals, roughness estimate | `Tools/TexGen/texgen/backends/classic_pbr.py` (`soften_shadows` keeps contact shadows shallow, `MAX_SLOPE` caps the normals) |
+| Delighting, height, normals, roughness estimate | `Tools/TexGen/texgen/backends/classic_pbr.py` (`solid_phase` finds the gap network (mortar, joints) by colour and `structure_height` bevels the rest; `STRUCTURE_WEIGHT` / `STRUCTURE_RELIEF` / `STRUCTURE_GRAIN_CUT` / `BEVEL_SIGMAS` tune it; `soften_shadows` keeps contact shadows shallow, `MAX_SLOPE` caps the normals) |
 | AO, metal, PNG writing | `Tools/TexGen/texgen/postprocess.py` |
 | Warnings | `Tools/TexGen/texgen/validate.py` |
 | Id, runner, import | `Engine/Recources/TextureGeneration/` |
@@ -87,6 +87,17 @@ When a change alters results, bump **both** `PIPELINE_VERSION` in `Tools/TexGen/
 ## Checking a material in the MaterialLab
 
 `Engine.exe --scene Scenes/MaterialLab.obsc --material Materials/Generated/<x>.mat --shot lab.png` (or `--import-generated Tools/TexGen/cache/<id>` to import and view a fresh set) shows it on a tiled floor, a cube and a sphere next to a grey and a chrome reference. Regenerate the scene with `python Tools/TexGen/lab/generate_material_lab.py`. Calibration against CC0 references: `Docs/Research/AiTextures/D2_CALIBRATION.md`.
+
+## Checking the normal map (`NormalReliefTest`)
+
+Frontal light hides relief, so judge a normal map under grazing light. `NormalReliefTest` is night-dark and every wall has its own point light skimming it: from the left, or from above in `NormalReliefTest_Top`. The material goes on a 2 x 2 m wall, a cube and a sphere; beside it stand the Poly Haven bricks with their real normal map, and the same bricks with the green channel inverted (what a wrong convention looks like: sunken bricks).
+
+```powershell
+cd Engine\bin\Debug\net10.0-windows
+.\Engine.exe --scene Scenes/NormalReliefTest_Top.obsc --import-generated C:\path\to\Tools\TexGen\cache\<id> --tiling 1 --size 2400x1200 --shot C:\path\to\top.png
+```
+
+Raised parts should show lit edges towards the light and dark edges away from it, like the left brick wall. Regenerate the scenes with `python Tools/TexGen/lab/generate_normal_relief_test.py`. `--import-generated` adds the material to `Content.mgcb` and `Materials/Generated/`; remove those after a test.
 
 ## Checking the Source 2 look (`Source2MaterialTest`)
 
