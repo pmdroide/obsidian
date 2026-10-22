@@ -1,5 +1,37 @@
 # Changelog
 
+## Changed: generated materials get warm greys and less clean-cut contrast (texgen pipeline version 5) (2026-10-22)
+
+- Why AI materials still didn't read as Source 2: measured against HLA crops and Poly Haven's delit photos, SDXL/CHORD paint greys (plaster, mortar) dead neutral or blue (Lab b* -0.5; HLA 6-12, photos 5-11) and put near-white plaster beside bright brick (large-scale log-luminance spread 0.45; lit HLA brick 0.24, photos 0.04-0.23). The style step only touched brightness and saturation.
+- `styles/style.py`: new `warm_neutrals` (near-grey pixels warmed to the family's `neutral_warmth`, L* kept, already-warm albedos and black untouched) and `limit_macro_contrast` (soft cap at `macro_contrast`, fine detail kept), run for every backend before the brightness fit. `imageops.srgb_to_lab`/`lab_to_srgb`. `source2.json`: warmth brick/plaster 6, stone 5, ground 9, wood 10, concrete 2, tile 3; macro cap 0.25 (tile 0.45, wood 0.4); brick albedo band [70, 125] -> [65, 110] (Poly Haven Bricks 88, HLA 98).
+- HLA brick CHORD run (seed 7): grey b* -0.5 -> 4.8, macro contrast 0.45 -> 0.23, luma 120 -> 105, no warnings; `classic` from the HLA crop unchanged. Captured in `Scenes/Source2MaterialTest.obsc` (`Tools/TexGen/cache/_shots/hla_brick_v5/`, import removed afterwards). Tried and reverted: keeping CHORD's roughness absolute (glossier brick, no extra variation).
+- `PIPELINE_VERSION` / `MaterialGenerationId.PipelineVersion` = "5". Checks: `Tools/TexGen/tests/test_style.py` `Source2GradeTests`, `test_cli.py`; component checks pass. Docs: `D2_CALIBRATION.md`, `Generated_Materials.md`, `Engine_Wiring.md`, `ISSUES.md`. Obsidian 1.6.1.
+- Claude
+
+## Added: essential networking functions for scripts (2026-10-22)
+
+- Added `Engine.Networking`: transport-independent `NetworkSession`, lazy `SteamNetworkTransport`, host/join/leave/invite, peer IDs/events/ping, named reliable or unreliable sequenced messages, explicit server/client RPC registration and authority checks, local network ticks, and host-written `NetworkVariable<T>` with late-join snapshots and dirty-state retries.
+- Added bounded little-endian `NetworkWriter`/`NetworkReader`, built-in primitive/vector/quaternion variable codecs and custom codecs. Packets are capped at 1200 bytes and receive work at 256 packets/frame; malformed packets, stale sequenced messages and unauthorized variable/client-RPC senders are rejected.
+- `ScriptBehaviour.CreateNetwork` polls before gameplay Update and releases its session during shutdown, including faulted scripts. Updated Multiplayer Test to use the scripting API and compatible-lobby key `obsidian-capsules-v2`. Steam receive now releases an entire native batch even when a callback throws and bounds receive work/payload allocation.
+- Added deterministic in-memory integration checks (`Tests/Components --networking`) for serialization, authority, late joins, failed-send retries, sequencing/wraparound, receive/tick bounds and lifecycle cleanup. Usage and scope: `Docs/markdown/Networking_Scripting.md`; updated Steam/script/wiring docs and known networking limits. Obsidian 1.6.0; Editor unchanged.
+- Codex
+
+## Added: damaged material and edge texture for breakable glass (2026-10-22)
+
+- Cracked glass no longer reuses the pane's material everywhere. Like Half-Life: Alyx's `m_hGlassMaterialDamaged` and `shatterglass_edge_uv_scale`, the panels and falling shards show a **damaged material**, and their broken edges an **edge material** with an edge texture along them (one repeat per 0.508 m = 0.05/in).
+- Every shard is now a bevelled prism: a chipped bevel (Edge Width, 3 mm) runs along each crack on both faces, so the cracks read from the front. Sides on the pane's border keep the damaged material. New `GlassFracture.Inset` and `IsBorderEdge`.
+- Built-in looks, painted once per device by `Engine/Physics/GlassTextures.cs` (no content files): the pane's material with fine crazing, faint scratches and frost; greenish, denser edge glass with hackle bands.
+- `BreakableGlassComponent`: `DamagedMaterial`, `EdgeMaterial` (`.mat` asset paths, empty = built-in), `EdgeWidth`, `EdgeTextureSize`. Anvil Inspector > Breakable Glass > Broken Look (material dropdowns listing the project's material assets).
+- Checks: `GlassChecks` (inset geometry, border edges, defaults, inspector edits, save round-trip). Checked visually with a crate dropped through a glass skylight in a temporary copy of CollisionTest. Docs: `Breakable_Glass.md`, `Engine_Wiring.md`, `Docs/Research/BreakableGlass/README.md`. Obsidian 1.5.3, Editor 1.5.1.
+- Claude
+
+## Changed: shorter CLAUDE.md and a cheaper run-obsidian skill (2026-10-22)
+
+- **CLAUDE.md** 72.9 KB -> 5.2 KB: keeps the agent/test rules, project snapshot, quick commands, a short Core Files list, Project-Specific Rules and the end-of-session rules. The rest moved word for word into `Docs/Agent/`: `Repo_Map.md` (feature map), `Recipes.md` (change recipes), `Architecture.md` (runtime/renderer flow, asset pipeline), `Adding_Components.md`, `Blender.md`. Fixed the `Engine_Wiring.md` link (`Docs/markdown/Engine_Wiring.md`).
+- **`run-obsidian` skill**: runs on Sonnet (`model: sonnet`), starts with a cheapest-path ladder (component checks -> headless `Engine.exe --shot` -> driving Anvil), asks for fewer screenshots/`find` calls and no subagents; removed the human-path section and two duplicate troubleshooting rows.
+- Researcher/Tester agents point at `Docs/Agent/`; the Tester stops at the first check that answers the question. No code changed; README version unchanged (Obsidian 1.5.2).
+- Claude
+
 ## Changed: generated materials follow the Source 2 look, fixed parallax, Source2MaterialTest scene (2026-10-21)
 
 - **Texture generator, pipeline version 4** (`PIPELINE_VERSION` and `MaterialGenerationId.PipelineVersion` = "4"): per-family albedo brightness bands, clip and saturation caps in `styles/source2.json` (brick [70, 125] sRGB luma, concrete [85, 160], ...; the validator uses them too), highlights roll off instead of clipping (`compress_highlights`), masonry prompts ask for aged, muted surfaces and the negative prompt rejects stylised/oversaturated/clean ones. `classic`: an `--input-rgb` photo that doesn't tile is made tileable (`imageops.make_tileable`, `texgen.json` `source_made_tileable`) instead of being refused; contact shadows become shallow (`soften_shadows`) and normal slopes are capped (`limit_slope`). HLA brick test: CHORD albedo 148 -> 120 luma (HLA ~98), classic seam 10.1 -> 0.72, classic normal tilt p99 0.78 -> 0.54.

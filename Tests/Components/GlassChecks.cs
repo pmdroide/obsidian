@@ -88,6 +88,16 @@ internal static class GlassChecks
             "panels hang on through shared edges to the border; floating ones and corner-only contacts fall");
         Check(Math.Abs(GlassFracture.Area(GlassFracture.Clip(square, Vector2.Zero, Vector2.UnitX)) - 0.5f) < 1e-5f,
             "clipping a polygon by a half-plane keeps the right part");
+
+        Vector2[] inset = GlassFracture.Inset(square, 0.01f, out float used);
+        Check(used == 0.01f && Math.Abs(GlassFracture.Area(inset) - 0.98f * 0.98f) < 1e-5f
+              && inset.Zip(square).All(p => Math.Abs(Math.Abs(p.First.X - p.Second.X) - 0.01f) < 1e-5f && Math.Abs(Math.Abs(p.First.Y - p.Second.Y) - 0.01f) < 1e-5f),
+            "the edge bevel moves every side of a panel inwards by its width, vertex for vertex");
+        Vector2[] sliver = GlassFracture.Inset(GlassFracture.Rectangle(new Vector2(0.5f, 0.002f)), 0.01f, out float sliverWidth);
+        Check(sliverWidth < 0.002f && GlassFracture.Area(sliver) > 0 && pieces.All(p => GlassFracture.Area(GlassFracture.Inset(p, 0.003f, out _)) > 0),
+            "the bevel narrows on thin shards and never turns a radial piece inside out");
+        Check(GlassFracture.IsBorderEdge(new Vector2(-1, -1), new Vector2(-1, 0.5f), half) && !GlassFracture.IsBorderEdge(new Vector2(-1, 0), new Vector2(0, 0), half),
+            "edges on the pane's sides count as frame, the others as cracks");
     }
 
     private static void CheckComponent()
@@ -112,6 +122,8 @@ internal static class GlassChecks
         var editor = owner.Components.OfType<BreakableGlassComponentViewModel>().Single();
         Check(glass is { CrackSize: 0.381f, HoleRadius: 0.06f, DebrisLifetime: 15, HitTolerance: 2, DropLooseShards: true, IsBroken: false },
             "Breakable Glass defaults to Half-Life: Alyx's crack size, shard lifetime and hit tolerance");
+        Check(glass is { DamagedMaterial: "", EdgeMaterial: "", EdgeWidth: 0.003f, EdgeTextureSize: 0.508f } && editor.DamagedMaterialIndex == 0 && editor.MaterialChoices[0] == "Built-in",
+            "cracked glass defaults to the built-in damaged and edge looks (edge texture every 0.508 m, Half-Life: Alyx's 0.05 per inch)");
 
         editor.CrackSize = 0.5;
         editor.HoleRadius = 0.1;
@@ -122,7 +134,13 @@ internal static class GlassChecks
         editor.DropLooseShards = false;
         editor.Distort = false;
         editor.SolidShards = false;
+        editor.EdgeWidth = 0.005;
+        editor.EdgeTextureSize = 1;
+        string material = editor.MaterialChoices.Count > 1 ? editor.MaterialChoices[1] : "";
+        editor.DamagedMaterialIndex = editor.MaterialChoices.Count > 1 ? 1 : 0;
         Publish();
+        Check(glass is { EdgeWidth: 0.005f, EdgeTextureSize: 1 } && glass.DamagedMaterial == material && glass.EdgeMaterial == "",
+            $"inspector edits pick the damaged material ('{material}') and the edge bevel");
         Check(glass is { CrackSize: 0.5f, HoleRadius: 0.1f, ImpactSpeed: 6, ImpactMomentum: 3, DebrisLifetime: 8, HitTolerance: 1.5f,
                 DropLooseShards: false, Distort: false, SolidShards: false },
             "inspector edits reach the engine component");
@@ -133,7 +151,8 @@ internal static class GlassChecks
 
         var record = ComponentRegistry.Capture(glass);
         Check(!record.Data.TryGetProperty(nameof(BreakableGlassComponent.Glass), out _) && !record.Data.TryGetProperty(nameof(BreakableGlassComponent.IsBroken), out _) &&
-              ComponentRegistry.Restore(record) is BreakableGlassComponent { CrackSize: 0.5f, DebrisLifetime: 8, SolidShards: false },
+              ComponentRegistry.Restore(record) is BreakableGlassComponent { CrackSize: 0.5f, DebrisLifetime: 8, SolidShards: false, EdgeWidth: 0.005f } restored
+              && restored.DamagedMaterial == material,
             "saved Breakable Glass records round-trip their settings and exclude runtime state");
 
         void Publish()

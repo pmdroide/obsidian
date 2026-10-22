@@ -108,3 +108,26 @@ Same HLA brick runs again (`Tools/TexGen/cache/_shots/hla_brick_v4/`, `compare_*
 | seam score | - | 10.1 (refused) -> **0.72** | 0.71 -> 0.48 |
 
 Both now read as worn brick under grey plaster in the wall scene; the CHORD plaster is grey instead of white. Left: `classic` keeps soft, slightly blurry detail from a 382 px crop and repeats visibly at 1 m; its thin black outlines are fainter but some remain in the lab close-up (they are in the screenshot's albedo). CHORD's mean sits at the top of the brick band (fitted down to 120, HLA is ~98), so the band could narrow once more HLA brick is measured. The [HUMANO] check of the look is still open.
+
+## Pipeline version 5: warm greys and large-scale contrast (2026-10-22)
+
+The v4 CHORD wall still didn't read as HLA: next to the HLA crop its plaster was a clean, cold grey and stood far brighter than the bricks. Measured on 512 px versions (scratch script; Lab D65; "neutral" = the least chromatic 40 % of the pixels; macro = std of the log luminance blurred at size/64):
+
+| | neutral b* | macro contrast |
+|---|---|---|
+| HLA brick / plaster / wood (lit crops) | 5.8 / 7.7 / 11.8 | 0.24 / 0.26 / 0.54 |
+| HLA concrete / checker | -0.5 / 0.2 | 0.74 / 0.42 (lighting, black-white tiles) |
+| Poly Haven Bricks / Cobblestone / RockyDirt (delit) | 9.6 / 4.7 / 10.9 | 0.09 / 0.23 / 0.04 |
+| `classic` from the HLA crop (v4) | 5.7 | 0.13 |
+| `sdxl_chord` HLA brick prompt, seed 7 (v4) | **-0.5** | **0.45** |
+
+Real greys are warm (dust, iron oxides); the image generator paints them dead neutral or slightly blue, and the style step had nothing that touched hue. The plaster-over-brick contrast is nearly twice that of the lit HLA frame, and higher than any delit photo albedo.
+
+**Applied** (`styles/source2.json`, `style.py`; `PIPELINE_VERSION` and `MaterialGenerationId.PipelineVersion` = "5"):
+
+- `warm_neutrals`: if the neutral pixels' mean b* is below the family's `neutral_warmth`, near-grey pixels (chroma < 12, fading in above L* 20 so black stays black) move towards it, a quarter of the shift into a* (dust brown). L* is kept; already-warm albedos are left alone. Targets just below the measurements: brick 6, plaster 6, stone 5, ground 9, wood 10, concrete 2, tile 3; fabric, organic and painted metal 0 (off).
+- `limit_macro_contrast`: soft cap (tanh) on the macro contrast, three passes so it converges; `common` 0.25, tile 0.45 and wood 0.4 (their patterns are real). Fine detail is untouched.
+- Brick `albedo_mean` [70, 125] -> [65, 110]: Poly Haven Bricks luma 88, lit HLA brick 98 (an upper bound).
+- Tried and reverted: treating CHORD's roughness as absolute (fitted into the range instead of remapped). Its spread didn't grow (0.045 either way, CHORD's own is small) and the brick got glossier (0.85 -> 0.75; Poly Haven Bricks 0.97).
+
+Same CHORD run (`Tools/TexGen/cache/_shots/hla_brick_v5/compare_chord.png`): neutral b* -0.5 -> 4.8, macro 0.45 -> 0.23, albedo luma 120 -> 105 (HLA 98), no validation warnings. `classic` from the HLA crop is unchanged (already warm and below the cap). In `Source2MaterialTest` the plaster reads warm grey-beige and sits closer to the bricks. Still different: HLA's plaster carries dense mottled grime and its bricks are a muddier red; that is what the generator painted, which a grade can't invent.

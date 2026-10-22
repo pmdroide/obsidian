@@ -89,20 +89,25 @@ public abstract partial class ScriptBehaviour
         float gameDelta = Logic.GameFlow.Paused ? 0f : deltaTime;
         Time += gameDelta;
         FrameCount++;
+        Network?.Update(deltaTime);
         Update();
         AdvanceTiming(gameDelta, deltaTime);
     }
 
-    /// <summary>Runs <see cref="Stop"/>, then releases timers, coroutines, sounds and gameobjects this script started or spawned.</summary>
+    /// <summary>Runs <see cref="Stop"/>, then releases networking, timers, coroutines, sounds and spawned gameobjects.</summary>
     internal void Shutdown()
     {
         try { Stop(); }
         finally
         {
-            CancelAllTimers();
-            StopAllCoroutines();
-            StopAllSounds();
-            DestroyAllSpawned();
+            try { Network?.Dispose(); }
+            finally
+            {
+                CancelAllTimers();
+                StopAllCoroutines();
+                StopAllSounds();
+                DestroyAllSpawned();
+            }
         }
     }
 

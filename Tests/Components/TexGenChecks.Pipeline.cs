@@ -19,7 +19,7 @@ internal static partial class TexGenChecks
             Family = "metal", ForceDielectric = true, InputRgbSha256 = string.Concat(Enumerable.Repeat("ab", 32)),
         };
         Check(MaterialGenerationId.Compute(other, "1") == "3daaf8e94a2cb2cc", "id with every field set (trimmed prompt, negative seed, hash) matches the Python vector");
-        Check(MaterialGenerationId.Compute(p, "2") == "facd687b99f01bb6" && MaterialGenerationId.Compute(p, "3") == "92745eedd4e48170" && MaterialGenerationId.Compute(p) != MaterialGenerationId.Compute(p, "3"), "another pipeline version gives another id (the current one is 4)");
+        Check(MaterialGenerationId.Compute(p, "2") == "facd687b99f01bb6" && MaterialGenerationId.Compute(p, "3") == "92745eedd4e48170" && MaterialGenerationId.Compute(p) != MaterialGenerationId.Compute(p, "3"), "another pipeline version gives another id (the current one is 5)");
         Check(MaterialGenerationId.Compute(new TexGenParams { Prompt = "mossy cobblestone ", Seed = 1234 }) == MaterialGenerationId.Compute(p),
             "whitespace around the prompt does not change the id");
         Check(MaterialGenerationId.Compute(new TexGenParams { Prompt = "mossy cobblestone", Seed = 1235 }) != MaterialGenerationId.Compute(p),

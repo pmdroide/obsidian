@@ -14,6 +14,25 @@ def linear_to_srgb(c):
     return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(c, 1 / 2.4) - 0.055)
 
 
+_RGB_TO_XYZ = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
+_WHITE_D65 = np.array([0.95047, 1.0, 1.08883])
+
+
+def srgb_to_lab(rgb):
+    """sRGB 0..1 -> CIE L*a*b* (D65), stacked on the last axis."""
+    xyz = srgb_to_linear(rgb) @ _RGB_TO_XYZ.T / _WHITE_D65
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16.0 / 116.0)
+    return np.stack([116.0 * f[..., 1] - 16.0, 500.0 * (f[..., 0] - f[..., 1]), 200.0 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+def lab_to_srgb(lab):
+    """Inverse of srgb_to_lab; out-of-gamut colours are clipped to 0..1."""
+    fy = (lab[..., 0] + 16.0) / 116.0
+    f = np.stack([fy + lab[..., 1] / 500.0, fy, fy - lab[..., 2] / 200.0], axis=-1)
+    xyz = np.where(f > 0.206893, f ** 3, (f - 16.0 / 116.0) / 7.787) * _WHITE_D65
+    return linear_to_srgb(np.clip(xyz @ np.linalg.inv(_RGB_TO_XYZ).T, 0.0, 1.0))
+
+
 def luminance(rgb):
     """Relative luminance of an RGB array (any colour space: it is only a weighted sum)."""
     return np.asarray(rgb, dtype=np.float64) @ LUMA

@@ -15,8 +15,8 @@ How Valve does it, and what was copied: `Docs/Research/BreakableGlass/README.md`
 
 1. Add a flat gameobject, e.g. a **Cube** scaled `1.2 x 0.012 x 1` (a 2.4 x 2 m pane, 2.4 cm thick). The thinnest
    local side is the pane's normal.
-2. Give it a glass material: Material > Shader **ForwardShaded**, Transparent, Opacity ~0.3, Roughness ~0.03. The
-   shards draw with this material.
+2. Give it a glass material: Material > Shader **ForwardShaded**, Transparent, Opacity ~0.3, Roughness ~0.03. Once
+   cracked, the panels show a damaged version of it and the broken edges an edge material (see Broken look).
 3. Add a **Physics** component (**Static**), so that things can hit it.
 4. Add Component > **Breakable Glass**.
 
@@ -36,6 +36,22 @@ The sample is the window station of `Content/Scenes/CollisionTest.obsc`, west of
 | Drop Loose Shards | on | Panels not joined to the border through shared edges fall. |
 | Distort | on | Each cracked panel leans slightly, so reflections break up along the cracks. |
 | Solid Shards | on | Panels in the frame have colliders: bodies are stopped, and break them when they hit hard enough. |
+
+### Broken look
+
+Like Half-Life: Alyx's `shatterglass` materials, the intact pane uses the gameobject's material, and cracked glass
+uses two others:
+
+| Setting | Default | |
+|---|---|---|
+| Damaged | Built-in | Material asset (`.mat`) for the faces of the cracked panels and falling shards. Built-in: the pane's own material with fine crazing, faint scratches and frost (a pane with its own albedo texture keeps it), slightly rougher. |
+| Edge | Built-in | Material asset for the broken edges: their sides and a chipped bevel along every crack on both faces, so the cracks show from the front. Built-in: greenish glass, less clear than the faces, with rippled hackle bands. Edges on the pane's border (in the frame) keep the damaged material. |
+| Edge Width | 0.003 m | Width of the bevel on each face. It is narrowed on thin shards, and 0 gives square edges. |
+| Edge Tex. Size | 0.508 m | One repeat of the edge texture along an edge (Valve's `shatterglass_edge_uv_scale` 0.05 per inch). The texture's U runs along the edge and its V across the glass's profile. |
+
+The materials are made at the first crack, so changes during Play show after **Restore** or on the next Play. A
+material asset for the edge should be one that reads well on a narrow strip. A transparent glass material with a
+texture whose alpha varies is a good choice, because the alpha scales the opacity.
 
 ## Scripts
 
@@ -62,7 +78,11 @@ bool broken = glass.IsBroken; int left = glass.ShardCount, falling = glass.Debri
     `ScenePhysics`;
   - falling debris: a dynamic convex body plus its own mesh part each, ignoring each other and fading out at the end
     of their life;
-  - texture coordinates fitted to the model's front face.
+  - texture coordinates fitted to the model's front face;
+  - each shard is a bevelled prism split into two mesh parts: faces with the damaged material, cracked sides and
+    bevels with the edge material (`GlassFracture.Inset` moves every side in by Edge Width).
+- `Engine/Physics/GlassTextures.cs` paints the built-in damaged and edge textures once per graphics device (no
+  content files).
 - `Engine/Components/BreakableGlassComponent.cs` holds the settings and the Play lifecycle, and turns contacts into
   Blunt hits. `ScenePhysics.CreateGlass` registers the pane like a ragdoll; contacts reach it in `UpdateTouches`, and
   hits apply after the contacts are read.
@@ -71,7 +91,6 @@ bool broken = glass.IsBroken; int left = glass.ShardCount, falling = glass.Debri
 
 ## Limitations
 
-- Shards use the pane's material on every face. There is no separate damaged material or edge texture yet.
 - No sounds or particles on breaking: hook `Shattered` from a script.
 - Only flat panes. A curved model breaks as its flat bounding slab.
 - The pane is set up when Play starts. Moving it during Play doesn't move panels that already cracked.

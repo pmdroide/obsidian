@@ -1,6 +1,7 @@
 ---
 name: run-obsidian
 description: Build, run, and drive the Obsidian engine and its Anvil editor on Windows. Use when asked to start or launch Anvil or the standalone game, click through the editor UI (Pipeline, Environment, Inspector panels), take a screenshot of the editor or game, build the solution, or run the component checks.
+model: sonnet
 ---
 
 Obsidian is a Windows-only MonoGame engine (`Engine.exe`) with an Avalonia editor (`Anvil.exe`) that hosts it in-process. Drive either one with **`.claude/skills/run-obsidian/driver.ps1`** (Windows PowerShell 5.1). It launches the exe, finds and clicks UI Automation elements, clicks window pixels, scrolls, presses keys, takes window screenshots and quits. All paths are relative to the repo root.
@@ -8,6 +9,19 @@ Obsidian is a Windows-only MonoGame engine (`Engine.exe`) with an Avalonia edito
 ## Prerequisites
 
 Windows 10/11 with a DirectX 11 GPU and the .NET 10 SDK. The build restores `dotnet-mgcb` 3.8.4.1 into the NuGet cache, and the content build and render feature compiles use it from there. There is nothing to install by hand.
+
+## Pick the cheapest path
+
+Stop at the first step that answers the question:
+
+1. **Logic, bridge, components, view models** - the component checks (see Direct invocation). No window, no screenshot.
+2. **How a scene looks** - one headless capture, no UI driving. From `Engine/bin/Debug/net10.0-windows/` run `./Engine.exe --scene Scenes/<Name>.obsc --shot <out>.png --size 1280x720` (or `lookdev_views.sh` for LookDev).
+3. **The editor UI itself** - drive Anvil with the driver.
+
+- Build only what changed (`Anvil.csproj` for XAML), and pass `--no-build` when it is already built.
+- Every PNG you read is expensive: take one `shot` per state you need to judge, not one after every click.
+- Click by name with `click`; use `find` only once, when you don't know a name.
+- Don't spawn subagents for this; run the commands yourself.
 
 ## Build
 
@@ -54,10 +68,6 @@ Start-Sleep 5
 
 `key` takes any `System.Windows.Forms.Keys` name (`Enter`, `Escape`, `Space`, `W`, `F1`...). The game boots scene 0 of `Engine\Content\System\SceneList.json` (MainMenu) after the videos of `IntroVideos.json`.
 
-## Run (human path)
-
-`dotnet run --project Editor\Anvil\Anvil.csproj` or `dotnet run --project Engine\Engine.csproj` opens a window and blocks until it is closed. The driver launches the built exes instead, so the shell stays free.
-
 ## Direct invocation (no window)
 
 Most engine and editor logic (bridge, components, view models, render features) is covered by the framework-free check app. It drives `EditorBridge` and Anvil view models directly:
@@ -88,5 +98,3 @@ The `--graphics` run currently stops at `PauseChecks` ("the document is filled i
 | `launch` prints "Anvil is already running" with stale UI | An older instance survived. Run `& $d quit`, then `launch` again. |
 | `click` throws "No element named '...'" for an Inspector button | The element isn't exposed (see Gotchas). Take a `shot` and use `clickxy`. |
 | `launch` throws `Anvil toolbar not ready within 90 s` while Anvil looks fine | The process's main window handle was the engine's MonoGame window before it was reparented. The driver re-reads the handle on every poll; if it still happens, `quit` and `launch` again. |
-| `launch` takes minutes | Something polls the full tree (`find`) in a loop. Readiness checks must use `Find-Exact`, a name-filtered query. |
-| The `--graphics` run ends with `FAIL: the document is filled in: settings rows, scene line, and the session card` | A known `PauseChecks` failure, not yours. See Direct invocation. |

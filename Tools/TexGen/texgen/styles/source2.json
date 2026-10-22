@@ -10,6 +10,8 @@
     "metal_albedo_luminance": [140, 250],
     "metal_color": [0.77, 0.78, 0.79],
     "max_saturation": 0.75,
+    "neutral_warmth": 0,
+    "macro_contrast": 0.25,
     "roughness_min_std": 0.03,
     "ao_min": 0.35,
     "fallback_family": "stone"
@@ -18,25 +20,25 @@
     "brick": {
       "keywords": ["brick", "masonry"],
       "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
-      "albedo_mean": [70, 125], "albedo_clip": [25, 200], "max_saturation": 0.6,
+      "albedo_mean": [65, 110], "albedo_clip": [25, 200], "max_saturation": 0.6, "neutral_warmth": 6,
       "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.5, "material_type": "Basic"
     },
     "tile": {
       "keywords": ["tile", "ceramic", "mosaic"],
       "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
-      "albedo_mean": [50, 200], "albedo_clip": [20, 235], "max_saturation": 0.65,
+      "albedo_mean": [50, 200], "albedo_clip": [20, 235], "max_saturation": 0.65, "neutral_warmth": 3, "macro_contrast": 0.45,
       "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.0, "material_type": "Basic"
     },
     "concrete": {
       "keywords": ["concrete", "cement", "asphalt", "pavement"],
       "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
-      "albedo_mean": [85, 160], "albedo_clip": [25, 210], "max_saturation": 0.3,
+      "albedo_mean": [85, 160], "albedo_clip": [25, 210], "max_saturation": 0.3, "neutral_warmth": 2,
       "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.0, "material_type": "Basic"
     },
     "plaster": {
       "keywords": ["plaster", "stucco", "drywall", "render wall", "painted wall"],
       "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
-      "albedo_mean": [90, 210], "albedo_clip": [30, 235], "max_saturation": 0.45,
+      "albedo_mean": [90, 210], "albedo_clip": [30, 235], "max_saturation": 0.45, "neutral_warmth": 6,
       "roughness": [0.55, 0.95], "metal": "none", "normal_strength": 1.0, "scale_m": 1.0, "material_type": "Basic"
     },
     "painted_metal": {
@@ -53,7 +55,7 @@
     "wood": {
       "keywords": ["wood", "plank", "timber", "oak", "pine", "parquet", "log", "board", "bamboo"],
       "prompt_suffix": ", aged wood, realistic grain",
-      "albedo_mean": [45, 140], "albedo_clip": [15, 200], "max_saturation": 0.7,
+      "albedo_mean": [45, 140], "albedo_clip": [15, 200], "max_saturation": 0.7, "neutral_warmth": 10, "macro_contrast": 0.4,
       "roughness": [0.45, 0.85], "metal": "none", "normal_strength": 1.5, "scale_m": 1.0, "material_type": "Basic"
     },
     "fabric": {
@@ -64,13 +66,13 @@
     "stone": {
       "keywords": ["stone", "cobble", "cobblestone", "rock", "granite", "marble", "slate", "pebble", "flagstone", "sandstone", "limestone"],
       "prompt_suffix": ", photographed surface, worn, realistic, aged, weathered, dirty, muted colours",
-      "albedo_mean": [60, 160], "albedo_clip": [20, 215], "max_saturation": 0.45,
+      "albedo_mean": [60, 160], "albedo_clip": [20, 215], "max_saturation": 0.45, "neutral_warmth": 5,
       "roughness": [0.4, 0.9], "metal": "none", "normal_strength": 1.0, "scale_m": 1.5, "material_type": "Basic"
     },
     "ground": {
       "keywords": ["dirt", "soil", "mud", "sand", "gravel", "grass", "ground", "snow", "earth", "clay", "path"],
       "prompt_suffix": ", realistic, natural",
-      "albedo_mean": [50, 130], "albedo_clip": [15, 200], "max_saturation": 0.55,
+      "albedo_mean": [50, 130], "albedo_clip": [15, 200], "max_saturation": 0.55, "neutral_warmth": 9,
       "roughness": [0.5, 0.95], "metal": "none", "normal_strength": 0.9, "scale_m": 1.5, "material_type": "Basic"
     },
     "organic": {

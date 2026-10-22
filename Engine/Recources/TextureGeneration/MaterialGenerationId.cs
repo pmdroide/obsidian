@@ -30,7 +30,7 @@ namespace Engine.Recources
     public static class MaterialGenerationId
     {
         /// <summary>Must equal <c>PIPELINE_VERSION</c> in <c>Tools/TexGen/texgen/__init__.py</c>.</summary>
-        public const string PipelineVersion = "4";
+        public const string PipelineVersion = "5";
 
         public static string Canonical(TexGenParams p, string pipelineVersion = PipelineVersion) =>
             $"v{pipelineVersion}|{p.Backend}|{p.Style}|{p.Family}|{p.Resolution}|{p.Seed}|{(p.ForceDielectric ? 1 : 0)}|" +

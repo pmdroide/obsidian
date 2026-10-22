@@ -11,8 +11,9 @@ namespace Engine.Components;
 /// Half-Life: Alyx's <c>func_shatterglass</c> during Play. The first hit cracks the whole pane into Voronoi panels
 /// (cells of <see cref="CrackSize"/>, Valve's 15 in grid); the hit punches a hole whose radial shards fly off,
 /// panels no longer joined to the frame fall, and later hits break the panels that are left. Thrown bodies break it
-/// on impact and carry on through; scripts call <see cref="Shatter"/> (bullets, melee, blasts). Shards use the
-/// gameobject's material, fall as physics bodies and vanish after <see cref="DebrisLifetime"/>. Give it a Static
+/// on impact and carry on through; scripts call <see cref="Shatter"/> (bullets, melee, blasts). Cracked glass shows
+/// <see cref="DamagedMaterial"/> on its faces and <see cref="EdgeMaterial"/> on its broken edges (built-in looks when
+/// empty); shards fall as physics bodies and vanish after <see cref="DebrisLifetime"/>. Give it a Static
 /// Physics component so things can hit it. Stop puts the pane back.
 /// </summary>
 public sealed class BreakableGlassComponent : GameComponent
@@ -37,6 +38,14 @@ public sealed class BreakableGlassComponent : GameComponent
     public bool SolidShards { get; set; } = true;
     /// <summary>A hit finds a panel within this many times its size around its centre (Half-Life: Alyx: 2).</summary>
     public float HitTolerance { get; set; } = 2f;
+    /// <summary>Material asset (.mat, Content-relative) the cracked panels show; empty = the pane's own material, crazed and scratched.</summary>
+    public string DamagedMaterial { get; set; } = "";
+    /// <summary>Material asset (.mat) of the broken edges; empty = greenish fracture glass with a rippled edge texture.</summary>
+    public string EdgeMaterial { get; set; } = "";
+    /// <summary>Width (m) of the chipped bevel along every crack, on both faces, in the edge material; 0 = square edges.</summary>
+    public float EdgeWidth { get; set; } = 0.003f;
+    /// <summary>Metres one repeat of the edge texture covers along an edge (Half-Life: Alyx: 0.05 per inch = 0.508 m).</summary>
+    public float EdgeTextureSize { get; set; } = 0.508f;
 
     public float ClampedCrackSize => float.IsFinite(CrackSize) ? Math.Clamp(CrackSize, 0.05f, 10f) : 0.381f;
     public float ClampedHoleRadius => float.IsFinite(HoleRadius) ? Math.Clamp(HoleRadius, 0.01f, 2f) : 0.06f;
@@ -44,6 +53,8 @@ public sealed class BreakableGlassComponent : GameComponent
     public float ClampedImpactMomentum => float.IsFinite(ImpactMomentum) ? Math.Max(ImpactMomentum, 0) : 2f;
     public float ClampedDebrisLifetime => float.IsFinite(DebrisLifetime) ? Math.Clamp(DebrisLifetime, 0.1f, 600f) : 15f;
     public float ClampedHitTolerance => float.IsFinite(HitTolerance) ? Math.Clamp(HitTolerance, 1f, 5f) : 2f;
+    public float ClampedEdgeWidth => float.IsFinite(EdgeWidth) ? Math.Clamp(EdgeWidth, 0f, 0.05f) : 0.003f;
+    public float ClampedEdgeTextureSize => float.IsFinite(EdgeTextureSize) ? Math.Clamp(EdgeTextureSize, 0.01f, 10f) : 0.508f;
 
     /// <summary>The pane has cracked (during Play).</summary>
     [JsonIgnore] public bool IsBroken => _glass is { IsBroken: true, IsDisposed: false };
@@ -161,6 +172,11 @@ public sealed class BreakableGlassComponent : GameComponent
         _glass.DropUnsupported = DropLooseShards;
         _glass.Distort = Distort;
         _glass.SolidShards = SolidShards;
+        // The materials are made at the first crack; Restore (or the next Play) picks up new ones.
+        _glass.DamagedMaterialPath = DamagedMaterial;
+        _glass.EdgeMaterialPath = EdgeMaterial;
+        _glass.EdgeWidth = ClampedEdgeWidth;
+        _glass.EdgeTextureSize = ClampedEdgeTextureSize;
     }
 
     private void OnHit(PhysicsContact contact, BasicEntity other, float otherMass)

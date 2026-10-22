@@ -74,7 +74,7 @@ stdout is JSON lines only (`progress`, `warning`, `done`, `error`). Exit codes: 
 
 | Change | Where |
 |---|---|
-| Value ranges, families, keywords, roughness, tile sizes | `Tools/TexGen/texgen/styles/source2.json` and `style.py` (`albedo_mean` / `albedo_clip` / `max_saturation` per family override the `common` ones; highlights roll off towards the clip in `compress_highlights`) |
+| Value ranges, families, keywords, roughness, tile sizes | `Tools/TexGen/texgen/styles/source2.json` and `style.py` (`albedo_mean` / `albedo_clip` / `max_saturation` / `neutral_warmth` / `macro_contrast` per family override the `common` ones; highlights roll off towards the clip in `compress_highlights`; near-grey pixels are warmed to `neutral_warmth` (Lab b*) in `warm_neutrals`; large-scale contrast is soft-capped at `macro_contrast` in `limit_macro_contrast`) |
 | Making photos tileable | `make_tileable` in `Tools/TexGen/texgen/imageops.py` |
 | Delighting, height, normals, roughness estimate | `Tools/TexGen/texgen/backends/classic_pbr.py` (`soften_shadows` keeps contact shadows shallow, `MAX_SLOPE` caps the normals) |
 | AO, metal, PNG writing | `Tools/TexGen/texgen/postprocess.py` |

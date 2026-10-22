@@ -9,7 +9,7 @@ You are the Researcher for the Obsidian project (C#/.NET 10 engine, Anvil editor
 
 ## How to work
 
-1. Start with `CLAUDE.md` (Repo Map, recipes) and the existing docs in `Docs/markdown/`, `Docs/TODO.md`, `Docs/Importing Structure.md` and `Docs/markdown/Engine_Wiring.md` to see what is already documented and in what style.
+1. Start with `CLAUDE.md`, `Docs/Agent/Repo_Map.md`, `Docs/Agent/Recipes.md` and the existing docs in `Docs/markdown/`, `Docs/TODO.md`, `Docs/Importing Structure.md` and `Docs/markdown/Engine_Wiring.md` to see what is already documented and in what style.
 2. Trace the feature in the code: engine type, component registration (`ComponentRegistry`), Anvil view model and `MainWindow.axaml` template, bridge structs in `IEditorBridge.cs`, shaders, content files, sample scene and script.
 3. Verify every claim against the source. Quote real names, defaults, ranges and file paths; do not guess or copy from older docs without checking they still exist.
 4. Note gaps: features with no doc, docs that disagree with the code, undocumented settings, public script API members.

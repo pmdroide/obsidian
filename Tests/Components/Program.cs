@@ -19,6 +19,11 @@ using Microsoft.Xna.Framework.Input;
 using GameComponent = Engine.Components.GameComponent;
 
 // Integration checks without a graphics device or a test-framework dependency.
+if (args.Contains("--networking"))
+{
+    NetworkingChecks.Run();
+    return;
+}
 if (args.Contains("--mcp"))
 {
     McpChecks.Run();
@@ -605,6 +610,7 @@ if (args.Contains("--audio"))
 
 ScriptBehaviourChecks.Run();
 ScriptTimingChecks.Run();
+NetworkingChecks.Run();
 GameObjectMenuChecks.Run();
 SpotLightChecks.Run();
 ScriptFieldChecks.Run();

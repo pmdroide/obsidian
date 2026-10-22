@@ -86,8 +86,10 @@ scenes (`GameFlow`), read menu input from keyboard, mouse and gamepad
 `Engine/Content/Scripts/MultiplayerTestScript.cs` runs the
 `Scenes/MultiplayerTest.obsc` sample: peer-to-peer play through a Steam lobby,
 with a spawned capsule for each player and a follow camera. It is the
-reference for `SteamP2PSession` and for spawning gameobjects at runtime. See
-[Steam_Multiplayer.md](Steam_Multiplayer.md).
+reference for `CreateNetwork`, named sequenced messages, network ticks and
+spawning gameobjects at runtime. See [Networking_Scripting.md](Networking_Scripting.md)
+for host/join, RPCs, persistent network variables and serialization, and
+[Steam_Multiplayer.md](Steam_Multiplayer.md) to run the sample.
 
 ### Collision Test
 

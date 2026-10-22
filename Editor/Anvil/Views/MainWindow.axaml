@@ -3428,7 +3428,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <controls:LucideIcon Icon="Sparkles" />
                                                         <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                                        <controls:HelpButton Description="Breaks this flat gameobject like Half-Life: Alyx's shatter glass during Play (the thinnest local side is the pane's normal). The first hit cracks the pane into Voronoi panels of Crack Size, punches a hole and throws its shards; panels no longer joined to the frame fall. Bodies break it above Impact Speed and Momentum and fly on through; scripts call GetComponent&lt;BreakableGlassComponent&gt;().Shatter(point, direction). Add a Static Physics component so things can hit it. Shards use the gameobject's material and vanish after Debris Lifetime (at most 150 in the scene). Stop puts the pane back." />
+                                                        <controls:HelpButton Description="Breaks this flat gameobject like Half-Life: Alyx's shatter glass during Play (the thinnest local side is the pane's normal). The first hit cracks the pane into Voronoi panels of Crack Size, punches a hole and throws its shards; panels no longer joined to the frame fall. Bodies break it above Impact Speed and Momentum and fly on through; scripts call GetComponent&lt;BreakableGlassComponent&gt;().Shatter(point, direction). Add a Static Physics component so things can hit it. Cracked glass shows the Damaged material and its broken edges the Edge material (built-in looks by default); shards vanish after Debris Lifetime (at most 150 in the scene). Stop puts the pane back." />
                                                     </StackPanel>
                                                 </Expander.Header>
                                                 <StackPanel Spacing="8" Margin="12,8,12,12">
@@ -3468,6 +3468,25 @@
                                                               ToolTip.Tip="Cracked panels lean slightly, so reflections break up along the cracks" />
                                                     <CheckBox Content="Solid Shards" IsChecked="{Binding SolidShards, Mode=TwoWay}" FontSize="11"
                                                               ToolTip.Tip="Shards left in the frame stop bodies" />
+                                                    <TextBlock Text="Broken Look" Classes="muted" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Material asset the cracked panels show. Built-in: the pane's own material, crazed and scratched. Takes effect at the next crack (Restore or Play)">
+                                                        <TextBlock Grid.Column="0" Text="Damaged" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding MaterialChoices}" SelectedIndex="{Binding DamagedMaterialIndex, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Material asset of the broken edges (their sides and bevel). Built-in: greenish fracture glass with a rippled edge texture">
+                                                        <TextBlock Grid.Column="0" Text="Edge" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding MaterialChoices}" SelectedIndex="{Binding EdgeMaterialIndex, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Width (m) of the chipped bevel along every crack, on both faces, so the cracks show from the front; 0 = square edges">
+                                                        <TextBlock Grid.Column="0" Text="Edge Width" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EdgeWidth, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="0.05" Increment="0.001" FormatString="0.####" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="100,*" ColumnSpacing="8" ToolTip.Tip="Metres one repeat of the edge texture covers along an edge (Half-Life: Alyx: 0.508 m)">
+                                                        <TextBlock Grid.Column="0" Text="Edge Tex. Size" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding EdgeTextureSize, Mode=TwoWay}"
+                                                                       Minimum="0.01" Maximum="10" Increment="0.05" FormatString="0.###" />
+                                                    </Grid>
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>

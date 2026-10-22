@@ -132,7 +132,7 @@ class Source2LookTests(unittest.TestCase):
     (Docs/Research/AiTextures/D2_CALIBRATION.md > Source 2 look check)."""
 
     def test_family_band_overrides_the_common_one(self):
-        self.assertEqual(STYLE.albedo_mean("brick"), [70, 125])
+        self.assertEqual(STYLE.albedo_mean("brick"), [65, 110])
         self.assertEqual(STYLE.albedo_mean("fabric"), STYLE.common["dielectric_albedo_mean"])
 
     def test_bright_brick_is_brought_into_the_brick_band(self):
@@ -140,7 +140,7 @@ class Source2LookTests(unittest.TestCase):
         bright = np.clip(rgb * 1.8 + 40, 0, 255).astype(np.uint8)
         maps, _ = finish(bright, "brick")
         mean = float(st.luminance(maps["albedo"] / 255.0).mean() * 255)
-        self.assertTrue(70 <= mean <= 125, mean)
+        self.assertTrue(65 <= mean <= 110, mean)
         self.assertNotIn("albedo_too_bright", [w["code"] for w in validate(maps, STYLE, "brick")])
 
     def test_highlights_roll_off_but_keep_their_order(self):
@@ -171,6 +171,52 @@ class Source2LookTests(unittest.TestCase):
         soft = classic_pbr.soften_shadows(gray)
         self.assertGreater(float(soft.min()), 0.02 + 0.1)
         self.assertEqual(float(soft[0, 0]), 0.5)
+
+
+class Source2GradeTests(unittest.TestCase):
+    """Pipeline version 5: warm greys and capped large-scale contrast."""
+
+    def test_lab_round_trip(self):
+        from texgen.imageops import lab_to_srgb, srgb_to_lab
+        rgb = np.random.default_rng(1).random((16, 16, 3))
+        self.assertLess(float(np.abs(lab_to_srgb(srgb_to_lab(rgb)) - rgb).max()), 1e-6)
+
+    def test_cold_grey_is_warmed_and_keeps_its_lightness(self):
+        from texgen.imageops import srgb_to_lab
+        grey = np.full((32, 32, 3), 0.5) * np.array([0.97, 1.0, 1.04])  # slightly blue, like SDXL plaster
+        warm = st.warm_neutrals(grey, 6.0)
+        lab0, lab1 = srgb_to_lab(grey), srgb_to_lab(warm)
+        self.assertAlmostEqual(float(lab1[..., 2].mean()), 6.0, places=1)
+        self.assertLess(float(np.abs(lab1[..., 0] - lab0[..., 0]).max()), 1e-6)
+
+    def test_warm_or_colourful_albedo_is_left_alone(self):
+        tan = np.full((8, 8, 3), 0.5) * np.array([1.06, 1.0, 0.88])
+        self.assertTrue(np.array_equal(st.warm_neutrals(tan, 6.0), tan))
+        red = np.full((8, 8, 3), [0.7, 0.25, 0.15])
+        self.assertLess(float(np.abs(st.warm_neutrals(red, 6.0) - red).max()), 1e-9)
+
+    def test_macro_contrast_is_capped_but_detail_stays(self):
+        y, x = np.mgrid[0:128, 0:128]
+        patches = np.where((x // 64 + y // 64) % 2 == 0, 0.9, 0.25)  # white plaster beside dark brick
+        fine = 0.05 * ((x + y) % 2)
+        rgb = np.dstack([np.clip(patches + fine, 0, 1)] * 3)
+
+        def macro_std(a):
+            ll = np.log(np.maximum(st.luminance(st.srgb_to_linear(a)), 1e-4))
+            return float(st.gaussian_blur_wrap(ll, 2.0).std())
+
+        out = st.limit_macro_contrast(rgb, 0.25)
+        self.assertGreater(macro_std(rgb), 0.5)
+        self.assertLess(macro_std(out), 0.27)
+        self.assertGreater(float(out[0, 1, 0] - out[0, 0, 0]), 0.0, "the checkerboard detail is still there")
+        flat = np.full((32, 32, 3), 0.4)
+        self.assertLess(float(np.abs(st.limit_macro_contrast(flat, 0.25) - flat).max()), 1e-9)
+
+    def test_profile_values(self):
+        self.assertEqual(STYLE.neutral_warmth("brick"), 6)
+        self.assertEqual(STYLE.neutral_warmth("fabric"), 0)
+        self.assertEqual(STYLE.macro_contrast("brick"), STYLE.common["macro_contrast"])
+        self.assertGreater(STYLE.macro_contrast("tile"), STYLE.macro_contrast("brick"))
 
 
 if __name__ == "__main__":

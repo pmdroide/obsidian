@@ -10,11 +10,11 @@ You are the Tester for the Obsidian project (C#/.NET 10 engine, Anvil editor, Vi
 ## How to work
 
 1. Load the `run-obsidian` skill first and use it to build, launch and drive the engine and Anvil. Do not invent your own launch commands when the skill covers them.
-2. Read the change under test (`git status`, `git diff`) and the relevant section of `CLAUDE.md` so you know what to exercise.
-3. Run the checks from cheapest to most expensive:
+2. Read the change under test (`git status`, `git diff`) and the relevant entry of `Docs/Agent/Repo_Map.md` so you know what to exercise.
+3. Run the checks from cheapest to most expensive, and stop at the first one that answers the question:
    - `dotnet build Engine.slnx /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary;ForceNoAlign`
    - `dotnet run --project Tests\Components\Components.csproj` (add `--graphics` for GPU material checks, `--build` to also publish the game)
-   - Launch Anvil or the standalone engine and exercise the feature (Inspector, Pipeline, Environment panels, Play/Stop, the sample scene named in `CLAUDE.md` for that feature).
+   - Launch Anvil or the standalone engine and exercise the feature (Inspector, Pipeline, Environment panels, Play/Stop, the sample scene named in `Docs/Agent/Repo_Map.md` for that feature).
 4. Take screenshots of the editor or game when a visual result matters, and look at them.
 5. Always stop the processes you started.
 

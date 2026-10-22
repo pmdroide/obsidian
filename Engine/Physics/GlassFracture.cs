@@ -249,10 +249,55 @@ namespace Engine.Physics
             {
                 Vector2 a = polygon[i], b = polygon[(i + 1) % polygon.Length];
                 if (Vector2.DistanceSquared(a, b) < Epsilon * Epsilon) continue;
-                if ((Near(a.X, -half.X) && Near(b.X, -half.X)) || (Near(a.X, half.X) && Near(b.X, half.X))
-                    || (Near(a.Y, -half.Y) && Near(b.Y, -half.Y)) || (Near(a.Y, half.Y) && Near(b.Y, half.Y))) return true;
+                if (IsBorderEdge(a, b, half)) return true;
             }
             return false;
+        }
+
+        /// <summary>The edge a-b lies on a side of the pane (it sits in the frame; every other edge is a crack).</summary>
+        public static bool IsBorderEdge(Vector2 a, Vector2 b, Vector2 half) =>
+            (Near(a.X, -half.X) && Near(b.X, -half.X)) || (Near(a.X, half.X) && Near(b.X, half.X))
+            || (Near(a.Y, -half.Y) && Near(b.Y, -half.Y)) || (Near(a.Y, half.Y) && Near(b.Y, half.Y));
+
+        /// <summary>
+        /// The convex, counter-clockwise polygon with every edge moved inwards by <paramref name="width"/> metres
+        /// (vertex i stays matched to vertex i, so the band between the two is one quad per edge). The width is
+        /// limited to 40 % of the inscribed radius (2 x area / perimeter) and returned in <paramref name="used"/>;
+        /// sharp corners are mitred at 4 x the width.
+        /// </summary>
+        public static Vector2[] Inset(Vector2[] polygon, float width, out float used)
+        {
+            int n = polygon.Length;
+            used = 0;
+            if (n < 3 || !(width > 0)) return (Vector2[])polygon.Clone();
+            float perimeter = 0;
+            for (int i = 0; i < n; i++) perimeter += Vector2.Distance(polygon[i], polygon[(i + 1) % n]);
+            if (!(perimeter > 0)) return (Vector2[])polygon.Clone();
+            used = Math.Min(width, 0.4f * 2 * Math.Abs(Area(polygon)) / perimeter);
+
+            // Inward normal of each edge (left of a counter-clockwise edge); a zero-length edge borrows its neighbour's.
+            var normals = new Vector2[n];
+            for (int i = 0; i < n; i++)
+            {
+                Vector2 edge = polygon[(i + 1) % n] - polygon[i];
+                normals[i] = edge.LengthSquared() > 1e-14f ? Vector2.Normalize(new Vector2(-edge.Y, edge.X)) : Vector2.Zero;
+            }
+            for (int pass = 0; pass < 2; pass++)
+                for (int i = 0; i < n; i++)
+                    if (normals[i] == Vector2.Zero) normals[i] = normals[(i + n - 1) % n];
+
+            var result = new Vector2[n];
+            for (int i = 0; i < n; i++)
+            {
+                Vector2 previous = normals[(i + n - 1) % n], next = normals[i];
+                // The point at distance `used` from both edge lines: p + (n1 + n2) * used / (1 + n1·n2).
+                float cos = Vector2.Dot(previous, next);
+                Vector2 offset = cos > -0.9f ? (previous + next) * (used / (1 + cos)) : next * used;
+                float limit = used * 4;
+                if (offset.LengthSquared() > limit * limit) offset = Vector2.Normalize(offset) * limit;
+                result[i] = polygon[i] + offset;
+            }
+            return result;
         }
 
         /// <summary>The two polygons touch along a segment longer than <see cref="Epsilon"/> (not just a corner).</summary>

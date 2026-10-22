@@ -5,7 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ..imageops import gaussian_blur_wrap, luminance, normalize01
+from ..imageops import (gaussian_blur_wrap, lab_to_srgb, linear_to_srgb, luminance, normalize01, srgb_to_lab,
+                        srgb_to_linear)
 
 STYLES_DIR = Path(__file__).resolve().parent
 
@@ -29,6 +30,13 @@ class Style:
 
     def max_saturation(self, family):
         return self.families[family].get("max_saturation", self.common["max_saturation"])
+
+    def neutral_warmth(self, family):
+        """Lab b* the near-grey parts of the albedo are warmed up to (0 = left alone)."""
+        return self.families[family].get("neutral_warmth", self.common["neutral_warmth"])
+
+    def macro_contrast(self, family):
+        return self.families[family].get("macro_contrast", self.common["macro_contrast"])
 
     def detect_family(self, prompt):
         """Keyword -> family, by whole words, walking the families in file order (first hit wins). Falls back to
@@ -143,6 +151,52 @@ def cap_saturation(rgb, max_sat):
     return np.clip(peak - (peak - rgb) * k[..., None], 0.0, 1.0)
 
 
+def warm_neutrals(rgb, target_b, chroma_limit=12.0, neutral_pct=40.0):
+    """Real greys (plaster, mortar, concrete dust) are warm: Lab b* +5..+12 in Poly Haven's delit photos and the HLA
+    crops, while image generators paint them dead neutral or cool. If the least chromatic `neutral_pct` % of the
+    pixels average below `target_b`, near-grey pixels are moved towards it (fully at chroma 0, not at all from
+    `chroma_limit` up), a quarter of the shift going to a* (dust brown rather than yellow). L* is kept, so the
+    brightness fit afterwards is unaffected; an albedo that is already warm is left alone, and black stays black."""
+    if target_b <= 0:
+        return rgb
+    lab = srgb_to_lab(rgb)
+    chroma = np.hypot(lab[..., 1], lab[..., 2])
+    neutral = chroma <= np.percentile(chroma, neutral_pct)
+    delta = target_b - float(lab[..., 2][neutral].mean())
+    if delta <= 0:
+        return rgb
+    share = np.clip(1.0 - chroma / chroma_limit, 0.0, 1.0) * np.clip(lab[..., 0] / 20.0, 0.0, 1.0)
+    # Pixels only partly grey move partly: scale up so the neutral pixels' mean reaches the target.
+    w = share * delta / max(float(share[neutral].mean()), 0.25)
+    lab[..., 1] += 0.25 * w
+    lab[..., 2] += w
+    return lab_to_srgb(lab)
+
+
+def limit_macro_contrast(rgb, max_std, scale=1.0 / 64.0):
+    """Soft-caps the large-scale contrast: the std of the log luminance blurred at size * `scale` (whole bricks, plaster
+    patches). Delit photo albedos keep it at 0.04-0.23 and even lit HLA brick sits at 0.24, while a generator can paint
+    near-white plaster beside bright orange brick (0.45), which reads clean and graphic instead of grimy. Fine detail is
+    untouched; the colour is scaled, so hue stays."""
+    if max_std <= 0:
+        return rgb
+    lin = srgb_to_linear(rgb)
+    sigma = rgb.shape[0] * scale
+    target = None
+    # The correction is itself blurred when measured again, so a single pass undershoots: three converge.
+    for _ in range(3):
+        ll = np.log(np.maximum(luminance(lin), 1e-4))
+        macro = gaussian_blur_wrap(ll, sigma)
+        dev = macro - macro.mean()
+        std = float(dev.std())
+        if target is None:
+            target = max_std * np.tanh(std / max_std)
+        if std <= target + 1e-3:
+            break
+        lin = np.clip(lin * np.exp(dev * (target / std - 1.0))[..., None], 0.0, 1.0)
+    return linear_to_srgb(lin)
+
+
 def remap_roughness(r_norm, lo_hi, min_std=0.0):
     """Maps 0..1 onto the family's range. A map that varies a little is stretched so its deviation reaches
     min_std * 1.5 (a texture with no variation at all stays flat, and validation says so)."""
@@ -186,8 +240,13 @@ def apply_style(style, family, est, force_dielectric=False):
     metal_color = np.array(common["metal_color"])
     min_std = common["roughness_min_std"]
 
+    def grade(rgb):
+        rgb = limit_macro_contrast(rgb, style.macro_contrast(family))
+        rgb = warm_neutrals(rgb, style.neutral_warmth(family))
+        return cap_saturation(rgb, max_sat)
+
     if mode == "none":
-        albedo = cap_saturation(albedo, max_sat)
+        albedo = grade(albedo)
         albedo = fit_dielectric(albedo, dlo, dhi, clo, chi)
         metal = np.zeros(albedo.shape[:2])
         rough = remap_roughness(r_norm, cfg["roughness"], min_std)
@@ -204,7 +263,7 @@ def apply_style(style, family, est, force_dielectric=False):
         steel = np.clip(metal_color[None, None, :] * tone[..., None], 0.0, 1.0)
         mlo, mhi = common["metal_albedo_luminance"]
         steel = clamp_pixel_luminance(steel, mlo, mhi)
-        albedo = cap_saturation(albedo, max_sat)
+        albedo = grade(albedo)
         albedo = fit_dielectric(albedo, dlo, dhi, clo, chi, mask=paint)
         albedo = np.where(exposed[..., None], steel, albedo)
         metal = exposed.astype(np.float64)

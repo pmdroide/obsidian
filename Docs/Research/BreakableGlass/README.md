@@ -72,5 +72,7 @@ pattern when V ≥ the panel's width `[this+0x738]` or height `[this+0x73C]`. It
   along the cracks.
 - `GlassInFrame` suggests that panels stay in the frame while connected to it. The engine drops panels that aren't
   joined to the border through shared edges.
-- Edge UV scale and subdivision aren't used: the engine's shard edges are flat quads with the face's texture
-  coordinates.
+- Edge UV scale is used: the engine draws broken edges (sides and a chipped bevel) with an edge material whose
+  texture repeats every 0.508 m (0.05 per inch), and cracked faces with a damaged material
+  (`m_hGlassMaterialDamaged`). The look of Valve's `shatterglass*.vmat` wasn't recovered: the built-in textures are
+  painted by `GlassTextures`. Edge subdivision isn't used.

@@ -39,7 +39,7 @@ capsule still moves, so the scene also works offline.
 Notes:
 
 - On App 480 every Steamworks developer shares the same lobby list. The sample tags its lobbies
-  with `obsidian_game = obsidian-capsules-v1`, and **J** only finds lobbies with that tag.
+  with `obsidian_game = obsidian-capsules-v2`, and **J** only finds lobbies with that tag.
 - The Steam overlay (**I**) may not appear inside the Anvil viewport. In that case, invite from the
   standalone game, or use **J**.
 - Capsules don't collide with each other or with the walls. Movement is clamped to the arena.
@@ -62,8 +62,9 @@ Notes:
   network, so there are no ports to open and no IP addresses to share. Sessions are accepted only
   from lobby members.
 - **Each player owns their capsule.** About 20 times a second, the script sends an unreliable
-  21-byte state to every peer: `[kind 1][sequence u32][x f32][y f32][z f32][yaw f32]`, little
-  endian. Older packets that arrive late are dropped by sequence number. A remote capsule appears
+  named `player/transform` state to every peer through `NetworkSession`: position (Vector3) and
+  yaw (float), little endian. The scripting layer adds protocol framing and wrap-safe sequencing.
+  Older packets that arrive late are dropped by sequence number. A remote capsule appears
   when its first state arrives, eases towards the newest state, and snaps after a jump of more than 4 m.
 - **Colours come from the Steam ID.** So every peer shows each player in the same colour.
 
@@ -71,13 +72,20 @@ Notes:
 
 | File | Role |
 | --- | --- |
-| `Engine/Steam/SteamP2PSession.cs` | Reusable: lobby host/find/join/leave/invite, peer join/leave events, send/broadcast/receive, ping per peer. |
+| `Engine/Networking/` | Scripting session, Steam transport adapter, messages/RPCs, host-written variables and bounded serialization. |
+| `Engine/Steam/SteamP2PSession.cs` | Low-level Steam lobby host/find/join/leave/invite, peer events, bounded send/receive, ping per peer. |
 | `Engine/Content/Scripts/MultiplayerTestScript.cs` | The sample: local movement and camera, state packets, capsule spawning, HUD. |
 | `Engine/Content/UI/MultiplayerTest.xml` / `.css` | The HUD (Vista). |
 | `Engine/Content/Scenes/MultiplayerTest.obsc` | The arena. The Main Camera runs the **Multiplayer Test** script. |
 | `Engine/Content/GameObjects/Default/capsule.obj` | The capsule mesh, model key `Capsule` (Z up, radius 0.5, height 2, centred on its origin). |
 
 ### Using SteamP2PSession in your own script
+
+For new gameplay scripts, prefer `ScriptBehaviour.CreateNetwork` and the
+[networking scripting API](Networking_Scripting.md). The sample now uses that
+API and is polled/cleaned up by its script. The lower-level example below is
+still available for callers that need direct Steam packet control; use one
+lobby controller rather than mixing both APIs in the same play session.
 
 ```csharp
 SteamP2PSession session;

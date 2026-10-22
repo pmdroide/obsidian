@@ -270,32 +270,40 @@ namespace Engine.Steam
         }
 
         /// <summary>
-        /// Delivers every waiting message from current lobby members to <paramref name="handler"/>
-        /// (sender, buffer, length). The buffer is reused, so copy what you keep. Returns the count.
+        /// Delivers waiting messages from current lobby members to <paramref name="handler"/>
+        /// (sender, buffer, length), polling at most maxMessages and dropping payloads over maxPacketSize.
+        /// The buffer is reused, so copy what you keep. Returns the delivered count.
         /// </summary>
-        public int Receive(Action<ulong, byte[], int> handler, int channel = 0)
+        public int Receive(Action<ulong, byte[], int> handler, int channel = 0,
+            int maxMessages = 256, int maxPacketSize = 512 * 1024)
         {
-            if (_disposed || handler == null) return 0;
-            int delivered = 0, received;
+            if (_disposed || handler == null || maxMessages <= 0 || maxPacketSize <= 0) return 0;
+            int delivered = 0, received, polled = 0;
             do
             {
-                received = SteamNetworkingMessages.ReceiveMessagesOnChannel(channel, _incoming, _incoming.Length);
-                for (int i = 0; i < received; i++)
+                int batchSize = Math.Min(_incoming.Length, maxMessages - polled);
+                received = SteamNetworkingMessages.ReceiveMessagesOnChannel(channel, _incoming, batchSize);
+                polled += received;
+                try
                 {
-                    try
+                    for (int i = 0; i < received && !_disposed; i++)
                     {
                         var message = SteamNetworkingMessage_t.FromIntPtr(_incoming[i]);
                         ulong sender = message.m_identityPeer.GetSteamID64();
                         // Late packets from someone who already left are dropped.
-                        if (!_peers.Contains(sender) || message.m_cbSize <= 0) continue;
+                        if (!_peers.Contains(sender) || message.m_cbSize <= 0 || message.m_cbSize > maxPacketSize) continue;
                         if (_receiveBuffer.Length < message.m_cbSize) _receiveBuffer = new byte[message.m_cbSize];
                         Marshal.Copy(message.m_pData, _receiveBuffer, 0, message.m_cbSize);
                         delivered++;
                         handler(sender, _receiveBuffer, message.m_cbSize);
                     }
-                    finally { SteamNetworkingMessage_t.Release(_incoming[i]); }
                 }
-            } while (received == _incoming.Length);
+                finally
+                {
+                    // Release the whole batch even if a script handler throws or disposes the session.
+                    for (int i = 0; i < received; i++) SteamNetworkingMessage_t.Release(_incoming[i]);
+                }
+            } while (!_disposed && polled < maxMessages && received == _incoming.Length);
             return delivered;
         }
 

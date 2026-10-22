@@ -17,8 +17,10 @@ namespace Engine.Physics
     /// pane with a static convex collider each (owned by the gameobject, so rays and contacts find it), and the
     /// falling debris, a dynamic body and mesh per shard that is removed after <see cref="DebrisLifetime"/>
     /// (Half-Life: Alyx's <c>shatterglass_shard_lifetime</c>, 15 s) or when more than <see cref="MaxDebris"/>
-    /// (<c>shatterglass_cleanup_max</c>, 150) fall in the whole scene. Shards draw with the gameobject's own
-    /// material; the intact mesh is hidden once the pane cracks. Created and driven by
+    /// (<c>shatterglass_cleanup_max</c>, 150) fall in the whole scene. Once the pane cracks its intact mesh is
+    /// hidden and the shards draw like Half-Life: Alyx's <c>m_hGlassMaterialDamaged</c>: faces with the damaged
+    /// material, broken edges (sides plus a chipped bevel) with the edge material and an edge texture along them
+    /// (<c>shatterglass_edge_uv_scale</c>). Created and driven by
     /// <see cref="Components.BreakableGlassComponent"/> through <see cref="ScenePhysics.CreateGlass"/>; game thread only.
     /// </summary>
     public sealed class GlassShatter : IDisposable
@@ -43,12 +45,24 @@ namespace Engine.Physics
             public GlassShatter Glass;
             public BodyHandle Body;
             public Vector3 LocalCenter;
-            public VertexBuffer Vertices;
-            public IndexBuffer Indices;
-            public ModelMeshPart Part;
+            public readonly List<GlassMesh> Meshes = new();
             public TransformMatrix Transform;
             public float Radius;
             public float Age;
+        }
+
+        // One registered mesh part (shards are drawn as a damaged-faces part and a broken-edges part).
+        private sealed class GlassMesh
+        {
+            public VertexBuffer Vertices;
+            public IndexBuffer Indices;
+            public ModelMeshPart Part;
+        }
+
+        private sealed class MeshBuilder
+        {
+            public readonly List<VoxelVertex> Vertices = new();
+            public readonly List<int> Indices = new();
         }
 
         private struct Pending
@@ -84,11 +98,11 @@ namespace Engine.Physics
         private readonly List<StaticHandle> _colliders = new();
         private readonly List<Debris> _debris = new();
         private readonly List<Pending> _pending = new();
-        private VertexBuffer _frameVertices;
-        private IndexBuffer _frameIndices;
-        private ModelMeshPart _framePart;
+        private readonly List<GlassMesh> _frameMeshes = new();
         private TransformMatrix _frameTransform;
         private bool _hidOwner;
+        // Materials of the cracked glass, made at the first crack and owned (disposed) here.
+        private MaterialEffect _damagedMaterial, _edgeMaterial;
 
         public BasicEntity Owner { get; }
         /// <summary>The pane has cracked: the gameobject's mesh and collider are replaced by the shards.</summary>
@@ -114,6 +128,19 @@ namespace Engine.Physics
         public bool DropUnsupported = true;
         public bool Distort = true;
         public bool SolidShards = true;
+        /// <summary>Material asset (.mat) for the faces of cracked glass; empty = the pane's material crazed (<see cref="GlassTextures.Damaged"/>).</summary>
+        public string DamagedMaterialPath;
+        /// <summary>Material asset (.mat) for the broken edges; empty = greenish fracture glass (<see cref="GlassTextures.Edge"/>).</summary>
+        public string EdgeMaterialPath;
+        /// <summary>Width (m) of the chipped bevel along each crack on both faces, drawn with the edge material; 0 = square edges.</summary>
+        public float EdgeWidth = 0.003f;
+        /// <summary>Metres one repeat of the edge texture covers (Half-Life: Alyx: <c>shatterglass_edge_uv_scale</c> 0.05 per inch = 0.508 m).</summary>
+        public float EdgeTextureSize = 0.508f;
+
+        /// <summary>The material of the cracked faces (null before the first crack or without graphics).</summary>
+        public MaterialEffect DamagedMaterial => _damagedMaterial;
+        /// <summary>The material of the broken edges (null before the first crack or without graphics).</summary>
+        public MaterialEffect EdgeMaterial => _edgeMaterial;
 
         /// <summary>A contact with the pane or a shard in its frame (seen from the pane), the other gameobject and its mass (0 = immovable).</summary>
         public Action<PhysicsContact, BasicEntity, float> Hit;
@@ -193,6 +220,7 @@ namespace Engine.Physics
             if (!IsBroken)
             {
                 IsBroken = true;
+                PrepareMaterials();
                 _shards.Clear();
                 _shards.AddRange(GlassFracture.CrackPane(_half, CellSize, _random));
                 if (!Owner.WorldTransform.Hidden)
@@ -318,15 +346,15 @@ namespace Engine.Physics
             var debris = new Debris { Glass = this, Body = body, LocalCenter = localCenter };
             foreach (Vector2 p in local) debris.Radius = Math.Max(debris.Radius, p.Length());
             debris.Radius = MathF.Sqrt(debris.Radius * debris.Radius + _halfThickness * _halfThickness);
-            if (_device != null && _material != null && _library != null)
+            if (CanDraw)
             {
-                var vertices = new List<VoxelVertex>();
-                var indices = new List<int>();
-                AppendPrism(vertices, indices, shard, centroid, Vector3.UnitZ);
-                debris.Vertices = Upload(vertices, indices, out debris.Indices, out debris.Part);
+                var faces = new MeshBuilder();
+                var edges = new MeshBuilder();
+                AppendPrism(faces, edges, shard, centroid, Vector3.UnitZ);
                 debris.Transform = new TransformMatrix(DebrisWorld(debris, 1), Owner.Id) { Scale = Vector3.One, HasChanged = true };
                 debris.Transform.InverseWorld = Matrix.Invert(debris.Transform.World);
-                _library.Register(_material, debris.Part, debris.Transform, new BoundingSphere(Vector3.Zero, debris.Radius));
+                AddMesh(debris.Meshes, faces, _damagedMaterial, debris.Transform, debris.Radius);
+                AddMesh(debris.Meshes, edges, _edgeMaterial, debris.Transform, debris.Radius);
             }
             _debris.Add(debris);
             AllDebris.Add(debris);
@@ -387,9 +415,7 @@ namespace Engine.Physics
             AllDebris.Remove(debris);
             try { _physics.RemoveDynamic(debris.Body); }
             catch (Exception ex) { EditorBridge.Log($"Breakable Glass: removing a shard body threw: {ex.Message}"); }
-            if (debris.Part != null) _library?.Unregister(debris.Part, debris.Transform);
-            debris.Vertices?.Dispose();
-            debris.Indices?.Dispose();
+            ReleaseMeshes(debris.Meshes, debris.Transform);
         }
 
         /// <summary>Redraws the frame's shards as one mesh and gives each a static collider.</summary>
@@ -417,71 +443,203 @@ namespace Engine.Physics
                 }
             }
 
-            if (_device == null || _material == null || _library == null) return;
-            var vertices = new List<VoxelVertex>();
-            var indices = new List<int>();
+            if (!CanDraw) return;
+            var faces = new MeshBuilder();
+            var edges = new MeshBuilder();
             foreach (Vector2[] shard in _shards)
             {
                 // Distort: each cracked piece leans a little, so reflections break up along the cracks.
                 Vector3 normal = Vector3.UnitZ;
                 if (Distort)
                     normal = Vector3.Normalize(new Vector3(GlassFracture.Range(_random, -0.02f, 0.02f), GlassFracture.Range(_random, -0.02f, 0.02f), 1));
-                AppendPrism(vertices, indices, shard, Vector2.Zero, normal);
+                AppendPrism(faces, edges, shard, Vector2.Zero, normal);
             }
-            _frameVertices = Upload(vertices, indices, out _frameIndices, out _framePart);
             _frameTransform = new TransformMatrix(_panel, Owner.Id) { Scale = Vector3.One, HasChanged = true, InverseWorld = Matrix.Invert(_panel) };
             float radius = MathF.Sqrt(_half.X * _half.X + _half.Y * _half.Y + _halfThickness * _halfThickness);
-            _library.Register(_material, _framePart, _frameTransform, new BoundingSphere(Vector3.Zero, radius));
+            AddMesh(_frameMeshes, faces, _damagedMaterial, _frameTransform, radius);
+            AddMesh(_frameMeshes, edges, _edgeMaterial, _frameTransform, radius);
         }
 
         private void ReleaseFrame()
         {
             foreach (StaticHandle handle in _colliders) _scene.RemoveOwnedStatic(handle);
             _colliders.Clear();
-            if (_framePart != null) _library?.Unregister(_framePart, _frameTransform);
-            _frameVertices?.Dispose();
-            _frameIndices?.Dispose();
-            _framePart = null;
-            _frameVertices = null;
-            _frameIndices = null;
+            ReleaseMeshes(_frameMeshes, _frameTransform);
             _frameTransform = null;
         }
 
-        /// <summary>
-        /// A shard as a prism in pane space minus <paramref name="offset"/>: front (+Z, normal <paramref name="normal"/>),
-        /// back and edge faces, wound clockwise seen from outside like the engine's other generated meshes.
-        /// </summary>
-        private void AppendPrism(List<VoxelVertex> vertices, List<int> indices, Vector2[] shard, Vector2 offset, Vector3 normal)
+        private bool CanDraw => _device != null && _library != null && _damagedMaterial != null && _edgeMaterial != null;
+
+        private void AddMesh(List<GlassMesh> meshes, MeshBuilder builder, MaterialEffect material, TransformMatrix transform, float radius)
         {
-            float h = _halfThickness;
+            if (builder.Indices.Count == 0) return;
+            var mesh = new GlassMesh();
+            mesh.Vertices = Upload(builder.Vertices, builder.Indices, out mesh.Indices, out mesh.Part);
+            _library.Register(material, mesh.Part, transform, new BoundingSphere(Vector3.Zero, radius));
+            meshes.Add(mesh);
+        }
+
+        private void ReleaseMeshes(List<GlassMesh> meshes, TransformMatrix transform)
+        {
+            foreach (GlassMesh mesh in meshes)
+            {
+                _library?.Unregister(mesh.Part, transform);
+                mesh.Vertices?.Dispose();
+                mesh.Indices?.Dispose();
+            }
+            meshes.Clear();
+        }
+
+        /// <summary>
+        /// The damaged and edge materials, made once at the first crack: a <c>.mat</c> asset applied over a copy of
+        /// the pane's material, or the built-in look derived from the pane's material.
+        /// </summary>
+        private void PrepareMaterials()
+        {
+            if (_damagedMaterial != null || _device == null || _material == null || _library == null) return;
+            _damagedMaterial = FromAsset(DamagedMaterialPath) ?? DefaultDamaged();
+            _edgeMaterial = FromAsset(EdgeMaterialPath) ?? DefaultEdge();
+        }
+
+        private MaterialEffect FromAsset(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            MaterialAsset asset = MaterialAsset.Load(path);
+            if (asset == null)
+            {
+                EditorBridge.Log($"Breakable Glass of '{Owner.Name}': material '{path}' wasn't found; using the built-in look.");
+                return null;
+            }
+            MaterialEffect material = _material.Clone();
+            asset.Settings.ApplyTo(material);
+            return material;
+        }
+
+        // The pane crazed: a fine crack and scratch texture over its own glass (a pane with its own albedo keeps it).
+        private MaterialEffect DefaultDamaged()
+        {
+            MaterialEffect material = _material.Clone();
+            if (material.AlbedoMap == null)
+            {
+                material.AlbedoMap = GlassTextures.Damaged(_device);
+                material.Opacity = Math.Min(1, material.Opacity / GlassTextures.DamagedClearAlpha);
+                // The face UVs follow the model's; repeat the crazing every DamagedTileSize metres whatever they span.
+                float du = new Vector2(_uFromPanel.X, _uFromPanel.Y).Length(), dv = new Vector2(_vFromPanel.X, _vFromPanel.Y).Length();
+                material.TextureTiling = new Vector2(du > 1e-6f ? 1 / (du * GlassTextures.DamagedTileSize) : 1,
+                    dv > 1e-6f ? 1 / (dv * GlassTextures.DamagedTileSize) : 1);
+            }
+            material.Roughness = Math.Min(material.Roughness + 0.04f, 1);
+            return material;
+        }
+
+        // A fresh break: looking along the glass shows its green tint, rippled and much less clear than the faces.
+        private MaterialEffect DefaultEdge()
+        {
+            MaterialEffect material = _material.Clone();
+            material.AlbedoMap = GlassTextures.Edge(_device);
+            material.NormalMap = null;
+            material.DisplacementMap = null;
+            material.Mask = null;
+            material.TextureTiling = Vector2.One;
+            material.DiffuseColor *= new Vector3(0.58f, 0.80f, 0.70f);
+            material.Opacity = Math.Clamp(Math.Max(material.Opacity * 2.5f, 0.6f), 0, 0.95f);
+            material.Roughness = Math.Max(material.Roughness, 0.12f);
+            return material;
+        }
+
+        /// <summary>
+        /// A shard as a prism in pane space minus <paramref name="offset"/>, wound clockwise seen from outside like
+        /// the engine's other generated meshes. The front (+Z, normal <paramref name="normal"/>) and back faces go
+        /// to <paramref name="faces"/> with the pane's texture coordinates. Each side is bevelled by
+        /// <see cref="EdgeWidth"/> on both faces; a crack's bevels and side go to <paramref name="edges"/> with
+        /// coordinates along the edge (U) and across its profile (V) in <see cref="EdgeTextureSize"/> units, while
+        /// sides on the pane's border (in the frame) stay with the faces.
+        /// </summary>
+        private void AppendPrism(MeshBuilder faces, MeshBuilder edges, Vector2[] shard, Vector2 offset, Vector3 normal)
+        {
+            shard = WithoutDuplicates(shard);
             int n = shard.Length;
+            if (n < 3) return;
+            float h = _halfThickness;
+            Vector2[] inner = GlassFracture.Inset(shard, Math.Max(EdgeWidth, 0), out float bevel);
+            // The bevel cuts into the thickness too (at most half of it), like a chipped edge.
+            float sideHalf = h - Math.Min(bevel * 0.5f, h * 0.5f);
             var back = new Vector3(-normal.X, -normal.Y, -normal.Z);
 
-            int front = vertices.Count;
-            for (int i = 0; i < n; i++) vertices.Add(Vertex(shard[i], offset, h, normal, Vector3.UnitX));
-            for (int i = 1; i + 1 < n; i++) { indices.Add(front); indices.Add(front + i + 1); indices.Add(front + i); }
+            int front = faces.Vertices.Count;
+            for (int i = 0; i < n; i++) faces.Vertices.Add(Vertex(inner[i], offset, h, normal, Vector3.UnitX));
+            for (int i = 1; i + 1 < n; i++) { faces.Indices.Add(front); faces.Indices.Add(front + i + 1); faces.Indices.Add(front + i); }
 
-            int rear = vertices.Count;
-            for (int i = 0; i < n; i++) vertices.Add(Vertex(shard[i], offset, -h, back, Vector3.UnitX));
-            for (int i = 1; i + 1 < n; i++) { indices.Add(rear); indices.Add(rear + i); indices.Add(rear + i + 1); }
+            int rear = faces.Vertices.Count;
+            for (int i = 0; i < n; i++) faces.Vertices.Add(Vertex(inner[i], offset, -h, back, Vector3.UnitX));
+            for (int i = 1; i + 1 < n; i++) { faces.Indices.Add(rear); faces.Indices.Add(rear + i); faces.Indices.Add(rear + i + 1); }
+
+            // Edge texture: shards start at different places along it, so neighbouring cracks don't line up.
+            Vector2 centroid = GlassFracture.Centroid(shard);
+            float size = Math.Max(EdgeTextureSize, 0.01f);
+            float along = Fraction(MathF.Sin(centroid.X * 12.9898f + centroid.Y * 78.233f) * 43758.547f) * size;
+            // Profile (V): front bevel, side, back bevel.
+            float v0 = 0, v1 = bevel, v2 = bevel + 2 * sideHalf, v3 = 2 * bevel + 2 * sideHalf;
 
             for (int i = 0; i < n; i++)
             {
-                Vector2 a = shard[i], b = shard[(i + 1) % n];
+                Vector2 a = shard[i], b = shard[(i + 1) % n], ia = inner[i], ib = inner[(i + 1) % n];
                 Vector2 edge = b - a;
-                if (edge.LengthSquared() < 1e-12f) continue;
-                edge.Normalize();
+                float length = edge.Length();
+                if (length < 1e-6f) continue;
+                edge /= length;
                 var outward = new Vector3(edge.Y, -edge.X, 0);
                 var tangent = new Vector3(edge, 0);
-                int s = vertices.Count;
-                vertices.Add(Vertex(a, offset, h, outward, tangent));
-                vertices.Add(Vertex(b, offset, h, outward, tangent));
-                vertices.Add(Vertex(b, offset, -h, outward, tangent));
-                vertices.Add(Vertex(a, offset, -h, outward, tangent));
-                indices.Add(s); indices.Add(s + 1); indices.Add(s + 2);
-                indices.Add(s); indices.Add(s + 2); indices.Add(s + 3);
+                float u0 = along / size, u1 = (along + length) / size;
+                along += length;
+                bool crack = !GlassFracture.IsBorderEdge(a, b, _half);
+                MeshBuilder target = crack ? edges : faces;
+
+                Vector3 frontBevel = Vector3.Normalize(normal + outward), backBevel = Vector3.Normalize(back + outward);
+                if (bevel > 0)
+                    AddQuad(target, crack, Vertex(ia, offset, h, frontBevel, tangent), Vertex(ib, offset, h, frontBevel, tangent),
+                        Vertex(b, offset, sideHalf, frontBevel, tangent), Vertex(a, offset, sideHalf, frontBevel, tangent),
+                        u0, u1, v0 / size, v1 / size);
+                AddQuad(target, crack, Vertex(a, offset, sideHalf, outward, tangent), Vertex(b, offset, sideHalf, outward, tangent),
+                    Vertex(b, offset, -sideHalf, outward, tangent), Vertex(a, offset, -sideHalf, outward, tangent),
+                    u0, u1, v1 / size, v2 / size);
+                if (bevel > 0)
+                    AddQuad(target, crack, Vertex(a, offset, -sideHalf, backBevel, tangent), Vertex(b, offset, -sideHalf, backBevel, tangent),
+                        Vertex(ib, offset, -h, backBevel, tangent), Vertex(ia, offset, -h, backBevel, tangent),
+                        u0, u1, v2 / size, v3 / size);
             }
         }
+
+        // Corners a, b, c, d go round the quad (a-b on top, along the edge); edge quads get coordinates along/across it.
+        private static void AddQuad(MeshBuilder builder, bool edgeCoordinates, VoxelVertex a, VoxelVertex b, VoxelVertex c, VoxelVertex d,
+            float u0, float u1, float v0, float v1)
+        {
+            if (edgeCoordinates)
+            {
+                a.TextureCoordinate = new Vector2(u0, v0);
+                b.TextureCoordinate = new Vector2(u1, v0);
+                c.TextureCoordinate = new Vector2(u1, v1);
+                d.TextureCoordinate = new Vector2(u0, v1);
+            }
+            int s = builder.Vertices.Count;
+            builder.Vertices.Add(a);
+            builder.Vertices.Add(b);
+            builder.Vertices.Add(c);
+            builder.Vertices.Add(d);
+            builder.Indices.Add(s); builder.Indices.Add(s + 1); builder.Indices.Add(s + 2);
+            builder.Indices.Add(s); builder.Indices.Add(s + 2); builder.Indices.Add(s + 3);
+        }
+
+        private static Vector2[] WithoutDuplicates(Vector2[] polygon)
+        {
+            var result = new List<Vector2>(polygon.Length);
+            foreach (Vector2 p in polygon)
+                if (result.Count == 0 || Vector2.DistanceSquared(result[^1], p) > 1e-12f) result.Add(p);
+            while (result.Count > 1 && Vector2.DistanceSquared(result[0], result[^1]) <= 1e-12f) result.RemoveAt(result.Count - 1);
+            return result.Count == polygon.Length ? polygon : result.ToArray();
+        }
+
+        private static float Fraction(float x) => x - MathF.Floor(x);
 
         private VoxelVertex Vertex(Vector2 panel, Vector2 offset, float z, Vector3 normal, Vector3 tangent)
         {
@@ -582,6 +740,10 @@ namespace Engine.Physics
             _pending.Clear();
             for (int i = _debris.Count - 1; i >= 0; i--) RemoveDebris(_debris[i]);
             ReleaseFrame();
+            _damagedMaterial?.Dispose();
+            _edgeMaterial?.Dispose();
+            _damagedMaterial = null;
+            _edgeMaterial = null;
             if (_hidOwner) Owner.WorldTransform.Hidden = false;
             Owner.WorldTransform.HasChanged = true;
         }
