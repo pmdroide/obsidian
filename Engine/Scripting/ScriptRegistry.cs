@@ -41,7 +41,9 @@ public static class ScriptRegistry
         Register<SmokeTestScript>(SmokeTestScript.ScriptId, "Smoke Test");
         Register<WaterTestScript>(WaterTestScript.ScriptId, "Water Test");
         Register<LiquidTestScript>(LiquidTestScript.ScriptId, "Liquid Test");
+        Register<AudioTestSceneScript>(AudioTestSceneScript.ScriptId, "Audio Test");
         Register<SceneLoadingTestScript>(SceneLoadingTestScript.ScriptId, "Scene Loading Test");
+        Register<CutsceneTriggerScript>(CutsceneTriggerScript.ScriptId, "Cutscene Trigger");
     }
 
     public static IReadOnlyCollection<ScriptDefinition> All => Definitions.Values;

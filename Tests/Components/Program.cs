@@ -29,6 +29,16 @@ if (args.Contains("--mcp"))
     McpChecks.Run();
     return;
 }
+if (args.Contains("--audio-checks"))
+{
+    AudioChecks.Run();
+    return;
+}
+if (args.Contains("--cutscenes"))
+{
+    CutsceneChecks.Run();
+    return;
+}
 if (args.Contains("--liquid"))
 {
     LiquidChecks.Run();
@@ -574,6 +584,7 @@ if (args.Contains("--audio"))
     Channel(spawnedAudio).Native.getAudibility(out float audibility);
     Check(spawnedAudio.IsPlaying && audibility > 0.99f, "a freshly spawned gameobject's 3D audio plays at full volume nearby");
     spawnedAudio.OnStop();
+    AudioChecks.RunLive(manager);
 
     string unique = "anvil-audio-" + Guid.NewGuid().ToString("N");
     string sourceRoot = Path.Combine(Path.GetTempPath(), unique);
@@ -640,6 +651,8 @@ NpcChecks.Run();
 LodChecks.Run();
 FoliageChecks.Run();
 LiquidChecks.Run();
+AudioChecks.Run();
+CutsceneChecks.Run();
 FogChecks.Run();
 Source2LookChecks.Run();
 LightmapChecks.Run();

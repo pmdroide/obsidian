@@ -125,7 +125,7 @@ namespace Engine.Logic
             _editorLogic.Update(gameTime, _sceneLogic.BasicEntities, _sceneLogic.Decals, _sceneLogic.PointLights, _sceneLogic.DirectionalLights, _sceneLogic.EnvironmentSample, _sceneLogic.DebugEntities, _editorReceivedDataBuffer, _sceneLogic.MeshMaterialLibrary);
             _sceneLogic.Update(gameTime, isActive);
             // Listener follows the active camera; 3D emitters reconcile after scene positions advance.
-            _audio?.UpdateListener(_sceneLogic.Camera);
+            _audio?.UpdateListener(_sceneLogic.Camera, _sceneLogic.BasicEntities, (float)gameTime.ElapsedGameTime.TotalSeconds);
             _renderer.Update(gameTime, isActive, _sceneLogic._sdfGenerator, _sceneLogic.BasicEntities);
 
             //Hands finished bakes to their scene and keeps the probe volume textures in sync
@@ -230,6 +230,9 @@ namespace Engine.Logic
 
             // Script UI (menus, HUDs) over the scene, under the debug stats and console.
             GameUI.Draw(_spriteBatch);
+
+            // Cutscene letterbox, subtitle and fade (playing, or previewed from Anvil's Cutscenes window).
+            Cutscenes.Draw(_spriteBatch, _uiFonts.Resolve("body"));
 
             // Engine debug stats (GameSettings.u_showdisplayinfo; Anvil's viewport Stats toggle) on top.
             _debug.Draw(gameTime);

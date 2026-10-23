@@ -25,7 +25,10 @@ The subsystem deliberately mirrors the engine's existing conventions:
 
 It supports four things: **2D one-shot/looping SFX**, **3D positional audio** (listener
 driven by the active camera, emitters by world or live entity positions), **master, music and
-effects volumes** (mixer buses), and **streamed music**.
+effects volumes** (mixer buses), and **streamed music**. On top of that the **Audio** component
+sets stereo pan, pitch, rolloff curve, spatial blend, spread, wall muffling and Doppler per sound,
+**Reverb Zone** components give rooms their reverb, and walls (static colliders) muffle 3D sounds
+behind them; see [Audio_Spatial_and_Reverb.md](Audio_Spatial_and_Reverb.md).
 
 ---
 
@@ -62,7 +65,12 @@ redistributed by NuGet (FMOD licensing) and must be supplied by the developer.
 | `Engine/Entities/Camera.cs` | Source of the 3D **listener** transform (`Position`, `Forward`, `Up`). |
 | `Engine/Scripting/AudioTestScript.cs` | `IScript` that turns its owning entity into a looping 3D emitter in Play mode (verification). |
 | `Engine/Logic/MainSceneLogic.cs` | Temporary keyboard test hooks (**X** = blip, **M** = music). Also the owner of the active `Camera`. |
-| `Engine/Content/Audio/` | Loose audio files loaded directly by FMOD: `blip.wav`, `loop3d.wav`, `music.wav`. |
+| `Engine/Components/AudioComponent.cs` | Per-gameobject emitter: clip, volume, pitch, stereo pan, 3D distances + `AudioRolloff`, spatial blend, spread, reverb send. |
+| `Engine/Recources/AudioManager.Mixing.cs` | Script controls: FMOD fade points per sound and bus (`Fade`, `FadeBus`), music crossfade, bus pause / pitch / low-pass (MULTIBAND_EQ at the bus tail) / level metering (head DSP) / spectrum (FFT DSP at the tail), `Preload`, `DopplerScale`, `Stats`, `ResetMixing` (Play stop). |
+| `Engine/Recources/AudioOcclusion.cs` | Wall muffling: rays listener -> emitter against static colliders, walls counted per gameobject, each by its `SoundMaterial` (Physics component; block + dullness table). |
+| `Engine/Components/ReverbZoneComponent.cs` | Box (or Infinite) reverb zones with FMOD presets; `Evaluate` blends them for the listener each frame. |
+| `Engine/Content/Scripts/AudioTestSceneScript.cs` | The `Scenes/AudioTest.obsc` stations (stereo, distance, reverb) and HUD. |
+| `Engine/Content/Audio/` | Loose audio files loaded directly by FMOD: `blip.wav`, `loop3d.wav`, `music.wav`; `Test/` = the AudioTest sounds. |
 | `Engine/Engine.csproj` | Package references + output-copy rules for the native DLLs and audio files. |
 | `fmod.dll`, `fmodL.dll` | Native FMOD Core (x64), placed in `Engine/`, copied next to the executable. **Dev-supplied.** |
 
@@ -214,30 +222,32 @@ FMOD spatialisation = **one listener** (the "ears") + **per-channel 3D attribute
 each frame by `FmodManager.Update()`.
 
 - **Listener** — a single `Listener3D`, created in `Initialize`. Every frame `UpdateListener`
-  copies the active camera's `Position`, normalized `Forward`, and `Up` into it (velocity is
-  currently zero; supply `(pos − lastPos)/dt` later for Doppler).
+  copies the active camera's `Position`, normalized `Forward`, `Up` and its velocity (position
+  change / dt, smoothed; jumps over `MaxDopplerSpeed` = teleports) into it.
 - **Emitter (fixed)** — `PlaySound3D(name, Vector3, …)` plays **paused**, sets `Is3D`,
   `MinDistance3D`/`MaxDistance3D`, the position and zero velocity, then unpauses — so the very
   first audible frame is already positioned and attenuated.
-- **Emitter (tracked)** — `PlaySound3D(name, Func<Vector3>, …)` additionally records the
-  channel + its position source in `_tracked`. Each frame `UpdateListener` writes
-  `channel.Position3D = positionSource()` for every tracked entry, and **reaps** any whose
-  `IsPlaying` is false (FMOD reuses channel handles, so this is checked every frame).
+- **Emitter (tracked)** — every 3D channel is recorded in `_tracked` (fixed ones too, for muffling);
+  `PlaySound3D(name, Func<Vector3>, …)` adds its position source. Each frame `UpdateListener` writes
+  the position and velocity (Doppler), traces the walls to the listener (`AudioOcclusion.Trace`: their
+  Sound Materials' block and dullness) and eases `set3DOcclusion` + `setLowPassGain`, and **reaps** any whose `IsPlaying` is false (FMOD reuses channel
+  handles, so this is checked every frame). `SetEmitter(channel, owner, wallMuffling)` records the
+  owning gameobject (never muffles its own sound); `TryGetEmitter` reads the state back.
 
 ### Coordinate mapping
 
-The engine world is **Z-up, right-handed**; FMOD Core defaults to a left-handed frame. A single
-helper isolates the conversion:
+The engine world is **Z-up, right-handed**; FMOD Core defaults to a left-handed frame, which
+swapped left and right. `Initialize` passes `FMOD.INITFLAGS._3D_RIGHTHANDED` (with FmodForFoxes'
+default `CHANNEL_LOWPASS | CHANNEL_DISTANCEFILTER`) to `FmodManager.Init`. FMOD takes the up axis
+from the listener's up vector, so positions go through unchanged (`ToFmod` is the identity).
+The Stereo station of `Scenes/AudioTest.obsc` checks it.
 
-```csharp
-private static Vector3 ToFmod(Vector3 v) => v;   // identity (default)
-// private static Vector3 ToFmod(Vector3 v) => new Vector3(v.X, v.Z, v.Y);  // alt remap
-```
+### Reverb
 
-Identity preserves **distances**, so attenuation is always correct; only left/right **panning**
-is sensitive to handedness. If a 3D test pans the wrong way, switch to the commented remap.
-Because the listener and all emitters pass through the same `ToFmod`, they always stay in the
-same space.
+`UpdateListener(camera, entities)` ends with `SetReverb(ReverbZoneComponent.Evaluate(entities,
+camera.Position))`, which calls `System.setReverbProperties(0, ...)` only when the blended
+properties change. Channels send to reverb instance 0 at their `ReverbSend` (FMOD's default 1
+for sounds played without a component); `PlayMusic` sets music's send to 0.
 
 ### Distance tuning
 
@@ -326,11 +336,15 @@ runs completely normally, just **silent**. Nothing in the audio subsystem can cr
 
 ## Testing
 
-There is no automated test project, so audio is verified in-engine (see
-[CHANGELOG.md](../../CHANGELOG.md) entry and the plan). Temporary hooks in `MainSceneLogic`:
-**X** plays a 2D blip, **M** toggles streamed music. Attaching `AudioTestScript` to an entity
-and entering Play mode exercises the 3D path — fly the camera around it to hear attenuation and
-panning. Remove/gate the X/M hooks once satisfied.
+`Tests/Components/AudioChecks.cs` (`--audio-checks`) checks without FMOD: reverb zone blending,
+nesting and priority, the Audio/Reverb Zone inspectors and saving, and the sample scene. What it
+sounds like is checked by ear in `Scenes/AudioTest.obsc` (stereo, distance and reverb stations,
+see [Audio_Spatial_and_Reverb.md](Audio_Spatial_and_Reverb.md)). With `--audio` the full run starts
+FMOD for real (`Program.cs`) and `AudioChecks.RunLive` checks the script controls against it silently
+(master volume 0): preload, seek, fades, bus level / spectrum / low-pass / pitch / pause / fade,
+Doppler scale, `ResetMixing` and a music crossfade. `Initialize(silent: true)` uses FMOD's no-sound
+output for headless runs. `AudioTestScript` (code-only
+`IScript`) still turns an entity into a looping 3D emitter.
 
 ---
 
@@ -348,4 +362,3 @@ panning. Remove/gate the X/M hooks once satisfied.
   to follow).
 - **FMOD Studio banks** — `FmodManager.Init` can be switched from `FmodInitMode.Core` to
   `CoreAndStudio` to load `.bank` files authored in FMOD Studio, for event-driven audio.
-```

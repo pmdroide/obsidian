@@ -17,6 +17,8 @@ public enum AssetKind
     Video,
     File,
     Prefab,
+    // .cutscene (Engine.Logic.Cutscene): double-click opens the Cutscenes panel.
+    Cutscene,
 }
 
 public partial class AssetNode : ObservableObject

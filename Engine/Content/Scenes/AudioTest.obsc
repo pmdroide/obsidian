@@ -1,0 +1,2476 @@
+{
+  "Version": 2,
+  "Name": "AudioTest",
+  "Entities": [
+    {
+      "Id": 1,
+      "Name": "Ground",
+      "ModelKey": "Cube",
+      "Position": [
+        -25,
+        -5,
+        -0.25
+      ],
+      "Scale": [
+        110,
+        60,
+        0.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.34,
+          0.35,
+          0.36
+        ],
+        "Roughness": 0.9
+      }
+    },
+    {
+      "Id": 2,
+      "Name": "Path",
+      "ModelKey": "Cube",
+      "Position": [
+        -30,
+        -3,
+        0.005
+      ],
+      "Scale": [
+        95,
+        1.5,
+        0.005
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.48,
+          0.45,
+          0.4
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 3,
+      "Name": "Stereo - Listen Here",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        0,
+        0.02
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.95,
+          0.85,
+          0.2
+        ],
+        "Roughness": 0.4
+      }
+    },
+    {
+      "Id": 4,
+      "Name": "Stereo - Left Marker",
+      "ModelKey": "Cube",
+      "Position": [
+        -2.5,
+        5,
+        1.0
+      ],
+      "Scale": [
+        0.35,
+        0.35,
+        1.0
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.85,
+          0.2,
+          0.18
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 5,
+      "Name": "Stereo - Right Marker",
+      "ModelKey": "Cube",
+      "Position": [
+        2.5,
+        5,
+        1.0
+      ],
+      "Scale": [
+        0.35,
+        0.35,
+        1.0
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.18,
+          0.35,
+          0.9
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 6,
+      "Name": "Stereo Check (2D)",
+      "ModelKey": "Cube",
+      "Position": [
+        -1.2,
+        -2,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.6,
+          0.6,
+          0.62
+        ],
+        "Roughness": 0.6
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "8ed655e9-7cf6-53d1-b8da-7223a84f9c19",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/stereo_check.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": true,
+            "PlayOnStart": false,
+            "Spatial": false,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 2.0,
+            "MaxDistance": 25.0,
+            "Rolloff": "Linear",
+            "ReverbSend": 0,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 7,
+      "Name": "Pan Sweep (2D)",
+      "ModelKey": "Cube",
+      "Position": [
+        1.2,
+        -2,
+        0.3
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.6,
+          0.6,
+          0.62
+        ],
+        "Roughness": 0.6
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "e9f57f5c-7b25-5096-90ab-f2d05a434685",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/pulse_loop.wav",
+            "Volume": 0.8,
+            "Pitch": 1,
+            "Loop": true,
+            "PlayOnStart": false,
+            "Spatial": false,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 2.0,
+            "MaxDistance": 25.0,
+            "Rolloff": "Linear",
+            "ReverbSend": 0,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 8,
+      "Name": "Orbiting Emitter",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        0,
+        4,
+        1.7
+      ],
+      "Scale": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          1.0,
+          0.75,
+          0.15
+        ],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "6d70febf-e3ac-5bf2-bbd8-196cfd536867",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/pulse_loop.wav",
+            "Volume": 0.9,
+            "Pitch": 1,
+            "Loop": true,
+            "PlayOnStart": true,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 2,
+            "MaxDistance": 25,
+            "Rolloff": "Linear",
+            "ReverbSend": 0.3,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 9,
+      "Name": "Distance - Lane",
+      "ModelKey": "Cube",
+      "Position": [
+        60,
+        -20,
+        0.006
+      ],
+      "Scale": [
+        1.2,
+        26,
+        0.006
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.4,
+          0.4,
+          0.42
+        ],
+        "Roughness": 0.85
+      }
+    },
+    {
+      "Id": 10,
+      "Name": "Distance Beacon",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        60,
+        0,
+        1.5
+      ],
+      "Scale": [
+        0.4,
+        0.4,
+        0.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.95,
+          0.35,
+          0.1
+        ],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "380d3f1e-ea0e-50af-bf0a-d5b26c57a312",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/pulse_loop.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": true,
+            "PlayOnStart": true,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 3,
+            "MaxDistance": 25,
+            "Rolloff": "Linear",
+            "ReverbSend": 0.3,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 11,
+      "Name": "Distance - Beacon Pole",
+      "ModelKey": "Cube",
+      "Position": [
+        60,
+        0,
+        0.55
+      ],
+      "Scale": [
+        0.06,
+        0.06,
+        0.55
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.3,
+          0.3,
+          0.3
+        ],
+        "Roughness": 0.6
+      }
+    },
+    {
+      "Id": 12,
+      "Name": "Distance - Post Min 3 m L",
+      "ModelKey": "Cube",
+      "Position": [
+        58.4,
+        -3,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.75,
+          0.3
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 13,
+      "Name": "Distance - Post Min 3 m R",
+      "ModelKey": "Cube",
+      "Position": [
+        61.6,
+        -3,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.75,
+          0.3
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 14,
+      "Name": "Distance - Post 10 m L",
+      "ModelKey": "Cube",
+      "Position": [
+        58.4,
+        -10,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.8,
+          0.2
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 15,
+      "Name": "Distance - Post 10 m R",
+      "ModelKey": "Cube",
+      "Position": [
+        61.6,
+        -10,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.8,
+          0.2
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 16,
+      "Name": "Distance - Post Max 25 m L",
+      "ModelKey": "Cube",
+      "Position": [
+        58.4,
+        -25,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.85,
+          0.2,
+          0.18
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 17,
+      "Name": "Distance - Post Max 25 m R",
+      "ModelKey": "Cube",
+      "Position": [
+        61.6,
+        -25,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.85,
+          0.2,
+          0.18
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 18,
+      "Name": "Distance - Post 40 m L",
+      "ModelKey": "Cube",
+      "Position": [
+        58.4,
+        -40,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 19,
+      "Name": "Distance - Post 40 m R",
+      "ModelKey": "Cube",
+      "Position": [
+        61.6,
+        -40,
+        0.75
+      ],
+      "Scale": [
+        0.12,
+        0.12,
+        0.75
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "Roughness": 0.5
+      }
+    },
+    {
+      "Id": 20,
+      "Name": "Bathroom - Back Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -48,
+        6.1,
+        1.4
+      ],
+      "Scale": [
+        2.2,
+        0.1,
+        1.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.92,
+          0.94
+        ],
+        "Roughness": 0.15
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "51763d8f-539b-5f1c-91a4-b7b174ebd29e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Plaster",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 21,
+      "Name": "Bathroom - Left Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -50.1,
+        4,
+        1.4
+      ],
+      "Scale": [
+        0.1,
+        2.0,
+        1.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.92,
+          0.94
+        ],
+        "Roughness": 0.15
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "64b52eff-eafa-5c13-8619-5691557e9ab8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Plaster",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 22,
+      "Name": "Bathroom - Right Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -45.9,
+        4,
+        1.4
+      ],
+      "Scale": [
+        0.1,
+        2.0,
+        1.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.92,
+          0.94
+        ],
+        "Roughness": 0.15
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "665d2d26-22e5-5722-a02f-854f7af434d2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Plaster",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 23,
+      "Name": "Bathroom - Front Wall L",
+      "ModelKey": "Cube",
+      "Position": [
+        -49.4,
+        1.9,
+        1.4
+      ],
+      "Scale": [
+        0.8,
+        0.1,
+        1.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.92,
+          0.94
+        ],
+        "Roughness": 0.15
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3dd2024c-02c3-5ee3-be99-ad4b05829f34",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Plaster",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 24,
+      "Name": "Bathroom - Front Wall R",
+      "ModelKey": "Cube",
+      "Position": [
+        -46.6,
+        1.9,
+        1.4
+      ],
+      "Scale": [
+        0.8,
+        0.1,
+        1.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.92,
+          0.94
+        ],
+        "Roughness": 0.15
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "9f843e84-d7a0-55de-89ac-28d055bd717a",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Plaster",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 25,
+      "Name": "Bathroom - Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        -48,
+        1.9,
+        2.5
+      ],
+      "Scale": [
+        0.6,
+        0.1,
+        0.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.92,
+          0.94
+        ],
+        "Roughness": 0.15
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "f86d59e1-d708-5729-b828-051aa91e70a2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Plaster",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 26,
+      "Name": "Bathroom - Floor",
+      "ModelKey": "Cube",
+      "Position": [
+        -48,
+        4,
+        0.01
+      ],
+      "Scale": [
+        2.0,
+        2.0,
+        0.01
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.75,
+          0.82,
+          0.86
+        ],
+        "Roughness": 0.3
+      }
+    },
+    {
+      "Id": 27,
+      "Name": "Bathroom - Reverb Zone",
+      "ModelKey": "Cube",
+      "Position": [
+        -48,
+        4,
+        1.4
+      ],
+      "Scale": [
+        2.0,
+        2.0,
+        1.4
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.3,
+          0.5,
+          0.9
+        ],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "reverb-zone",
+          "InstanceId": "377688c0-9477-55a2-ad6b-9f4207617178",
+          "Data": {
+            "Enabled": true,
+            "Preset": "Bathroom",
+            "Infinite": false,
+            "BlendDistance": 1.0,
+            "Weight": 1,
+            "Priority": 0,
+            "DecayScale": 1.0,
+            "WetLevel": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 28,
+      "Name": "Concert Hall - Back Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -70,
+        24.1,
+        5
+      ],
+      "Scale": [
+        10.2,
+        0.1,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.62,
+          0.52,
+          0.42
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3ce42b71-2f91-5953-878a-c031125aa8a5",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 29,
+      "Name": "Concert Hall - Left Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -80.1,
+        13,
+        5
+      ],
+      "Scale": [
+        0.1,
+        11,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.62,
+          0.52,
+          0.42
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "448431b7-581f-5112-a914-c133d2a2e4d3",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 30,
+      "Name": "Concert Hall - Right Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -59.9,
+        13,
+        5
+      ],
+      "Scale": [
+        0.1,
+        11,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.62,
+          0.52,
+          0.42
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "58c30494-7900-5ec2-9d47-93d6f0f5b341",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 31,
+      "Name": "Concert Hall - Front Wall L",
+      "ModelKey": "Cube",
+      "Position": [
+        -75.85,
+        1.9,
+        5
+      ],
+      "Scale": [
+        4.35,
+        0.1,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.62,
+          0.52,
+          0.42
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "18c107b7-a25b-5b33-bee9-141b799f8ca8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 32,
+      "Name": "Concert Hall - Front Wall R",
+      "ModelKey": "Cube",
+      "Position": [
+        -64.15,
+        1.9,
+        5
+      ],
+      "Scale": [
+        4.35,
+        0.1,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.62,
+          0.52,
+          0.42
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "7465900b-7760-544c-8c7f-5a08bd8d2e05",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 33,
+      "Name": "Concert Hall - Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        -70,
+        1.9,
+        6.75
+      ],
+      "Scale": [
+        1.5,
+        0.1,
+        3.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.62,
+          0.52,
+          0.42
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "1e41daa0-5b9d-57b2-8635-152e1ace1f3c",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 34,
+      "Name": "Concert Hall - Reverb Zone",
+      "ModelKey": "Cube",
+      "Position": [
+        -70,
+        13,
+        5
+      ],
+      "Scale": [
+        10,
+        11,
+        5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.3,
+          0.5,
+          0.9
+        ],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "reverb-zone",
+          "InstanceId": "32dd95e3-5c32-517d-94d0-1e6053c8cfbf",
+          "Data": {
+            "Enabled": true,
+            "Preset": "ConcertHall",
+            "Infinite": false,
+            "BlendDistance": 1.5,
+            "Weight": 1,
+            "Priority": 0,
+            "DecayScale": 1.0,
+            "WetLevel": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 35,
+      "Name": "Padded Booth - Back Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -76,
+        20.7,
+        1.3
+      ],
+      "Scale": [
+        1.8,
+        0.1,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.22,
+          0.3
+        ],
+        "Roughness": 1.0
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b668c33a-c4e8-5e3a-a87d-5f1b7bb98c33",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Fabric",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 36,
+      "Name": "Padded Booth - Left Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -77.7,
+        19,
+        1.3
+      ],
+      "Scale": [
+        0.1,
+        1.6,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.22,
+          0.3
+        ],
+        "Roughness": 1.0
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "04200556-d54c-5b37-82dd-5d25bbe062a3",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Fabric",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 37,
+      "Name": "Padded Booth - Right Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -74.3,
+        19,
+        1.3
+      ],
+      "Scale": [
+        0.1,
+        1.6,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.22,
+          0.3
+        ],
+        "Roughness": 1.0
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3c4c4093-4f39-57bb-8ebd-ab05dca02474",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Fabric",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 38,
+      "Name": "Padded Booth - Front Wall L",
+      "ModelKey": "Cube",
+      "Position": [
+        -77.2,
+        17.3,
+        1.3
+      ],
+      "Scale": [
+        0.6,
+        0.1,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.22,
+          0.3
+        ],
+        "Roughness": 1.0
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "d46557ea-e378-5004-bfcc-ebc35dc870b2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Fabric",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 39,
+      "Name": "Padded Booth - Front Wall R",
+      "ModelKey": "Cube",
+      "Position": [
+        -74.8,
+        17.3,
+        1.3
+      ],
+      "Scale": [
+        0.6,
+        0.1,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.22,
+          0.3
+        ],
+        "Roughness": 1.0
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "f69bd004-3f06-5775-9012-1bab806b944e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Fabric",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 40,
+      "Name": "Padded Booth - Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        -76,
+        17.3,
+        2.4
+      ],
+      "Scale": [
+        0.6,
+        0.1,
+        0.2
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.25,
+          0.22,
+          0.3
+        ],
+        "Roughness": 1.0
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "97351e14-437a-55ed-85db-bbc65d1a5ec2",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Fabric",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 41,
+      "Name": "Padded Booth - Reverb Zone",
+      "ModelKey": "Cube",
+      "Position": [
+        -76,
+        19,
+        1.3
+      ],
+      "Scale": [
+        1.6,
+        1.6,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.3,
+          0.5,
+          0.9
+        ],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "reverb-zone",
+          "InstanceId": "ffb4ebb9-e2e8-591b-bfc2-adf09e0452ef",
+          "Data": {
+            "Enabled": true,
+            "Preset": "PaddedCell",
+            "Infinite": false,
+            "BlendDistance": 0.5,
+            "Weight": 1,
+            "Priority": 0,
+            "DecayScale": 1.0,
+            "WetLevel": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 42,
+      "Name": "Sewer Tunnel - Back Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -92,
+        20.1,
+        1.6
+      ],
+      "Scale": [
+        1.8,
+        0.1,
+        1.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "f6c90a72-7c65-5bb7-80ed-a4447c7c5e0b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 43,
+      "Name": "Sewer Tunnel - Left Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -93.7,
+        11,
+        1.6
+      ],
+      "Scale": [
+        0.1,
+        9,
+        1.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "2e037203-d8bb-5084-a56a-0d024f447f8f",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 44,
+      "Name": "Sewer Tunnel - Right Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -90.3,
+        11,
+        1.6
+      ],
+      "Scale": [
+        0.1,
+        9,
+        1.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "842905b8-a9d2-5cd8-9b0c-11d1de56dfff",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 45,
+      "Name": "Sewer Tunnel - Front Wall L",
+      "ModelKey": "Cube",
+      "Position": [
+        -93.4,
+        1.9,
+        1.6
+      ],
+      "Scale": [
+        0.4,
+        0.1,
+        1.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "da997479-ad58-547e-8ba9-e29826f0cc17",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 46,
+      "Name": "Sewer Tunnel - Front Wall R",
+      "ModelKey": "Cube",
+      "Position": [
+        -90.6,
+        1.9,
+        1.6
+      ],
+      "Scale": [
+        0.4,
+        0.1,
+        1.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "8df108f8-380d-593f-9ecd-178e7553157d",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 47,
+      "Name": "Sewer Tunnel - Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        -92,
+        1.9,
+        2.9
+      ],
+      "Scale": [
+        1.0,
+        0.1,
+        0.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "bccba141-2288-561e-81c4-2609109b3892",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 48,
+      "Name": "Sewer Tunnel - Ceiling",
+      "ModelKey": "Cube",
+      "Position": [
+        -92,
+        11,
+        3.3
+      ],
+      "Scale": [
+        1.8,
+        9.2,
+        0.1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.36,
+          0.38,
+          0.33
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "6cf09f9e-8c57-544e-b1b1-ec7d8fe5a8cf",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 49,
+      "Name": "Sewer Tunnel - Reverb Zone",
+      "ModelKey": "Cube",
+      "Position": [
+        -92,
+        11,
+        1.6
+      ],
+      "Scale": [
+        1.6,
+        9,
+        1.6
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.3,
+          0.5,
+          0.9
+        ],
+        "Roughness": 0.5
+      },
+      "Components": [
+        {
+          "Type": "reverb-zone",
+          "InstanceId": "6718019e-36da-5727-8620-03e8efb7ca45",
+          "Data": {
+            "Enabled": true,
+            "Preset": "SewerPipe",
+            "Infinite": false,
+            "BlendDistance": 1.0,
+            "Weight": 1,
+            "Priority": 0,
+            "DecayScale": 1.0,
+            "WetLevel": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 50,
+      "Name": "Bathroom - Echo Emitter",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -48,
+        5,
+        1.2
+      ],
+      "Scale": [
+        0.15,
+        0.15,
+        0.15
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.8,
+          0.9
+        ],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "a307eda4-94ad-545a-a775-c9208ea8f4e1",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/clap.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": false,
+            "PlayOnStart": false,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 1.5,
+            "MaxDistance": 15,
+            "Rolloff": "Linear",
+            "ReverbSend": 1.0,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 51,
+      "Name": "Concert Hall - Echo Emitter",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -66,
+        20,
+        1.5
+      ],
+      "Scale": [
+        0.2,
+        0.2,
+        0.2
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.8,
+          0.9
+        ],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "c36eaf8d-b8f7-5e4b-bb4f-c57c02c6d580",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/clap.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": false,
+            "PlayOnStart": false,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 3,
+            "MaxDistance": 30,
+            "Rolloff": "Linear",
+            "ReverbSend": 1.0,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 52,
+      "Name": "Sewer Tunnel - Echo Emitter",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -92,
+        17,
+        1.2
+      ],
+      "Scale": [
+        0.15,
+        0.15,
+        0.15
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.2,
+          0.8,
+          0.9
+        ],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "c9d1b77e-0641-5bc7-92f2-5360ae3ad34d",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/clap.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": false,
+            "PlayOnStart": false,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 2,
+            "MaxDistance": 20,
+            "Rolloff": "Linear",
+            "ReverbSend": 1.0,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 53,
+      "Name": "Hut - Back Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -20,
+        24.1,
+        1.3
+      ],
+      "Scale": [
+        2.2,
+        0.1,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "3e78936a-19a7-5d2f-8c43-4ff2f53c4adb",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 54,
+      "Name": "Hut - Left Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -22.1,
+        22,
+        1.3
+      ],
+      "Scale": [
+        0.1,
+        2.0,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "0316be8a-74fd-577d-88fb-d9e5a1c891a6",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 55,
+      "Name": "Hut - Front Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -20,
+        19.9,
+        1.3
+      ],
+      "Scale": [
+        2.2,
+        0.1,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "af639e94-d1b9-582e-9d23-1bad324192ab",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 56,
+      "Name": "Hut - Right Wall S",
+      "ModelKey": "Cube",
+      "Position": [
+        -17.9,
+        20.7,
+        1.3
+      ],
+      "Scale": [
+        0.1,
+        0.7,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "b360e063-783c-504f-943d-2bac6a09eabc",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 57,
+      "Name": "Hut - Right Wall N",
+      "ModelKey": "Cube",
+      "Position": [
+        -17.9,
+        23.3,
+        1.3
+      ],
+      "Scale": [
+        0.1,
+        0.7,
+        1.3
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "5c185e35-db93-5a44-af86-f7a420246fe8",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 58,
+      "Name": "Hut - Lintel",
+      "ModelKey": "Cube",
+      "Position": [
+        -17.9,
+        22,
+        2.4
+      ],
+      "Scale": [
+        0.1,
+        0.6,
+        0.2
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "21085705-2d59-59f2-b14f-bd1b1f3340e1",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 59,
+      "Name": "Hut - Ceiling",
+      "ModelKey": "Cube",
+      "Position": [
+        -20,
+        22,
+        2.7
+      ],
+      "Scale": [
+        2.2,
+        2.2,
+        0.1
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.55,
+          0.42,
+          0.3
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "c5c8911b-2ea0-53b6-ad31-cbca829e312e",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Wood",
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 60,
+      "Name": "Walls - Free Wall",
+      "ModelKey": "Cube",
+      "Position": [
+        -20,
+        17,
+        1.25
+      ],
+      "Scale": [
+        3.5,
+        0.1,
+        1.25
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.5,
+          0.5,
+          0.52
+        ],
+        "Roughness": 0.85
+      },
+      "Components": [
+        {
+          "Type": "physics",
+          "InstanceId": "760380a6-7bfd-52bd-8fcd-af64f5c4834b",
+          "Data": {
+            "BodyType": "Static",
+            "Mass": 1.0,
+            "Buoyancy": false,
+            "BuoyancyStrength": 2.0,
+            "WaterDrag": 3.0,
+            "IsTrigger": false,
+            "FreezeRotation": false,
+            "SoundMaterial": "Concrete",
+            "Enabled": true
+          }
+        },
+        {
+          "Type": "material",
+          "InstanceId": "11204a86-c814-596c-9130-bcd170be8ec4",
+          "Data": {
+            "Red": 0.5,
+            "Green": 0.5,
+            "Blue": 0.52,
+            "Roughness": 0.85,
+            "Metallic": 0,
+            "CastShadows": true,
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Id": 61,
+      "Name": "Walls - Listen Here",
+      "ModelKey": "Cube",
+      "Position": [
+        -20,
+        12,
+        0.02
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.95,
+          0.85,
+          0.2
+        ],
+        "Roughness": 0.4
+      }
+    },
+    {
+      "Id": 62,
+      "Name": "Hut - Radio",
+      "ModelKey": "Cube",
+      "Position": [
+        -20.8,
+        22.5,
+        1.0
+      ],
+      "Scale": [
+        0.25,
+        0.15,
+        0.15
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.85,
+          0.2,
+          0.18
+        ],
+        "Roughness": 0.4
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "b2559cb1-ec93-5da0-8bdc-417b8d26ea01",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/pulse_loop.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": true,
+            "PlayOnStart": true,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 2,
+            "MaxDistance": 20,
+            "Rolloff": "Linear",
+            "ReverbSend": 0.3,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 63,
+      "Name": "Doppler - Track",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -50,
+        0.006
+      ],
+      "Scale": [
+        85,
+        0.8,
+        0.006
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.3,
+          0.3,
+          0.32
+        ],
+        "Roughness": 0.8
+      }
+    },
+    {
+      "Id": 64,
+      "Name": "Doppler - Listen Here",
+      "ModelKey": "Cube",
+      "Position": [
+        0,
+        -60,
+        0.02
+      ],
+      "Scale": [
+        0.6,
+        0.6,
+        0.02
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.95,
+          0.85,
+          0.2
+        ],
+        "Roughness": 0.4
+      }
+    },
+    {
+      "Id": 65,
+      "Name": "Doppler Racer",
+      "ModelKey": "IsoSphere",
+      "Position": [
+        -80,
+        -50,
+        1.0
+      ],
+      "Scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "Material": {
+        "DiffuseColor": [
+          0.9,
+          0.15,
+          0.12
+        ],
+        "Roughness": 0.3
+      },
+      "Components": [
+        {
+          "Type": "audio",
+          "InstanceId": "42aad8a2-b711-5ef7-84da-96040a7d6db7",
+          "Data": {
+            "Enabled": true,
+            "ClipPath": "Audio/Test/engine_loop.wav",
+            "Volume": 1.0,
+            "Pitch": 1,
+            "Loop": true,
+            "PlayOnStart": false,
+            "Spatial": true,
+            "Output": "Effects",
+            "Pan": 0.0,
+            "SpatialBlend": 1,
+            "Spread": 0.0,
+            "MinDistance": 4,
+            "MaxDistance": 60,
+            "Rolloff": "Linear",
+            "ReverbSend": 0.2,
+            "WallMuffling": 1.0,
+            "DopplerLevel": 1.0
+          }
+        }
+      ]
+    }
+  ],
+  "PointLights": [
+    {
+      "Id": 900,
+      "Name": "Tunnel Lamp A",
+      "Position": [
+        -92,
+        6,
+        2.6
+      ],
+      "Radius": 7,
+      "Color": [
+        255,
+        236,
+        210,
+        255
+      ],
+      "Intensity": 8,
+      "CastShadows": false
+    },
+    {
+      "Id": 901,
+      "Name": "Tunnel Lamp B",
+      "Position": [
+        -92,
+        15,
+        2.6
+      ],
+      "Radius": 7,
+      "Color": [
+        255,
+        236,
+        210,
+        255
+      ],
+      "Intensity": 8,
+      "CastShadows": false
+    }
+  ],
+  "DirectionalLights": [
+    {
+      "Id": 950,
+      "Name": "Sun",
+      "Direction": [
+        0.45,
+        0.55,
+        -0.7
+      ],
+      "Position": [
+        0,
+        0,
+        30
+      ],
+      "Color": [
+        255,
+        246,
+        232,
+        255
+      ],
+      "Intensity": 100,
+      "CastShadows": true,
+      "ShadowSize": 60,
+      "ShadowDepth": 120,
+      "ShadowResolution": 2048,
+      "ShadowFiltering": 1
+    }
+  ],
+  "Decals": [],
+  "EnvironmentSample": {
+    "Position": [
+      0,
+      0,
+      2
+    ],
+    "SpecularStrength": 1,
+    "DiffuseStrength": 0.3,
+    "AutoUpdate": true
+  },
+  "Environment": {
+    "DayNightCycle": false,
+    "TimeOfDay": 15
+  },
+  "MainCamera": {
+    "Position": [
+      0,
+      0,
+      1.7
+    ],
+    "Forward": [
+      0,
+      1,
+      -0.08
+    ],
+    "FieldOfView": 1.2,
+    "Components": [
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "b476e141-a350-5084-97bb-9e2d19fea891",
+        "Data": {
+          "ScriptId": "freecam",
+          "Enabled": true
+        }
+      },
+      {
+        "Type": "script-behaviour",
+        "InstanceId": "968c532f-edd6-5461-b6ce-d650ed097cd6",
+        "Data": {
+          "ScriptId": "audio-test",
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

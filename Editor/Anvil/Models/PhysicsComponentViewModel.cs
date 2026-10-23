@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Engine.Components;
 using Engine.Physics;
+using Engine.Recources;
 
 namespace Anvil.Models;
 
@@ -23,6 +24,25 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
     [ObservableProperty] private double _colliderSizeX;
     [ObservableProperty] private double _colliderSizeY;
     [ObservableProperty] private double _colliderSizeZ;
+
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsCustomSound), nameof(SoundSummary))]
+    private SoundMaterial _soundMaterial = SoundMaterial.Default;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SoundSummary))] private double _soundBlock = 0.6;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SoundSummary))] private double _soundDullness = 0.5;
+
+    public static SoundMaterial[] SoundMaterials { get; } = Enum.GetValues<SoundMaterial>();
+    public bool IsCustomSound => SoundMaterial == SoundMaterial.Custom;
+
+    /// <summary>What the chosen material does, e.g. "Stops 90 % of sound, takes 85 % of the treble".</summary>
+    public string SoundSummary
+    {
+        get
+        {
+            var p = IsCustomSound ? new SoundMaterialProperties((float)SoundBlock, (float)SoundDullness)
+                : AudioOcclusion.PropertiesOf(SoundMaterial, Audio.WallOcclusion);
+            return $"Stops {p.Block * 100:0} % of sound passing through, takes {p.Dullness * 100:0} % of its treble.";
+        }
+    }
 
     public bool IsStatic => BodyType == PhysicsBodyType.Static;
     public bool IsDynamic => BodyType == PhysicsBodyType.Dynamic;
@@ -53,6 +73,18 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
     {
         float drag = (float)Math.Max(value, 0);
         Push(c => ((PhysicsComponent)c).WaterDrag = drag);
+    }
+
+    partial void OnSoundMaterialChanged(SoundMaterial value) => Push(c => ((PhysicsComponent)c).SoundMaterial = value);
+
+    partial void OnSoundBlockChanged(double value)
+    {
+        if (double.IsFinite(value)) Push(c => ((PhysicsComponent)c).SoundBlock = (float)Math.Clamp(value, 0, 1));
+    }
+
+    partial void OnSoundDullnessChanged(double value)
+    {
+        if (double.IsFinite(value)) Push(c => ((PhysicsComponent)c).SoundDullness = (float)Math.Clamp(value, 0, 1));
     }
 
     partial void OnIsTriggerChanged(bool value) => Push(c => ((PhysicsComponent)c).IsTrigger = value);
@@ -95,5 +127,8 @@ public partial class PhysicsComponentViewModel : ComponentViewModel
         if (Math.Abs(ColliderSizeX - physics.ColliderSizeX) > 0.0001) ColliderSizeX = physics.ColliderSizeX;
         if (Math.Abs(ColliderSizeY - physics.ColliderSizeY) > 0.0001) ColliderSizeY = physics.ColliderSizeY;
         if (Math.Abs(ColliderSizeZ - physics.ColliderSizeZ) > 0.0001) ColliderSizeZ = physics.ColliderSizeZ;
+        SoundMaterial = physics.SoundMaterial;
+        if (Math.Abs(SoundBlock - physics.SoundBlock) > 0.0001) SoundBlock = physics.SoundBlock;
+        if (Math.Abs(SoundDullness - physics.SoundDullness) > 0.0001) SoundDullness = physics.SoundDullness;
     }
 }

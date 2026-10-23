@@ -4,6 +4,7 @@
 
 - NPC targets/patrol points and particle sub-emitter targets still resolve by gameobject name. Their new drop slots preserve this format: duplicate names remain ambiguous, renaming requires dropping the target again, and patrol marker names cannot contain commas. Script gameobject fields use scene IDs and survive renames.
 
+- Cutscenes are basic: one camera track plus subtitle/fade/sound/message events. There are no gameobject or animation tracks (script them from Message events), no camera roll or depth of field, and the Edit-mode preview plays only the cutscene's own sounds (the scene's Audio components need Play with Scene). Switching to another cutscene in the Cutscenes panel (or double-clicking another `.cutscene`) discards unsaved edits without asking (the title shows `*`). See `Docs/markdown/Cutscenes.md` > Limits.
 - Turning off CPU culling stops moved objects from updating.
 - Material batching is off by default.
 The final image is drawn twice per frame.
@@ -25,3 +26,4 @@ The final image is drawn twice per frame.
 - `Engine.exe` started from another working directory than its own (e.g. `Engine\bin\Debug\net10.0-windows\Engine.exe` from the repo root, as `Docs/markdown/Generated_Materials.md` shows) crashes in `SdfGenerator.GenerateDistanceFields` writing `Content/GameObjects/Default/cube.sdft` relative to the current directory. Run it from its own folder (absolute `--import-generated`/`--shot` paths).
 - The parallax G-buffer pass (`DrawTextureDisplacement` in `Gbuffer.fx`, used for any material with albedo + normal + displacement maps) never samples the roughness or metallic map: Material components get them back through `WriteBuffers`' component override, but a model's own imported material with a height map renders with its scalar roughness/metallic.
 - The crash handler (`Engine/Logic/CrashHandler.cs`) only sees managed exceptions: native crashes (access violations in DirectX/FMOD/LibVLC drivers, stack overflows) still kill the process without a report or dialog. Crash reports show the assembly version (`1.0.0`), not the README's Obsidian/Editor version, because the projects don't set `<Version>`.
+- Audio wall muffling uses straight rays against static colliders only: sound doesn't travel round corners or through a far doorway, a wall muffles by its Sound Material but not its thickness, and walls without a Static Physics component don't muffle. Reverb follows the listener only: a sound in another room is heard with the listener's room reverb (`Docs/markdown/Audio_Spatial_and_Reverb.md` > Limits).

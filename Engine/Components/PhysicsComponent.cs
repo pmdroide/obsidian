@@ -1,5 +1,6 @@
 using Engine.Entities;
 using Engine.Physics;
+using Engine.Recources;
 using Microsoft.Xna.Framework;
 using System.Text.Json.Serialization;
 
@@ -37,6 +38,16 @@ public sealed class PhysicsComponent : GameComponent
     /// is stretched about its bounds centre to fill it; 0 = the model's own bounds (see <see cref="ResetColliderSize"/>).
     /// </summary>
     public float ColliderSizeX { get; set; }
+    /// <summary>
+    /// What the collider is made of for sound passing through it: Static colliders between the camera and a 3D
+    /// sound muffle it by their material (concrete stops nearly all, wood less, glass/metal stay brighter).
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public SoundMaterial SoundMaterial { get; set; } = SoundMaterial.Default;
+    /// <summary>Sound Material Custom: 0..1 of the sound passing through it that it stops.</summary>
+    public float SoundBlock { get; set; } = 0.6f;
+    /// <summary>Sound Material Custom: 0..1 of the treble it takes away on top (bass gets through).</summary>
+    public float SoundDullness { get; set; } = 0.5f;
     public float ColliderSizeY { get; set; }
     public float ColliderSizeZ { get; set; }
 

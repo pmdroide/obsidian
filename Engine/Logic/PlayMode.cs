@@ -196,11 +196,15 @@ namespace Engine.Logic
             if (Mode == GameMode.Edit) return;
             EditorBridge.Log("PlayModeController.Stop");
 
+            // A cutscene still playing ends silently; RestoreSnapshot puts the game camera back.
+            Cutscenes.Reset();
             RestoreSnapshot();
             // Render feature values scripts changed (RenderFeatures.Find) go back to the saved ones.
             Renderer.Features.RenderFeatures.RestoreSaved();
             // Bindings scripts rebound and actions they disabled go back to the project's.
             InputActions.Load();
+            // Bus pause / slow motion / low-pass / fades scripts set go back to normal.
+            Audio.Instance?.ResetMixing();
             // DontDestroyOnLoad lasts one Play session (carried gameobjects already left a departing scene).
             if (_sceneLogic.ActiveScene is { } stopped)
                 foreach (var entity in stopped.BasicEntities) entity.RuntimePersistent = false;

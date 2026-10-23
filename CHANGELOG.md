@@ -1,5 +1,102 @@
 # Changelog
 
+## Added: Player and Implementer agents (2026-10-23)
+
+- New `.claude/agents/player.md` (**Player**, Sonnet) plays scenes and the standalone game like a player or beta tester would, using the `run-obsidian` driver plus small scratchpad input helpers for held keys and mouse look.
+  - It reports bugs (repro steps, expected vs actual, reproduction rate, screenshots, log lines) and how the game feels.
+  - It records showcase footage: an `.mp4` through ffmpeg `gdigrab` when ffmpeg is installed, otherwise a numbered PNG sequence, in the git-ignored `shots/` folder.
+  - It never edits code or content.
+- New `.claude/agents/implementer.md` (**Implementer**, Sonnet) follows a written plan or fixes a simple, well-scoped issue.
+  - It works within the CLAUDE.md rules (bridge/game thread, never-rename saved names, `Recources` spelling, content paths) and matches the surrounding code style.
+  - It builds and runs the relevant checks, stops and reports if the plan turns out wrong, and leaves CHANGELOG, version, Engine_Wiring and ISSUES to whoever delegated the task.
+- Claude
+
+## Changed: Cutscenes editor docked in the main window, .cutscene files open it (2026-10-23)
+
+- The Cutscenes editor is now a panel docked in Anvil's main window, between the viewport and the Console/Assets row, instead of a separate window.
+  - The new `Views/CutsceneEditorView.axaml` replaces `CutscenesWindow.axaml`. It spans the full width.
+  - A splitter above it resizes it, and the **x** next to its title closes it.
+  - Window > **Cutscenes** opens and closes it. It comes back at the height it had, at least 270 px so the key and event lists stay usable, and always leaves the viewport about 200 px.
+  - The root grid rows are now `36,*,splitter,panel,176`, sized from `MainWindowViewModel.IsCutscenePanelOpen` in `MainWindow.UpdateCutscenePanelRows`.
+  - Hiding the panel ends the viewport preview, and showing it again previews the playhead. A Fade In at 0 s shows black there, which is correct.
+- Double-clicking a `.cutscene` file in Assets opens the panel on that cutscene. New `AssetKind.Cutscene` with a clapperboard icon; `MainWindowViewModel.OpenCutsceneAsset`, `CutscenesViewModel.Open`.
+- Docs: `Cutscenes.md`, `Engine_Wiring.md`, `Repo_Map.md`, `Recipes.md`, `ISSUES.md`. Editor 1.11.0.
+- Claude
+
+## Changed: cutscene timeline resizing, preview sounds, Play with Scene (2026-10-23)
+
+- Timeline (`Controls/CutsceneTimeline.cs`): drag a subtitle or fade bar's right edge to change how long it lasts, or its left edge to move its start while the end stays put. The selected bar shows grips. A grey handle after the last second changes the cutscene's length. The cursor turns into a resize arrow over these edges.
+- Sound: the Edit-mode preview now plays Sound events as the playhead passes them (`Cutscenes.Preview(..., playedFrom)`). Pausing or closing the window stops them (`Cutscenes.StopPreviewSounds`). A sound that can't play is logged. Sound events now pick from the files in `Content/Audio` instead of a free text field, because a mistyped name silently played nothing.
+- New **Play with Scene** button, which replaces Play in Game. It enters Play mode like the toolbar button, so the scene's scripts, physics and Audio components run, then plays the edited cutscene on the game camera with its sounds and messages. With **Stop Play when done** ticked, Play stops when the cutscene ends.
+- Docs: `Cutscenes.md`, `Engine_Wiring.md`, `ISSUES.md`. Obsidian 1.12.1; Editor 1.10.1.
+- Claude
+
+## Added: basic cutscene maker (2026-10-23)
+
+- New **Window > Cutscenes...** in Anvil. It is a non-modal window (`Views/CutscenesWindow.axaml`, `ViewModels/CutscenesViewModel.cs`) with these parts:
+  - A list of cutscenes with New, two-click Delete, Save and Revert.
+  - Settings: Duration, Letterbox, Skippable and Restore Camera.
+  - A timeline control (`Controls/CutsceneTimeline.cs`) with a seconds ruler, a Camera track (green diamonds for keys, yellow for cuts) and an Events track. Click to scrub; drag a key or event to retime it, snapping to 0.05 s (0.1 s with Shift).
+  - Camera keys taken from the viewport camera (**+ Key from View**, **Set Selected from View**), each with time, FOV, Cut and Ease.
+  - Events: Subtitle, Fade Out, Fade In, Sound and Message.
+  - Preview in the viewport (Play/Pause, Camera follows timeline). It moves the editor camera and draws the overlay; closing the window puts the camera back. **Play in Game** runs the edited cutscene while in Play mode.
+- Engine: new `Engine/Logic/Cutscene.cs`, the asset. Cutscenes are `.cutscene` JSON files in `Content/Cutscenes`, written in the scene file format. Event kinds are saved by name. The camera position follows a Catmull-Rom curve, cuts break the curve, and yaw turns the short way round. Engine.csproj ships the files in builds.
+- Engine: new `Engine/Logic/Cutscenes.cs`, the player that scripts use:
+  - API: `Play(name)`, `Skip`, `Stop`, `IsPlaying`, `Current`, `Time`, and the `Finished` and `EventFired` events.
+  - In Play mode it drives the game camera after the scripts run, so it overrides camera scripts. Enter, Space, gamepad A or Start skips. The pause menu holds it, and a scene load ends it.
+  - It draws the letterbox, fade and subtitle after `GameUI.Draw`.
+  - `PlayModeController.Stop` resets it.
+- New **Cutscene Trigger** script (`Content/Scripts/CutsceneTriggerScript.cs`) with Play On Start, Play On Trigger Enter, Required Tag and Once.
+- Checks: new `Tests/Components/CutsceneChecks.cs` (`--cutscenes`, also in the full run). It covers camera evaluation, cuts, yaw wrapping, fades, subtitles, paths and the JSON round trip. The Tester agent drove the window in Anvil: creating a cutscene, keys, the subtitle/letterbox/fade preview, playback, saving and deleting all worked. After that run I made these fixes:
+  - The editor camera is now restored when the window closes.
+  - Fields are wider and the event text has its own row.
+  - Subtitles are bigger and sit above the bottom bar.
+  - New now says "Created" and saves the first key.
+  - `Watermark` is replaced by `PlaceholderText`.
+
+  These fixes are built and the checks pass, but they have not been looked at in Anvil yet. Play in Game, dragging on the timeline, and Sound/Message events have not been tested in Anvil yet.
+- Docs: new `Docs/markdown/Cutscenes.md`; updated `Engine_Wiring.md`, `Repo_Map.md`, `Recipes.md` and `ISSUES.md`. Obsidian 1.12.0; Editor 1.10.0.
+- Claude
+
+## Added: FMOD scripting controls (2026-10-23)
+
+- New `Engine/Recources/AudioManager.Mixing.cs` (AudioManager is now `partial`). **Per sound** (`ScriptSound`): `FadeTo/FadeIn/FadeOut` (sample-accurate FMOD fade points; FadeOut stops at the end; a new fade starts where the last one is), `Time` (seek) and `Length`, `Mute`, `Audibility`, 3D `Position` (pins it), `MinDistance/MaxDistance`, `Rolloff`, `SpatialBlend`, `Spread`. Audio component: `FadeIn(owner, s)`, `FadeOut(s)`, `Time`; `ScriptBehaviour.PlayAudio(fadeIn)`, `StopAudio(fadeOut)`.
+- **Buses** (`Audio`): `SetPaused/IsPaused`, `SetPitch` (slow motion), `SetLowPass` (MULTIBAND_EQ low-pass at the bus tail), `FadeBus/GetBusFade`, `GetLevel` (RMS metering), `GetSpectrum` (FFT, log-spaced bands for visualisers). Put back by `ResetMixing()` when Play stops (with `DopplerScale`).
+- **Music**: `PlayMusic(..., crossfade)` fades the old track out while the new one fades in; `PauseMusic/ResumeMusic` on `Audio` and `ScriptBehaviour`.
+- **Helpers**: `PlayRandomSound` / `PlayRandomSoundAt` (random clip, never twice in a row, random pitch/volume), `Audio.Preload`, `Audio.DopplerScale`, `Audio.Stats` (channels, real channels, DSP CPU). `AudioManager.Initialize(silent: true)` mixes on FMOD's no-sound output.
+- Fixed: the earlier `Tests/Components --audio` flag I added for the offline audio checks shadowed the existing live FMOD `--audio` block; it is now `--audio-checks`, and `--audio` runs the live block again, now also `AudioChecks.RunLive` (19 checks against real FMOD at master volume 0: seek, fades, crossfade, bus level / spectrum / low-pass / pitch / pause / fade, Doppler scale, reset). Full suite passes with `--audio`.
+- Docs: `Script_Behaviours.md` (ScriptSound and `Audio` mixer tables + example), `Audio_Architecture.md`, `Audio_Spatial_and_Reverb.md`, `Engine_Wiring.md`, `Repo_Map.md`. Obsidian 1.11.0.
+- Claude
+
+## Added: sound materials for wall muffling (2026-10-23)
+
+- The Physics component has a new **Sound Material** (Static bodies; Inspector > Physics > Sound, with a line saying what it does): Default, Wood, Plaster, Glass, Metal, Brick, Concrete, Stone, Fabric, Foliage, or Custom with its own Sound Block / Sound Dullness. Saved by name; older records are Default (the previous behaviour, `Audio.WallOcclusion`).
+- Each material stops a share of the sound (Block: concrete 0.9, brick 0.8, metal 0.7, wood 0.45, glass 0.4, fabric 0.15...) and takes a share of the treble on top (Dullness: concrete 0.85, wood 0.6, glass 0.3, metal 0.25...), so concrete gives a dull thump, wood a muffled voice, glass and metal stay brighter. `AudioOcclusion.Trace` multiplies what gets through each wall along the 3 rays and averages the rays (`AcousticPath`); `AudioManager` sends block to `set3DOcclusion` and dullness to `setLowPassGain`, both eased. `AudioComponent.Emitter` now has `Dullness`.
+- AudioTest: room walls got materials (Hut and Concert Hall Wood, Bathroom Plaster, Padded Booth Fabric, Sewer Tunnel Concrete); at the Walls station **M** cycles the free wall's material and recolours it; the HUD shows % quieter, % duller and the material.
+- Checks: material ordering, concrete/wood/custom paths through BEPU walls, walls in a row, saving, the sample's concrete + wood path. Docs: `Audio_Spatial_and_Reverb.md` (material table), `Audio_Architecture.md`, `Engine_Wiring.md`, `Repo_Map.md`, `ISSUES.md`. Obsidian 1.10.0; Editor 1.9.0.
+- Claude
+
+## Added: wall muffling and Doppler for 3D sounds (2026-10-23)
+
+- **Wall muffling**: new `Engine/Recources/AudioOcclusion.cs`. Each frame `AudioManager.UpdateListener` casts 3 rays (to the sound and 0.6 m either side, averaged, so doorways blend) from the camera to every playing 3D sound against the static colliders (`ScenePhysics.RaycastStatic`); each gameobject passed through is one wall (the sound's own gameobject never counts, max 3). Occlusion `1 - 0.4^walls` x the sound's Wall Muffling, eased ~0.15 s, goes to FMOD `set3DOcclusion` (reverb path half), which with `CHANNEL_LOWPASS` makes it quieter and duller. `Audio.WallOcclusion` (default 0.6 per wall). Works in Edit too.
+- **Doppler**: listener and emitter velocities from smoothed position changes (`UpdateListener` now takes `dt`), passed to FMOD (340 m/s, metres). Jumps faster than 120 m/s are treated as teleports. All 3D channels are tracked now (fixed-position ones too).
+- Audio component: new **Walls** (Wall Muffling 0..1, default 1) and **Doppler** (0..5, default 1) settings, inspector sliders, saved; `AudioComponent.Emitter` (position, velocity, walls, muffling). `ScriptSound.DopplerLevel` / `WallMuffling`; `Audio.ListenerVelocity`; `AudioManager.SetEmitter` / `TryGetEmitter`. Script `PlaySound3D` sounds ignore their own gameobject's colliders.
+- AudioTest scene: room walls now have Static colliders; new **Walls** station (key 6: radio in a closed hut with a side door behind a free wall: 2 / 1 / 0 walls) and **Doppler** station (key 5: key 4 starts an engine sound racing past at 35 m/s, [ ] speed, HUD shows the expected pitch). New sound `Content/Audio/Test/engine_loop.wav`. Fixed a 2D position in the generator.
+- Checks (`AudioChecks`): wall counting against BEPU statics (mesh walls count once, own gameobject, dynamic bodies, over the top, door-edge blend), occlusion curve, Doppler pitch readout, new component fields, the sample hut's 2 / 1 / 0 walls from the scene's own colliders. How it sounds still needs a listen.
+- Docs: `Audio_Spatial_and_Reverb.md`, `Audio_Architecture.md`, `Engine_Wiring.md`, `Repo_Map.md`, `ISSUES.md`. Obsidian 1.9.0; Editor 1.8.0.
+- Claude
+
+## Added: Reverb Zones, stereo/distance settings on the Audio component, AudioTest scene (2026-10-23)
+
+- Fixed: 3D sounds had left and right swapped. FMOD defaults to a left-handed world; `AudioManager.Initialize` now starts it with `FMOD.INITFLAGS._3D_RIGHTHANDED` (plus FmodForFoxes' default low-pass/distance-filter flags).
+- New **Reverb Zone** component (`Engine/Components/ReverbZoneComponent.cs`, type id `reverb-zone`, Anvil inspector with preset list): an FMOD reverb preset (Room, Bathroom, Concert Hall, Cave, Sewer Pipe, Underwater, ... 23 in all) inside the gameobject's box, or everywhere with Infinite. Blend Distance fades it in outside the box, Weight, Priority (ties: smaller box wins, so nested rooms just work), Decay Scale and Wet Level (dB) tune it. The mesh is hidden like the other volumes. `AudioManager.UpdateListener(camera, entities)` evaluates the zones around the listener each frame (edit mode too) and sets FMOD reverb instance 0 when it changes; outside every zone the reverb is off. `ReverbZoneComponent.ActiveZones`, `Audio.Reverb`, `Audio.IsAvailable` for scripts.
+- **Audio component**: new Pitch, Stereo Pan, Reverb (send), Rolloff (`AudioRolloff`: Inverse / Linear / LinearSquare / InverseTapered), Spatial (3D level) and Spread, in the inspector and saved. Defaults keep the old sound (Inverse rolloff, fully 3D). `PlaySound`/`PlaySound3D`/`PlayMusic` now start paused and take an optional `configure` callback so these settings apply before the first audible frame. Music never goes into the reverb. `ScriptSound` gets `Pan` and `ReverbSend`.
+- New sample **`Scenes/AudioTest.obsc`** (added to the scene list) with the `audio-test` script (`Content/Scripts/AudioTestSceneScript.cs`) and HUD (`UI/AudioTest`): Stereo station (2D left/right check, 2D pan sweep, 3D emitter orbiting the listener), Distance station (beacon with posts at min/10 m/max, R cycles the rolloff, T shuttles it, HUD shows the expected volume), Reverb rooms (Bathroom, Concert Hall with a nested Padded Booth, Sewer Tunnel; F claps, C toggles the rooms' echo emitters). Keys 7/8/9 jump between stations. Generated by `Tools/Scripts/generate_audio_test_scene.py`; sounds `Content/Audio/Test/clap.wav`, `pulse_loop.wav`, `stereo_check.wav` by `Tools/Scripts/generate_audio_test_sounds.py`.
+- Checks: new `Tests/Components/AudioChecks.cs` (`--audio`, also in the full run): zone blending, nesting, priority, infinite/disabled zones, inspector edits, saving, older Audio records, rolloff readout, the sample scene. Full component suite passes. The sound itself (pan direction, reverb) still needs a listen; FMOD 2.02.37 starts with the new flag (log: MATCH).
+- Docs: new `Docs/markdown/Audio_Spatial_and_Reverb.md`; `Audio_Architecture.md`, `Engine_Wiring.md`, `Repo_Map.md`, `ISSUES.md`.
+- Obsidian 1.8.0; Editor 1.7.0.
+- Claude
+
 ## Added: crash handler for the engine and Anvil exes (2026-10-22)
 
 - New `Engine/Logic/CrashHandler.cs`, installed at the top of `Engine/Program.cs` and `Editor/Anvil/Program.cs`. Catches unhandled exceptions on any thread, unobserved task exceptions and WinForms window-proc exceptions (no more WinForms continue/quit dialog). A fatal crash writes `%LOCALAPPDATA%/Obsidian/Crashes/<App>-crash-<time>.txt` (version, OS, runtime, memory, command line, exception, last 200 log lines) and a small minidump, keeps writing `crash.log` next to the exe, and shows a native error dialog that can open the crash folder. Keeps the newest 20 reports.

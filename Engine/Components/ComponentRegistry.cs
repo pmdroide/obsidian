@@ -29,6 +29,7 @@ public static class ComponentRegistry
         Register<MaterialComponent>(MaterialComponent.TypeId, "Material", MaterialComponent.FromOwner);
         Register<PhysicsComponent>(PhysicsComponent.TypeId, "Physics");
         Register<AudioComponent>(AudioComponent.TypeId, "Audio");
+        Register<ReverbZoneComponent>(ReverbZoneComponent.TypeId, "Reverb Zone");
         Register<ScriptBehaviourComponent>(ScriptBehaviourComponent.TypeId, "Script Behaviour", allowMultiple: true);
         Register<AnimatorComponent>(AnimatorComponent.TypeId, "Animator");
         Register<RagdollComponent>(RagdollComponent.TypeId, "Ragdoll");

@@ -1,0 +1,30 @@
+{
+  "Version": 1,
+  "Duration": 10,
+  "Letterbox": true,
+  "Skippable": true,
+  "RestoreCamera": true,
+  "CameraKeys": [
+    {
+      "Time": 0,
+      "Position": [
+        -88,
+        -11,
+        4
+      ],
+      "Yaw": 8.575233,
+      "Pitch": 12.393098,
+      "Fov": 45,
+      "Cut": false,
+      "Smooth": true
+    }
+  ],
+  "Events": [
+    {
+      "Time": 0,
+      "Duration": 1,
+      "Kind": "FadeIn",
+      "Text": ""
+    }
+  ]
+}

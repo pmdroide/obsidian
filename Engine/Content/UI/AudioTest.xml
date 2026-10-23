@@ -1,0 +1,29 @@
+<!--
+  AudioTest scene HUD (Vista). Driven by Engine/Content/Scripts/AudioTestSceneScript.cs, which fills
+  #station, #reverb, #reverb-detail, #stereo, #distance, #echo, #walls and #doppler. Designed on a 1080-high canvas.
+  Every element needs an explicit closing tag.
+-->
+<div id="root">
+
+    <div id="panel">
+        <div id="accent"></div>
+        <div class="eyebrow">Audio</div>
+        <div id="title">Audio Test</div>
+        <div id="station"></div>
+        <div id="reverb"></div>
+        <div id="reverb-detail"></div>
+        <div id="rule"></div>
+        <div id="stereo"></div>
+        <div id="distance"></div>
+        <div id="echo"></div>
+        <div id="walls"></div>
+        <div id="doppler"></div>
+    </div>
+
+    <div id="keys">
+        <div id="keys-stations" class="keys-line">5 Doppler  ·  6 Walls  ·  7 Stereo  ·  8 Distance  ·  9 Reverb rooms  ·  use headphones for the stereo tests</div>
+        <div id="keys-sounds" class="keys-line">1 left/right check  ·  2 pan sweep  ·  3 orbit  ·  4 racer  ·  [ ] racer speed  ·  M wall material  ·  R beacon rolloff  ·  T shuttle beacon  ·  F clap  ·  C room echo</div>
+        <div id="keys-move" class="keys-line">Hold right mouse to look  ·  WASD move  ·  E / Q up / down  ·  Shift faster</div>
+    </div>
+
+</div>

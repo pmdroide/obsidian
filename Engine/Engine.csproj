@@ -79,6 +79,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
+    <!-- Cutscenes (Logic.Cutscene): made in Anvil > Window > Cutscenes, played by Logic.Cutscenes. -->
+    <None Update="Content\Cutscenes\**\*.cutscene">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 
   <!-- FMOD audio: native libraries (supplied locally by the dev from fmod.com,

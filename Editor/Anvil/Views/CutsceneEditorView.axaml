@@ -1,0 +1,256 @@
+<!-- Cutscene maker, docked in Anvil's main window above Console and Assets (Window > Cutscenes, or double-click a
+     .cutscene in Assets). DataContext: CutscenesViewModel. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Anvil.ViewModels"
+             xmlns:controls="using:Anvil.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="360"
+             x:Class="Anvil.Views.CutsceneEditorView"
+             x:DataType="vm:CutscenesViewModel"
+             Background="{StaticResource AnvilPanelBackgroundBrush}"
+             FontFamily="{StaticResource AnvilFontFamily}"
+             Foreground="{StaticResource AnvilTextPrimaryBrush}">
+
+    <Design.DataContext>
+        <vm:CutscenesViewModel />
+    </Design.DataContext>
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextMutedBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextSubtleBrush}" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{StaticResource AnvilInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AnvilBorderBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="6,3" />
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="26" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="26" />
+        </Style>
+        <Style Selector="CheckBox">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.small">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource AnvilPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AnvilTextPrimaryBrush}" />
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem">
+            <Setter Property="Padding" Value="6,3" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="*,Auto" ColumnDefinitions="210,*">
+
+        <!-- Cutscene list -->
+        <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="10,8,10,8">
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,0,0,6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <controls:LucideIcon Icon="Clapperboard" Width="14" Height="14"
+                                             Foreground="{StaticResource AnvilPrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Cutscenes" Classes="section" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="small" Content="x" Padding="7,1" MinHeight="20"
+                            Command="{Binding CloseCommand}" ToolTip.Tip="Close the Cutscenes panel (Window > Cutscenes opens it)" />
+                </Grid>
+                <Border Grid.Row="1" CornerRadius="3" BorderThickness="1"
+                        Background="{StaticResource AnvilInputBackgroundBrush}"
+                        BorderBrush="{StaticResource AnvilBorderBrush}">
+                    <ListBox Background="Transparent" ItemsSource="{Binding CutsceneNames}"
+                             SelectedItem="{Binding SelectedName}" />
+                </Border>
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                    <TextBox Text="{Binding NewName}" PlaceholderText="New cutscene name" />
+                    <Button Grid.Column="1" Classes="small primary" Content="New" Margin="6,0,0,0"
+                            Command="{Binding NewCommand}" />
+                </Grid>
+                <Button Grid.Row="3" Classes="small" Margin="0,8,0,0" HorizontalAlignment="Stretch"
+                        Content="Delete" Command="{Binding DeleteCommand}" IsEnabled="{Binding HasCutscene}"
+                        Foreground="{StaticResource AnvilErrorBrush}"
+                        ToolTip.Tip="Deletes the selected cutscene file (press twice)" />
+            </Grid>
+        </Border>
+
+        <!-- Editor -->
+        <Grid Grid.Row="0" Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" Margin="12,8,10,6"
+              IsEnabled="{Binding HasCutscene}">
+
+            <!-- Title + settings -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding TitleLabel}" FontSize="15" FontWeight="SemiBold" Margin="0,0,18,0"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="Duration" Classes="label" Margin="0,0,6,0" />
+                    <NumericUpDown Width="110" Minimum="0.1" Maximum="3600" Increment="0.5" FormatString="0.##"
+                                   Value="{Binding Duration, Mode=TwoWay}" Margin="0,0,14,0" />
+                    <CheckBox Content="Letterbox" IsChecked="{Binding Letterbox}" Margin="0,0,10,0"
+                              ToolTip.Tip="Black bars top and bottom while it plays" />
+                    <CheckBox Content="Skippable" IsChecked="{Binding Skippable}" Margin="0,0,10,0"
+                              ToolTip.Tip="Enter, Space, gamepad A or Start skips to the end" />
+                    <CheckBox Content="Restore Camera" IsChecked="{Binding RestoreCamera}"
+                              ToolTip.Tip="Put the game camera back where it was when the cutscene ends" />
+                </WrapPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="small" Content="Revert" Command="{Binding RevertCommand}" />
+                    <Button Classes="small primary" Content="Save" Command="{Binding SaveCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Transport -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="0,8,0,6">
+                <Button Grid.Column="0" Classes="small" Content="|&lt;" Command="{Binding RewindCommand}"
+                        ToolTip.Tip="Back to the start" Width="34" />
+                <Button Grid.Column="1" Classes="small primary" Content="{Binding PlayButtonLabel}"
+                        Command="{Binding TogglePlayCommand}" Margin="6,0,0,0" Width="64"
+                        ToolTip.Tip="Preview in the viewport: editor camera, subtitles, fades and sounds (the scene itself stays still)" />
+                <TextBlock Grid.Column="2" Text="{Binding PlayheadLabel}" Classes="label" Margin="12,0,0,0"
+                           FontFamily="Consolas, monospace" />
+                <CheckBox Grid.Column="4" Content="Camera follows timeline" IsChecked="{Binding CameraFollowsTimeline}"
+                          Margin="0,0,14,0"
+                          ToolTip.Tip="Scrubbing moves the viewport camera to the shot. Turn off to look around freely." />
+                <CheckBox Grid.Column="5" Content="Stop Play when done" IsChecked="{Binding StopPlayWhenDone}"
+                          Margin="0,0,8,0"
+                          ToolTip.Tip="When Play with Scene started Play, Stop it again when the cutscene ends" />
+                <Button Grid.Column="6" Classes="small primary" Content="Play with Scene" Command="{Binding PlayWithSceneCommand}"
+                        ToolTip.Tip="Enters Play (scripts, physics, Audio components run) and plays the cutscene on the game camera with its sounds and messages" />
+            </Grid>
+
+            <!-- Timeline -->
+            <Border Grid.Row="2" CornerRadius="3" BorderThickness="1" BorderBrush="{StaticResource AnvilBorderBrush}"
+                    ClipToBounds="True">
+                <controls:CutsceneTimeline />
+            </Border>
+
+            <!-- Keys + events -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,12,*" Margin="0,8,0,0">
+
+                <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
+                        <TextBlock Text="Camera Keys" Classes="section" />
+                        <Button Grid.Column="1" Classes="small primary" Content="+ Key from View"
+                                Command="{Binding AddKeyFromViewCommand}"
+                                ToolTip.Tip="Adds a key at the playhead from the viewport camera (re-poses a key already there)" />
+                        <Button Grid.Column="2" Classes="small" Content="Set Selected from View" Margin="6,0,0,0"
+                                Command="{Binding SetKeyFromViewCommand}"
+                                ToolTip.Tip="Moves the selected key to the viewport camera, keeping its time" />
+                    </Grid>
+                    <Border Grid.Row="1" CornerRadius="3" BorderThickness="1"
+                            Background="{StaticResource AnvilInputBackgroundBrush}"
+                            BorderBrush="{StaticResource AnvilBorderBrush}">
+                        <ListBox Classes="rows" Background="Transparent" ItemsSource="{Binding Keys}"
+                                 SelectedItem="{Binding SelectedKey}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CutsceneKeyItemViewModel">
+                                    <Grid ColumnDefinitions="118,8,100,8,Auto,Auto,*,Auto,Auto" RowDefinitions="Auto,Auto">
+                                        <NumericUpDown Grid.Column="0" Minimum="0" Maximum="3600" Increment="0.1"
+                                                       FormatString="0.00" Value="{Binding Time, Mode=TwoWay}"
+                                                       ToolTip.Tip="Time (s)" />
+                                        <NumericUpDown Grid.Column="2" Minimum="5" Maximum="150" Increment="1"
+                                                       FormatString="0" Value="{Binding Fov, Mode=TwoWay}"
+                                                       ToolTip.Tip="Field of view (degrees)" />
+                                        <CheckBox Grid.Column="4" Content="Cut" IsChecked="{Binding Cut}" Margin="8,0,0,0"
+                                                  ToolTip.Tip="Jump to this shot instead of moving from the previous key" />
+                                        <CheckBox Grid.Column="5" Content="Ease" IsChecked="{Binding Smooth}" Margin="6,0,0,0"
+                                                  ToolTip.Tip="Slow in and out of this key" />
+                                        <Button Grid.Column="7" Classes="small" Content="Go" Margin="6,0,0,0"
+                                                Command="{Binding $parent[ListBox].((vm:CutscenesViewModel)DataContext).GoToKeyCommand}"
+                                                CommandParameter="{Binding}" ToolTip.Tip="Move the playhead to this key" />
+                                        <Button Grid.Column="8" Classes="small" Content="x" Margin="4,0,0,0"
+                                                Command="{Binding $parent[ListBox].((vm:CutscenesViewModel)DataContext).RemoveKeyCommand}"
+                                                CommandParameter="{Binding}" ToolTip.Tip="Remove this key" />
+                                        <TextBlock Grid.Row="1" Grid.ColumnSpan="9" Text="{Binding PoseLabel}"
+                                                   Classes="hint" Margin="2,3,0,0" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <TextBlock Grid.Row="2" Classes="hint" Margin="2,6,0,0"
+                               Text="Untick Camera follows timeline, fly the viewport camera (right mouse + WASD), move the playhead, then + Key from View. Drag diamonds on the timeline to retime them." />
+                </Grid>
+
+                <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                        <TextBlock Text="Events" Classes="section" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <Button Classes="small primary" Content="+ Subtitle" Command="{Binding AddEventCommand}" CommandParameter="Subtitle" />
+                            <Button Classes="small" Content="+ Fade Out" Command="{Binding AddEventCommand}" CommandParameter="FadeOut" />
+                            <Button Classes="small" Content="+ Fade In" Command="{Binding AddEventCommand}" CommandParameter="FadeIn" />
+                            <Button Classes="small" Content="+ Sound" Command="{Binding AddEventCommand}" CommandParameter="Sound" />
+                            <Button Classes="small" Content="+ Message" Command="{Binding AddEventCommand}" CommandParameter="Message" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Grid.Row="1" CornerRadius="3" BorderThickness="1"
+                            Background="{StaticResource AnvilInputBackgroundBrush}"
+                            BorderBrush="{StaticResource AnvilBorderBrush}">
+                        <ListBox Classes="rows" Background="Transparent" ItemsSource="{Binding Events}"
+                                 SelectedItem="{Binding SelectedEvent}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CutsceneEventItemViewModel">
+                                    <Grid ColumnDefinitions="118,6,120,6,108,*,Auto" RowDefinitions="Auto,Auto">
+                                        <NumericUpDown Grid.Column="0" Minimum="0" Maximum="3600" Increment="0.1"
+                                                       FormatString="0.00" Value="{Binding Time, Mode=TwoWay}"
+                                                       ToolTip.Tip="Start time (s)" />
+                                        <ComboBox Grid.Column="2" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}"
+                                                  HorizontalAlignment="Stretch" />
+                                        <NumericUpDown Grid.Column="4" Minimum="0" Maximum="600" Increment="0.25"
+                                                       FormatString="0.##" Value="{Binding Duration, Mode=TwoWay}"
+                                                       IsEnabled="{Binding UsesDuration}" ToolTip.Tip="Duration (s)" />
+                                        <TextBox Grid.Row="1" Grid.ColumnSpan="7" Margin="0,4,0,0" Text="{Binding Text}"
+                                                 PlaceholderText="{Binding TextHint}" IsEnabled="{Binding UsesText}"
+                                                 IsVisible="{Binding IsNotSound}" />
+                                        <ComboBox Grid.Row="1" Grid.ColumnSpan="7" Margin="0,4,0,0" HorizontalAlignment="Stretch"
+                                                  ItemsSource="{Binding SoundNames}" SelectedItem="{Binding Text}"
+                                                  PlaceholderText="Pick a sound from Content/Audio" IsVisible="{Binding IsSound}"
+                                                  MaxDropDownHeight="300" />
+                                        <Button Grid.Column="6" Classes="small" Content="x" Margin="4,0,0,0"
+                                                Command="{Binding $parent[ListBox].((vm:CutscenesViewModel)DataContext).RemoveEventCommand}"
+                                                CommandParameter="{Binding}" ToolTip.Tip="Remove this event" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <TextBlock Grid.Row="2" Classes="hint" Margin="2,6,0,0"
+                               Text="Events start at the playhead. Scripts: Cutscenes.Play(&quot;Name&quot;), Cutscenes.EventFired, Cutscenes.Finished; or the Cutscene Trigger script." />
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Status -->
+        <Border Grid.Row="1" Grid.ColumnSpan="2" BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="0,1,0,0"
+                Padding="12,3">
+            <TextBlock Text="{Binding Status}" Classes="hint" VerticalAlignment="Center" />
+        </Border>
+    </Grid>
+</UserControl>

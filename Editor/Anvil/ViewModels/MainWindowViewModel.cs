@@ -1009,6 +1009,48 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // -------- Cutscenes (Window > Cutscenes, Content/Cutscenes/*.cutscene) --------
+
+    /// <summary>The cutscene maker docked above Console and Assets; created the first time it opens.</summary>
+    [ObservableProperty] private CutscenesViewModel? _cutsceneEditor;
+    [ObservableProperty] private bool _isCutscenePanelOpen;
+
+    private CutscenesViewModel EnsureCutsceneEditor()
+    {
+        if (CutsceneEditor != null) return CutsceneEditor;
+        var vm = new CutscenesViewModel(_bridge, () => IsPlaying,
+            (message, error) => AddConsoleEntry(error ? ConsoleLevel.Error : ConsoleLevel.Log, message, "Anvil:Cutscenes"),
+            startPlayMode: () => { if (!IsPlaying) TogglePlay(); },
+            stopPlayMode: () => { if (IsPlaying) TogglePlay(); });
+        vm.CloseAction = () => IsCutscenePanelOpen = false;
+        return CutsceneEditor = vm;
+    }
+
+    /// <summary>Window > Cutscenes: shows or hides the docked cutscene maker.</summary>
+    [RelayCommand]
+    private void OpenCutscenes()
+    {
+        EnsureCutsceneEditor();
+        IsCutscenePanelOpen = !IsCutscenePanelOpen;
+    }
+
+    /// <summary>Assets double-click on a .cutscene: opens the panel on that file.</summary>
+    public bool OpenCutsceneAsset(AssetNode? node)
+    {
+        if (node?.Kind != AssetKind.Cutscene) return false;
+        EnsureCutsceneEditor().Open(node.RelativePath);
+        IsCutscenePanelOpen = true;
+        return true;
+    }
+
+    // Hiding the panel ends the viewport preview (overlay, sounds) and gives the editor camera back; showing it
+    // previews the playhead again.
+    partial void OnIsCutscenePanelOpenChanged(bool value)
+    {
+        if (!value) CutsceneEditor?.EndPreview();
+        else CutsceneEditor?.ResumePreview();
+    }
+
     // -------- Project settings (Edit > Project Settings, Delete Project) --------
 
     [RelayCommand]
@@ -1190,6 +1232,7 @@ public partial class MainWindowViewModel : ViewModelBase
             [".obsc"] = AssetKind.Scene,
             [Engine.Logic.Prefab.Extension] = AssetKind.Prefab,
             [Engine.Recources.MaterialAsset.Extension] = AssetKind.Material,
+            [Engine.Logic.Cutscene.Extension] = AssetKind.Cutscene,
         };
 
     // Folders the user has expanded, by relative path, so rebuilds keep the tree open.

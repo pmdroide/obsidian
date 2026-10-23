@@ -15,6 +15,7 @@
     "Scenes/ParticleTest.obsc",
     "Scenes/SmokeTest.obsc",
     "Scenes/WaterTest.obsc",
+    "Scenes/AudioTest.obsc",
     "Scenes/SceneLoadingTest.obsc",
     "Scenes/SceneLoadingArena.obsc"
   ]

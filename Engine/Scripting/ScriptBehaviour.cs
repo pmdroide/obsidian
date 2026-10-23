@@ -528,10 +528,68 @@ public abstract partial class ScriptBehaviour
         return audio.IsPlaying;
     }
 
+    /// <summary>Plays the first enabled Audio component on this gameobject, fading in over <paramref name="fadeIn"/> seconds.</summary>
+    public bool PlayAudio(float fadeIn)
+    {
+        var audio = GameObject?.GetComponents<AudioComponent>().FirstOrDefault(a => a.Enabled);
+        if (audio == null) return false;
+        audio.FadeIn(GameObject, fadeIn);
+        return audio.IsPlaying;
+    }
+
     /// <summary>Stops every Audio component on this gameobject.</summary>
     public void StopAudio()
     {
         foreach (var audio in GameObject?.GetComponents<AudioComponent>() ?? Enumerable.Empty<AudioComponent>()) audio.OnStop();
+    }
+
+    /// <summary>Fades every Audio component on this gameobject out over <paramref name="fadeOut"/> seconds, then stops them.</summary>
+    public void StopAudio(float fadeOut)
+    {
+        foreach (var audio in GameObject?.GetComponents<AudioComponent>() ?? Enumerable.Empty<AudioComponent>()) audio.FadeOut(fadeOut);
+    }
+
+    /// <summary>
+    /// Plays one of <paramref name="clipPaths"/> at random (2D) with a little random pitch and volume, so repeated
+    /// sounds (footsteps, gunshots, impacts) don't sound like a machine. Never the same clip twice in a row.
+    /// </summary>
+    public ScriptSound PlayRandomSound(string[] clipPaths, float volume = 1f, float pitchVariation = 0.05f,
+                                       float volumeVariation = 0.1f, AudioBus bus = AudioBus.Effects)
+    {
+        string clip = PickClip(clipPaths);
+        if (clip == null) return null;
+        Vary(volume, pitchVariation, volumeVariation, out float v, out float p);
+        return PlaySound(clip, v, false, p, bus);
+    }
+
+    /// <summary>Like <see cref="PlayRandomSound"/>, as a 3D sound at <paramref name="position"/>.</summary>
+    public ScriptSound PlayRandomSoundAt(string[] clipPaths, Vector3 position, float volume = 1f, float pitchVariation = 0.05f,
+                                         float volumeVariation = 0.1f, float minDistance = 2f, float maxDistance = 40f,
+                                         AudioBus bus = AudioBus.Effects)
+    {
+        string clip = PickClip(clipPaths);
+        if (clip == null) return null;
+        Vary(volume, pitchVariation, volumeVariation, out float v, out float p);
+        ScriptSound sound = PlaySoundAt(clip, position, v, false, minDistance, maxDistance, bus);
+        if (sound != null) sound.Pitch = p;
+        return sound;
+    }
+
+    private string _lastRandomClip;
+
+    private string PickClip(string[] clipPaths)
+    {
+        if (clipPaths == null || clipPaths.Length == 0) return null;
+        string clip = clipPaths[Random.Shared.Next(clipPaths.Length)];
+        if (clipPaths.Length > 1 && clip == _lastRandomClip)
+            clip = clipPaths[(Array.IndexOf(clipPaths, clip) + 1 + Random.Shared.Next(clipPaths.Length - 1)) % clipPaths.Length];
+        return _lastRandomClip = clip;
+    }
+
+    private static void Vary(float volume, float pitchVariation, float volumeVariation, out float v, out float p)
+    {
+        v = Math.Clamp(volume * (1 - Math.Clamp(volumeVariation, 0, 1) * Random.Shared.NextSingle()), 0f, 1f);
+        p = Math.Clamp(1 + Math.Clamp(pitchVariation, 0, 1) * (Random.Shared.NextSingle() * 2 - 1), 0.1f, 4f);
     }
 
     /// <summary>True while any Audio component on this gameobject is playing.</summary>
@@ -547,8 +605,11 @@ public abstract partial class ScriptBehaviour
                                    float minDistance = 10f, float maxDistance = 1000f, AudioBus bus = AudioBus.Effects)
     {
         var self = this; // follows the gameobject or camera
-        return Track(Audio.Instance?.PlaySound3D(clipPath, () => self.Position, Math.Clamp(volume, 0f, 1f), loop,
-            minDistance, Math.Max(maxDistance, minDistance), contentRelativePath: true, bus));
+        var channel = Audio.Instance?.PlaySound3D(clipPath, () => self.Position, Math.Clamp(volume, 0f, 1f), loop,
+            minDistance, Math.Max(maxDistance, minDistance), contentRelativePath: true, bus);
+        // Its own gameobject's colliders don't muffle it.
+        if (channel is { } playing) Audio.Instance.SetEmitter(playing, GameObject, 1f);
+        return Track(channel);
     }
 
     /// <summary>Plays a 3D sound at a fixed world position.</summary>
@@ -562,11 +623,16 @@ public abstract partial class ScriptBehaviour
     /// time. Like the other sounds it stops when this script stops, so play level music from a persistent gameobject
     /// to keep it going across scene loads.
     /// </summary>
-    public ScriptSound PlayMusic(string clipPath, float volume = 1f, bool loop = true) =>
-        Track(Audio.Instance?.PlayMusic(clipPath, Math.Clamp(volume, 0f, 1f), loop, contentRelativePath: true));
+    /// <param name="crossfade">Seconds the old track fades out while the new one fades in; 0 = cut.</param>
+    public ScriptSound PlayMusic(string clipPath, float volume = 1f, bool loop = true, float crossfade = 0f) =>
+        Track(Audio.Instance?.PlayMusic(clipPath, Math.Clamp(volume, 0f, 1f), loop, contentRelativePath: true, crossfade));
 
     /// <summary>Stops the music track, whoever started it.</summary>
     public void StopMusic() => Audio.StopMusic();
+
+    /// <summary>Pauses / resumes the music track where it is.</summary>
+    public void PauseMusic() => Audio.PauseMusic();
+    public void ResumeMusic() => Audio.ResumeMusic();
 
     /// <summary>Stops every sound this script started (also happens automatically when it stops).</summary>
     public void StopAllSounds()

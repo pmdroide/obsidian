@@ -1,0 +1,155 @@
+/*
+  AudioTest HUD. Design canvas: 1080 units high (GameUI scales it to the window).
+  Layout is absolute; fonts are heading, caption (Bahnschrift) and body (Segoe UI).
+
+  Palette
+    panel    rgba(10, 8, 16, 0.74)
+    text     #F1EEF6
+    muted    rgba(241, 238, 246, 0.62)
+    accent   #B48CF2               audio violet
+*/
+
+#root {
+    width: 100%;
+    height: 100%;
+    color: #F1EEF6;
+    font-family: body;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- panel */
+
+/* Top right, clear of the engine's performance overlay in the top-left corner. */
+#panel {
+    right: 40px;
+    top: 40px;
+    width: 760px;
+    height: 400px;
+    background-color: rgba(10, 8, 16, 0.74);
+}
+
+#accent {
+    width: 3px;
+    height: 100%;
+    background-color: #B48CF2;
+}
+
+.eyebrow {
+    left: 30px;
+    top: 24px;
+    width: 400px;
+    height: 20px;
+    font-family: caption;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    color: rgba(241, 238, 246, 0.62);
+}
+
+#title {
+    left: 30px;
+    top: 48px;
+    width: 700px;
+    height: 40px;
+    font-family: heading;
+}
+
+#station {
+    left: 30px;
+    top: 104px;
+    width: 700px;
+    height: 30px;
+    white-space: nowrap;
+    font-family: caption;
+    color: #B48CF2;
+}
+
+#reverb {
+    left: 30px;
+    top: 140px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+}
+
+#reverb-detail {
+    left: 30px;
+    top: 172px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 238, 246, 0.78);
+}
+
+#rule {
+    left: 30px;
+    top: 214px;
+    width: 700px;
+    height: 1px;
+    background-color: rgba(241, 238, 246, 0.14);
+}
+
+#stereo {
+    left: 30px;
+    top: 228px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 238, 246, 0.78);
+}
+
+#distance {
+    left: 30px;
+    top: 260px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 238, 246, 0.78);
+}
+
+#echo {
+    left: 30px;
+    top: 292px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 238, 246, 0.62);
+}
+
+#walls {
+    left: 30px;
+    top: 324px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 238, 246, 0.78);
+}
+
+#doppler {
+    left: 30px;
+    top: 356px;
+    width: 700px;
+    height: 28px;
+    white-space: nowrap;
+    color: rgba(241, 238, 246, 0.78);
+}
+
+/* ---------------------------------------------------------------- key hints */
+
+#keys {
+    left: 40px;
+    bottom: 36px;
+    width: 1500px;
+    height: 104px;
+}
+
+.keys-line {
+    left: 0;
+    width: 1500px;
+    height: 28px;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+#keys-stations { top: 0; }
+#keys-sounds { top: 34px; }
+#keys-move { top: 68px; color: rgba(241, 238, 246, 0.62); }

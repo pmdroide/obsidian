@@ -579,7 +579,9 @@
     </Window.Styles>
 
     <!-- ============================ ROOT GRID ============================ -->
-    <Grid RowDefinitions="36,*,176">
+    <!-- Rows: title bar, workspace, splitter + docked Cutscenes panel (0 high while closed; MainWindow.axaml.cs
+         sizes them from IsCutscenePanelOpen), Console/Assets. -->
+    <Grid x:Name="RootGrid" RowDefinitions="36,*,0,0,176">
 
         <!-- ============================== TITLE BAR ============================== -->
         <Border Grid.Row="0"
@@ -680,6 +682,8 @@
                         <MenuItem Header="Input Actions..."
                                   Command="{Binding OpenInputActionsCommand}"
                                   CommandParameter="{Binding $parent[Window]}" />
+                        <MenuItem Header="Cutscenes"
+                                  Command="{Binding OpenCutscenesCommand}" />
                         <MenuItem Header="Steam"
                                   Command="{Binding SetInspectorViewCommand}"
                                   CommandParameter="Steam" />
@@ -2968,6 +2972,26 @@
                                                     </Grid>
                                                     <Button Content="Default Size" Command="{Binding ResetColliderSizeCommand}" HorizontalAlignment="Stretch" />
                                                     <CheckBox Content="Is Trigger" IsChecked="{Binding IsTrigger, Mode=TwoWay}" FontSize="11" />
+                                                    <StackPanel Spacing="6" IsVisible="{Binding IsStatic}">
+                                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
+                                                              ToolTip.Tip="What the collider is made of for sound: 3D sounds behind it are muffled by its material">
+                                                            <TextBlock Grid.Column="0" Text="Sound" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                      ItemsSource="{x:Static m:PhysicsComponentViewModel.SoundMaterials}"
+                                                                      SelectedItem="{Binding SoundMaterial, Mode=TwoWay}" />
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="60,*,60,*" ColumnSpacing="6" IsVisible="{Binding IsCustomSound}">
+                                                            <TextBlock Text="Block" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                                       ToolTip.Tip="0..1 of the sound passing through it that it stops" />
+                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding SoundBlock, Mode=TwoWay}"
+                                                                           Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                            <TextBlock Grid.Column="2" Text="Dullness" Classes="muted" FontSize="11" VerticalAlignment="Center"
+                                                                       ToolTip.Tip="0..1 of the treble it takes away on top (bass gets through)" />
+                                                            <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding SoundDullness, Mode=TwoWay}"
+                                                                           Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                        </Grid>
+                                                        <TextBlock Classes="muted" FontSize="10" TextWrapping="Wrap" Text="{Binding SoundSummary}" />
+                                                    </StackPanel>
                                                     <CheckBox Content="Freeze Rotation" IsChecked="{Binding FreezeRotation, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <CheckBox Content="Buoyancy" IsChecked="{Binding Buoyancy, Mode=TwoWay}" FontSize="11" IsVisible="{Binding IsDynamic}" />
                                                     <StackPanel Spacing="8" IsVisible="{Binding IsDynamic}">
@@ -4785,23 +4809,119 @@
                                                                   ItemsSource="{x:Static m:AudioComponentViewModel.Outputs}"
                                                                   SelectedItem="{Binding Output, Mode=TwoWay}" />
                                                     </Grid>
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                          ToolTip.Tip="Playback speed: 2 is an octave up, 0.5 an octave down">
+                                                        <TextBlock Text="Pitch" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0.25" Maximum="3" Value="{Binding Pitch, Mode=TwoWay}" MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Pitch, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                          ToolTip.Tip="Stereo position of the 2D part of the sound: -1 left speaker, 0 centre, 1 right speaker">
+                                                        <TextBlock Text="Stereo Pan" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Pan, Mode=TwoWay}" MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                          ToolTip.Tip="How much of the sound goes into the Reverb Zones' reverb around the listener">
+                                                        <TextBlock Text="Reverb" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding ReverbSend, Mode=TwoWay}" MinHeight="18" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding ReverbSend, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                    </Grid>
                                                     <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" FontSize="11" />
                                                     <CheckBox Content="Play on Start" IsChecked="{Binding PlayOnStart, Mode=TwoWay}" FontSize="11" />
                                                     <CheckBox Content="3D Spatial Audio" IsChecked="{Binding Spatial, Mode=TwoWay}" FontSize="11" />
-                                                    <Grid ColumnDefinitions="60,*,60,*" ColumnSpacing="6" IsVisible="{Binding Spatial}"
-                                                          ToolTip.Tip="Full volume within Min distance, quieter with distance up to Max">
-                                                        <TextBlock Text="Min Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MinDistance, Mode=TwoWay}"
-                                                                       Minimum="0.01" ShowButtonSpinner="False" FormatString="0.##" />
-                                                        <TextBlock Grid.Column="2" Text="Max Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-                                                        <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding MaxDistance, Mode=TwoWay}"
-                                                                       Minimum="0.01" ShowButtonSpinner="False" FormatString="0.#" />
-                                                    </Grid>
+                                                    <StackPanel Spacing="8" IsVisible="{Binding Spatial}">
+                                                        <Grid ColumnDefinitions="60,*,60,*" ColumnSpacing="6"
+                                                              ToolTip.Tip="Full volume within Min distance, quieter with distance up to Max">
+                                                            <TextBlock Text="Min Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding MinDistance, Mode=TwoWay}"
+                                                                           Minimum="0.01" ShowButtonSpinner="False" FormatString="0.##" />
+                                                            <TextBlock Grid.Column="2" Text="Max Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <NumericUpDown Grid.Column="3" Classes="field" Value="{Binding MaxDistance, Mode=TwoWay}"
+                                                                           Minimum="0.01" ShowButtonSpinner="False" FormatString="0.#" />
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="60,*" ColumnSpacing="8"
+                                                              ToolTip.Tip="Inverse: real-world falloff, never silent. Linear / Linear Square: silent at Max Dist. Inverse Tapered: inverse, then silent at Max Dist">
+                                                            <TextBlock Text="Rolloff" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                      ItemsSource="{x:Static m:AudioComponentViewModel.Rolloffs}"
+                                                                      SelectedItem="{Binding Rolloff, Mode=TwoWay}" />
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                              ToolTip.Tip="1 = fully positional, 0 = plain 2D (Stereo Pan, no falloff)">
+                                                            <TextBlock Text="Spatial" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding SpatialBlend, Mode=TwoWay}" MinHeight="18" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding SpatialBlend, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                              ToolTip.Tip="Degrees the speakers spread the sound over: 0 = a point, 360 = all around">
+                                                            <TextBlock Text="Spread" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <Slider Grid.Column="1" Minimum="0" Maximum="360" Value="{Binding Spread, Mode=TwoWay}" MinHeight="18" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding Spread, StringFormat={}{0:0}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                              ToolTip.Tip="How much walls (static colliders) between the sound and the camera muffle it: quieter and duller. 0 = never">
+                                                            <TextBlock Text="Walls" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding WallMuffling, Mode=TwoWay}" MinHeight="18" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding WallMuffling, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="60,*,40" ColumnSpacing="8"
+                                                              ToolTip.Tip="Doppler: pitch rises while the sound and camera approach each other and drops as they part. 0 = off, 1 = real, more = exaggerated">
+                                                            <TextBlock Text="Doppler" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                            <Slider Grid.Column="1" Minimum="0" Maximum="5" Value="{Binding DopplerLevel, Mode=TwoWay}" MinHeight="18" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding DopplerLevel, StringFormat={}{0:0.00}}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </StackPanel>
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <Button Content="Play" Command="{Binding PlayCommand}" />
                                                         <Button Content="Stop" Command="{Binding StopCommand}" />
                                                         <Button Content="Clear Clip" Command="{Binding ClearClipCommand}" />
                                                     </StackPanel>
+                                                </StackPanel>
+                                            </Expander>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="m:ReverbZoneComponentViewModel" x:DataType="m:ReverbZoneComponentViewModel">
+                                            <Expander Theme="{StaticResource InspectorComponent}" IsExpanded="True">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <controls:LucideIcon Icon="AudioWaveform" Foreground="{StaticResource AnvilAudioBrush}" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <controls:HelpButton Description="Reverb for an area: while the camera is inside this gameobject's box (its position, rotation and scale, like a Cube) every sound gets this reverb, fading in over Blend Distance outside the box. Zones blend lowest Priority first; on a tie the smaller box wins, so a room inside a hall needs no priority. Infinite applies everywhere (outdoors). The mesh is hidden while enabled; select it in the hierarchy. How much reverb a sound gets is its Audio component's Reverb." />
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="12,8,12,12">
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Text="Preset" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Classes="field" HorizontalAlignment="Stretch"
+                                                                  ItemsSource="{x:Static m:ReverbZoneComponentViewModel.Presets}"
+                                                                  SelectedItem="{Binding Preset, Mode=TwoWay}" />
+                                                    </Grid>
+                                                    <CheckBox Content="Infinite (everywhere)" IsChecked="{Binding Infinite, Mode=TwoWay}" FontSize="11" />
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8" ToolTip.Tip="Metres outside the box over which the reverb fades in">
+                                                        <TextBlock Text="Blend Dist" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding BlendDistance, Mode=TwoWay}"
+                                                                       Minimum="0" Increment="0.25" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Text="Weight" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Weight, Mode=TwoWay}"
+                                                                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8">
+                                                        <TextBlock Text="Priority" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding Priority, Mode=TwoWay}"
+                                                                       Increment="1" FormatString="0" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8" ToolTip.Tip="Multiplies the preset's reverb tail length">
+                                                        <TextBlock Text="Decay Scale" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding DecayScale, Mode=TwoWay}"
+                                                                       Minimum="0.1" Maximum="10" Increment="0.1" FormatString="0.##" />
+                                                    </Grid>
+                                                    <Grid ColumnDefinitions="80,*" ColumnSpacing="8" ToolTip.Tip="dB added to the preset's reverb loudness: +6 about twice as loud, -6 half">
+                                                        <TextBlock Text="Wet Level" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Classes="field" Value="{Binding WetLevel, Mode=TwoWay}"
+                                                                       Minimum="-40" Maximum="20" Increment="1" FormatString="0.#" />
+                                                    </Grid>
                                                 </StackPanel>
                                             </Expander>
                                         </DataTemplate>
@@ -4867,8 +4987,16 @@
             </Grid>
         </Grid>
 
+        <!-- ============================== CUTSCENES PANEL ============================== -->
+        <GridSplitter Grid.Row="2" Height="4" ResizeDirection="Rows" Background="{StaticResource AnvilBorderBrush}"
+                      IsVisible="{Binding IsCutscenePanelOpen}" />
+        <Border Grid.Row="3" BorderBrush="{StaticResource AnvilBorderBrush}" BorderThickness="0,1,0,0"
+                IsVisible="{Binding IsCutscenePanelOpen}" ClipToBounds="True">
+            <views:CutsceneEditorView DataContext="{Binding CutsceneEditor}" />
+        </Border>
+
         <!-- ============================== BOTTOM PANELS ============================== -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,*"
+        <Grid Grid.Row="4" ColumnDefinitions="*,*"
               Background="{StaticResource AnvilPanelBackgroundBrush}">
             <Grid.Styles>
                 <Style Selector="Border.bottomPanel">
@@ -5107,6 +5235,9 @@
                                             <controls:LucideIcon Icon="Package"
                                                   Foreground="{StaticResource AnvilPrefabBrush}"
                                                   IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Prefab}" />
+                                            <controls:LucideIcon Icon="Clapperboard"
+                                                  Foreground="{StaticResource AnvilPrimaryBrush}"
+                                                  IsVisible="{Binding Kind, Converter={StaticResource EnumEquals}, ConverterParameter=Cutscene}" />
                                         </Grid>
                                         <TextBlock Text="{Binding Name}" FontSize="11.5"
                                                    VerticalAlignment="Center" />

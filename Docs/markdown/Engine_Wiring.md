@@ -182,6 +182,7 @@ Engine.Update
 │   │   ├─ GameInput.Update(dt)         ← script-facing input, gamepads, menu repeat, MouseDelta
 │   │   │   └─ InputActions.Update(dt)  ← reload if Anvil saved; every action reads its bindings (strongest wins)
 │   │   ├─ PlayMode.UpdateScripts(gameTime) ← component OnUpdate (Play only; particle systems step here)
+│   │   ├─ Cutscenes.Update(dt)         ← Play only: the playing cutscene's events (sounds, messages) and camera track; after the scripts so it wins the game camera
 │   │   ├─ ParticleSystemComponent.UpdatePreviews(...) ← Edit only: Play On Awake particle systems preview
 │   │   ├─ FoliageWindComponent.UpdateAll(entities, dt (0 while paused), scene wind) ← Edit and Play: tree wind clocks, TransformMatrix.Wind, HasChanged
 │   │   ├─ LiquidComponent.UpdateAll(entities, dt (0 while paused), physics gravity) ← Edit and Play: bottle liquid slosh (LiquidSlosh), TransformMatrix.Liquid/LiquidLook
@@ -227,6 +228,7 @@ Engine.Draw
     │        pointLights, directionalLights, envSample, debugEntities, editorData, gameTime,
     │        lighting, lightingSettings, scene)          (section 9.4)
     ├─ GameUI.Draw(spriteBatch)         ← script menus and HUDs over the 3D image, then engine overlays (loading screen)
+    ├─ Cutscenes.Draw(spriteBatch, body font) ← cutscene letterbox, fade and subtitle (playing, or Anvil's Edit-mode preview)
     └─ _debug.Draw(gameTime)            ← stats and console on top
 ```
 
@@ -831,7 +833,7 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
 
 ---
 
-## 12. Input, script UI, audio
+## 12. Input, script UI, audio, cutscenes
 
 - **`Input`** (engine-level, raw):
   - `Update` copies the current state to "last", then reads `Keyboard.GetState()` and the filtered mouse.
@@ -852,11 +854,17 @@ Avalonia binding → [ObservableProperty] partial OnXChanged → (SuppressPush? 
   - `Draw` draws the layers in the order they were opened, then the engine overlays (`OpenOverlay`: the loading screen), which `CloseAll` leaves open.
   - Vista has **no input handling**. Scripts poll `GameInput` and hit-test with `GameUI.ElementAt` / `UIManager.ElementAt`.
 - **Audio** (`AudioManager`, FMOD Core through FmodForFoxes):
-  - `SystemUpdate` runs every frame. `UpdateListener(camera)` moves the listener and the 3D emitters.
+  - `SystemUpdate` runs every frame. `UpdateListener(camera, BasicEntities, dt)` moves the listener and the 3D emitters with their velocities (Doppler; jumps over 120 m/s are teleports), muffles each 3D emitter by the walls between it and the listener (`AudioOcclusion.Trace`: 3 rays against `ScenePhysics.Current` static colliders; each wall's `PhysicsComponent.SoundMaterial` gives block -> `set3DOcclusion` and dullness -> `setLowPassGain`), then sets FMOD reverb instance 0 from the scene's Reverb Zones (`ReverbZoneComponent.Evaluate`, box zones blended by priority/size around the listener, OFF outside; edit mode too). FMOD starts right-handed (`INITFLAGS._3D_RIGHTHANDED`) so left/right match the Z-up world.
+  - Script mixer controls (`AudioManager.Mixing.cs`, `Audio.SetPaused/SetPitch/SetLowPass/FadeBus/GetLevel/GetSpectrum`, `ScriptSound.FadeTo/Time/...`) work on FMOD fade points and DSPs on the bus channel groups; `PlayModeController.Stop` calls `ResetMixing()` so they don't outlive Play.
+  - `AudioComponent` passes a `configure` callback into `PlaySound`/`PlaySound3D` (both start paused) so pitch, pan, rolloff (`AudioRolloff`), 3D level, spread and reverb send apply before the first audible frame; `OnChanged` (every Play frame) re-applies them. See [Audio_Spatial_and_Reverb.md](Audio_Spatial_and_Reverb.md); sample `Scenes/AudioTest.obsc`.
   - Files are loose (`Audio/<name>.wav`). In Anvil, changed source files are copied to `<exe>/Content` before loading.
   - Buses (`AudioBus`): `Initialize` creates FMOD channel groups `Music` and `Effects` under the master group. `PlayMusic` plays on Music; `PlaySound`/`PlaySound3D` take a `bus` (Effects by default; `Master` = no group). `MasterVolume` sets the master group, `MusicVolume`/`EffectsVolume` (or `SetVolume(bus, v)`) their group. The volumes are fields, applied again after FMOD starts.
   - `Audio.Instance` is set at the start of `Initialize`, before FMOD starts, so volume settings work without FMOD. If FMOD fails to start, every play call becomes a no-op.
   - Menus: `MenuSettings.Audio()` (Master/Music/Sound effects rows) heads the Settings page of `MainMenuScript` and `PauseMenuScript`. Both settings lists scroll (8 visible rows, `#settings-scroll-up/down`). See [Audio_Volume.md](Audio_Volume.md).
+- **Cutscenes** (`Engine/Logic/Cutscene.cs` asset, `Cutscenes.cs` static player; [Cutscenes.md](Cutscenes.md)):
+  - `.cutscene` JSON files in `Content/Cutscenes` (scene JSON options; event kinds by name), read through `GameInfo.ResolveContentFile`, written to the source Content folder, shipped by Engine.csproj.
+  - `Cutscenes.Play` takes the active camera (`MainSceneLogic.Camera`, the scene's MainCamera in Play) and saves its pose for Restore Camera. `Update` (Play only, held while `GameFlow.Paused`) fires Sound/Message events crossed this frame, evaluates the camera track and writes the camera after the scripts; a camera swap (scene load) ends it. `PlayModeController.Stop` calls `Reset()` before `RestoreSnapshot`.
+  - Anvil's Cutscenes panel (docked above Console/Assets, `CutsceneEditorView`) never touches engine state directly: preview (`Cutscenes.Preview` on the editor camera), key capture (`CaptureEditorCamera`, result posted back to the UI thread) and Play with Scene (Anvil's Play request, then `Cutscenes.Play` queued after it; a one-shot `Finished` handler posts the Stop back to the UI thread) all go through `IEditorBridge.EnqueueGameThreadAction` with a fresh `Cutscene` copy.
 
 ---
 

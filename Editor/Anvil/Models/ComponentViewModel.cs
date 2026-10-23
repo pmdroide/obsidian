@@ -48,6 +48,7 @@ public static class ComponentEditorRegistry
         Register(MaterialComponent.TypeId, owner => new MaterialInfo(owner));
         Register(PhysicsComponent.TypeId, owner => new PhysicsComponentViewModel(owner));
         Register(AudioComponent.TypeId, owner => new AudioComponentViewModel(owner));
+        Register(ReverbZoneComponent.TypeId, owner => new ReverbZoneComponentViewModel(owner));
         Register(ScriptBehaviourComponent.TypeId, owner => new ScriptBehaviourComponentViewModel(owner));
         Register(AnimatorComponent.TypeId, owner => new AnimatorComponentViewModel(owner));
         Register(RagdollComponent.TypeId, owner => new RagdollComponentViewModel(owner));

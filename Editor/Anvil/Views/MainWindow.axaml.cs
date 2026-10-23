@@ -66,6 +66,48 @@ public partial class MainWindow : Window
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) vm.Environment.ImportSkybox(path);
     }
 
+    // Docked Cutscenes panel (root grid rows 2 = splitter, 3 = panel): the height it had when last closed.
+    private const double DefaultCutscenePanelHeight = 340;
+    // Below this the Camera Keys / Events lists collapse to their headers.
+    private const double MinCutscenePanelHeight = 270;
+    private double _cutscenePanelHeight = DefaultCutscenePanelHeight;
+    private MainWindowViewModel? _layoutVm;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_layoutVm != null) _layoutVm.PropertyChanged -= OnLayoutVmChanged;
+        _layoutVm = DataContext as MainWindowViewModel;
+        if (_layoutVm != null) _layoutVm.PropertyChanged += OnLayoutVmChanged;
+        UpdateCutscenePanelRows();
+    }
+
+    private void OnLayoutVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainWindowViewModel.IsCutscenePanelOpen)) UpdateCutscenePanelRows();
+    }
+
+    private void UpdateCutscenePanelRows()
+    {
+        if (this.FindControl<Grid>("RootGrid") is not { } root || root.RowDefinitions.Count < 5) return;
+        RowDefinition splitter = root.RowDefinitions[2], panel = root.RowDefinitions[3];
+        if (_layoutVm?.IsCutscenePanelOpen == true)
+        {
+            // Never taller than leaves the viewport ~200 px.
+            double max = Math.Max(MinCutscenePanelHeight, root.Bounds.Height - 36 - 176 - 4 - 200);
+            splitter.Height = new GridLength(4);
+            panel.Height = new GridLength(Math.Clamp(_cutscenePanelHeight, MinCutscenePanelHeight, max));
+            panel.MinHeight = MinCutscenePanelHeight;
+        }
+        else
+        {
+            if (panel.Height.IsAbsolute && panel.Height.Value > 0) _cutscenePanelHeight = panel.Height.Value;
+            splitter.Height = new GridLength(0);
+            panel.MinHeight = 0;
+            panel.Height = new GridLength(0);
+        }
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -617,7 +659,7 @@ public partial class MainWindow : Window
     private void AssetsTree_DoubleTapped(object? sender, TappedEventArgs e)
     {
         // Reliable, drag-free path to add a mesh to the scene: double-click it.
-        // Scenes open in the viewport; text assets (shaders, UI XML/CSS) open in an external editor.
+        // Scenes open in the viewport, cutscenes in the Cutscenes panel; text assets (shaders, UI XML/CSS) open in an external editor.
         if (DataContext is not MainWindowViewModel vm) return;
         if (e.Source is not Visual v) return;
         string? modelKey = ModelKeyFromVisual(v);
@@ -640,7 +682,7 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        if (vm.OpenSceneAsset(node) || vm.OpenInTextEditor(node))
+        if (vm.OpenSceneAsset(node) || vm.OpenCutsceneAsset(node) || vm.OpenInTextEditor(node))
             e.Handled = true;
     }
 

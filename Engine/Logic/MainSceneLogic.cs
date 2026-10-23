@@ -395,6 +395,8 @@ namespace Engine.Logic
 
             // Scripts tick only in Play mode.
             PlayMode?.UpdateScripts(gameTime);
+            // A playing cutscene (Cutscenes.Play) moves the game camera after the scripts, so it wins over camera scripts.
+            if (PlayMode?.Mode == GameMode.Play) Cutscenes.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
             // Particle systems also play while editing, so effects show in Anvil's viewport (Play runs them as components).
             if (PlayMode?.Mode != GameMode.Play) ParticleSystemComponent.UpdatePreviews(ActiveScene?.BasicEntities, gameTime);
             // Trees with a Foliage Wind component sway in the scene wind while editing too; the pause menu holds them.

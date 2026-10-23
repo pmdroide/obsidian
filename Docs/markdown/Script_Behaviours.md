@@ -711,14 +711,17 @@ shows. Supported formats are `.wav`, `.mp3`, `.ogg` and `.flac`.
 
 | Member | What it does |
 | --- | --- |
-| `PlayAudio()` | Plays the first enabled **Audio** component on this gameobject, using its Inspector settings. Returns `true` if it started. |
-| `StopAudio()` | Stops every Audio component on this gameobject. |
+| `PlayAudio()` / `PlayAudio(fadeIn)` | Plays the first enabled **Audio** component on this gameobject, using its Inspector settings (optionally fading in over `fadeIn` seconds). Returns `true` if it started. |
+| `StopAudio()` / `StopAudio(fadeOut)` | Stops every Audio component on this gameobject (optionally after fading out over `fadeOut` seconds). |
 | `IsAudioPlaying` | `true` while any Audio component on this gameobject is playing. |
 | `PlaySound(clip, volume = 1, loop = false, pitch = 1, bus = Effects)` | Plays a 2D (non-positional) sound. |
 | `PlaySound3D(clip, volume = 1, loop = false, minDistance = 10, maxDistance = 1000, bus = Effects)` | Plays a 3D sound that follows this gameobject. It is at full volume within `minDistance` and gets quieter farther away. |
 | `PlaySoundAt(clip, position, volume = 1, loop = false, minDistance = 10, maxDistance = 1000, bus = Effects)` | Plays a 3D sound at a fixed world position. |
-| `PlayMusic(clip, volume = 1, loop = true)` | Streams a music track on the Music bus. It replaces the track playing now (one at a time). |
+| `PlayRandomSound(clips, volume = 1, pitchVariation = 0.05, volumeVariation = 0.1, bus = Effects)` | Plays one of `clips` (2D) with a little random pitch and volume, never the same clip twice in a row: footsteps, impacts, gunshots. |
+| `PlayRandomSoundAt(clips, position, volume = 1, pitchVariation = 0.05, volumeVariation = 0.1, minDistance = 2, maxDistance = 40, bus = Effects)` | The same as a 3D sound at `position`. |
+| `PlayMusic(clip, volume = 1, loop = true, crossfade = 0)` | Streams a music track on the Music bus. It replaces the track playing now (one at a time); with `crossfade` seconds the old track fades out while the new one fades in. |
 | `StopMusic()` | Stops the music track, whoever started it. |
+| `PauseMusic()` / `ResumeMusic()` | Pauses / resumes the music track where it is. |
 | `StopAllSounds()` | Stops every sound this script started. |
 
 `bus` picks the volume setting that applies: `AudioBus.Effects` (default), `AudioBus.Music`
@@ -726,9 +729,72 @@ or `AudioBus.Master`. Change the volumes with `Audio.MasterVolume`, `Audio.Music
 and `Audio.EffectsVolume`. See [Audio_Volume.md](Audio_Volume.md).
 
 The `PlaySound...` methods return a `ScriptSound` that you can control while it
-plays: `IsPlaying`, `Volume` (0-1), `Pitch`, `Loop`, `Paused` and `Stop()`. They
-return `null` if audio is unavailable (for example, FMOD is not installed) or the
-clip cannot load. Use `?.` when you call the result.
+plays. They return `null` if audio is unavailable (for example, FMOD is not
+installed) or the clip cannot load. Use `?.` when you call the result.
+
+| `ScriptSound` member | What it does |
+| --- | --- |
+| `IsPlaying`, `Stop()` | Whether it plays; stop it now. |
+| `Volume` (0-1), `Pitch`, `Loop`, `Paused`, `Mute` | The basics. `Pitch` 2 = an octave up. |
+| `FadeTo(volume, seconds)`, `FadeIn(seconds)`, `FadeOut(seconds)` | Sample-accurate fades on top of `Volume`. `FadeOut` stops the sound at the end. A new fade starts from wherever the last one is. |
+| `Time`, `Length` | Playback position in seconds (set it to seek) and the clip's length. |
+| `Audibility` | How loud it really is now (0-1): volume x fades x distance x walls x bus volumes. |
+| `Pan` | Stereo position of its 2D part, -1 left .. 1 right (write-only). |
+| `ReverbSend` | 0-1, how much goes into the Reverb Zones' reverb. |
+| `Position` | 3D: where it plays; setting it pins it there (stops following the gameobject). |
+| `MinDistance`, `MaxDistance`, `Rolloff` | 3D: distance falloff (`AudioRolloff.Inverse/Linear/LinearSquare/InverseTapered`; `Rolloff` is write-only). |
+| `SpatialBlend`, `Spread` | 3D: 1 = positional .. 0 = 2D; degrees the speakers spread it over. |
+| `DopplerLevel`, `WallMuffling` | 3D: pitch shift from motion (0 off, 1 real); 0-1 how much walls muffle it (write-only). |
+
+#### Buses and the mixer (`Audio`)
+
+The static `Audio` class (`using Engine.Recources;`) controls whole buses (`AudioBus.Effects`,
+`Music`, or `Master` = everything). Everything here except the volumes and preloading is put back
+when Play stops, so a script's slow motion or pause muffle never stays on in the editor.
+
+| Member | What it does |
+| --- | --- |
+| `Audio.SetPaused(bus, paused)`, `Audio.IsPaused(bus)` | Pause every sound on a bus where it is (a pause menu pauses `Effects`, keeps `Music`; play its clicks on `AudioBus.Master`). |
+| `Audio.SetPitch(bus, pitch)`, `Audio.GetPitch(bus)` | Speed/pitch of a whole bus, 0.1-4: `0.5` for slow motion. |
+| `Audio.SetLowPass(bus, hz)`, `Audio.GetLowPass(bus)` | Muffle a whole bus: cut above `hz` (~500 underwater, ~2000 behind a pause menu, `22000` off). |
+| `Audio.FadeBus(bus, level, seconds)`, `Audio.GetBusFade(bus)` | Fade a whole bus (0-1, on top of its volume setting): duck Effects under dialogue, fade everything out before a scene change. |
+| `Audio.GetLevel(bus)` | Loudness now (RMS, 0-1). The first call starts metering and returns 0. |
+| `Audio.GetSpectrum(bus, bands)` | Fills a `float[]` with the bus's spectrum, log-spaced 40 Hz-16 kHz (0-1 each), for music visualisers. Measured as the bus's input (before its low-pass and volume). The first call returns 0. |
+| `Audio.PauseMusic()`, `Audio.ResumeMusic()`, `Audio.PlayMusic(clip, volume, loop, crossfade)` | Music, as on `ScriptBehaviour`. |
+| `Audio.Preload(clip, spatial = false)` | Load a clip now so its first play doesn't hitch (`spatial` for 3D playback). |
+| `Audio.DopplerScale` | Doppler strength for every sound: 0 off, 1 real. |
+| `Audio.WallOcclusion` | How much a Default-material wall blocks (0.6). |
+| `Audio.Reverb`, `Audio.ListenerVelocity`, `Audio.IsAvailable`, `Audio.Stats` | Read-only: the reverb now, the camera's velocity, whether FMOD started, channels playing and mixer CPU %. |
+
+```csharp
+using Engine.Recources;
+using Engine.Scripting;
+
+/// <summary>Bullet time on Q: everything slows and dulls, music keeps going; footsteps vary.</summary>
+public sealed class BulletTimeScript : ScriptBehaviour
+{
+    private static readonly string[] Steps = { "Audio/step1.wav", "Audio/step2.wav", "Audio/step3.wav" };
+    private bool _slow;
+
+    public override void Start()
+    {
+        foreach (string step in Steps) Audio.Preload(step);
+        PlayMusic("Audio/music.wav", crossfade: 2f);
+    }
+
+    public override void Update()
+    {
+        if (Engine.Logic.GameInput.WasPressed(Microsoft.Xna.Framework.Input.Keys.Q))
+        {
+            _slow = !_slow;
+            Audio.SetPitch(AudioBus.Effects, _slow ? 0.5f : 1f);
+            Audio.SetLowPass(AudioBus.Effects, _slow ? 1500f : 22000f);
+        }
+        if (Engine.Logic.GameInput.WasPressed(Microsoft.Xna.Framework.Input.Keys.Space))
+            PlayRandomSound(Steps, volume: 0.8f);
+    }
+}
+```
 
 Sounds a script starts stop automatically when the script stops. That happens
 when Play ends, when the component or gameobject is disabled or removed, or when
